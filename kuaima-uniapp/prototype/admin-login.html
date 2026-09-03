@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 管理后台登录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            background: #fff;
+        }
+
+        .login-page {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .brand-side {
+            flex: 1;
+            background: linear-gradient(135deg, #1E293B 0%, #334155 40%, #475569 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 48px 60px;
+            color: #fff;
+        }
+
+        .brand-side::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255,107,53,0.25) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .brand-side::after {
+            content: '';
+            position: absolute;
+            bottom: -15%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(37,99,235,0.2) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .brand-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 48px;
+        }
+
+        .brand-logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .brand-logo-text {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .brand-title {
+            font-size: 38px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-bottom: 16px;
+        }
+
+        .brand-title span {
+            background: linear-gradient(135deg, #FF8C42, #FFB800);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand-desc {
+            font-size: 16px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.8;
+            max-width: 480px;
+            margin-bottom: 48px;
+        }
+
+        .brand-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            max-width: 520px;
+        }
+
+        .brand-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .brand-feature-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .brand-feature-icon.f1 { background: rgba(255,107,53,0.15); color: #FF8C42; }
+        .brand-feature-icon.f2 { background: rgba(37,99,235,0.15); color: #60A5FA; }
+        .brand-feature-icon.f3 { background: rgba(16,185,129,0.15); color: #34D399; }
+        .brand-feature-icon.f4 { background: rgba(245,158,11,0.15); color: #FBBF24; }
+
+        .brand-feature-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .brand-feature-desc {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.5;
+        }
+
+        .brand-stats {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            gap: 40px;
+            padding-top: 32px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .brand-stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF8C42;
+        }
+
+        .brand-stat-label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .form-side {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 60px;
+            background: #fff;
+        }
+
+        .login-form-wrapper {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .form-header {
+            margin-bottom: 36px;
+        }
+
+        .form-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 8px;
+        }
+
+        .form-subtitle {
+            font-size: 14px;
+            color: #6B7280;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .form-input-wrap {
+            position: relative;
+        }
+
+        .form-input-wrap .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9CA3AF;
+            font-size: 15px;
+        }
+
+        .form-input {
+            width: 100%;
+            height: 48px;
+            padding: 0 48px 0 46px;
+            border: 1px solid #E5E7EB;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+            background: #F9FAFB;
+        }
+
+        .form-input:focus {
+            border-color: #FF6B35;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(255,107,53,0.1);
+        }
+
+        .form-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .form-input-wrap .toggle-pwd {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9CA3AF;
+            font-size: 15px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 4px;
+        }
+
+        .form-input-wrap .toggle-pwd:hover {
+            color: #6B7280;
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            font-size: 13px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #6B7280;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #FF6B35;
+            cursor: pointer;
+        }
+
+        .forgot-link {
+            color: #FF6B35;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .login-btn {
+            width: 100%;
+            height: 50px;
+            background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 14px rgba(255,107,53,0.3);
+            letter-spacing: 2px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(255,107,53,0.4);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .captcha-box {
+            display: flex;
+            gap: 12px;
+        }
+
+        .captcha-box .form-input {
+            flex: 1;
+        }
+
+        .captcha-img {
+            width: 120px;
+            height: 48px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 5px;
+            color: #B45309;
+            cursor: pointer;
+            user-select: none;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .captcha-img::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(45deg, transparent 45%, rgba(180,83,9,0.08) 50%, transparent 55%),
+                linear-gradient(-45deg, transparent 45%, rgba(180,83,9,0.08) 50%, transparent 55%);
+            pointer-events: none;
+        }
+
+        .form-footer {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 13px;
+            color: #9CA3AF;
+        }
+
+        .form-footer a {
+            color: #FF6B35;
+            text-decoration: none;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .page-footer {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #9CA3AF;
+            font-size: 12px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .page-footer a {
+            color: #6B7280;
+            text-decoration: none;
+        }
+
+        .page-footer a:hover {
+            color: #FF6B35;
+        }
+
+        .toast {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 900px) {
+            .brand-side {
+                display: none;
+            }
+            .form-side {
+                padding: 40px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-page">
+        <div class="brand-side">
+            <div class="brand-content">
+                <div class="brand-logo">
+                    <div class="brand-logo-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="brand-logo-text">快马日结</div>
+                </div>
+
+                <div class="brand-title">一站式<br><span>零工服务平台</span></div>
+                <div class="brand-desc">
+                    连接企业雇主与务工人员，提供从招工发布、智能匹配、在线接单到薪资结算的全链路服务，助力灵活就业新模式。
+                </div>
+
+                <div class="brand-features">
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon f1">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <div>
+                            <div class="brand-feature-title">智能招工</div>
+                            <div class="brand-feature-desc">AI推荐匹配最合适的零工</div>
+                        </div>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon f2">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div>
+                            <div class="brand-feature-title">实名认证</div>
+                            <div class="brand-feature-desc">确保每笔交易真实可信</div>
+                        </div>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon f3">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div>
+                            <div class="brand-feature-title">日结薪资</div>
+                            <div class="brand-feature-desc">完工即结，快速到账</div>
+                        </div>
+                    </div>
+                    <div class="brand-feature">
+                        <div class="brand-feature-icon f4">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div>
+                            <div class="brand-feature-title">数据可视</div>
+                            <div class="brand-feature-desc">多维度运营数据看板</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="brand-stats">
+                <div>
+                    <div class="brand-stat-value">120万+</div>
+                    <div class="brand-stat-label">注册零工</div>
+                </div>
+                <div>
+                    <div class="brand-stat-value">3万+</div>
+                    <div class="brand-stat-label">入驻企业</div>
+                </div>
+                <div>
+                    <div class="brand-stat-value">98%</div>
+                    <div class="brand-stat-label">好评率</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-side">
+            <div class="login-form-wrapper">
+                <div class="form-header">
+                    <div class="form-title">管理员登录</div>
+                    <div class="form-subtitle">欢迎回到快马日结管理后台</div>
+                </div>
+
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label">管理员账号</label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-user input-icon"></i>
+                            <input type="text" class="form-input" id="username" placeholder="请输入管理员账号" value="admin">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">登录密码</label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" class="form-input" id="password" placeholder="请输入登录密码" value="123456">
+                            <button type="button" class="toggle-pwd" onclick="togglePassword(event)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">验证码</label>
+                        <div class="captcha-box">
+                            <div class="form-input-wrap" style="flex:1;">
+                                <i class="fas fa-shield-alt input-icon"></i>
+                                <input type="text" class="form-input" id="captcha" placeholder="请输入验证码" maxlength="4">
+                            </div>
+                            <div class="captcha-img" onclick="refreshCaptcha()" id="captchaImg">A3X7</div>
+                        </div>
+                    </div>
+
+                    <div class="form-options">
+                        <label class="remember-me">
+                            <input type="checkbox" id="remember">
+                            <span>7天内免登录</span>
+                        </label>
+                        <a class="forgot-link" onclick="alert('请联系系统管理员重置密码')">忘记密码？</a>
+                    </div>
+
+                    <button type="submit" class="login-btn">
+                        登 录
+                    </button>
+
+                    <div class="form-footer">
+                        登录即表示同意 <a onclick="alert('服务协议页面开发中')">《管理员服务协议》</a> 和 <a onclick="alert('保密协议页面开发中')">《信息保密协议》</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-footer">
+        <div>© 2024 快马日结 · 管理后台 v2.0 | 技术支持：快马科技</div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function togglePassword(e) {
+            const pwd = document.getElementById('password');
+            const icon = e.currentTarget.querySelector('i');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                pwd.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        }
+
+        function refreshCaptcha() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) {
+                code += chars[Math.floor(Math.random() * chars.length)];
+            }
+            document.getElementById('captchaImg').textContent = code;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const captcha = document.getElementById('captcha').value.trim();
+
+            if (!username) { showToast('请输入管理员账号'); return; }
+            if (!password) { showToast('请输入登录密码'); return; }
+            if (!captcha) { showToast('请输入验证码'); return; }
+
+            showToast('登录成功，正在跳转...');
+            setTimeout(() => {
+                localStorage.setItem('admin_logged_in', 'true');
+                sessionStorage.setItem('admin_logged_in', 'true');
+                window.location.href = 'admin/dashboard.html';
+            }, 800);
+        }
+    </script>
+</body>
+</html>

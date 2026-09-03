@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业认证 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame { width: 390px; height: 844px; background: #fff; overflow: hidden; position: relative; border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a; }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { display: flex; gap: 14px; color: #333; font-size: 16px; cursor: pointer; }
+
+        .hero-section { padding: 30px 20px 20px; text-align: center; }
+        .hero-icon { width: 64px; height: 64px; margin: 0 auto 16px; background: linear-gradient(135deg, #FFE4B5, #FFDAB9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #FF6B35; }
+        .hero-title { font-size: 20px; font-weight: 700; color: #333; }
+        .hero-desc { font-size: 13px; color: #999; margin-top: 6px; }
+
+        .cert-options { padding: 0 16px; }
+        .cert-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+        .cert-card:active { transform: scale(0.98); }
+        .cert-header { display: flex; justify-content: space-between; align-items: center; }
+        .cert-name { font-size: 15px; font-weight: 600; color: #333; }
+        .cert-btn { background: linear-gradient(135deg, #FFD700, #FFA500); color: #fff; border: none; border-radius: 20px; padding: 6px 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
+        .cert-desc { font-size: 12px; color: #999; margin-top: 6px; }
+
+        .contact-link { text-align: center; margin: 20px 0; font-size: 13px; color: #FF6B35; cursor: pointer; }
+
+        .benefits-section { background: #fafafa; padding: 20px 16px; margin-top: 20px; }
+        .benefits-title { text-align: center; font-size: 14px; color: #666; margin-bottom: 20px; }
+        .benefits-grid { display: flex; justify-content: space-around; }
+        .benefit-item { text-align: center; }
+        .benefit-icon { width: 48px; height: 48px; margin: 0 auto 8px; background: #FFF3ED; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #FF6B35; }
+        .benefit-text { font-size: 12px; color: #666; }
+
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        .scroll-area { position: absolute; top: 97px; left: 0; right: 0; bottom: 0; overflow-y: auto; }
+        .scroll-area::-webkit-scrollbar { display: none; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar"><span>19:53</span><div class="flex items-center gap-1"><i class="fas fa-signal text-sm"></i><i class="fas fa-wifi text-sm"></i><i class="fas fa-battery-full text-sm"></i></div></div>
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+            <div class="nav-title">企业认证</div>
+            <div class="nav-right"><i class="fas fa-ellipsis-h"></i></div>
+        </div>
+        <div class="scroll-area">
+            <div class="hero-section">
+                <div class="hero-icon"><i class="fas fa-building-shield"></i></div>
+                <div class="hero-title">请尽快完成企业认证</div>
+                <div class="hero-desc">否则会影响后续发布招工</div>
+            </div>
+            <div class="cert-options">
+                <div class="cert-card" onclick="chooseCert(1)">
+                    <div class="cert-header">
+                        <span class="cert-name">企业自招（仅限本公司招工）</span>
+                        <button class="cert-btn">认证</button>
+                    </div>
+                    <div class="cert-desc">上传营业执照原件或加盖公章复印件</div>
+                </div>
+            </div>
+            <div class="contact-link" onclick="navigateTo('service-chat')">认证遇到问题？联系客服 ›</div>
+            <div class="benefits-section">
+                <div class="benefits-title">企业认证后，获得以下权益</div>
+                <div class="benefits-grid">
+                    <div class="benefit-item">
+                        <div class="benefit-icon"><i class="fas fa-bolt"></i></div>
+                        <div class="benefit-text">快速审核</div>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-icon"><i class="fas fa-thumbs-up"></i></div>
+                        <div class="benefit-text">优先推荐</div>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-icon"><i class="fas fa-certificate"></i></div>
+                        <div class="benefit-text">认证标识</div>
+                    </div>
+                </div>
+            </div>
+            <div style="height:30px;"></div>
+        </div>
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function goBack() {
+            window.history.back();
+        }
+
+        function navigateTo(page) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = page + '.html';
+            if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) >= 0) {
+                path = '../worker/' + path;
+            } else if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+        function chooseCert(type) {
+            if (type === 1) {
+                navigateTo('enterprise-cert-form');
+            } else {
+                alert('即将跳转到劳务中介认证流程');
+            }
+        }
+    </script>
+</body>
+</html>

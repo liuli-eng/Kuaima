@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 财务报表</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .time-filter-tabs {
+            display: inline-flex;
+            background: #F3F4F6;
+            border-radius: 8px;
+            padding: 3px;
+        }
+        .time-filter-tab {
+            padding: 6px 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+        .time-filter-tab.active {
+            background: #fff;
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-weight: 500;
+        }
+        .chart-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .chart-legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        .legend-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+        .donut-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 20px;
+        }
+        .donut-center-label {
+            text-align: center;
+            margin-top: -40px;
+        }
+        .donut-center-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .donut-center-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .chart-y-axis {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 24px;
+            width: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: right;
+            padding-right: 8px;
+        }
+        .chart-svg-wrapper {
+            margin-left: 40px;
+        }
+        .export-btns {
+            display: flex;
+            gap: 10px;
+        }
+        .export-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text-primary);
+        }
+        .export-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .export-btn.primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .export-btn.primary:hover {
+            background: var(--primary-dark);
+        }
+        .chart-x-axis {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 10px;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">财务报表</h1>
+                <p class="page-desc">平台财务数据统计、营收分析</p>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+                <div class="time-filter-tabs">
+                    <button class="time-filter-tab">今日</button>
+                    <button class="time-filter-tab">本周</button>
+                    <button class="time-filter-tab active">本月</button>
+                    <button class="time-filter-tab">本季</button>
+                    <button class="time-filter-tab">本年</button>
+                    <button class="time-filter-tab">自定义</button>
+                </div>
+                <div class="export-btns">
+                    <button class="export-btn primary"><i class="fas fa-file-excel"></i> 导出Excel</button>
+                    <button class="export-btn"><i class="fas fa-file-pdf"></i> 导出PDF</button>
+                </div>
+            </div>
+
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">累计营收</span>
+                        <div class="stat-card-icon">
+                            <i class="fas fa-yen-sign"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">¥5,286,450</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +12.8%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">平台收入</span>
+                        <div class="stat-card-icon blue">
+                            <i class="fas fa-building"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">¥528,645</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +10.5%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">零工收入</span>
+                        <div class="stat-card-icon green">
+                            <i class="fas fa-user-tag"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">¥4,757,805</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +13.2%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">雇主支出</span>
+                        <div class="stat-card-icon yellow">
+                            <i class="fas fa-hand-holding-usd"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">¥5,286,450</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +12.8%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-grid-2col" style="margin-bottom:24px;">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">营收趋势（近30天）</span>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary);">
+                                <span style="width:10px; height:10px; border-radius:3px; background:var(--primary); display:inline-block;"></span>
+                                营收金额
+                            </span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-y-axis">
+                            <span>22万</span>
+                            <span>18万</span>
+                            <span>14万</span>
+                            <span>10万</span>
+                            <span>6万</span>
+                            <span>2万</span>
+                            <span>0</span>
+                        </div>
+                        <div class="chart-svg-wrapper" style="height:100%;">
+                            <svg viewBox="0 0 620 280" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%;">
+                                <defs>
+                                    <linearGradient id="finAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#FF6B35" stop-opacity="0.35"/>
+                                        <stop offset="100%" stop-color="#FF6B35" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <line x1="40" y1="30" x2="600" y2="30" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="40" y1="70" x2="600" y2="70" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="40" y1="110" x2="600" y2="110" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="40" y1="150" x2="600" y2="150" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="40" y1="190" x2="600" y2="190" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="40" y1="230" x2="600" y2="230" stroke="#F3F4F6" stroke-width="1"/>
+
+                                <path d="M55,195 L90,180 L125,170 L160,165 L195,155 L230,150 L265,140 L300,130 L335,125 L370,110 L405,105 L440,95 L475,90 L510,85 L545,80 L580,75 L580,230 L55,230 Z" 
+                                      fill="url(#finAreaGrad)"/>
+
+                                <path d="M55,195 L90,180 L125,170 L160,165 L195,155 L230,150 L265,140 L300,130 L335,125 L370,110 L405,105 L440,95 L475,90 L510,85 L545,80 L580,75" 
+                                      fill="none" stroke="#FF6B35" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+
+                                <circle cx="55" cy="195" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="125" cy="170" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="195" cy="155" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="265" cy="140" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="335" cy="125" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="405" cy="105" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="475" cy="90" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="545" cy="80" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="580" cy="75" r="3.5" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+
+                                <text x="55" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">08-01</text>
+                                <text x="125" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">08-05</text>
+                                <text x="195" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">08-10</text>
+                                <text x="265" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">08-15</text>
+                                <text x="335" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">08-20</text>
+                                <text x="405" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">08-25</text>
+                                <text x="475" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">08-30</text>
+                                <text x="545" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">09-04</text>
+                                <text x="580" y="250" text-anchor="middle" font-size="10" fill="#9CA3AF">今日</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">收入类型占比</span>
+                    </div>
+                    <div class="donut-wrapper" style="padding: 20px 0;">
+                        <div style="position:relative;">
+                            <svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" width="180" height="180">
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#F3F4F6" stroke-width="22"/>
+                                <!-- 招聘费 60% -->
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#FF6B35" stroke-width="22"
+                                        stroke-dasharray="245.04 408.41" stroke-dashoffset="0"
+                                        transform="rotate(-90 90 90)"/>
+                                <!-- 短信费 15% -->
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#2563EB" stroke-width="22"
+                                        stroke-dasharray="61.26 408.41" stroke-dashoffset="-245.04"
+                                        transform="rotate(-90 90 90)"/>
+                                <!-- 增值服务 25% -->
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#10B981" stroke-width="22"
+                                        stroke-dasharray="102.10 408.41" stroke-dashoffset="-306.30"
+                                        transform="rotate(-90 90 90)"/>
+                            </svg>
+                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
+                                <div style="font-size:18px; font-weight:700; color:var(--text-primary);">¥528,645</div>
+                                <div style="font-size:11px; color:var(--text-secondary);">本月收入</div>
+                            </div>
+                        </div>
+                        <div class="chart-legend" style="flex:1;">
+                            <div class="chart-legend-item">
+                                <div class="legend-left">
+                                    <span class="legend-dot" style="background:#FF6B35;"></span>
+                                    <span>招聘费</span>
+                                </div>
+                                <span class="legend-value">60%</span>
+                            </div>
+                            <div class="chart-legend-item">
+                                <div class="legend-left">
+                                    <span class="legend-dot" style="background:#2563EB;"></span>
+                                    <span>短信费</span>
+                                </div>
+                                <span class="legend-value">15%</span>
+                            </div>
+                            <div class="chart-legend-item">
+                                <div class="legend-left">
+                                    <span class="legend-dot" style="background:#10B981;"></span>
+                                    <span>增值服务</span>
+                                </div>
+                                <span class="legend-value">25%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">月度营收对比</span>
+                    <div style="display:flex; gap:8px;">
+                        <select class="form-input form-select" style="padding:5px 10px; font-size:12px; width:auto;">
+                            <option>近6个月</option>
+                            <option>近12个月</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex; gap:20px; align-items:flex-end; padding: 10px 20px 0; height:220px;">
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-muted);">¥386万</span>
+                        <div style="display:flex; gap:4px; width:100%; justify-content:center;">
+                            <div style="width:18px; background:linear-gradient(180deg, #FF6B35 0%, #FFB088 100%); border-radius:4px 4px 0 0; height:80px;"></div>
+                            <div style="width:18px; background:linear-gradient(180deg, #2563EB 0%, #93C5FD 100%); border-radius:4px 4px 0 0; height:50px;"></div>
+                        </div>
+                        <span style="font-size:12px; color:var(--text-secondary);">3月</span>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-muted);">¥412万</span>
+                        <div style="display:flex; gap:4px; width:100%; justify-content:center;">
+                            <div style="width:18px; background:linear-gradient(180deg, #FF6B35 0%, #FFB088 100%); border-radius:4px 4px 0 0; height:95px;"></div>
+                            <div style="width:18px; background:linear-gradient(180deg, #2563EB 0%, #93C5FD 100%); border-radius:4px 4px 0 0; height:58px;"></div>
+                        </div>
+                        <span style="font-size:12px; color:var(--text-secondary);">4月</span>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-muted);">¥445万</span>
+                        <div style="display:flex; gap:4px; width:100%; justify-content:center;">
+                            <div style="width:18px; background:linear-gradient(180deg, #FF6B35 0%, #FFB088 100%); border-radius:4px 4px 0 0; height:110px;"></div>
+                            <div style="width:18px; background:linear-gradient(180deg, #2563EB 0%, #93C5FD 100%); border-radius:4px 4px 0 0; height:65px;"></div>
+                        </div>
+                        <span style="font-size:12px; color:var(--text-secondary);">5月</span>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-muted);">¥468万</span>
+                        <div style="display:flex; gap:4px; width:100%; justify-content:center;">
+                            <div style="width:18px; background:linear-gradient(180deg, #FF6B35 0%, #FFB088 100%); border-radius:4px 4px 0 0; height:125px;"></div>
+                            <div style="width:18px; background:linear-gradient(180deg, #2563EB 0%, #93C5FD 100%); border-radius:4px 4px 0 0; height:72px;"></div>
+                        </div>
+                        <span style="font-size:12px; color:var(--text-secondary);">6月</span>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-muted);">¥498万</span>
+                        <div style="display:flex; gap:4px; width:100%; justify-content:center;">
+                            <div style="width:18px; background:linear-gradient(180deg, #FF6B35 0%, #FFB088 100%); border-radius:4px 4px 0 0; height:140px;"></div>
+                            <div style="width:18px; background:linear-gradient(180deg, #2563EB 0%, #93C5FD 100%); border-radius:4px 4px 0 0; height:78px;"></div>
+                        </div>
+                        <span style="font-size:12px; color:var(--text-secondary);">7月</span>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-muted);">¥528万</span>
+                        <div style="display:flex; gap:4px; width:100%; justify-content:center;">
+                            <div style="width:18px; background:linear-gradient(180deg, #FF6B35 0%, #FFB088 100%); border-radius:4px 4px 0 0; height:155px;"></div>
+                            <div style="width:18px; background:linear-gradient(180deg, #2563EB 0%, #93C5FD 100%); border-radius:4px 4px 0 0; height:85px;"></div>
+                        </div>
+                        <span style="font-size:12px; color:var(--text-secondary);">8月</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:20px; justify-content:center; margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
+                    <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-secondary);">
+                        <span style="width:10px; height:10px; border-radius:3px; background:var(--primary); display:inline-block;"></span>
+                        平台营收
+                    </span>
+                    <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-secondary);">
+                        <span style="width:10px; height:10px; border-radius:3px; background:var(--secondary); display:inline-block;"></span>
+                        平台收入
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        document.querySelectorAll('.time-filter-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.time-filter-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

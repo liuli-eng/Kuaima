@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 招工报名人员</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .job-detail-header {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .job-detail-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .job-detail-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .job-detail-title h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .job-detail-info {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .info-item .label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .info-item .value {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .applicant-card {
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .applicant-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+        .applicant-tab {
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .applicant-tab:hover {
+            color: var(--primary);
+        }
+        .applicant-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .applicant-tab .count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 10px;
+            background: var(--bg-page);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .applicant-tab.active .count {
+            background: rgba(255,107,53,0.1);
+            color: var(--primary);
+        }
+        .applicant-filter {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .filter-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .filter-left label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .applicant-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .applicant-table th {
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-align: left;
+            background: var(--bg-page);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .applicant-table td {
+            padding: 14px 16px;
+            font-size: 14px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border);
+        }
+        .applicant-table tbody tr:hover {
+            background: var(--bg-page);
+        }
+        .applicant-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .applicant-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .applicant-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .applicant-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .applicant-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .applicant-phone {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .applicant-phone i {
+            margin-right: 4px;
+        }
+        .applicant-id {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .action-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .back-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+        .demand-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .demand-progress {
+            width: 120px;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .demand-progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+        }
+        .demand-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar"></aside>
+        <div class="admin-main">
+            <header class="admin-topbar"></header>
+            <div class="admin-content">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <button class="back-btn" onclick="window.location.href='jobs.html'">
+                            <i class="fas fa-arrow-left"></i> 返回招工列表
+                        </button>
+                    </div>
+                </div>
+
+                <div class="job-detail-header" id="jobDetailHeader">
+                    <div class="job-detail-top">
+                        <div class="job-detail-title">
+                            <h2 id="jobName">电子厂普工</h2>
+                            <span class="status-badge success" id="jobStatus">招聘中</span>
+                        </div>
+                        <div class="action-btns">
+                            <button class="btn btn-outline" onclick="window.location.href='job-edit.html'">
+                                <i class="fas fa-edit"></i> 编辑信息
+                            </button>
+                        </div>
+                    </div>
+                    <div class="job-detail-info">
+                        <div class="info-item">
+                            <span class="label">招工ID</span>
+                            <span class="value" id="jobId" style="font-family:monospace; color:var(--primary);">J20240315001</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">雇主</span>
+                            <span class="value" id="jobBoss">富士康科技集团</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">工种</span>
+                            <span class="value" id="jobType">电子厂</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">工价</span>
+                            <span class="value" id="jobWage" style="color:var(--primary); font-weight:600;">¥260/天</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">工作地点</span>
+                            <span class="value" id="jobLocation"><i class="fas fa-map-marker-alt" style="color:var(--text-muted); margin-right:4px;"></i>深圳龙华</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">需求人数</span>
+                            <span class="value" id="jobDemand">200/185 <span style="font-size:12px;color:var(--text-muted);">人</span></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">发布时间</span>
+                            <span class="value" id="jobPublishTime">2024-03-15 09:30</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">报名统计</span>
+                            <span class="value" style="color:var(--primary); font-weight:600;">
+                                共 <span id="totalApplicants">185</span> 人
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="applicant-card">
+                    <div class="applicant-tabs">
+                        <div class="applicant-tab active" data-tab="all" onclick="switchTab('all')">
+                            全部 <span class="count" id="countAll">185</span>
+                        </div>
+                        <div class="applicant-tab" data-tab="pending" onclick="switchTab('pending')">
+                            待处理 <span class="count" id="countPending">23</span>
+                        </div>
+                        <div class="applicant-tab" data-tab="approved" onclick="switchTab('approved')">
+                            已通过 <span class="count" id="countApproved">152</span>
+                        </div>
+                        <div class="applicant-tab" data-tab="rejected" onclick="switchTab('rejected')">
+                            已拒绝 <span class="count" id="countRejected">10</span>
+                        </div>
+                    </div>
+                    <div class="applicant-filter">
+                        <div class="filter-left">
+                            <label>搜索:</label>
+                            <input type="text" class="form-input" placeholder="姓名/手机号/身份证号" style="width:220px;" id="searchInput">
+                            <label>排序:</label>
+                            <select class="form-select" style="width:140px;" id="sortSelect">
+                                <option value="time_desc">报名时间 ↓</option>
+                                <option value="time_asc">报名时间 ↑</option>
+                                <option value="name">按姓名排序</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-outline" onclick="exportList()">
+                                <i class="fas fa-download"></i> 导出名单
+                            </button>
+                        </div>
+                    </div>
+                    <table class="applicant-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+                                <th>报名者</th>
+                                <th>联系电话</th>
+                                <th>身份证号</th>
+                                <th>性别</th>
+                                <th>年龄</th>
+                                <th>报名时间</th>
+                                <th>状态</th>
+                                <th style="width:180px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="applicantTableBody">
+                        </tbody>
+                    </table>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-top:1px solid var(--border);">
+                        <div style="font-size:13px; color:var(--text-muted);">
+                            共 <span id="totalCount">185</span> 条记录，当前显示 <span id="currentRange">1-10</span> 条
+                        </div>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-outline" style="padding:6px 10px; font-size:13px;">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="btn btn-primary" style="padding:6px 10px; font-size:13px;">1</button>
+                            <button class="btn btn-outline" style="padding:6px 10px; font-size:13px;">2</button>
+                            <button class="btn btn-outline" style="padding:6px 10px; font-size:13px;">3</button>
+                            <button class="btn btn-outline" style="padding:6px 10px; font-size:13px;">...</button>
+                            <button class="btn btn-outline" style="padding:6px 10px; font-size:13px;">19</button>
+                            <button class="btn btn-outline" style="padding:6px 10px; font-size:13px;">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="applicantDetailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:8px; width:500px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                <h3 style="font-size:16px; font-weight:600;">报名者详情</h3>
+                <button style="background:none; border:none; font-size:18px; color:var(--text-muted); cursor:pointer;" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="modalBody" style="padding:20px; overflow-y:auto; flex:1;"></div>
+            <div style="padding:16px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; flex-shrink:0;">
+                <button class="btn btn-outline" onclick="closeModal()">关闭</button>
+                <button class="btn btn-secondary" onclick="updateStatus('approved')">通过</button>
+                <button class="btn btn-danger" onclick="updateStatus('rejected')">拒绝</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const jobInfoMap = {
+            'J20240315001': { jobName: '电子厂普工', bossName: '富士康科技集团', jobType: '电子厂', wage: '¥260/天', location: '深圳龙华', publishTime: '2024-03-15 09:30', status: '招聘中', statusClass: 'success', demand: 200, hired: 185 },
+            'J20240315002': { jobName: '焊工', bossName: '格力电器制造', jobType: '制造业', wage: '¥450/天', location: '珠海香洲', publishTime: '2024-03-14 14:20', status: '已招满', statusClass: 'info', demand: 15, hired: 15 },
+            'J20240315003': { jobName: '分拣员', bossName: '顺丰速运', jobType: '物流', wage: '¥220/天', location: '广州白云', publishTime: '2024-03-15 08:15', status: '招聘中', statusClass: 'success', demand: 50, hired: 32 },
+            'J20240315004': { jobName: '搬运工', bossName: '京东物流仓储', jobType: '仓储', wage: '¥320/天', location: '佛山顺德', publishTime: '2024-03-13 16:45', status: '已招满', statusClass: 'info', demand: 30, hired: 30 },
+            'J20240315005': { jobName: '餐厅服务员', bossName: '肯德基餐饮', jobType: '餐饮', wage: '¥180/天', location: '北京朝阳', publishTime: '2024-03-15 10:00', status: '招聘中', statusClass: 'success', demand: 20, hired: 12 },
+            'J20240315006': { jobName: '装配钳工', bossName: '比亚迪汽车', jobType: '汽车', wage: '¥380/天', location: '西安高新', publishTime: '2024-03-14 11:30', status: '招聘中', statusClass: 'success', demand: 50, hired: 48 },
+            'J20240315007': { jobName: '仓库理货员', bossName: '京东物流仓储', jobType: '仓储', wage: '¥280/天', location: '上海青浦', publishTime: '2024-03-12 15:10', status: '已关闭', statusClass: 'default', demand: 25, hired: 25 },
+            'J20240315008': { jobName: 'CNC操作工', bossName: '精密机械有限公司', jobType: '制造业', wage: '¥520/天', location: '苏州工业园', publishTime: '2024-03-15 07:45', status: '招聘中', statusClass: 'success', demand: 8, hired: 5 },
+            'J20240315009': { jobName: '后厨助手', bossName: '麦当劳食品', jobType: '餐饮', wage: '¥160/天', location: '成都锦江', publishTime: '2024-03-11 13:20', status: '已招满', statusClass: 'info', demand: 12, hired: 12 },
+            'J20240315010': { jobName: '质检工', bossName: '京东方科技', jobType: '电子厂', wage: '¥240/天', location: '重庆两江', publishTime: '2024-03-15 11:45', status: '招聘中', statusClass: 'success', demand: 30, hired: 18 }
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentJobId = urlParams.get('id') || 'J20240315001';
+        const currentJobInfo = jobInfoMap[currentJobId] || jobInfoMap['J20240315001'];
+
+        document.getElementById('jobId').textContent = currentJobId;
+        document.getElementById('jobName').textContent = currentJobInfo.jobName;
+        document.getElementById('jobBoss').textContent = currentJobInfo.bossName;
+        document.getElementById('jobType').textContent = currentJobInfo.jobType;
+        document.getElementById('jobWage').textContent = currentJobInfo.wage;
+        document.getElementById('jobLocation').innerHTML = '<i class="fas fa-map-marker-alt" style="color:var(--text-muted); margin-right:4px;"></i>' + currentJobInfo.location;
+        document.getElementById('jobPublishTime').textContent = currentJobInfo.publishTime;
+        document.getElementById('jobStatus').textContent = currentJobInfo.status;
+        document.getElementById('jobStatus').className = 'status-badge ' + currentJobInfo.statusClass;
+        document.getElementById('jobDemand').innerHTML = currentJobInfo.hired + '/' + currentJobInfo.demand + ' <span style="font-size:12px;color:var(--text-muted);">人</span>';
+
+        const applicantDataMap = {
+            'J20240315001': [
+                { id: 'A001', name: '张伟', phone: '138****5678', idCard: '440301********1234', gender: '男', age: 28, applyTime: '2024-03-15 10:15', status: 'pending', avatar: '张', color: '#3B82F6' },
+                { id: 'A002', name: '李娜', phone: '139****2345', idCard: '440301********5678', gender: '女', age: 25, applyTime: '2024-03-15 10:32', status: 'approved', avatar: '李', color: '#EC4899' },
+                { id: 'A003', name: '王强', phone: '136****8901', idCard: '440301********9012', gender: '男', age: 32, applyTime: '2024-03-15 11:05', status: 'approved', avatar: '王', color: '#10B981' },
+                { id: 'A004', name: '刘芳', phone: '135****3456', idCard: '440301********3456', gender: '女', age: 27, applyTime: '2024-03-15 11:28', status: 'pending', avatar: '刘', color: '#8B5CF6' },
+                { id: 'A005', name: '陈明', phone: '137****7890', idCard: '440301********7890', gender: '男', age: 30, applyTime: '2024-03-15 12:01', status: 'approved', avatar: '陈', color: '#F59E0B' },
+                { id: 'A006', name: '赵丽', phone: '138****4321', idCard: '440301********4321', gender: '女', age: 23, applyTime: '2024-03-15 13:15', status: 'rejected', avatar: '赵', color: '#EF4444' },
+                { id: 'A007', name: '孙军', phone: '139****6543', idCard: '440301********6543', gender: '男', age: 35, applyTime: '2024-03-15 14:22', status: 'approved', avatar: '孙', color: '#06B6D4' },
+                { id: 'A008', name: '周梅', phone: '136****1111', idCard: '440301********1111', gender: '女', age: 26, applyTime: '2024-03-15 15:08', status: 'pending', avatar: '周', color: '#84CC16' },
+                { id: 'A009', name: '吴刚', phone: '137****2222', idCard: '440301********2222', gender: '男', age: 29, applyTime: '2024-03-15 16:45', status: 'approved', avatar: '吴', color: '#6366F1' },
+                { id: 'A010', name: '郑华', phone: '138****3333', idCard: '440301********3333', gender: '男', age: 41, applyTime: '2024-03-15 17:30', status: 'rejected', avatar: '郑', color: '#F97316' }
+            ]
+        };
+
+        const applicantData = applicantDataMap[currentJobId] || applicantDataMap['J20240315001'];
+
+        let currentTab = 'all';
+        let currentApplicantId = null;
+
+        function getStatusBadge(status) {
+            const map = {
+                pending: '<span class="status-badge warning">待处理</span>',
+                approved: '<span class="status-badge success">已通过</span>',
+                rejected: '<span class="status-badge danger">已拒绝</span>'
+            };
+            return map[status] || map.pending;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('applicantTableBody');
+            let data = applicantData;
+            if (currentTab !== 'all') {
+                data = applicantData.filter(a => a.status === currentTab);
+            }
+
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            if (searchVal) {
+                data = data.filter(a =>
+                    a.name.toLowerCase().includes(searchVal) ||
+                    a.phone.includes(searchVal) ||
+                    a.idCard.includes(searchVal)
+                );
+            }
+
+            const sortVal = document.getElementById('sortSelect').value;
+            if (sortVal === 'time_desc') {
+                data.sort((a, b) => new Date(b.applyTime) - new Date(a.applyTime));
+            } else if (sortVal === 'time_asc') {
+                data.sort((a, b) => new Date(a.applyTime) - new Date(b.applyTime));
+            } else if (sortVal === 'name') {
+                data.sort((a, b) => a.name.localeCompare(b.name));
+            }
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--text-muted);">暂无数据</td></tr>';
+            } else {
+                tbody.innerHTML = data.map(a => `
+                    <tr>
+                        <td><input type="checkbox" class="row-check" data-id="${a.id}"></td>
+                        <td>
+                            <div class="applicant-info">
+                                <div class="applicant-avatar" style="background:${a.color};">${a.avatar}</div>
+                                <div class="applicant-meta">
+                                    <span class="applicant-name">${a.name}</span>
+                                    <span class="applicant-id">ID: ${a.id}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${a.phone}</td>
+                        <td style="font-family:monospace; font-size:13px;">${a.idCard}</td>
+                        <td>${a.gender}</td>
+                        <td>${a.age}</td>
+                        <td>${a.applyTime}</td>
+                        <td>${getStatusBadge(a.status)}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="viewApplicant('${a.id}')">查看</button>
+                                ${a.status === 'pending' ? `
+                                    <button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="quickApprove('${a.id}')">通过</button>
+                                    <button class="btn btn-danger" style="padding:4px 10px; font-size:12px;" onclick="quickReject('${a.id}')">拒绝</button>
+                                ` : `
+                                    <button class="btn btn-outline" style="padding:4px 10px; font-size:12px; color:var(--danger);" onclick="quickReject('${a.id}')">${a.status === 'approved' ? '拒绝' : '删除'}</button>
+                                `}
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('totalCount').textContent = data.length;
+            document.getElementById('currentRange').textContent = data.length > 0 ? `1-${data.length}` : '0';
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.applicant-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+            renderTable();
+        }
+
+        function viewApplicant(id) {
+            currentApplicantId = id;
+            const a = applicantData.find(x => x.id === id);
+            if (!a) return;
+
+            document.getElementById('modalBody').innerHTML = `
+                <div style="display:flex; align-items:center; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--border); margin-bottom:16px;">
+                    <div class="applicant-avatar" style="background:${a.color}; width:56px; height:56px; font-size:22px;">${a.avatar}</div>
+                    <div>
+                        <div style="font-size:18px; font-weight:600;">${a.name}</div>
+                        <div style="font-size:13px; color:var(--text-muted); margin-top:4px;">ID: ${a.id}</div>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div class="info-item"><span class="label">联系电话</span><span class="value">${a.phone}</span></div>
+                    <div class="info-item"><span class="label">身份证号</span><span class="value" style="font-family:monospace;">${a.idCard}</span></div>
+                    <div class="info-item"><span class="label">性别</span><span class="value">${a.gender}</span></div>
+                    <div class="info-item"><span class="label">年龄</span><span class="value">${a.age} 岁</span></div>
+                    <div class="info-item"><span class="label">报名时间</span><span class="value">${a.applyTime}</span></div>
+                    <div class="info-item"><span class="label">当前状态</span><span class="value">${getStatusBadge(a.status)}</span></div>
+                </div>
+                <div style="margin-top:16px; padding:12px; background:var(--bg-page); border-radius:6px;">
+                    <div style="font-size:13px; font-weight:500; margin-bottom:8px;">实名认证</div>
+                    <div style="font-size:13px; color:var(--text-secondary);">
+                        <i class="fas fa-check-circle" style="color:#10B981; margin-right:4px;"></i>已完成实名认证
+                    </div>
+                </div>
+                <div style="margin-top:12px; padding:12px; background:var(--bg-page); border-radius:6px;">
+                    <div style="font-size:13px; font-weight:500; margin-bottom:8px;">资质要求</div>
+                    <div style="font-size:13px; color:var(--text-secondary);">
+                        <i class="fas fa-check-circle" style="color:#10B981; margin-right:4px;"></i>符合岗位要求
+                    </div>
+                </div>
+            `;
+            const modal = document.getElementById('applicantDetailModal');
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('applicantDetailModal').style.display = 'none';
+        }
+
+        function updateStatus(status) {
+            if (!currentApplicantId) return;
+            const a = applicantData.find(x => x.id === currentApplicantId);
+            if (a) {
+                a.status = status;
+                updateCounts();
+                renderTable();
+            }
+            closeModal();
+        }
+
+        function quickApprove(id) {
+            const a = applicantData.find(x => x.id === id);
+            if (a) {
+                a.status = 'approved';
+                updateCounts();
+                renderTable();
+            }
+        }
+
+        function quickReject(id) {
+            const a = applicantData.find(x => x.id === id);
+            if (a) {
+                a.status = 'rejected';
+                updateCounts();
+                renderTable();
+            }
+        }
+
+        function updateCounts() {
+            const pending = applicantData.filter(a => a.status === 'pending').length;
+            const approved = applicantData.filter(a => a.status === 'approved').length;
+            const rejected = applicantData.filter(a => a.status === 'rejected').length;
+            document.getElementById('countAll').textContent = applicantData.length;
+            document.getElementById('countPending').textContent = pending;
+            document.getElementById('countApproved').textContent = approved;
+            document.getElementById('countRejected').textContent = rejected;
+            document.getElementById('totalApplicants').textContent = applicantData.length;
+        }
+
+        function toggleSelectAll(checkbox) {
+            document.querySelectorAll('.row-check').forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+        }
+
+        function exportList() {
+            alert('导出名单功能触发（原型）');
+        }
+
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+        document.getElementById('sortSelect').addEventListener('change', renderTable);
+
+        updateCounts();
+        renderTable();
+    </script>
+</body>
+</html>

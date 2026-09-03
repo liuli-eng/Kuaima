@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 规则编辑</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .edit-layout {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+            align-items: start;
+        }
+        .left-col { display: flex; flex-direction: column; gap: 16px; }
+        .right-col { display: flex; flex-direction: column; gap: 16px; }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .form-section {
+            padding: 20px 24px;
+        }
+        .form-section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-section-title i { color: var(--primary); }
+        .form-section-title .section-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px 24px;
+        }
+        .form-group .full-width { grid-column: 1 / -1; }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .form-label .required { color: var(--danger); margin-left: 2px; }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255,107,53,0.1);
+        }
+        .form-textarea { resize: vertical; min-height: 300px; line-height: 1.7; }
+        .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+        .type-selector {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+        .type-option {
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+        }
+        .type-option:hover { border-color: var(--primary); }
+        .type-option.selected {
+            border-color: var(--primary);
+            background: #FFF8F3;
+        }
+        .type-option .type-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+        }
+        .type-option .type-name {
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-radio {
+            display: flex;
+            gap: 20px;
+            margin-top: 4px;
+        }
+        .status-radio label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: normal;
+        }
+        .status-radio input { accent-color: var(--primary); }
+
+        .rich-text-toolbar {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            background: var(--bg-page);
+            flex-wrap: wrap;
+        }
+        .rich-text-toolbar button {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .rich-text-toolbar button:hover {
+            background: #fff;
+            color: var(--primary);
+        }
+        .rich-text-toolbar .divider {
+            width: 1px; height: 20px; background: var(--border); margin: 4px 4px;
+        }
+        .rich-text-toolbar .toolbar-select {
+            height: 32px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0 8px;
+            font-size: 13px;
+            background: #fff;
+            cursor: pointer;
+        }
+        .content-editor {
+            min-height: 400px;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 0 0 6px 6px;
+            border-top: none;
+            font-size: 14px;
+            line-height: 1.7;
+            outline: none;
+            font-family: inherit;
+            resize: vertical;
+        }
+        .content-editor:focus { border-color: var(--primary); }
+        .content-editor:empty:before {
+            content: attr(data-placeholder);
+            color: var(--text-muted);
+        }
+
+        .edit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .edit-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .edit-header-info h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .edit-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .edit-id-badge {
+            padding: 2px 8px;
+            background: var(--bg-page);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-badge.draft { background: #FEF3C7; color: #D97706; }
+        .status-badge.success { background: #D1FAE5; color: #059669; }
+        .status-badge.archived { background: #E5E7EB; color: #6B7280; }
+
+        .info-card {
+            padding: 18px 20px;
+        }
+        .info-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .info-card-title i { color: var(--primary); }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-row-label { color: var(--text-muted); }
+        .info-row-value { color: var(--text-primary); font-weight: 500; }
+
+        .tip-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .tip-item {
+            display: flex;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .tip-item i {
+            color: var(--primary);
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+
+        .timeline-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .timeline-item {
+            display: flex;
+            gap: 14px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .timeline-item:last-child { border-bottom: none; }
+        .timeline-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #FFF8F3;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 11px;
+        }
+        .timeline-content { flex: 1; }
+        .timeline-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+        .timeline-time { font-size: 12px; color: var(--text-muted); }
+
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding: 18px 24px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 9px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        .btn-primary:hover { background: #E55A2B; }
+        .btn-outline {
+            background: #fff;
+            color: var(--text-secondary);
+            border-color: var(--border);
+        }
+        .btn-outline:hover { color: var(--primary); border-color: var(--primary); }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="edit-header">
+                <div class="edit-header-left">
+                    <div class="edit-header-info">
+                        <h2 id="pageTitle">新增规则</h2>
+                        <div class="edit-header-meta">
+                            <span class="edit-id-badge" id="ruleIdBadge">新规则</span>
+                            <span id="ruleCategoryBadge">规则公示</span>
+                        </div>
+                    </div>
+                    <span class="status-badge draft" id="statusBadge">草稿</span>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline" onclick="window.location.href='rules.html'">
+                        <i class="fas fa-arrow-left"></i> 返回列表
+                    </button>
+                    <button class="btn btn-outline" onclick="previewRule()">
+                        <i class="fas fa-eye"></i> 预览
+                    </button>
+                    <button class="btn btn-primary" onclick="saveAndPublish()">
+                        <i class="fas fa-check"></i> 保存发布
+                    </button>
+                </div>
+            </div>
+
+            <div style="height:16px;"></div>
+
+            <div class="edit-layout">
+                <div class="left-col">
+                    <div class="card">
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <span class="section-num">1</span> 基本信息
+                            </div>
+
+                            <div style="margin-bottom:18px;">
+                                <label class="form-label">规则类型 <span class="required">*</span></label>
+                                <div class="type-selector" id="typeSelector">
+                                    <div class="type-option selected" data-type="notice" onclick="selectType('notice')">
+                                        <div class="type-icon" style="background:linear-gradient(135deg,#3B82F6,#2563EB);"><i class="fas fa-bullhorn"></i></div>
+                                        <div class="type-name">规则公示</div>
+                                    </div>
+                                    <div class="type-option" data-type="credit" onclick="selectType('credit')">
+                                        <div class="type-icon" style="background:linear-gradient(135deg,#10B981,#059669);"><i class="fas fa-star"></i></div>
+                                        <div class="type-name">信用分规则</div>
+                                    </div>
+                                    <div class="type-option" data-type="fee" onclick="selectType('fee')">
+                                        <div class="type-icon" style="background:linear-gradient(135deg,#F59E0B,#D97706);"><i class="fas fa-coins"></i></div>
+                                        <div class="type-name">收费规则</div>
+                                    </div>
+                                    <div class="type-option" data-type="trade" onclick="selectType('trade')">
+                                        <div class="type-icon" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9);"><i class="fas fa-exchange-alt"></i></div>
+                                        <div class="type-name">交易规则</div>
+                                    </div>
+                                    <div class="type-option" data-type="private" onclick="selectType('private')">
+                                        <div class="type-icon" style="background:linear-gradient(135deg,#EF4444,#DC2626);"><i class="fas fa-ban"></i></div>
+                                        <div class="type-name">飞单认定</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <div>
+                                    <label class="form-label">规则名称 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" id="ruleName" placeholder="请输入规则名称，如：平台服务协议">
+                                </div>
+                                <div>
+                                    <label class="form-label">版本号</label>
+                                    <input type="text" class="form-input" id="ruleVersion" placeholder="如：v1.0" value="v1.0">
+                                </div>
+                                <div>
+                                    <label class="form-label">规则分类</label>
+                                    <input type="text" class="form-input" id="ruleCategory" placeholder="自动生成或手动填写">
+                                </div>
+                                <div>
+                                    <label class="form-label">状态</label>
+                                    <div class="status-radio">
+                                        <label><input type="radio" name="status" value="draft" checked> 草稿</label>
+                                        <label><input type="radio" name="status" value="published"> 立即发布</label>
+                                        <label><input type="radio" name="status" value="archived"> 归档</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <span class="section-num">2</span> 规则内容
+                            </div>
+
+                            <div class="full-width">
+                                <label class="form-label">规则详细内容 <span class="required">*</span></label>
+                                <div class="rich-text-toolbar">
+                                    <select class="toolbar-select">
+                                        <option>正文</option>
+                                        <option>标题1</option>
+                                        <option>标题2</option>
+                                        <option>标题3</option>
+                                    </select>
+                                    <div class="divider"></div>
+                                    <button title="加粗"><i class="fas fa-bold"></i></button>
+                                    <button title="斜体"><i class="fas fa-italic"></i></button>
+                                    <button title="下划线"><i class="fas fa-underline"></i></button>
+                                    <div class="divider"></div>
+                                    <button title="无序列表"><i class="fas fa-list-ul"></i></button>
+                                    <button title="有序列表"><i class="fas fa-list-ol"></i></button>
+                                    <button title="引用"><i class="fas fa-quote-left"></i></button>
+                                    <div class="divider"></div>
+                                    <button title="超链接"><i class="fas fa-link"></i></button>
+                                    <button title="图片"><i class="fas fa-image"></i></button>
+                                    <div class="divider"></div>
+                                    <button title="左对齐"><i class="fas fa-align-left"></i></button>
+                                    <button title="居中"><i class="fas fa-align-center"></i></button>
+                                    <button title="右对齐"><i class="fas fa-align-right"></i></button>
+                                    <div class="divider"></div>
+                                    <button title="撤销"><i class="fas fa-undo"></i></button>
+                                    <button title="重做"><i class="fas fa-redo"></i></button>
+                                </div>
+                                <textarea class="content-editor" id="ruleContent" data-placeholder="请输入规则详细内容..."></textarea>
+                                <div class="form-hint">支持多段落、列表、加粗等格式。内容会展示给所有相关用户查看。</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <span class="section-num">3</span> 发布设置
+                            </div>
+
+                            <div class="form-group">
+                                <div>
+                                    <label class="form-label">生效时间</label>
+                                    <input type="date" class="form-input">
+                                </div>
+                                <div>
+                                    <label class="form-label">失效时间</label>
+                                    <input type="date" class="form-input">
+                                </div>
+                                <div>
+                                    <label class="form-label">适用对象</label>
+                                    <select class="form-select">
+                                        <option value="all">全部用户</option>
+                                        <option value="worker">仅零工</option>
+                                        <option value="boss">仅雇主</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">是否置顶</label>
+                                    <div class="status-radio">
+                                        <label><input type="radio" name="pinned" value="yes"> 是</label>
+                                        <label><input type="radio" name="pinned" value="no" checked> 否</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <button class="btn btn-outline" onclick="window.location.href='rules.html'">
+                            <i class="fas fa-arrow-left"></i> 返回
+                        </button>
+                        <button class="btn btn-outline" onclick="saveDraft()">
+                            <i class="fas fa-save"></i> 保存草稿
+                        </button>
+                        <button class="btn btn-primary" onclick="saveAndPublish()">
+                            <i class="fas fa-paper-plane"></i> 保存并发布
+                        </button>
+                    </div>
+                </div>
+
+                <div class="right-col">
+                    <div class="card info-card">
+                        <div class="info-card-title">
+                            <i class="fas fa-info-circle"></i> 规则信息
+                        </div>
+                        <div class="info-row">
+                            <span class="info-row-label">规则ID</span>
+                            <span class="info-row-value" id="ruleIdInfo">自动生成</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-row-label">创建人</span>
+                            <span class="info-row-value">超级管理员</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-row-label">创建时间</span>
+                            <span class="info-row-value" id="createTime">--</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-row-label">更新时间</span>
+                            <span class="info-row-value" id="updateTime">--</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-row-label">状态</span>
+                            <span class="info-row-value" id="statusInfo">草稿</span>
+                        </div>
+                    </div>
+
+                    <div class="card info-card">
+                        <div class="info-card-title">
+                            <i class="fas fa-lightbulb"></i> 填写提示
+                        </div>
+                        <div class="tip-list">
+                            <div class="tip-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>规则名称建议简洁明确，如"平台服务协议"</span>
+                            </div>
+                            <div class="tip-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>内容支持富文本格式，可使用标题、列表、加粗等</span>
+                            </div>
+                            <div class="tip-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>发布前请仔细检查内容，已发布规则仅能编辑</span>
+                            </div>
+                            <div class="tip-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>建议先保存草稿，预览无误后再发布</span>
+                            </div>
+                            <div class="tip-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>版本号规则：首次发布为v1.0，后续递增</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card info-card" id="historyCard" style="display:none;">
+                        <div class="info-card-title">
+                            <i class="fas fa-history"></i> 修改历史
+                        </div>
+                        <div class="timeline-list">
+                            <div class="timeline-item">
+                                <div class="timeline-dot"><i class="fas fa-plus"></i></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">创建规则</div>
+                                    <div class="timeline-time">由 管理员 创建</div>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-dot"><i class="fas fa-edit"></i></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">修改内容</div>
+                                    <div class="timeline-time">由 管理员 编辑</div>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-dot"><i class="fas fa-check-circle"></i></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">发布上线</div>
+                                    <div class="timeline-time">由 管理员 发布</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const editTab = urlParams.get('tab') || 'notice';
+        const editId = urlParams.get('id');
+
+        let currentType = editTab;
+
+        const typeCategoryMap = {
+            notice: '规则公示',
+            credit: '信用分规则',
+            fee: '收费规则',
+            trade: '交易规则',
+            private: '飞单认定与处理规则'
+        };
+
+        const ruleData = {
+            notice: {
+                'R001': { name: '平台服务协议', version: 'v3.2', status: 'published', content: '本协议是快马日结平台与所有用户（包括零工和雇主）之间达成的服务协议。\n\n一、服务内容\n本平台为零工提供招工信息发布、在线报名、订单管理、工资结算等服务；为雇主提供招工发布、零工筛选、订单确认等服务。\n\n二、账号规则\n1. 所有用户需完成实名认证后方可使用平台功能\n2. 禁止将账号转借他人使用\n3. 用户应对账号下的一切行为负责\n\n三、订单规则\n1. 雇主发布招工信息需真实准确\n2. 零工报名后不得随意取消\n3. 双方确认订单后需按约履行\n\n四、结算规则\n1. 订单完成后T+3工作日结算\n2. 如遇节假日结算顺延\n3. 结算金额以实际工时为准\n\n五、争议处理\n1. 双方协商解决\n2. 平台介入调解\n3. 保留相关凭证可申诉' }
+            },
+            credit: {
+                'C001': { name: '信用分总则', version: 'v2.0', status: 'published', content: '信用分总则\n\n一、目的\n建立诚信交易环境，保障双方权益\n\n二、评分标准\n基础分：100分，根据行为加减分\n\n三、等级划分\n优秀：95分以上\n良好：85-94分\n普通：70-84分\n较差：60-69分\n不良：60分以下\n\n四、影响范围\n信用分影响报名权限、接单优先级、费率等' }
+            },
+            fee: {
+                'F001': { name: '平台服务费规则', version: 'v2.2', status: 'published', content: '平台服务费标准：\n\n一、费率标准\n零工端：不收取任何服务费\n雇主端：按订单金额的5%收取\n\n二、费率调整\n信用分优秀的雇主可享受3%优惠\n新注册雇主前3个月费率为3%\n\n三、最低收费\n单笔订单最低服务费1元\n\n四、结算时间\n服务费在工资结算时自动扣除' }
+            },
+            trade: {
+                'T001': { name: '订单发布规则', version: 'v2.0', status: 'published', content: '订单发布规则：\n\n1. 雇主需完成企业认证\n2. 招工信息需包含：工种、人数、工资、时间、地点\n3. 发布后需经平台审核（2小时内）\n4. 审核通过后对外展示\n5. 有效期最长30天' }
+            },
+            private: {
+                'P001': { name: '飞单认定标准', version: 'v1.8', status: 'published', content: '飞单认定标准：\n\n以下情况视为飞单（私下交易）：\n\n1. 绕过平台直接联系\n- 双方通过平台获取联系方式后私下交易\n- 使用平台信息但不通过平台下单\n\n2. 提供虚假信息\n- 虚构用工需求\n- 虚报工作时长\n- 伪造结算凭证\n\n3. 诱导私下交易\n- 承诺平台外结算\n- 提供额外优惠\n- 诱导脱离平台\n\n4. 其他行为\n- 双方直接签订合同\n- 直接转账不通过平台\n- 规避平台监管' }
+            }
+        };
+
+        function selectType(type) {
+            currentType = type;
+            document.querySelectorAll('.type-option').forEach(o => o.classList.remove('selected'));
+            document.querySelector(`[data-type="${type}"]`).classList.add('selected');
+            const cat = typeCategoryMap[type];
+            document.getElementById('ruleCategory').value = cat;
+            document.getElementById('ruleCategoryBadge').textContent = cat;
+
+            if (editId && ruleData[type] && ruleData[type][editId]) {
+                loadRuleData(type, editId);
+            } else {
+                document.getElementById('ruleName').value = '';
+                document.getElementById('ruleVersion').value = 'v1.0';
+                document.getElementById('ruleContent').value = '';
+                updateStatusBadge('draft');
+            }
+        }
+
+        function loadRuleData(type, id) {
+            const data = ruleData[type] && ruleData[type][id];
+            if (!data) return;
+            document.getElementById('ruleName').value = data.name || '';
+            document.getElementById('ruleVersion').value = data.version || 'v1.0';
+            document.getElementById('ruleContent').value = data.content || '';
+            updateStatusBadge(data.status);
+            document.getElementById('historyCard').style.display = 'block';
+            document.getElementById('ruleIdInfo').textContent = id;
+            document.getElementById('ruleIdBadge').textContent = 'ID: ' + id;
+        }
+
+        function updateStatusBadge(status) {
+            const badge = document.getElementById('statusBadge');
+            const statusInfo = document.getElementById('statusInfo');
+            badge.className = 'status-badge ' + (status === 'published' ? 'success' : status === 'archived' ? 'archived' : 'draft');
+            const statusMap = { draft: '草稿', published: '已发布', archived: '已归档' };
+            badge.textContent = statusMap[status] || '草稿';
+            statusInfo.textContent = statusMap[status] || '草稿';
+        }
+
+        function initPage() {
+            selectType(editTab);
+            const isEdit = !!editId;
+            document.title = isEdit ? '快马日结 - 编辑规则' : '快马日结 - 新增规则';
+
+            if (isEdit) {
+                document.getElementById('pageTitle').textContent = '编辑规则';
+                if (ruleData[editTab] && ruleData[editTab][editId]) {
+                    loadRuleData(editTab, editId);
+                }
+            } else {
+                document.getElementById('pageTitle').textContent = '新增规则';
+                document.getElementById('createTime').textContent = new Date().toLocaleString('zh-CN');
+                document.getElementById('updateTime').textContent = new Date().toLocaleString('zh-CN');
+            }
+
+            document.querySelectorAll('input[name="status"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    updateStatusBadge(this.value);
+                });
+            });
+        }
+
+        function saveDraft() {
+            if (!validateForm()) return;
+            alert('规则已保存为草稿！');
+            window.location.href = 'rules.html';
+        }
+
+        function saveAndPublish() {
+            if (!validateForm()) return;
+            const statusValue = document.querySelector('input[name="status"]:checked').value;
+            const action = statusValue === 'published' ? '发布' : '保存';
+            alert(`规则已${action}成功！`);
+            window.location.href = 'rules.html';
+        }
+
+        function previewRule() {
+            alert('预览规则内容');
+        }
+
+        function validateForm() {
+            const name = document.getElementById('ruleName').value.trim();
+            const content = document.getElementById('ruleContent').value.trim();
+            if (!name) { alert('请输入规则名称'); return false; }
+            if (!content) { alert('请输入规则内容'); return false; }
+            return true;
+        }
+
+        initPage();
+    </script>
+</body>
+</html>

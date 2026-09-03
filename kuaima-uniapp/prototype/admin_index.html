@@ -1,0 +1,679 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 管理后台原型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin/admin.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #F5F7FA 0%, #E4E8EC 100%);
+            min-height: 100vh;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+            color: #fff;
+            padding: 60px 40px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(255,107,53,0.2) 0%, transparent 70%);
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,107,53,0.2);
+            color: #FF8C42;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+        .hero-title {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+        .hero-desc {
+            font-size: 16px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 32px;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        .hero-stats {
+            display: flex;
+            gap: 48px;
+        }
+        .hero-stat {
+            text-align: left;
+        }
+        .hero-stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF8C42;
+        }
+        .hero-stat-label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+        }
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+            margin: 60px 0 8px;
+        }
+        .section-desc {
+            font-size: 15px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 28px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px 60px;
+        }
+        .preview-card {
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .preview-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.12);
+        }
+        .preview-frame {
+            height: 350px;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border);
+        }
+        .preview-frame iframe {
+            width: 200%;
+            height: 200%;
+            transform: scale(0.5);
+            transform-origin: top left;
+            border: none;
+        }
+        .preview-info {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .preview-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .preview-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        .preview-action {
+            color: var(--primary);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .feature-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 40px 60px;
+        }
+        .feature-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            text-align: center;
+        }
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 16px;
+        }
+        .feature-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .feature-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 20px 40px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+        .nav-tab:hover {
+            background: var(--bg-page);
+        }
+        .nav-tab.active {
+            background: var(--primary);
+            color: #fff;
+        }
+        @media (max-width: 900px) {
+            .preview-grid {
+                grid-template-columns: 1fr;
+            }
+            .feature-cards {
+                grid-template-columns: 1fr;
+            }
+            .hero-stats {
+                flex-wrap: wrap;
+                gap: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-section">
+        <div style="max-width:1400px; margin:0 auto; padding:0 40px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+                <div class="hero-badge">
+                    <i class="fas fa-rocket"></i>
+                    <span>管理后台原型 v2.0</span>
+                </div>
+                <a onclick="goLogin()" style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color:#fff; padding:10px 24px; border-radius:24px; font-size:14px; font-weight:500; cursor:pointer; text-decoration:none; box-shadow:0 4px 14px rgba(255,107,53,0.3); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <i class="fas fa-user-shield"></i>
+                    <span>登录系统</span>
+                </a>
+            </div>
+            <h1 class="hero-title">快马日结<br>企业级管理后台</h1>
+            <p class="hero-desc">
+                一站式日结平台管理解决方案，覆盖用户管理、招工审核、订单结算、财务运营、内容管理、风控体系等全模块功能，助力平台高效运营。
+            </p>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-value">18</div>
+                    <div class="hero-stat-label">核心功能页面</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">9</div>
+                    <div class="hero-stat-label">功能模块</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">100%</div>
+                    <div class="hero-stat-label">高保真还原</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">10+</div>
+                    <div class="hero-stat-label">数据可视化图表</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <div class="nav-tab active" onclick="filterPreviews('all', this)">全部</div>
+        <div class="nav-tab" onclick="filterPreviews('dashboard', this)">数据统计</div>
+        <div class="nav-tab" onclick="filterPreviews('user', this)">用户管理</div>
+        <div class="nav-tab" onclick="filterPreviews('job', this)">招工管理</div>
+        <div class="nav-tab" onclick="filterPreviews('order', this)">订单结算</div>
+        <div class="nav-tab" onclick="filterPreviews('finance', this)">财务运营</div>
+        <div class="nav-tab" onclick="filterPreviews('content', this)">内容管理</div>
+        <div class="nav-tab" onclick="filterPreviews('message', this)">消息客服</div>
+        <div class="nav-tab" onclick="filterPreviews('risk', this)">风控系统</div>
+        <div class="nav-tab" onclick="filterPreviews('system', this)">系统设置</div>
+    </div>
+
+    <h2 class="section-title">页面预览</h2>
+    <p class="section-desc">点击任意卡片可跳转到完整功能页面</p>
+
+    <div style="max-width:1400px; margin:0 auto; padding:0 40px 20px;">
+        <div style="background: linear-gradient(135deg, #1E293B 0%, #334155 100%); border-radius: 20px; padding: 32px; display: flex; align-items: center; gap: 32px; color: #fff; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -50%; right: -10%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(255,107,53,0.3) 0%, transparent 70%); pointer-events: none;"></div>
+            <div style="flex: 1; position: relative; z-index: 1;">
+                <div style="display: inline-block; background: rgba(255,107,53,0.2); color: #FF8C42; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; margin-bottom: 12px;">
+                    <i class="fas fa-lock" style="margin-right: 6px;"></i>访问入口
+                </div>
+                <div style="font-size: 22px; font-weight: 700; margin-bottom: 8px;">管理后台登录</div>
+                <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 20px;">管理员需登录后才能访问全部功能模块，保障平台数据安全</div>
+                <a onclick="goLogin()" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%); color: #fff; padding: 12px 32px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; box-shadow: 0 4px 14px rgba(255,107,53,0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <i class="fas fa-arrow-right-to-bracket"></i>
+                    <span>登录系统</span>
+                </a>
+            </div>
+            <div style="width: 420px; height: 240px; border-radius: 12px; overflow: hidden; border: 2px solid rgba(255,255,255,0.15); flex-shrink: 0; position: relative; z-index: 1; background: #fff;">
+                <iframe src="admin-login.html" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <div class="preview-grid" id="previewGrid">
+        <!-- 数据统计 -->
+        <div class="preview-card" data-group="dashboard" onclick="openPage('dashboard')">
+            <div class="preview-frame">
+                <iframe src="admin/dashboard.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">数据概览</div>
+                    <div class="preview-desc">实时数据、趋势图表</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用户管理 -->
+        <div class="preview-card" data-group="user" onclick="openPage('workers')">
+            <div class="preview-frame">
+                <iframe src="admin/workers.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">零工管理</div>
+                    <div class="preview-desc">零工列表、状态管理</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="user" onclick="openPage('bosses')">
+            <div class="preview-frame">
+                <iframe src="admin/bosses.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">老板管理</div>
+                    <div class="preview-desc">雇主列表、企业信息</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 招工管理 -->
+        <div class="preview-card" data-group="job" onclick="openPage('jobs')">
+            <div class="preview-frame">
+                <iframe src="admin/jobs.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">招工管理</div>
+                    <div class="preview-desc">招工列表、详情查看</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="job" onclick="openPage('job-audit')">
+            <div class="preview-frame">
+                <iframe src="admin/job-audit.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">招工审核</div>
+                    <div class="preview-desc">待审核、已通过、已拒绝</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订单管理 -->
+        <div class="preview-card" data-group="order" onclick="openPage('orders')">
+            <div class="preview-frame">
+                <iframe src="admin/orders.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">订单管理</div>
+                    <div class="preview-desc">日结订单、状态追踪</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="order" onclick="openPage('settlement')">
+            <div class="preview-frame">
+                <iframe src="admin/settlement.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">结算管理</div>
+                    <div class="preview-desc">结算记录、明细查看</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 财务运营 -->
+        <div class="preview-card" data-group="finance" onclick="openPage('finance')">
+            <div class="preview-frame">
+                <iframe src="admin/finance.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">财务报表</div>
+                    <div class="preview-desc">营收统计、趋势分析</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="finance" onclick="openPage('points')">
+            <div class="preview-frame">
+                <iframe src="admin/points.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">积分管理</div>
+                    <div class="preview-desc">积分充值、消费记录</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容管理 -->
+        <div class="preview-card" data-group="content" onclick="openPage('certification')">
+            <div class="preview-frame">
+                <iframe src="admin/certification.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">认证审核</div>
+                    <div class="preview-desc">实名认证、企业认证</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="content" onclick="openPage('banners')">
+            <div class="preview-frame">
+                <iframe src="admin/banners.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">Banner管理</div>
+                    <div class="preview-desc">首页轮播、活动推广</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="content" onclick="openPage('notices')">
+            <div class="preview-frame">
+                <iframe src="admin/notices.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">公告管理</div>
+                    <div class="preview-desc">系统公告、消息推送</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="content" onclick="openPage('rules')">
+            <div class="preview-frame">
+                <iframe src="admin/rules.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">规则管理</div>
+                    <div class="preview-desc">公示/信用/收费/交易/飞单</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 消息客服 -->
+        <div class="preview-card" data-group="message" onclick="openPage('messages')">
+            <div class="preview-frame">
+                <iframe src="admin/messages.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">消息管理</div>
+                    <div class="preview-desc">消息模板、推送记录</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="message" onclick="openPage('service')">
+            <div class="preview-frame">
+                <iframe src="admin/service.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">客服管理</div>
+                    <div class="preview-desc">在线客服、会话记录</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 风控系统 -->
+        <div class="preview-card" data-group="risk" onclick="openPage('reports')">
+            <div class="preview-frame">
+                <iframe src="admin/reports.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">举报处理</div>
+                    <div class="preview-desc">违规举报、处理记录</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="risk" onclick="openPage('blacklist')">
+            <div class="preview-frame">
+                <iframe src="admin/blacklist.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">黑名单管理</div>
+                    <div class="preview-desc">黑名单、禁言解封</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统管理 -->
+        <div class="preview-card" data-group="system" onclick="openPage('settings')">
+            <div class="preview-frame">
+                <iframe src="admin/settings.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">系统设置</div>
+                    <div class="preview-desc">账号权限、平台规则</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-card" data-group="system" onclick="openPage('logs')">
+            <div class="preview-frame">
+                <iframe src="admin/logs.html"></iframe>
+            </div>
+            <div class="preview-info">
+                <div>
+                    <div class="preview-title">操作日志</div>
+                    <div class="preview-desc">操作记录、日志查询</div>
+                </div>
+                <div class="preview-action">
+                    <span>查看</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="section-title">核心特色</h2>
+    <p class="section-desc">为运营团队量身打造的管理工具</p>
+
+    <div class="feature-cards">
+        <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(135deg,#FFF0EB,#FFE8DC); color:#FF6B35;">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="feature-title">实时数据看板</div>
+            <div class="feature-desc">多维度数据可视化，实时监控平台运营核心指标，辅助决策。</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(135deg,#EFF6FF,#DBEAFE); color:#2563EB;">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="feature-title">智能风控体系</div>
+            <div class="feature-desc">举报处理、黑名单管理，构建安全可信的交易环境。</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5); color:#10B981;">
+                <i class="fas fa-coins"></i>
+            </div>
+            <div class="feature-title">全链路结算</div>
+            <div class="feature-desc">订单结算、财务报表、积分管理，资金流向清晰可追溯。</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7); color:#F59E0B;">
+                <i class="fas fa-bullhorn"></i>
+            </div>
+            <div class="feature-title">内容运营中心</div>
+            <div class="feature-desc">Banner管理、公告发布、消息推送，活动运营得心应手。</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(135deg,#FEF2F2,#FEE2E2); color:#EF4444;">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="feature-title">严格身份认证</div>
+            <div class="feature-desc">实名认证、企业认证审核，确保平台用户真实可信。</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon" style="background:linear-gradient(135deg,#F3F4F6,#E5E7EB); color:#6B7280;">
+                <i class="fas fa-users-cog"></i>
+            </div>
+            <div class="feature-title">精细化运营</div>
+            <div class="feature-desc">用户分层管理、权限分级、数据分析，精准触达目标用户。</div>
+        </div>
+    </div>
+
+    <div style="background:#fff; padding:30px 40px; text-align:center; color:var(--text-muted); font-size:13px; border-top:1px solid var(--border);">
+        <p>© 2024 快马日结管理后台 · 本页面为原型设计，仅供演示</p>
+    </div>
+
+    <script>
+        function goLogin() {
+            window.location.href = 'admin-login.html';
+        }
+
+        function openPage(pageId) {
+            window.open('admin/' + pageId + '.html', '_blank');
+        }
+
+        function filterPreviews(group, el) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            
+            const cards = document.querySelectorAll('.preview-card');
+            cards.forEach(card => {
+                if (group === 'all' || card.dataset.group === group) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

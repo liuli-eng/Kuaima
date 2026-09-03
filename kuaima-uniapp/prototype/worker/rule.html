@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平台规则 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: #f5f5f5;
+            overflow: hidden;
+            position: relative;
+            border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            border: 10px solid #1a1a1a;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 50;
+        }
+        .status-bar {
+            height: 47px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 28px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            position: relative;
+            z-index: 40;
+            background: #fff;
+        }
+        .top-nav {
+            padding: 8px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            position: absolute;
+            top: 47px;
+            left: 0;
+            right: 0;
+            height: 52px;
+            z-index: 10;
+        }
+        .nav-back {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 4px 6px;
+            gap: 2px;
+        }
+        .nav-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .rule-content {
+            position: absolute;
+            top: 99px;
+            left: 0;
+            right: 0;
+            bottom: 34px;
+            overflow-y: auto;
+            background: #f5f5f5;
+        }
+        .rule-card {
+            background: #fff;
+            margin: 12px 16px;
+            border-radius: 12px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .rule-card:active {
+            background: #f9f9f9;
+        }
+        .rule-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .rule-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .icon-notice {
+            background: linear-gradient(135deg, #FFE4B5, #FFD966);
+            color: #D2691E;
+        }
+        .icon-credit {
+            background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+            color: #1976D2;
+        }
+        .icon-fee {
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            color: #388E3C;
+        }
+        .icon-trade {
+            background: linear-gradient(135deg, #FCE4EC, #F8BBD0);
+            color: #C2185B;
+        }
+        .icon-fly {
+            background: linear-gradient(135deg, #F3E5F5, #E1BEE7);
+            color: #7B1FA2;
+        }
+        .rule-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        .rule-arrow {
+            color: #ccc;
+            font-size: 14px;
+        }
+        .rule-desc {
+            padding: 0 20px;
+            font-size: 12px;
+            color: #999;
+            margin-top: -4px;
+            margin-bottom: 12px;
+        }
+        .page-indicator {
+            height: 5px;
+            background: #000;
+            border-radius: 3px;
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <!-- 顶部导航 -->
+        <div class="top-nav">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-chevron-left text-gray-700 text-lg"></i>
+            </div>
+            <div class="nav-title">平台规则</div>
+            <div class="nav-right">
+                <div class="nav-btn">
+                    <i class="fas fa-ellipsis text-gray-700" style="font-size: 13px;"></i>
+                </div>
+                <div style="width: 1px; height: 14px; background: #ddd; margin: 0 2px;"></div>
+                <div class="nav-btn">
+                    <i class="fas fa-circle text-gray-700" style="font-size: 11px;"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 规则内容 -->
+        <div class="rule-content">
+            <!-- 规则公示 -->
+            <div class="rule-card" onclick="viewRule('notice')">
+                <div class="rule-info">
+                    <div class="rule-icon icon-notice">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <div class="rule-title">规则公示</div>
+                </div>
+                <i class="fas fa-chevron-right rule-arrow"></i>
+            </div>
+            <div class="rule-desc">平台公告、重要通知</div>
+
+            <!-- 信用分规则 -->
+            <div class="rule-card" onclick="navigateTo('credit')">
+                <div class="rule-info">
+                    <div class="rule-icon icon-credit">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="rule-title">信用分规则</div>
+                </div>
+                <i class="fas fa-chevron-right rule-arrow"></i>
+            </div>
+            <div class="rule-desc">信用分评定、奖惩机制</div>
+
+            <!-- 收费规则 -->
+            <div class="rule-card" onclick="viewRule('fee')">
+                <div class="rule-info">
+                    <div class="rule-icon icon-fee">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div class="rule-title">收费规则</div>
+                </div>
+                <i class="fas fa-chevron-right rule-arrow"></i>
+            </div>
+            <div class="rule-desc">服务费、提现规则说明</div>
+
+            <!-- 交易规则 -->
+            <div class="rule-card" onclick="viewRule('trade')">
+                <div class="rule-info">
+                    <div class="rule-icon icon-trade">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="rule-title">交易规则</div>
+                </div>
+                <i class="fas fa-chevron-right rule-arrow"></i>
+            </div>
+            <div class="rule-desc">接单、完工、结算流程</div>
+
+            <!-- 飞单认定与处理规则 -->
+            <div class="rule-card" onclick="viewRule('fly')">
+                <div class="rule-info">
+                    <div class="rule-icon icon-fly">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                    <div class="rule-title">飞单认定与处理规则</div>
+                </div>
+                <i class="fas fa-chevron-right rule-arrow"></i>
+            </div>
+            <div class="rule-desc">违规认定、处罚措施</div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <!-- 底部指示条 -->
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function goBack() {
+            window.history.back();
+        }
+
+        function viewRule(type) {
+            const pageMap = {
+                notice: 'rule-detail.html?type=notice',
+                credit: 'rule-detail.html?type=credit',
+                fee: 'rule-detail.html?type=fee',
+                trade: 'rule-detail.html?type=trade',
+                fly: 'rule-detail.html?type=fly'
+            };
+            window.location.href = pageMap[type];
+        }
+
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+    </script>
+</body>
+</html>

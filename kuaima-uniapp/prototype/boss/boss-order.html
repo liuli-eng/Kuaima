@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>招工订单 - 快马日结（老板）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', -apple-system, 'PingFang SC', sans-serif; }
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: #FFF8E6;
+            overflow: hidden;
+            position: relative;
+            border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+            display: flex;
+            flex-direction: column;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 32px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 60;
+        }
+        .tab-bar {
+            flex-shrink: 0;
+            height: 83px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            padding-bottom: 20px;
+            z-index: 50;
+        }
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .tab-item.active .tab-label { color: #FF6B35; }
+        .tab-icon-wrap {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            margin-bottom: 3px;
+        }
+        .tab-label {
+            font-size: 10px;
+            color: #999;
+            font-weight: 500;
+        }
+        .tab-item.active .tab-icon-wrap {
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            color: white;
+            margin-bottom: 2px;
+            box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
+        }
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            background: #FFF8E6;
+        }
+        .scroll-area::-webkit-scrollbar { display: none; }
+        .header-bar {
+            background: linear-gradient(180deg, #FFD59E 0%, #FFE4B5 100%);
+            padding: 12px 16px 16px;
+        }
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .page-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #8B4513;
+        }
+        .notice-bar {
+            background: rgba(255, 107, 53, 0.1);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin: 12px 0;
+            font-size: 12px;
+            color: #D2691E;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-tabs {
+            display: flex;
+            gap: 16px;
+            padding: 0 16px;
+        }
+        .filter-tab {
+            padding: 8px 0;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            position: relative;
+        }
+        .filter-tab.active {
+            color: #FF6B35;
+            font-weight: 600;
+        }
+        .filter-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 3px;
+            background: #FF6B35;
+            border-radius: 2px;
+        }
+        .applicant-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            border-radius: 14px;
+            font-size: 12px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255,107,53,0.25);
+        }
+        .applicant-btn i { font-size: 11px; }
+        .cert-bar {
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            margin: 16px;
+            padding: 16px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        .cert-left { flex: 1; }
+        .cert-title { font-size: 15px; font-weight: 600; }
+        .cert-btn {
+            background: white;
+            color: #FF6B35;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px 12px;
+        }
+        .list-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: white;
+            border-radius: 16px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+        }
+
+        /* 招工卡片 */
+        .job-card {
+            background: #fff;
+            margin: 0 16px 12px;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .job-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #F5F5F5;
+            margin-bottom: 12px;
+        }
+        .job-title-wrap { display: flex; align-items: center; gap: 8px; }
+        .job-title { font-size: 16px; font-weight: 700; color: #333; }
+        .job-status {
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .status-recruiting { background: #FFF3E0; color: #FF6B35; }
+        .status-ended { background: #E6F7FF; color: #1890FF; }
+        .status-settling { background: #FFF8E6; color: #FA8C16; }
+        .status-completed { background: #F6FFED; color: #52C41A; }
+        .status-cancelled { background: #F5F5F5; color: #999; }
+
+        .job-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 16px;
+            margin-bottom: 14px;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .info-item i { color: #FF6B35; font-size: 11px; width: 14px; text-align: center; flex-shrink: 0; }
+        .info-item .info-label { color: #999; font-size: 11px; }
+        .info-item .info-value { color: #333; font-weight: 500; margin-left: 2px; }
+        .info-item.wage .info-value { color: #FF6B35; font-weight: 600; }
+        .info-item.wage .info-label { color: #FFB088; }
+        .info-item:nth-child(odd) {
+            padding-right: 8px;
+            border-right: 1px dashed #F0F0F0;
+        }
+        .info-item:nth-child(3),
+        .info-item:nth-child(4) {
+            grid-column: span 1;
+        }
+
+        .job-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 1px solid #F5F5F5;
+        }
+        .job-btn {
+            padding: 6px 14px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .btn-primary { background: linear-gradient(135deg, #FF6B35, #FF8C5A); color: white; }
+        .btn-secondary { background: #fff; color: #666; border-color: #E0E0E0; }
+        .btn-danger { background: #fff; color: #F5222D; border-color: #FFECE8; }
+        .btn-link { background: transparent; color: #1890FF; border: none; padding: 6px 4px; }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+            font-size: 14px;
+        }
+        .empty-icon { font-size: 80px; margin-bottom: 16px; opacity: 0.5; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div style="height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333;">
+            <span>19:53</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="scroll-area">
+            <div class="header-bar">
+                <div class="title-row">
+                    <div class="page-title">招工订单</div>
+                    <div class="flex bg-white/80 backdrop-blur-sm rounded-full p-1 shadow-sm">
+                        <div class="w-7 h-7 flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-ellipsis text-gray-700 text-sm"></i>
+                        </div>
+                        <div class="w-px h-4 bg-gray-300"></div>
+                        <div class="w-7 h-7 flex items-center justify-center cursor-pointer">
+                            <i class="fas fa-circle text-gray-700 text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notice-bar mx-4 -mt-2">
+                <i class="fas fa-bullhorn text-orange-500"></i>
+                <span>话将被录音，禁止交换电话号码和微信；零工完工后...</span>
+            </div>
+
+            <div class="filter-tabs">
+                <div class="filter-tab active" onclick="switchFilter(this, 'all')">全部</div>
+            </div>
+
+            <div class="cert-bar" onclick="navigateTo('realname')">
+                <div class="cert-left">
+                    <div class="cert-title">完成实名认证后获取更多招人权益</div>
+                </div>
+                <div class="cert-btn">立即实名 ›</div>
+            </div>
+
+            <div class="list-header">
+                <div class="list-title">招工列表</div>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <div class="filter-btn" onclick="navigateTo('boss-filter')">
+                        <i class="fas fa-filter text-gray-400"></i>
+                        <span>筛选</span>
+                        <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                    </div>
+                    <div class="applicant-btn" onclick="navigateTo('applicant-info')">
+                        <i class="fas fa-user-check"></i>
+                        <span>报名信息</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="jobList"></div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <div class="tab-bar">
+            <div class="tab-item" onclick="switchTab(this, 'boss-home')">
+                <div class="tab-icon-wrap"><i class="fas fa-house text-lg"></i></div>
+                <span class="tab-label">首页</span>
+            </div>
+            <div class="tab-item active" onclick="switchTab(this, 'boss-order')">
+                <div class="tab-icon-wrap"><i class="fas fa-calendar-check text-lg"></i></div>
+                <span class="tab-label">招工订单</span>
+            </div>
+            <div class="tab-item" onclick="switchTab(this, 'boss-message')">
+                <div class="tab-icon-wrap"><i class="fas fa-comment-dots text-lg"></i></div>
+                <span class="tab-label">消息</span>
+            </div>
+            <div class="tab-item" onclick="switchTab(this, 'boss-profile')">
+                <div class="tab-icon-wrap"><i class="fas fa-smile text-lg"></i></div>
+                <span class="tab-label">我的</span>
+            </div>
+        </div>
+
+        <div id="cancelModal" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center;">
+            <div style="width:280px;background:#fff;border-radius:16px;padding:24px 20px;text-align:center;">
+                <div style="font-size:16px;font-weight:600;color:#333;margin-bottom:12px;">确认取消招工？</div>
+                <div id="cancelTitle" style="font-size:13px;color:#999;margin-bottom:16px;"></div>
+                <div style="font-size:12px;color:#666;margin-bottom:20px;line-height:1.6;">
+                    取消后将不再接收零工报名，<br>已报名的零工将收到通知
+                </div>
+                <div style="display:flex;gap:12px;">
+                    <div onclick="document.getElementById('cancelModal').style.display='none'" style="flex:1;padding:10px 0;border:1px solid #E0E0E0;border-radius:20px;font-size:14px;color:#666;cursor:pointer;">再想想</div>
+                    <div onclick="confirmCancel()" style="flex:1;padding:10px 0;background:linear-gradient(135deg,#FF6B35,#FF8C5A);border-radius:20px;font-size:14px;color:#fff;cursor:pointer;">确认取消</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="confirmModal" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center;">
+            <div style="width:280px;background:#fff;border-radius:16px;padding:24px 20px;text-align:center;">
+                <div style="font-size:16px;font-weight:600;color:#333;margin-bottom:12px;">确认全部零工已到岗？</div>
+                <div id="confirmTitle" style="font-size:13px;color:#999;margin-bottom:16px;"></div>
+                <div style="font-size:12px;color:#666;margin-bottom:20px;line-height:1.6;">
+                    确认后状态将变更为待结算<br>可前往结算页面进行付款
+                </div>
+                <div style="display:flex;gap:12px;">
+                    <div onclick="document.getElementById('confirmModal').style.display='none'" style="flex:1;padding:10px 0;border:1px solid #E0E0E0;border-radius:20px;font-size:14px;color:#666;cursor:pointer;">再想想</div>
+                    <div onclick="confirmArrive()" style="flex:1;padding:10px 0;background:linear-gradient(135deg,#FF6B35,#FF8C5A);border-radius:20px;font-size:14px;color:#fff;cursor:pointer;">确认到岗</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 5种招工状态
+        // recruiting: 招工中
+        // ended: 招工结束
+        // settling: 待结算
+        // completed: 已完成
+        // cancelled: 取消招工
+
+        var jobList = [
+            {
+                id: 1, title: '电商分拣打包',
+                workTime: '08:00 ~ 18:00',
+                location: '松江区车墩镇',
+                wage: '180元/天',
+                recruitCount: 5,
+                currentApply: 13,
+                status: 'recruiting'
+            },
+            {
+                id: 2, title: '餐饮服务员',
+                workTime: '10:00 ~ 20:00',
+                location: '松江区中山街道',
+                wage: '150元/天',
+                recruitCount: 2,
+                currentApply: 5,
+                status: 'ended'
+            },
+            {
+                id: 3, title: '快递搬运装卸工',
+                workTime: '07:00 ~ 17:00',
+                location: '松江区九亭镇',
+                wage: '200元/天',
+                recruitCount: 4,
+                currentApply: 8,
+                status: 'settling'
+            },
+            {
+                id: 4, title: '冷库分拣员',
+                workTime: '06:00 ~ 16:00',
+                location: '松江区泗泾镇',
+                wage: '220元/天',
+                recruitCount: 3,
+                currentApply: 6,
+                status: 'completed'
+            },
+            {
+                id: 5, title: '装配工',
+                workTime: '08:00 ~ 18:00',
+                location: '松江区新桥镇',
+                wage: '250元/天',
+                recruitCount: 5,
+                currentApply: 11,
+                status: 'cancelled'
+            },
+            {
+                id: 6, title: '超市理货员',
+                workTime: '09:00 ~ 19:00',
+                location: '松江区洞泾镇',
+                wage: '160元/天',
+                recruitCount: 2,
+                currentApply: 4,
+                status: 'recruiting'
+            }
+        ];
+
+        var statusMap = {
+            recruiting: { text: '招工中', class: 'status-recruiting' },
+            ended: { text: '招工结束', class: 'status-ended' },
+            settling: { text: '待结算', class: 'status-settling' },
+            completed: { text: '已完成', class: 'status-completed' },
+            cancelled: { text: '取消招工', class: 'status-cancelled' }
+        };
+
+        var currentFilter = 'all';
+        var cancelTargetId = null;
+        var arriveTargetId = null;
+
+        function renderList(filter) {
+            currentFilter = filter;
+            var list = document.getElementById('jobList');
+            var data = filter === 'all' ? jobList : jobList.filter(function(j) { return j.status === filter; });
+
+            if (data.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>暂无招工订单</div>';
+                return;
+            }
+
+            list.innerHTML = data.map(function(job) {
+                var statusInfo = statusMap[job.status];
+                var actions = getActions(job);
+
+                return '<div class="job-card">' +
+                    '<div class="job-card-header">' +
+                        '<div class="job-title-wrap">' +
+                            '<div class="job-title">' + job.title + '</div>' +
+                        '</div>' +
+                        '<div class="job-status ' + statusInfo.class + '">' + statusInfo.text + '</div>' +
+                    '</div>' +
+                    '<div class="job-info-grid">' +
+                        '<div class="info-item"><i class="fas fa-briefcase"></i><span class="info-label">招聘岗位：</span><span class="info-value">' + job.title + '</span></div>' +
+                        '<div class="info-item"><i class="fas fa-clock"></i><span class="info-label">工作时间：</span><span class="info-value">' + job.workTime + '</span></div>' +
+                        '<div class="info-item"><i class="fas fa-map-marker-alt"></i><span class="info-label">工作地点：</span><span class="info-value">' + job.location + '</span></div>' +
+                        '<div class="info-item wage"><i class="fas fa-coins"></i><span class="info-label">报酬：</span><span class="info-value">' + job.wage + '</span></div>' +
+                        '<div class="info-item"><i class="fas fa-users"></i><span class="info-label">招募人数：</span><span class="info-value">' + job.recruitCount + '人</span></div>' +
+                        '<div class="info-item"><i class="fas fa-user-check"></i><span class="info-label">当前报名：</span><span class="info-value">' + job.currentApply + '人</span></div>' +
+                    '</div>' +
+                    '<div class="job-actions">' + actions + '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function getActions(job) {
+            var actions = [];
+            var id = job.id;
+
+            if (job.status === 'recruiting') {
+                actions.push('<button class="job-btn btn-primary" onclick="navigateTo(\'applicant-info\')">查看报名</button>');
+                actions.push('<button class="job-btn btn-secondary" onclick="navigateTo(\'publish-info\')">编辑招工</button>');
+                actions.push('<button class="job-btn btn-danger" onclick="cancelJob(' + id + ')">取消招工</button>');
+            } else if (job.status === 'ended') {
+                actions.push('<button class="job-btn btn-secondary" onclick="navigateTo(\'applicant-info\')">确认到岗</button>');
+                actions.push('<button class="job-btn btn-link" onclick="navigateTo(\'publish-info\')">详情</button>');
+            } else if (job.status === 'settling') {
+                actions.push('<button class="job-btn btn-primary" onclick="navigateTo(\'suspend-settle\')">去结算</button>');
+                actions.push('<button class="job-btn btn-link" onclick="navigateTo(\'publish-info\')">详情</button>');
+            } else if (job.status === 'completed') {
+                actions.push('<button class="job-btn btn-link" onclick="navigateTo(\'publish-info\')">详情</button>');
+            } else if (job.status === 'cancelled') {
+                actions.push('<button class="job-btn btn-link" onclick="navigateTo(\'publish-info\')">详情</button>');
+            }
+
+            return actions.join('');
+        }
+
+        function cancelJob(id) {
+            cancelTargetId = id;
+            var job = jobList.find(function(j) { return j.id === id; });
+            document.getElementById('cancelTitle').textContent = job.title;
+            document.getElementById('cancelModal').style.display = 'flex';
+        }
+
+        function confirmCancel() {
+            if (cancelTargetId) {
+                var job = jobList.find(function(j) { return j.id === cancelTargetId; });
+                if (job) job.status = 'cancelled';
+            }
+            document.getElementById('cancelModal').style.display = 'none';
+            renderList(currentFilter);
+        }
+
+        function confirmArrival(id) {
+            arriveTargetId = id;
+            var job = jobList.find(function(j) { return j.id === id; });
+            document.getElementById('confirmTitle').textContent = job.title;
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+
+        function confirmArrive() {
+            if (arriveTargetId) {
+                var job = jobList.find(function(j) { return j.id === arriveTargetId; });
+                if (job) job.status = 'settling';
+            }
+            document.getElementById('confirmModal').style.display = 'none';
+            renderList(currentFilter);
+        }
+
+        function switchFilter(el, filter) {
+            document.querySelectorAll('.filter-tab').forEach(function(t) { t.classList.remove('active'); });
+            el.classList.add('active');
+            renderList(filter);
+        }
+
+        function navigateTo(pageName) {
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance", "realname", "applicant-info", "boss-publish"];
+            var path = pageName + '.html';
+            if (bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+        function switchTab(el, tab) {
+            document.querySelectorAll('.tab-item').forEach(function(i) {
+                i.classList.remove('active');
+                var iconWrap = i.querySelector('.tab-icon-wrap');
+                if (iconWrap) {
+                    iconWrap.style.background = '';
+                    iconWrap.style.borderRadius = '';
+                    iconWrap.style.width = '';
+                    iconWrap.style.height = '';
+                    iconWrap.style.color = '';
+                    iconWrap.style.marginBottom = '';
+                    iconWrap.style.boxShadow = '';
+                }
+            });
+            el.classList.add('active');
+            var activeIconWrap = el.querySelector('.tab-icon-wrap');
+            if (activeIconWrap) {
+                activeIconWrap.style.background = 'linear-gradient(135deg, #FF6B35, #FF8C5A)';
+                activeIconWrap.style.borderRadius = '50%';
+                activeIconWrap.style.width = '32px';
+                activeIconWrap.style.height = '32px';
+                activeIconWrap.style.color = 'white';
+                activeIconWrap.style.marginBottom = '2px';
+                activeIconWrap.style.boxShadow = '0 4px 10px rgba(255, 107, 53, 0.3)';
+            }
+            navigateTo(tab);
+        }
+
+        window.onload = function() {
+            renderList('all');
+        };
+    </script>
+</body>
+</html>

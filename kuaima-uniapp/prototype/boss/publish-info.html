@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布招工 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #f5f5f5; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .stepper { display: flex; align-items: center; justify-content: center; padding: 14px 16px; background: #fff; gap: 4px; }
+        .step-dot { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #FF6B35, #FF8C5A); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
+        .step-label { font-size: 13px; color: #FF6B35; font-weight: 500; }
+        .step-line { width: 30px; height: 2px; background: #FF6B35; }
+        .step-label-pending { font-size: 13px; color: #999; }
+        .step-dot-pending { width: 20px; height: 20px; border-radius: 50%; background: #e0e0e0; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+        .form-section { margin-top: 10px; background: #fff; }
+        .form-item { display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
+        .form-item:last-child { border-bottom: none; }
+        .form-label { font-size: 15px; color: #333; font-weight: 500; min-width: 80px; }
+        .form-value { flex: 1; text-align: right; font-size: 14px; color: #333; margin-right: 4px; }
+        .form-value.placeholder { color: #999; }
+        .form-value.link { color: #FF6B35; }
+        .form-arrow { color: #ccc; font-size: 12px; }
+        .date-section { padding: 16px; background: #fff; margin-top: 10px; }
+        .date-section-title { font-size: 15px; color: #333; font-weight: 500; margin-bottom: 12px; }
+        .date-options { display: flex; gap: 8px; flex-wrap: wrap; }
+        .date-chip { padding: 8px 12px; background: #f5f5f5; border-radius: 8px; text-align: center; font-size: 12px; color: #333; cursor: pointer; min-width: 70px; }
+        .date-chip .weekday { font-weight: 500; }
+        .date-chip .date { color: #999; font-size: 11px; }
+        .date-chip.selected { background: #FFF3ED; color: #FF6B35; }
+        .scroll-area { position: absolute; top: 147px; left: 0; right: 0; bottom: 70px; overflow-y: auto; }
+        .scroll-area::-webkit-scrollbar { display: none; }
+        .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; background: #fff; padding: 12px 16px 30px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .submit-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #FFD700, #FFA500); color: #fff; border: none; border-radius: 24px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        .info-tag { display: inline-block; padding: 2px 8px; background: #FFF3ED; color: #FF6B35; border-radius: 4px; font-size: 12px; margin-left: 8px; }
+        .service-fab { position: absolute; right: 16px; bottom: 100px; width: 48px; height: 48px; background: #fff; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: #FF6B35; cursor: pointer; z-index: 20; }
+        .service-fab i { font-size: 18px; margin-bottom: 2px; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar"><span>19:53</span><div class="flex items-center gap-1"><i class="fas fa-signal text-sm"></i><i class="fas fa-wifi text-sm"></i><i class="fas fa-battery-full text-sm"></i></div></div>
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+            <div class="nav-title">发布招工</div>
+            <div style="width:32px;"></div>
+        </div>
+        <div class="stepper">
+            <div class="step-dot"><i class="fas fa-check" style="font-size:9px;"></i></div>
+            <div class="step-label">基础信息</div>
+            <div class="step-line"></div>
+            <div class="step-dot-pending"><i class="fas fa-circle" style="font-size:6px;"></i></div>
+            <div class="step-label-pending">招工需求</div>
+        </div>
+        <div class="scroll-area">
+            <div class="form-section">
+                <div class="form-item" onclick="editJob()">
+                    <div class="form-label">工种</div>
+                    <div class="form-value" id="jobValue">普工、焊锡工</div>
+                    <i class="fas fa-chevron-right form-arrow"></i>
+                </div>
+                <div class="form-item" onclick="navigateTo('task-content')">
+                    <div class="form-label">干活内容</div>
+                    <div class="form-value placeholder" id="workContentValue">请选择</div>
+                    <i class="fas fa-chevron-right form-arrow"></i>
+                </div>
+                <div class="form-item" onclick="navigateTo('task-content')">
+                    <div class="form-label">任务详情</div>
+                    <div class="form-value placeholder">电子厂普工、焊锡工 未填写详情</div>
+                    <i class="fas fa-chevron-right form-arrow"></i>
+                </div>
+                <div class="form-item" onclick="navigateTo('gender-age')">
+                    <div class="form-label">性别年龄</div>
+                    <div class="form-value" id="genderAgeValue">性别不限、18岁~不限</div>
+                    <i class="fas fa-chevron-right form-arrow"></i>
+                </div>
+            </div>
+            <div class="date-section">
+                <div class="date-section-title">工作日期</div>
+                <div class="date-options">
+                    <div class="date-chip selected" onclick="selectDate(this)">
+                        <div class="weekday">本周五</div>
+                        <div class="date">8月21日</div>
+                    </div>
+                    <div class="date-chip selected" onclick="selectDate(this)">
+                        <div class="weekday">明周六</div>
+                        <div class="date">8月22日</div>
+                    </div>
+                    <div class="date-chip" onclick="selectDate(this)">
+                        <div class="weekday">后周日</div>
+                        <div class="date">8月23日</div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-section">
+                <div class="form-item" onclick="navigateTo('select-work-time')">
+                    <div class="form-label">工作时间</div>
+                    <div class="form-value link">选择工作时间 ›</div>
+                </div>
+                <div class="form-item" onclick="navigateTo('location')">
+                    <div class="form-label">干活地点</div>
+                    <div class="form-value link" id="locationValue">设置干活地点 <i class="fas fa-map-marker-alt" style="color:#FF6B35;font-size:14px;"></i></div>
+                </div>
+            </div>
+            <div style="height:20px;"></div>
+        </div>
+        <div class="service-fab" onclick="navigateTo('service-chat')">
+            <i class="fas fa-headset"></i>
+            <span>客服</span>
+        </div>
+        <div class="bottom-bar">
+            <button class="submit-btn" onclick="nextStep()">下一步</button>
+        </div>
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        function init() {
+            const job = getQueryParam('job');
+            const savedJobs = sessionStorage.getItem('selectedJobs');
+            if (savedJobs) {
+                document.getElementById('jobValue').textContent = savedJobs.replace(/电子厂\//g, '').replace(/五金厂\//g, '').replace(/注塑厂\//g, '').replace(/快递\//g, '').replace(/电商\//g, '').replace(/餐饮\//g, '').replace(/物流\//g, '').replace(/仓储\//g, '').split(',').join('、');
+            } else if (job) {
+                const mapping = {
+                    '普工': '电子厂/普工',
+                    '电子厂普工': '电子厂/普工',
+                    '五金厂CNC操作工': '五金厂/CNC操作工',
+                    '注塑厂注塑工': '注塑厂/注塑工',
+                    '快递分拣打包工': '快递/分拣打包工',
+                    '快递搬运装卸工': '快递/搬运装卸工',
+                    '电商分拣打包工': '电商/分拣打包工',
+                    '电商手工活': '电商/手工活',
+                    '餐饮服务员': '餐饮/服务员',
+                    '焊锡工': '电子厂/焊锡工',
+                    'SMT操作工': '电子厂/SMT操作工',
+                    '搬运装卸工': '物流/搬运装卸工',
+                    '杂工': '杂工',
+                    '清洁工': '清洁工',
+                    '叉车工': '物流/叉车工',
+                    '仓管': '仓储/仓管'
+                };
+                const displayName = mapping[job] || job;
+                document.getElementById('jobValue').textContent = displayName;
+            }
+            
+            const savedContent = sessionStorage.getItem('taskContent');
+            if (savedContent) {
+                try {
+                    const data = JSON.parse(savedContent);
+                    const wcEl = document.getElementById('workContentValue');
+                    if (data.title) wcEl.textContent = data.title;
+                    if (data.title) wcEl.classList.remove('placeholder');
+                } catch(e) {}
+            }
+            
+            const savedGenderAge = sessionStorage.getItem('genderAge');
+            if (savedGenderAge) {
+                try {
+                    const data = JSON.parse(savedGenderAge);
+                    const gaEl = document.getElementById('genderAgeValue');
+                    if (data.display) gaEl.textContent = data.display;
+                } catch(e) {}
+            }
+            
+            const savedLocation = sessionStorage.getItem('workLocation');
+            if (savedLocation) {
+                try {
+                    const data = JSON.parse(savedLocation);
+                    const locEl = document.getElementById('locationValue');
+                    if (data.display) {
+                        locEl.innerHTML = data.name + ' <i class="fas fa-map-marker-alt" style="color:#FF6B35;font-size:14px;"></i>';
+                    }
+                } catch(e) {}
+            }
+        }
+
+        function editJob() {
+            navigateTo('all-jobs');
+        }
+
+        function selectDate(el) {
+            el.classList.toggle('selected');
+        }
+
+        function nextStep() {
+            const job = document.getElementById('jobValue').textContent;
+            const workContent = sessionStorage.getItem('taskContent');
+            const genderAge = sessionStorage.getItem('genderAge');
+            const workLocation = sessionStorage.getItem('workLocation');
+            
+            if (!workContent) {
+                alert('请先选择干活内容');
+                return;
+            }
+            
+            const publishData = {
+                job: job,
+                workContent: workContent,
+                genderAge: genderAge,
+                workLocation: workLocation
+            };
+            sessionStorage.setItem('publishInfo', JSON.stringify(publishData));
+            navigateTo('recruit-demand');
+        }
+
+        function navigateTo(page) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance", "realname", "points", "voucher", "reward", "add-address", "download-app", "personal-info", "task-content", "gender-age", "location", "recruit-demand", "select-work-time"];
+            var path = page + '.html';
+            if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) >= 0) {
+                path = '../worker/' + path;
+            } else if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() {
+            window.history.back();
+        }
+
+        init();
+    </script>
+</body>
+</html>

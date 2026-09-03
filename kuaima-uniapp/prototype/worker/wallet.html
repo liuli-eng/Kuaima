@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的钱包 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #fff; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; background: #fff; }
+        .nav-back { display: flex; align-items: center; cursor: pointer; width: 32px; height: 32px; }
+        .nav-right { display: flex; align-items: center; background: rgba(255, 255, 255, 0.9); border-radius: 20px; padding: 4px 6px; gap: 2px; }
+        .nav-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .top-nav { position: absolute; top: 47px; left: 0; right: 0; height: 52px; background: #fff; z-index: 10; }
+        .content-area { position: absolute; top: 99px; left: 0; right: 0; bottom: 34px; overflow-y: auto; background: #f5f5f5; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        
+        /* 余额卡片 */
+        .balance-card {
+            background: linear-gradient(135deg, #FFE4B5 0%, #FFD700 100%);
+            margin: 12px; border-radius: 16px; padding: 20px;
+        }
+        .balance-header { display: flex; justify-content: space-between; align-items: center; }
+        .balance-label { font-size: 14px; color: #666; }
+        .balance-value { font-size: 32px; font-weight: 700; margin-top: 8px; color: #333; }
+        .balance-desc { font-size: 12px; color: #888; margin-top: 4px; }
+        .withdraw-btn {
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white; padding: 10px 24px; border-radius: 20px;
+            font-size: 14px; font-weight: 500; cursor: pointer; border: none;
+        }
+        
+        /* Tab切换 */
+        .tab-bar {
+            display: flex; background: white; margin: 12px 12px 0;
+            border-radius: 12px 12px 0 0; overflow: hidden;
+        }
+        .tab-item {
+            flex: 1; text-align: center; padding: 14px 0; font-size: 15px;
+            color: #666; cursor: pointer; position: relative;
+        }
+        .tab-item.active { color: #FF6B35; font-weight: 600; }
+        .tab-item.active::after {
+            content: ''; position: absolute; bottom: 0; left: 50%;
+            transform: translateX(-50%); width: 30px; height: 3px;
+            background: #FF6B35; border-radius: 2px;
+        }
+        
+        /* 提现记录状态标签 */
+        .status-tag {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 500;
+        }
+        .status-tag.pending { background: #FFF3E0; color: #FF8C00; }
+        .status-tag.success { background: #E8F8E8; color: #52C41A; }
+        .status-tag.failed { background: #FFF1F0; color: #FF4D4F; }
+        .status-tag.processing { background: #E6F7FF; color: #1890FF; }
+        
+        /* 提现记录列表 */
+        .record-list {
+            background: white; margin: 0 12px 12px; border-radius: 0 0 12px 12px;
+            overflow: hidden;
+        }
+        .record-item {
+            display: flex; align-items: center; padding: 14px 16px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .record-item:last-child { border-bottom: none; }
+        .record-icon {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; margin-right: 12px; flex-shrink: 0;
+        }
+        .record-icon.wechat { background: #E8F8E8; color: #09BB07; }
+        .record-icon.alipay { background: #E6F0FF; color: #1677FF; }
+        .record-icon.bank { background: #FFF5E6; color: #FF8C00; }
+        .record-info { flex: 1; }
+        .record-title { font-size: 14px; color: #333; font-weight: 500; }
+        .record-account { font-size: 12px; color: #999; margin-top: 3px; }
+        .record-time { font-size: 12px; color: #bbb; margin-top: 2px; }
+        .record-right { text-align: right; flex-shrink: 0; }
+        .record-amount { font-size: 15px; font-weight: 600; color: #999; }
+        .record-amount.negative { color: #666; }
+        .record-status { margin-top: 4px; }
+        
+        /* 空记录状态 */
+        .empty-record {
+            text-align: center; padding: 60px 20px; background: white;
+            margin: 0 12px 12px; border-radius: 0 0 12px 12px;
+        }
+        .empty-record-icon {
+            font-size: 60px; color: #FFE4B5; margin-bottom: 16px;
+        }
+        .empty-record-text { font-size: 14px; color: #999; }
+        .empty-record-hint { font-size: 12px; color: #ccc; margin-top: 6px; }
+        
+        /* 提现表单区域 */
+        .withdraw-section {
+            background: white; margin: 12px; border-radius: 16px; padding: 16px;
+        }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .section-title { font-size: 16px; font-weight: 600; color: #333; }
+        .section-action { font-size: 13px; color: #FF6B35; cursor: pointer; }
+        
+        /* 账号类型选择 */
+        .account-type-list { display: flex; flex-direction: column; gap: 10px; }
+        .account-type-item {
+            display: flex; align-items: center; padding: 14px;
+            border: 1.5px solid #eee; border-radius: 12px; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .account-type-item.active {
+            border-color: #FF6B35; background: #FFF8F5;
+        }
+        .account-type-icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; margin-right: 12px; flex-shrink: 0;
+        }
+        .account-type-item .account-type-icon.wechat { background: #E8F8E8; color: #09BB07; }
+        .account-type-item .account-type-icon.alipay { background: #E6F0FF; color: #1677FF; }
+        .account-type-item .account-type-icon.bank { background: #FFF5E6; color: #FF8C00; }
+        .account-type-info { flex: 1; }
+        .account-type-name { font-size: 15px; font-weight: 500; color: #333; }
+        .account-type-desc { font-size: 12px; color: #999; margin-top: 2px; }
+        .account-type-check {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid #ddd; display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0;
+        }
+        .account-type-item.active .account-type-check {
+            border-color: #FF6B35; background: #FF6B35;
+        }
+        .account-type-item.active .account-type-check::after {
+            content: ''; width: 8px; height: 8px; background: white; border-radius: 50%;
+        }
+        
+        /* 输入表单 */
+        .withdraw-form { margin-top: 16px; }
+        .form-item { margin-bottom: 16px; }
+        .form-label { font-size: 13px; color: #666; margin-bottom: 8px; display: block; }
+        .form-label .required { color: #FF4D4F; margin-left: 2px; }
+        .form-input {
+            width: 100%; height: 44px; border: 1px solid #e0e0e0; border-radius: 10px;
+            padding: 0 14px; font-size: 14px; color: #333; background: #FAFAFA;
+            box-sizing: border-box; outline: none; transition: border-color 0.2s;
+        }
+        .form-input:focus { border-color: #FF6B35; background: white; }
+        .form-input::placeholder { color: #bbb; }
+        
+        /* 银行选择器 */
+        .bank-select {
+            width: 100%; height: 44px; border: 1px solid #e0e0e0; border-radius: 10px;
+            padding: 0 14px; font-size: 14px; color: #333; background: #FAFAFA;
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; position: relative;
+        }
+        .bank-select.placeholder { color: #bbb; }
+        .bank-select i.chevron { font-size: 12px; color: #999; }
+        
+        /* 银行列表弹窗 */
+        .bank-modal {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 200;
+            display: none; align-items: flex-end;
+        }
+        .bank-modal.show { display: flex; }
+        .bank-modal-content {
+            background: white; width: 100%; border-radius: 20px 20px 0 0;
+            max-height: 70%; display: flex; flex-direction: column;
+        }
+        .bank-modal-header {
+            padding: 16px; display: flex; justify-content: space-between;
+            align-items: center; border-bottom: 1px solid #f0f0f0;
+        }
+        .bank-modal-title { font-size: 16px; font-weight: 600; color: #333; }
+        .bank-modal-close {
+            width: 28px; height: 28px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; color: #999;
+        }
+        .bank-search {
+            padding: 12px 16px; border-bottom: 1px solid #f5f5f5;
+        }
+        .bank-search-input {
+            width: 100%; height: 36px; background: #F5F5F5; border-radius: 18px;
+            padding: 0 16px; font-size: 14px; outline: none; border: none;
+        }
+        .bank-list { flex: 1; overflow-y: auto; }
+        .bank-item {
+            display: flex; align-items: center; padding: 14px 16px;
+            border-bottom: 1px solid #f5f5f5; cursor: pointer;
+        }
+        .bank-item:last-child { border-bottom: none; }
+        .bank-item-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: white; margin-right: 12px;
+        }
+        .bank-item-info { flex: 1; }
+        .bank-item-name { font-size: 14px; color: #333; }
+        .bank-item-selected { color: #FF6B35; font-weight: 500; }
+        
+        /* 提现按钮 */
+        .submit-btn {
+            width: 100%; height: 48px; background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white; border: none; border-radius: 24px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            margin-top: 8px;
+        }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* 提现金额 */
+        .amount-input-wrap {
+            display: flex; align-items: center; background: #FAFAFA;
+            border: 1px solid #e0e0e0; border-radius: 12px; padding: 0 16px;
+            height: 56px;
+        }
+        .amount-input-wrap:focus-within { border-color: #FF6B35; background: white; }
+        .amount-currency { font-size: 24px; color: #333; font-weight: 500; margin-right: 8px; }
+        .amount-input {
+            flex: 1; border: none; outline: none; font-size: 28px;
+            font-weight: 600; color: #333; background: transparent;
+        }
+        .amount-input::placeholder { color: #ccc; }
+        .amount-max { font-size: 13px; color: #FF6B35; cursor: pointer; padding: 6px 12px; }
+        
+        /* 提示信息 */
+        .tip-box {
+            background: #FFF8F5; border-radius: 10px; padding: 12px;
+            margin-top: 12px; display: flex; gap: 8px;
+        }
+        .tip-icon { color: #FF6B35; font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+        .tip-text { font-size: 12px; color: #999; line-height: 1.6; }
+        
+        /* 空状态 */
+        .empty-state { text-align: center; padding: 60px 20px; }
+        .empty-icon { font-size: 80px; color: #FFD700; margin-bottom: 20px; }
+        .empty-text { font-size: 14px; color: #999; }
+        
+        /* 明细列表 */
+        .detail-list { background: white; }
+        .detail-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px; border-bottom: 1px solid #f5f5f5;
+        }
+        .detail-left { display: flex; align-items: center; gap: 12px; }
+        .detail-icon {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .detail-icon.income { background: #E6F7FF; color: #1890FF; }
+        .detail-icon.withdraw { background: #FFF1F0; color: #FF4D4F; }
+        .detail-title { font-size: 15px; color: #333; font-weight: 500; }
+        .detail-time { font-size: 12px; color: #999; margin-top: 4px; }
+        .detail-amount { font-size: 16px; font-weight: 600; }
+        .detail-amount.income { color: #FF6B35; }
+        .detail-amount.withdraw { color: #999; }
+        
+        /* 提现成功弹窗 */
+        .success-modal {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 300;
+            display: none; justify-content: center; align-items: center;
+        }
+        .success-modal.show { display: flex; }
+        .success-content {
+            background: white; border-radius: 20px; padding: 30px 24px;
+            width: 280px; text-align: center;
+        }
+        .success-icon {
+            width: 64px; height: 64px; background: #E8F8E8; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .success-icon i { font-size: 32px; color: #52C41A; }
+        .success-title { font-size: 18px; font-weight: 600; color: #333; }
+        .success-desc { font-size: 14px; color: #666; margin-top: 8px; line-height: 1.5; }
+        .success-btn {
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white; padding: 12px 40px; border-radius: 20px;
+            font-size: 15px; font-weight: 600; cursor: pointer; border: none;
+            margin-top: 24px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="top-nav">
+            <div class="nav-bar">
+                <div class="nav-back" onclick="goBack()">
+                    <i class="fas fa-chevron-left text-gray-700"></i>
+                </div>
+                <div class="nav-title">钱包</div>
+                <div class="nav-right">
+                    <div class="nav-btn">
+                        <i class="fas fa-ellipsis text-gray-700" style="font-size: 13px;"></i>
+                    </div>
+                    <div style="width: 1px; height: 14px; background: #ddd; margin: 0 2px;"></div>
+                    <div class="nav-btn">
+                        <i class="fas fa-circle text-gray-700" style="font-size: 11px;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <!-- 余额卡片 -->
+            <div class="balance-card">
+                <div class="balance-header">
+                    <div>
+                        <div class="balance-label">可提现余额(元)</div>
+                        <div class="balance-value">0.00</div>
+                        <div class="balance-desc">累计收入 ¥0.00 · 可提现 ¥0.00</div>
+                    </div>
+                    <button class="withdraw-btn" onclick="switchTab('withdraw')">
+                        <i class="fas fa-arrow-down" style="margin-right: 4px;"></i>立即提现
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab切换 -->
+            <div class="tab-bar">
+                <div class="tab-item active" id="tab-withdraw" onclick="switchTab('withdraw')">申请提现</div>
+                <div class="tab-item" id="tab-record" onclick="switchTab('record')">提现记录</div>
+            </div>
+
+            <!-- 提现表单 -->
+            <div class="withdraw-section" id="withdraw-form-section">
+                <div class="section-header">
+                    <div class="section-title">填写提现信息</div>
+                </div>
+
+                <!-- 提现金额 -->
+                <div class="form-item">
+                    <label class="form-label">提现金额<span class="required">*</span></label>
+                    <div class="amount-input-wrap">
+                        <span class="amount-currency">¥</span>
+                        <input type="number" class="amount-input" id="withdraw-amount" placeholder="请输入提现金额" oninput="updateWithdrawAmount()">
+                        <span class="amount-max" onclick="setMaxAmount()">全部提现</span>
+                    </div>
+                </div>
+
+                <!-- 账号类型选择 -->
+                <div class="form-item">
+                    <label class="form-label">提现账号<span class="required">*</span></label>
+                    <div class="account-type-list" id="account-type-list">
+                        <div class="account-type-item" data-type="wechat" onclick="selectAccountType('wechat')">
+                            <div class="account-type-icon wechat">
+                                <i class="fab fa-weixin"></i>
+                            </div>
+                            <div class="account-type-info">
+                                <div class="account-type-name">微信支付账号</div>
+                                <div class="account-type-desc">提现到微信零钱</div>
+                            </div>
+                            <div class="account-type-check"></div>
+                        </div>
+                        <div class="account-type-item" data-type="alipay" onclick="selectAccountType('alipay')">
+                            <div class="account-type-icon alipay">
+                                <i class="fab fa-alipay"></i>
+                            </div>
+                            <div class="account-type-info">
+                                <div class="account-type-name">支付宝账号</div>
+                                <div class="account-type-desc">提现到支付宝余额</div>
+                            </div>
+                            <div class="account-type-check"></div>
+                        </div>
+                        <div class="account-type-item" data-type="bank" onclick="selectAccountType('bank')">
+                            <div class="account-type-icon bank">
+                                <i class="fas fa-university"></i>
+                            </div>
+                            <div class="account-type-info">
+                                <div class="account-type-name">银行账号</div>
+                                <div class="account-type-desc">提现到绑定的银行卡</div>
+                            </div>
+                            <div class="account-type-check"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 账号输入表单 -->
+                <div class="withdraw-form" id="account-form" style="display: none;">
+                    <!-- 微信/支付宝账号输入 -->
+                    <div id="wechat-form" style="display: none;">
+                        <div class="form-item">
+                            <label class="form-label">微信昵称/账号<span class="required">*</span></label>
+                            <input type="text" class="form-input" id="wechat-account" placeholder="请输入微信昵称或绑定的手机号">
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">真实姓名<span class="required">*</span></label>
+                            <input type="text" class="form-input" id="wechat-name" placeholder="请输入真实姓名（需与微信实名认证一致）">
+                        </div>
+                    </div>
+
+                    <!-- 支付宝账号输入 -->
+                    <div id="alipay-form" style="display: none;">
+                        <div class="form-item">
+                            <label class="form-label">支付宝账号<span class="required">*</span></label>
+                            <input type="text" class="form-input" id="alipay-account" placeholder="请输入支付宝账号（手机号/邮箱）">
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">真实姓名<span class="required">*</span></label>
+                            <input type="text" class="form-input" id="alipay-name" placeholder="请输入真实姓名（需与支付宝实名认证一致）">
+                        </div>
+                    </div>
+
+                    <!-- 银行账号输入 -->
+                    <div id="bank-form" style="display: none;">
+                        <div class="form-item">
+                            <label class="form-label">选择银行<span class="required">*</span></label>
+                            <div class="bank-select" id="bank-select" onclick="openBankModal()">
+                                <span id="bank-display" class="placeholder">请选择开户银行</span>
+                                <i class="fas fa-chevron-down chevron"></i>
+                            </div>
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">银行卡号<span class="required">*</span></label>
+                            <input type="text" class="form-input" id="bank-card-no" placeholder="请输入银行卡号" maxlength="19">
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">持卡人姓名<span class="required">*</span></label>
+                            <input type="text" class="form-input" id="bank-name" placeholder="请输入持卡人真实姓名">
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">开户支行</label>
+                            <input type="text" class="form-input" id="bank-branch" placeholder="请输入开户支行（选填）">
+                        </div>
+                    </div>
+
+                    <!-- 提示信息 -->
+                    <div class="tip-box">
+                        <i class="fas fa-info-circle tip-icon"></i>
+                        <div class="tip-text">
+                            提现金额将在1-3个工作日内到账，请确保填写的账号信息正确。如需帮助请联系客服。
+                        </div>
+                    </div>
+
+                    <!-- 提交按钮 -->
+                    <button class="submit-btn" onclick="submitWithdraw()">确认提现</button>
+                </div>
+            </div>
+
+            <!-- 明细列表 -->
+            <div style="padding: 0 12px; margin-top: 16px;">
+                <div class="section-title" style="padding: 0; margin-bottom: 10px;">收支明细</div>
+            </div>
+            <div class="detail-list">
+                <div class="detail-item">
+                    <div class="detail-left">
+                        <div class="detail-icon income"><i class="fas fa-coins"></i></div>
+                        <div>
+                            <div class="detail-title">订单收入</div>
+                            <div class="detail-time">2026-08-19 18:30</div>
+                        </div>
+                    </div>
+                    <div class="detail-amount income">+96.00</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-left">
+                        <div class="detail-icon withdraw"><i class="fas fa-arrow-down"></i></div>
+                        <div>
+                            <div class="detail-title">提现到微信</div>
+                            <div class="detail-time">2026-08-18 10:15</div>
+                        </div>
+                    </div>
+                    <div class="detail-amount withdraw">-100.00</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-left">
+                        <div class="detail-icon income"><i class="fas fa-coins"></i></div>
+                        <div>
+                            <div class="detail-title">订单收入</div>
+                            <div class="detail-time">2026-08-17 16:20</div>
+                        </div>
+                    </div>
+                    <div class="detail-amount income">+120.00</div>
+                </div>
+            </div>
+
+            <!-- 提现记录视图 -->
+            <div id="record-view" style="display: none;">
+                <div class="record-list" id="record-list">
+                    <!-- 提现记录由JS动态生成 -->
+                </div>
+            </div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <!-- 银行选择弹窗 -->
+        <div class="bank-modal" id="bank-modal" onclick="closeBankModal(event)">
+            <div class="bank-modal-content" onclick="event.stopPropagation()">
+                <div class="bank-modal-header">
+                    <div class="bank-modal-title">选择开户银行</div>
+                    <div class="bank-modal-close" onclick="closeBankModal()">
+                        <i class="fas fa-times"></i>
+                    </div>
+                </div>
+                <div class="bank-search">
+                    <input type="text" class="bank-search-input" id="bank-search" placeholder="搜索银行名称" oninput="filterBanks()">
+                </div>
+                <div class="bank-list" id="bank-list">
+                    <!-- 银行列表由JS动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 提现成功弹窗 -->
+        <div class="success-modal" id="success-modal">
+            <div class="success-content">
+                <div class="success-icon"><i class="fas fa-check"></i></div>
+                <div class="success-title">提现申请已提交</div>
+                <div class="success-desc" id="success-desc">提现金额 ¥0.00 将在1-3个工作日内到账</div>
+                <button class="success-btn" onclick="closeSuccessModal()">我知道了</button>
+            </div>
+        </div>
+
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        // 银行列表
+        var bankList = [
+            { name: '中国工商银行', color: '#C7000B', short: 'ICBC' },
+            { name: '中国建设银行', color: '#0066B3', short: 'CCB' },
+            { name: '中国农业银行', color: '#009966', short: 'ABC' },
+            { name: '中国银行', color: '#C7000B', short: 'BOC' },
+            { name: '交通银行', color: '#003366', short: 'BCM' },
+            { name: '招商银行', color: '#CC0000', short: 'CMB' },
+            { name: '中国邮政储蓄银行', color: '#006B3C', short: 'PSBC' },
+            { name: '兴业银行', color: '#006699', short: 'CIB' },
+            { name: '浦发银行', color: '#003366', short: 'SPDB' },
+            { name: '中信银行', color: '#E60012', short: 'CITIC' },
+            { name: '光大银行', color: '#5B2C8C', short: 'CEB' },
+            { name: '民生银行', color: '#0052A5', short: 'CMBC' },
+            { name: '平安银行', color: '#00447C', short: 'PAB' },
+            { name: '华夏银行', color: '#D60E1F', short: 'HXB' },
+            { name: '广发银行', color: '#005EB8', short: 'CGB' },
+            { name: '北京银行', color: '#C8161D', short: 'BOB' },
+            { name: '上海银行', color: '#004098', short: 'BOS' },
+            { name: '宁波银行', color: '#006699', short: 'NB' },
+            { name: '江苏银行', color: '#006A8E', short: 'JSB' },
+            { name: '南京银行', color: '#7B1FA2', short: 'NJB' }
+        ];
+
+        var selectedAccountType = null;
+        var selectedBank = null;
+        var availableBalance = 0.00;
+
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+        function goBack() { window.history.back(); }
+
+        function scrollToWithdraw() {
+            document.getElementById('withdraw-form-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function selectAccountType(type) {
+            selectedAccountType = type;
+            document.querySelectorAll('.account-type-item').forEach(function(item) {
+                item.classList.toggle('active', item.dataset.type === type);
+            });
+            
+            var accountForm = document.getElementById('account-form');
+            accountForm.style.display = 'block';
+            
+            document.getElementById('wechat-form').style.display = type === 'wechat' ? 'block' : 'none';
+            document.getElementById('alipay-form').style.display = type === 'alipay' ? 'block' : 'none';
+            document.getElementById('bank-form').style.display = type === 'bank' ? 'block' : 'none';
+        }
+
+        function setMaxAmount() {
+            document.getElementById('withdraw-amount').value = availableBalance.toFixed(2);
+        }
+
+        function updateWithdrawAmount() {}
+
+        function openBankModal() {
+            renderBankList('');
+            document.getElementById('bank-modal').classList.add('show');
+        }
+
+        function closeBankModal(event) {
+            if (event && event.target && event.target.id !== 'bank-modal' && event.type === 'click') {
+                return;
+            }
+            if (!event || event.target.id === 'bank-modal' || !event) {
+                document.getElementById('bank-modal').classList.remove('show');
+            }
+        }
+
+        function renderBankList(keyword) {
+            var list = document.getElementById('bank-list');
+            var filtered = keyword ? bankList.filter(function(b) {
+                return b.name.indexOf(keyword) >= 0 || b.short.toLowerCase().indexOf(keyword.toLowerCase()) >= 0;
+            }) : bankList;
+            
+            list.innerHTML = filtered.map(function(bank) {
+                var isSelected = selectedBank && selectedBank.name === bank.name;
+                return '<div class="bank-item" onclick="selectBank(\'' + bank.name.replace(/'/g, "\\'") + '\')">' +
+                    '<div class="bank-item-icon" style="background:' + bank.color + ';">' + bank.short.substring(0, 2) + '</div>' +
+                    '<div class="bank-item-info"><div class="bank-item-name' + (isSelected ? ' bank-item-selected' : '') + '">' + bank.name + '</div></div>' +
+                    (isSelected ? '<i class="fas fa-check" style="color:#FF6B35;"></i>' : '') +
+                '</div>';
+            }).join('');
+        }
+
+        function filterBanks() {
+            var keyword = document.getElementById('bank-search').value.trim();
+            renderBankList(keyword);
+        }
+
+        function selectBank(bankName) {
+            selectedBank = bankList.find(function(b) { return b.name === bankName; });
+            var display = document.getElementById('bank-display');
+            display.textContent = bankName;
+            display.classList.remove('placeholder');
+            document.getElementById('bank-select').classList.remove('placeholder');
+            document.getElementById('bank-modal').classList.remove('show');
+        }
+
+        function validateForm() {
+            var amount = parseFloat(document.getElementById('withdraw-amount').value);
+            if (!amount || amount <= 0) {
+                alert('请输入有效的提现金额');
+                return false;
+            }
+            if (amount > availableBalance) {
+                alert('提现金额不能超过可用余额');
+                return false;
+            }
+            if (!selectedAccountType) {
+                alert('请选择提现账号类型');
+                return false;
+            }
+            
+            if (selectedAccountType === 'wechat') {
+                var wechatAccount = document.getElementById('wechat-account').value.trim();
+                var wechatName = document.getElementById('wechat-name').value.trim();
+                if (!wechatAccount) { alert('请输入微信账号'); return false; }
+                if (!wechatName) { alert('请输入真实姓名'); return false; }
+            } else if (selectedAccountType === 'alipay') {
+                var alipayAccount = document.getElementById('alipay-account').value.trim();
+                var alipayName = document.getElementById('alipay-name').value.trim();
+                if (!alipayAccount) { alert('请输入支付宝账号'); return false; }
+                if (!alipayName) { alert('请输入真实姓名'); return false; }
+            } else if (selectedAccountType === 'bank') {
+                if (!selectedBank) { alert('请选择开户银行'); return false; }
+                var bankCardNo = document.getElementById('bank-card-no').value.trim();
+                var bankName = document.getElementById('bank-name').value.trim();
+                if (!bankCardNo) { alert('请输入银行卡号'); return false; }
+                if (!bankName) { alert('请输入持卡人姓名'); return false; }
+                if (!/^\d{16,19}$/.test(bankCardNo)) { alert('请输入正确的银行卡号'); return false; }
+            }
+            return true;
+        }
+
+        function submitWithdraw() {
+            if (availableBalance <= 0) {
+                alert('当前无可提现余额');
+                return;
+            }
+            if (!validateForm()) return;
+            
+            var amount = document.getElementById('withdraw-amount').value;
+            var typeNames = { wechat: '微信', alipay: '支付宝', bank: '银行' };
+            var desc = '提现金额 ¥' + amount + ' 将在1-3个工作日内到账';
+            document.getElementById('success-desc').textContent = desc;
+            document.getElementById('success-modal').classList.add('show');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('success-modal').classList.remove('show');
+            resetForm();
+        }
+
+        function resetForm() {
+            document.getElementById('withdraw-amount').value = '';
+            document.getElementById('account-form').style.display = 'none';
+            document.getElementById('wechat-form').style.display = 'none';
+            document.getElementById('alipay-form').style.display = 'none';
+            document.getElementById('bank-form').style.display = 'none';
+            document.querySelectorAll('.account-type-item').forEach(function(item) {
+                item.classList.remove('active');
+            });
+            selectedAccountType = null;
+            selectedBank = null;
+            ['wechat-account', 'wechat-name', 'alipay-account', 'alipay-name', 'bank-card-no', 'bank-name', 'bank-branch'].forEach(function(id) {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('bank-display').textContent = '请选择开户银行';
+            document.getElementById('bank-display').classList.add('placeholder');
+        }
+
+        // 提现记录数据
+        var withdrawRecords = [
+            {
+                id: 1,
+                type: 'wechat',
+                typeName: '微信支付',
+                account: '138****8888',
+                amount: 100.00,
+                status: 'success',
+                statusText: '已到账',
+                time: '2026-08-18 10:15',
+                icon: 'fab fa-weixin'
+            },
+            {
+                id: 2,
+                type: 'alipay',
+                typeName: '支付宝',
+                account: 'zhang****@163.com',
+                amount: 200.00,
+                status: 'processing',
+                statusText: '处理中',
+                time: '2026-08-15 14:30',
+                icon: 'fab fa-alipay'
+            },
+            {
+                id: 3,
+                type: 'bank',
+                typeName: '工商银行',
+                account: '6222****1234',
+                amount: 500.00,
+                status: 'pending',
+                statusText: '待审核',
+                time: '2026-08-12 09:20',
+                icon: 'fas fa-university'
+            },
+            {
+                id: 4,
+                type: 'wechat',
+                typeName: '微信支付',
+                account: '138****8888',
+                amount: 50.00,
+                status: 'failed',
+                statusText: '已退回',
+                time: '2026-08-10 16:45',
+                icon: 'fab fa-weixin'
+            }
+        ];
+
+        function switchTab(tab) {
+            var tabWithdraw = document.getElementById('tab-withdraw');
+            var tabRecord = document.getElementById('tab-record');
+            var withdrawSection = document.getElementById('withdraw-form-section');
+            var recordView = document.getElementById('record-view');
+            var detailList = document.querySelector('.detail-list');
+            var detailTitle = document.querySelector('.content-area > div:nth-child(4)');
+            
+            if (tab === 'withdraw') {
+                tabWithdraw.classList.add('active');
+                tabRecord.classList.remove('active');
+                withdrawSection.style.display = 'block';
+                recordView.style.display = 'none';
+                if (detailList) detailList.style.display = 'block';
+                if (detailTitle) detailTitle.style.display = 'block';
+            } else {
+                tabWithdraw.classList.remove('active');
+                tabRecord.classList.add('active');
+                withdrawSection.style.display = 'none';
+                recordView.style.display = 'block';
+                if (detailList) detailList.style.display = 'none';
+                if (detailTitle) detailTitle.style.display = 'none';
+                renderWithdrawRecords();
+            }
+        }
+
+        function renderWithdrawRecords() {
+            var list = document.getElementById('record-list');
+            if (withdrawRecords.length === 0) {
+                list.innerHTML = '<div class="empty-record">' +
+                    '<div class="empty-record-icon"><i class="fas fa-inbox"></i></div>' +
+                    '<div class="empty-record-text">暂无提现记录</div>' +
+                    '<div class="empty-record-hint">完成订单后即可申请提现</div>' +
+                '</div>';
+                return;
+            }
+            
+            list.innerHTML = withdrawRecords.map(function(record) {
+                var statusClass = 'status-tag ' + record.status;
+                var iconClass = 'record-icon ' + record.type;
+                return '<div class="record-item">' +
+                    '<div class="' + iconClass + '"><i class="' + record.icon + '"></i></div>' +
+                    '<div class="record-info">' +
+                        '<div class="record-title">提现到' + record.typeName + '</div>' +
+                        '<div class="record-account">账号：' + record.account + '</div>' +
+                        '<div class="record-time">' + record.time + '</div>' +
+                    '</div>' +
+                    '<div class="record-right">' +
+                        '<div class="record-amount">-¥' + record.amount.toFixed(2) + '</div>' +
+                        '<div class="record-status"><span class="' + statusClass + '">' + record.statusText + '</span></div>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function showWithdrawHistory() {
+            switchTab('record');
+        }
+
+        // 页面加载时检查URL参数
+        window.addEventListener('DOMContentLoaded', function() {
+            var params = new URLSearchParams(window.location.search);
+            var tab = params.get('tab');
+            if (tab === 'record') {
+                switchTab('record');
+            }
+        });
+    </script>
+</body>
+</html>

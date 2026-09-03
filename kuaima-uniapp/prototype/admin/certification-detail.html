@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 认证详情</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .detail-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .detail-header-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+        }
+        .detail-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        .detail-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .detail-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .detail-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .detail-sub {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .detail-id {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--primary);
+            background: var(--primary-light);
+            padding: 3px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 6px;
+        }
+        .status-info-row {
+            display: flex;
+            gap: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .status-info-item {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            background: var(--bg-page);
+        }
+        .status-info-item .value {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .status-info-item .label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .section-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+        }
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title i { color: var(--primary); }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px 24px;
+        }
+        .info-item { display: flex; flex-direction: column; gap: 4px; }
+        .info-label { font-size: 13px; color: var(--text-muted); }
+        .info-value { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+        .doc-list { display: flex; flex-direction: column; gap: 12px; }
+        .doc-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            transition: all 0.2s;
+        }
+        .doc-item:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        .doc-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .doc-icon.id-front { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+        .doc-icon.id-back { background: linear-gradient(135deg, #10B981, #059669); }
+        .doc-icon.biz-license { background: linear-gradient(135deg, #F59E0B, #D97706); }
+        .doc-info { flex: 1; }
+        .doc-name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+        .doc-meta { font-size: 12px; color: var(--text-muted); }
+        .doc-actions { display: flex; gap: 8px; }
+        .timeline-list { display: flex; flex-direction: column; gap: 0; }
+        .timeline-item {
+            display: flex;
+            gap: 14px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .timeline-item:last-child { border-bottom: none; }
+        .timeline-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+        .timeline-dot.success { background: #ECFDF5; color: var(--success); }
+        .timeline-dot.danger { background: #FEF2F2; color: var(--danger); }
+        .timeline-dot.info { background: #EFF6FF; color: var(--secondary); }
+        .timeline-content { flex: 1; }
+        .timeline-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+        .timeline-time { font-size: 12px; color: var(--text-muted); }
+        .audit-actions {
+            position: sticky;
+            bottom: 16px;
+            display: flex;
+            gap: 12px;
+            padding: 16px 24px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .audit-actions .btn { flex: 1; justify-content: center; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+        <div class="admin-sidebar"></div>
+        <div class="admin-main">
+            <div class="admin-topbar"></div>
+            <div class="admin-content">
+                <div class="breadcrumb">
+                    <a href="../admin_index.html">首页</a> &rsaquo; <a href="certification.html">认证审核</a> &rsaquo; <span>认证详情</span>
+                </div>
+
+                <div class="detail-wrapper">
+                    <div class="detail-header-card">
+                        <div class="detail-header-top">
+                            <div class="detail-header-left">
+                                <div class="detail-avatar" style="background:linear-gradient(135deg,#FF8C42,#FF6B35);">张</div>
+                                <div>
+                                    <div class="detail-name">张建国 <span class="status-badge warning" style="margin-left:8px;">待审核</span></div>
+                                    <div class="detail-sub">零工认证 · 提交于 2024-08-21 18:30</div>
+                                    <span class="detail-id">RZ20240821001</span>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn btn-outline" onclick="history.back()"><i class="fas fa-arrow-left"></i> 返回</button>
+                                <button class="btn btn-outline"><i class="fas fa-print"></i> 打印</button>
+                            </div>
+                        </div>
+
+                        <div class="status-info-row">
+                            <div class="status-info-item">
+                                <div class="value" style="color:var(--warning);">等待中</div>
+                                <div class="label">当前状态</div>
+                            </div>
+                            <div class="status-info-item">
+                                <div class="value">138****8562</div>
+                                <div class="label">联系手机</div>
+                            </div>
+                            <div class="status-info-item">
+                                <div class="value">1次</div>
+                                <div class="label">认证次数</div>
+                            </div>
+                            <div class="status-info-item">
+                                <div class="value">0分</div>
+                                <div class="label">信用评分</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-title"><i class="fas fa-user-circle"></i> 申请人信息</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">真实姓名</span>
+                                <span class="info-value">张建国</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">手机号码</span>
+                                <span class="info-value">138****8562</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">身份证号</span>
+                                <span class="info-value">510***********1234</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">性别</span>
+                                <span class="info-value">男</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">出生日期</span>
+                                <span class="info-value">1990-05-18</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">籍贯</span>
+                                <span class="info-value">四川省成都市</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">认证类型</span>
+                                <span class="info-value"><span class="type-badge" style="background:#EFF6FF;color:var(--secondary); padding:2px 8px; border-radius:10px; font-size:12px;">零工实名认证</span></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">提交时间</span>
+                                <span class="info-value">2024-08-21 18:30</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-title"><i class="fas fa-file-alt"></i> 证件材料</div>
+                        <div class="doc-list">
+                            <div class="doc-item">
+                                <div class="doc-icon id-front"><i class="fas fa-id-card"></i></div>
+                                <div class="doc-info">
+                                    <div class="doc-name">身份证正面（人像面）</div>
+                                    <div class="doc-meta">身份证正面.jpg · 1.2MB · 2024-08-21 18:28 上传</div>
+                                </div>
+                                <div class="doc-actions">
+                                    <button class="btn btn-outline btn-sm"><i class="fas fa-eye"></i> 预览</button>
+                                    <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载</button>
+                                </div>
+                            </div>
+                            <div class="doc-item">
+                                <div class="doc-icon id-back"><i class="fas fa-id-card"></i></div>
+                                <div class="doc-info">
+                                    <div class="doc-name">身份证反面（国徽面）</div>
+                                    <div class="doc-meta">身份证反面.jpg · 1.1MB · 2024-08-21 18:28 上传</div>
+                                </div>
+                                <div class="doc-actions">
+                                    <button class="btn btn-outline btn-sm"><i class="fas fa-eye"></i> 预览</button>
+                                    <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载</button>
+                                </div>
+                            </div>
+                            <div class="doc-item">
+                                <div class="doc-icon" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9);"><i class="fas fa-user-check"></i></div>
+                                <div class="doc-info">
+                                    <div class="doc-name">手持身份证照片</div>
+                                    <div class="doc-meta">手持照.jpg · 0.9MB · 2024-08-21 18:28 上传</div>
+                                </div>
+                                <div class="doc-actions">
+                                    <button class="btn btn-outline btn-sm"><i class="fas fa-eye"></i> 预览</button>
+                                    <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 下载</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-title"><i class="fas fa-history"></i> 操作记录</div>
+                        <div class="timeline-list">
+                            <div class="timeline-item">
+                                <div class="timeline-dot"><i class="fas fa-clock"></i></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">提交认证申请</div>
+                                    <div class="timeline-time">2024-08-21 18:30 · 系统自动</div>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-dot info"><i class="fas fa-user"></i></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">创建认证记录</div>
+                                    <div class="timeline-time">2024-08-21 18:30 · 系统自动</div>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-dot success"><i class="fas fa-check-circle"></i></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">信息初步校验通过</div>
+                                    <div class="timeline-time">2024-08-21 18:31 · 系统自动</div>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-dot"><i class="fas fa-hourglass-half"></i></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">等待人工审核</div>
+                                    <div class="timeline-time">2024-08-21 18:31 · 系统自动</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="audit-actions">
+                        <button class="btn btn-outline" onclick="history.back()">取消</button>
+                        <button class="btn btn-danger" onclick="showRejectForm()"><i class="fas fa-times-circle"></i> 拒绝认证</button>
+                        <button class="btn btn-primary" onclick="approveCert()"><i class="fas fa-check-circle"></i> 通过认证</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <div class="modal-overlay" id="rejectModal" style="position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:1000;">
+        <div style="background:#fff; border-radius:12px; padding:24px; width:420px; max-width:calc(100% - 32px); box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+            <h3 style="margin:0 0 16px; font-size:16px;">拒绝认证</h3>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:13px; color:var(--text-secondary); margin-bottom:6px; display:block;">拒绝原因 <span style="color:var(--danger);">*</span></label>
+                <select class="form-select" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:6px; font-size:14px;">
+                    <option value="">请选择</option>
+                    <option value="id_mismatch">身份证信息不匹配</option>
+                    <option value="id_expired">身份证已过期</option>
+                    <option value="id_unclear">证件照片不清晰</option>
+                    <option value="id_incomplete">证件材料不完整</option>
+                    <option value="other">其他原因</option>
+                </select>
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="font-size:13px; color:var(--text-secondary); margin-bottom:6px; display:block;">详细说明</label>
+                <textarea class="form-textarea" placeholder="请详细说明拒绝原因" style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:6px; font-size:14px; min-height:80px; resize:vertical;"></textarea>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button class="btn btn-outline" onclick="hideRejectForm()">取消</button>
+                <button class="btn btn-danger" onclick="submitReject()">确认拒绝</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        function showRejectForm() {
+            document.getElementById('rejectModal').style.display = 'flex';
+        }
+        function hideRejectForm() {
+            document.getElementById('rejectModal').style.display = 'none';
+        }
+        function approveCert() {
+            alert('认证审核已通过！');
+            history.back();
+        }
+        function submitReject() {
+            alert('已拒绝该认证申请！');
+            hideRejectForm();
+            history.back();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 公告管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .type-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .type-system {
+            background: #EFF6FF;
+            color: var(--secondary);
+        }
+        .type-activity {
+            background: #FFF8E6;
+            color: var(--primary);
+        }
+        .type-policy {
+            background: #ECFDF5;
+            color: var(--success);
+        }
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+        .action-btns .btn {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .add-btn-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">公告管理</h1>
+                <p class="page-desc">系统公告、消息推送管理</p>
+            </div>
+
+            <div class="card">
+                <div class="filter-bar">
+                    <div class="filter-item">
+                        <span>状态</span>
+                        <select id="filterStatus" onchange="renderNotices()">
+                            <option value="">全部</option>
+                            <option value="published">已发布</option>
+                            <option value="draft">草稿</option>
+                            <option value="offline">已下架</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>发布时间</span>
+                        <input type="date" id="filterStart" style="width:140px;" onchange="renderNotices()">
+                        <span>至</span>
+                        <input type="date" id="filterEnd" style="width:140px;" onchange="renderNotices()">
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="renderNotices()"><i class="fas fa-search"></i> 查询</button>
+                    <button class="btn btn-outline btn-sm" onclick="resetFilter()"><i class="fas fa-rotate-left"></i> 重置</button>
+                </div>
+
+                <div class="add-btn-bar">
+                    <div style="font-size:13px; color:var(--text-secondary);">共 <span id="totalCount" style="color:var(--primary); font-weight:600;">8</span> 条公告</div>
+                    <button class="btn btn-primary" onclick="openNoticeModal()">
+                        <i class="fas fa-plus"></i> 新建公告
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>公告ID</th>
+                                <th>标题</th>
+                                <th>类型</th>
+                                <th>发布人</th>
+                                <th>发布时间</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="noticeTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <div class="pagination-info" id="paginationInfo">共 8 条记录，当前显示 1-8 条</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" disabled><i class="fas fa-chevron-left" style="font-size:10px;"></i></button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn"><i class="fas fa-chevron-right" style="font-size:10px;"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="noticeModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:600px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:18px; font-weight:600;" id="modalTitle">新建公告</span>
+                <div class="modal-close" onclick="closeNoticeModal()" style="cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted);">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div style="padding:24px; overflow-y:auto; flex:1;">
+                <div class="form-group">
+                    <label class="form-label">公告标题</label>
+                    <input type="text" class="form-input" id="n_title" placeholder="请输入公告标题">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">公告类型</label>
+                    <select class="form-input form-select" id="n_type">
+                        <option value="system">系统公告</option>
+                        <option value="activity">活动通知</option>
+                        <option value="policy">政策法规</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">发布范围</label>
+                    <select class="form-input form-select" id="n_scope">
+                        <option>全部用户</option>
+                        <option>仅零工</option>
+                        <option>仅老板</option>
+                        <option>已实名用户</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">公告内容</label>
+                    <textarea class="form-input form-textarea" id="n_content" placeholder="请输入公告详细内容..." style="min-height:120px;"></textarea>
+                </div>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+                <button class="btn btn-outline" onclick="closeNoticeModal()">取消</button>
+                <button class="btn btn-secondary" onclick="saveNotice('draft')">存为草稿</button>
+                <button class="btn btn-primary" onclick="saveNotice('published')">立即发布</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const notices = [
+            { id: 'N001', title: '关于平台系统升级维护的通知', type: 'system', publisher: '系统管理员', publishTime: '2024-06-15 10:30', status: 'published', views: 12580 },
+            { id: 'N002', title: '端午节放假安排及招工调整通知', type: 'policy', publisher: '运营部-李经理', publishTime: '2024-06-10 15:00', status: 'published', views: 8920 },
+            { id: 'N003', title: '夏季高温补贴活动火热进行中', type: 'activity', publisher: '市场部-王推广', publishTime: '2024-06-01 09:00', status: 'published', views: 15630 },
+            { id: 'N004', title: '新用户注册福利：送50积分礼包', type: 'activity', publisher: '运营部-陈运营', publishTime: '2024-05-20 14:30', status: 'published', views: 22450 },
+            { id: 'N005', title: '实名认证流程优化说明', type: 'system', publisher: '技术部-张工', publishTime: '2024-05-15 11:00', status: 'offline', views: 6780 },
+            { id: 'N006', title: '关于加强平台安全管理的公告', type: 'policy', publisher: '合规部-赵总监', publishTime: '2024-05-01 16:00', status: 'offline', views: 9340 },
+            { id: 'N007', title: '中秋国庆双节活动策划方案', type: 'activity', publisher: '市场部-刘策划', publishTime: '-', status: 'draft', views: 0 },
+            { id: 'N008', title: '关于零工等级评定新标准（草稿）', type: 'policy', publisher: '运营部-孙主管', publishTime: '-', status: 'draft', views: 0 }
+        ];
+
+        let editingId = null;
+
+        function typeMap(type) {
+            return { system: '系统', activity: '活动', policy: '政策' }[type] || type;
+        }
+
+        function statusMap(status) {
+            return { published: '已发布', draft: '草稿', offline: '已下架' }[status] || status;
+        }
+
+        function renderNotices() {
+            const status = document.getElementById('filterStatus').value;
+            const start = document.getElementById('filterStart').value;
+            const end = document.getElementById('filterEnd').value;
+
+            let filtered = notices;
+            if (status) filtered = filtered.filter(n => n.status === status);
+            if (start) filtered = filtered.filter(n => n.publishTime >= start);
+            if (end) filtered = filtered.filter(n => n.publishTime <= end + ' 23:59');
+
+            const tbody = document.getElementById('noticeTableBody');
+            tbody.innerHTML = filtered.map(n => {
+                const typeClass = { system: 'type-system', activity: 'type-activity', policy: 'type-policy' }[n.type];
+                const statusClass = { published: 'success', draft: 'warning', offline: 'default' }[n.status];
+                return `
+                    <tr>
+                        <td style="font-family:monospace; color:var(--primary);">${n.id}</td>
+                        <td style="max-width:320px;">
+                            <div style="font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n.title}</div>
+                            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">阅读量 ${n.views.toLocaleString()}</div>
+                        </td>
+                        <td><span class="type-tag ${typeClass}"><i class="fas fa-tag" style="font-size:10px;"></i> ${typeMap(n.type)}</span></td>
+                        <td>${n.publisher}</td>
+                        <td>${n.publishTime}</td>
+                        <td><span class="status-badge ${statusClass}">${statusMap(n.status)}</span></td>
+                        <td>
+                            <div class="action-btns">
+                                ${n.status === 'draft' ? '<button class="btn btn-primary btn-sm" onclick="publishNotice(\'' + n.id + '\')">发布</button>' : ''}
+                                <button class="btn btn-outline btn-sm" onclick="editNotice('${n.id}')">编辑</button>
+                                ${n.status === 'published' ? '<button class="btn btn-secondary btn-sm" onclick="offlineNotice(\'' + n.id + '\')">下架</button>' : ''}
+                                <button class="btn btn-danger btn-sm" onclick="deleteNotice('${n.id}')">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('totalCount').textContent = filtered.length;
+            document.getElementById('paginationInfo').textContent = `共 ${filtered.length} 条记录，当前显示 1-${filtered.length} 条`;
+        }
+
+        function resetFilter() {
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterStart').value = '';
+            document.getElementById('filterEnd').value = '';
+            renderNotices();
+        }
+
+        function openNoticeModal() {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = '新建公告';
+            document.getElementById('n_title').value = '';
+            document.getElementById('n_type').value = 'system';
+            document.getElementById('n_scope').value = '全部用户';
+            document.getElementById('n_content').value = '';
+            document.getElementById('noticeModal').style.display = 'flex';
+        }
+
+        function editNotice(id) {
+            const n = notices.find(x => x.id === id);
+            if (!n) return;
+            editingId = id;
+            document.getElementById('modalTitle').textContent = '编辑公告';
+            document.getElementById('n_title').value = n.title;
+            document.getElementById('n_type').value = n.type;
+            document.getElementById('n_scope').value = '全部用户';
+            document.getElementById('n_content').value = '';
+            document.getElementById('noticeModal').style.display = 'flex';
+        }
+
+        function closeNoticeModal() {
+            document.getElementById('noticeModal').style.display = 'none';
+        }
+
+        function saveNotice(status) {
+            const title = document.getElementById('n_title').value;
+            if (!title) { alert('请输入公告标题'); return; }
+            const data = {
+                title: title,
+                type: document.getElementById('n_type').value,
+                publisher: '当前管理员',
+                publishTime: status === 'published' ? new Date().toISOString().slice(0, 16).replace('T', ' ') : '-',
+                status: status,
+                views: 0
+            };
+            if (editingId) {
+                const idx = notices.findIndex(x => x.id === editingId);
+                notices[idx] = { ...notices[idx], ...data };
+            } else {
+                const newId = 'N' + String(notices.length + 1).padStart(3, '0');
+                notices.push({ id: newId, ...data });
+            }
+            closeNoticeModal();
+            renderNotices();
+        }
+
+        function publishNotice(id) {
+            const n = notices.find(x => x.id === id);
+            if (!n) return;
+            n.status = 'published';
+            n.publishTime = new Date().toISOString().slice(0, 16).replace('T', ' ');
+            renderNotices();
+        }
+
+        function offlineNotice(id) {
+            if (!confirm('确定要下架此公告吗？')) return;
+            const n = notices.find(x => x.id === id);
+            if (!n) return;
+            n.status = 'offline';
+            renderNotices();
+        }
+
+        function deleteNotice(id) {
+            if (!confirm('确定要删除此公告吗？')) return;
+            const idx = notices.findIndex(x => x.id === id);
+            if (idx > -1) notices.splice(idx, 1);
+            renderNotices();
+        }
+
+        renderNotices();
+    </script>
+</body>
+</html>

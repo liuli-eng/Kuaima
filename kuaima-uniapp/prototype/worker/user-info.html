@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人信息 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame { width: 390px; height: 844px; background: #f5f5f5; overflow: hidden; position: relative; border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a; }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .avatar-section { background: #fff; padding: 24px 16px; text-align: center; }
+        .avatar-circle { width: 72px; height: 72px; border-radius: 50%; background: #FFE4B5; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+        .avatar-circle i { font-size: 28px; color: #FF6B35; }
+        .edit-badge { position: absolute; bottom: 0; right: 0; width: 24px; height: 24px; background: #FF6B35; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; }
+        .avatar-label { font-size: 12px; color: #666; cursor: pointer; }
+        .form-card { background: #fff; margin: 12px 16px; border-radius: 12px; overflow: hidden; }
+        .form-item { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f5f5f5; }
+        .form-item:last-child { border-bottom: none; }
+        .form-label { font-size: 14px; color: #333; width: 90px; }
+        .form-value { flex: 1; font-size: 14px; color: #666; }
+        .form-value.placeholder { color: #ccc; }
+        .form-arrow { color: #ddd; font-size: 12px; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar"><span>19:53</span><div class="flex items-center gap-1"><i class="fas fa-signal text-sm"></i><i class="fas fa-wifi text-sm"></i><i class="fas fa-battery-full text-sm"></i></div></div>
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+            <div class="nav-title">个人信息</div>
+            <div style="width:32px;"></div>
+        </div>
+        <div class="overflow-y-auto" style="height: calc(100% - 97px - 16px);">
+            <div class="avatar-section" onclick="alert('更换头像')">
+                <div class="avatar-circle">
+                    <i class="fas fa-user"></i>
+                    <div class="edit-badge"><i class="fas fa-camera"></i></div>
+                </div>
+                <div class="avatar-label">点击更换头像</div>
+            </div>
+            <div class="form-card">
+                <div class="form-item"><span class="form-label">昵称</span><span class="form-value">晴时见禾</span><i class="fas fa-chevron-right form-arrow"></i></div>
+                <div class="form-item"><span class="form-label">手机号</span><span class="form-value">138****5678</span><i class="fas fa-chevron-right form-arrow"></i></div>
+                <div class="form-item"><span class="form-label">性别</span><span class="form-value">男</span><i class="fas fa-chevron-right form-arrow"></i></div>
+                <div class="form-item"><span class="form-label">生日</span><span class="form-value">1990-01-01</span><i class="fas fa-chevron-right form-arrow"></i></div>
+                <div class="form-item"><span class="form-label">居住地</span><span class="form-value">上海市浦东新区</span><i class="fas fa-chevron-right form-arrow"></i></div>
+            </div>
+            <div class="form-card">
+                <div class="form-item"><span class="form-label">擅长工种</span><span class="form-value">分拣打包、搬运装卸</span><i class="fas fa-chevron-right form-arrow"></i></div>
+                <div class="form-item"><span class="form-label">工作年限</span><span class="form-value">3年</span><i class="fas fa-chevron-right form-arrow"></i></div>
+                <div class="form-item"><span class="form-label">是否接受夜班</span><span class="form-value">是</span><i class="fas fa-chevron-right form-arrow"></i></div>
+                <div class="form-item"><span class="form-label">个人简介</span><span class="form-value placeholder">介绍一下自己...</span><i class="fas fa-chevron-right form-arrow"></i></div>
+            </div>
+        </div>
+        <div class="page-indicator"></div>
+    </div>
+    <script>function goBack(){window.history.back();}</script>
+</body>
+</html>

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务详情 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #f5f5f5; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #f0f0f0; position: absolute; top: 47px; left: 0; right: 0; height: 52px; z-index: 10; }
+        .nav-back { display: flex; align-items: center; cursor: pointer; width: 32px; height: 32px; }
+        .nav-right { display: flex; align-items: center; gap: 8px; }
+        .nav-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .content-area { position: absolute; top: 99px; left: 0; right: 0; bottom: 34px; overflow-y: auto; background: #f5f5f5; }
+        .content-area::-webkit-scrollbar { display: none; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        
+        /* Toast */
+        .toast {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85); color: white;
+            padding: 16px 24px; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+        .toast-icon {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, #52C41A, #73D13D);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px;
+        }
+        .toast-text { font-size: 14px; text-align: center; }
+        
+        /* 头部区域 */
+        .hero-section {
+            background: linear-gradient(135deg, #722ED1, #9254DE);
+            padding: 20px 16px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-section::before {
+            content: ''; position: absolute; top: -40px; right: -40px;
+            width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%;
+        }
+        .hero-section::after {
+            content: ''; position: absolute; bottom: -30px; left: 20px;
+            width: 80px; height: 80px; background: rgba(255,255,255,0.08); border-radius: 50%;
+        }
+        .hero-tag {
+            display: inline-block; padding: 4px 12px;
+            background: rgba(255,255,255,0.2); border-radius: 12px;
+            font-size: 12px; margin-bottom: 8px;
+        }
+        .hero-title {
+            font-size: 20px; font-weight: 700; margin-bottom: 6px; position: relative; z-index: 1;
+        }
+        .hero-desc {
+            font-size: 13px; opacity: 0.9; position: relative; z-index: 1;
+        }
+        .hero-stats {
+            display: flex; gap: 16px; margin-top: 14px; position: relative; z-index: 1;
+        }
+        .hero-stat {
+            display: flex; align-items: center; gap: 4px;
+            background: rgba(255,255,255,0.15);
+            padding: 6px 12px; border-radius: 16px; font-size: 12px;
+        }
+        
+        /* 进度步骤 */
+        .steps-section { background: #fff; margin: 12px; border-radius: 12px; padding: 16px; }
+        .section-label {
+            font-size: 14px; font-weight: 600; color: #333; margin-bottom: 14px;
+        }
+        .step-item {
+            display: flex; gap: 12px; margin-bottom: 14px; position: relative;
+        }
+        .step-item:last-child { margin-bottom: 0; }
+        .step-number {
+            width: 24px; height: 24px; flex-shrink: 0;
+            background: linear-gradient(135deg, #722ED1, #9254DE);
+            color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 600;
+        }
+        .step-content { flex: 1; }
+        .step-title { font-size: 14px; color: #333; font-weight: 500; margin-bottom: 4px; }
+        .step-desc { font-size: 12px; color: #666; line-height: 1.6; }
+        .step-connector {
+            position: absolute; left: 11px; top: 24px;
+            width: 2px; height: calc(100% - 8px);
+            background: #f0f0f0;
+        }
+        
+        /* 视频/演示区域 */
+        .demo-section {
+            background: #fff; margin: 12px; border-radius: 12px; overflow: hidden;
+        }
+        .demo-header {
+            padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .demo-title { font-size: 14px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; }
+        .demo-duration { font-size: 12px; color: #999; }
+        .demo-video {
+            position: relative; height: 160px;
+            background: linear-gradient(135deg, #1a1a1a, #333);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .play-btn {
+            width: 56px; height: 56px; background: rgba(255,255,255,0.2);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 24px; backdrop-filter: blur(4px);
+        }
+        .demo-caption {
+            position: absolute; bottom: 10px; left: 16px;
+            color: white; font-size: 13px;
+        }
+        
+        /* 知识卡片 */
+        .knowledge-card {
+            background: #fff; margin: 12px; border-radius: 12px; overflow: hidden;
+        }
+        .knowledge-item {
+            padding: 14px 16px; border-bottom: 1px solid #f5f5f5;
+            display: flex; align-items: flex-start; gap: 10px;
+        }
+        .knowledge-item:last-child { border-bottom: none; }
+        .knowledge-icon {
+            width: 32px; height: 32px; flex-shrink: 0;
+            background: #FFF8F5; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: #FF6B35; font-size: 14px;
+        }
+        .knowledge-content { flex: 1; }
+        .knowledge-title { font-size: 14px; color: #333; font-weight: 500; margin-bottom: 4px; }
+        .knowledge-desc { font-size: 12px; color: #666; line-height: 1.6; }
+        
+        /* 小测验 */
+        .quiz-section {
+            background: #fff; margin: 12px; border-radius: 12px; padding: 16px;
+        }
+        .quiz-title {
+            font-size: 15px; font-weight: 600; color: #333; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .quiz-question {
+            font-size: 14px; color: #333; margin-bottom: 12px; line-height: 1.6;
+        }
+        .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+        .quiz-option {
+            padding: 12px 14px; border: 1.5px solid #e8e8e8; border-radius: 10px;
+            font-size: 14px; color: #333; cursor: pointer;
+            display: flex; align-items: center; gap: 10px;
+            transition: all 0.2s;
+        }
+        .quiz-option:hover { border-color: #722ED1; }
+        .quiz-option.selected { border-color: #722ED1; background: #F9F0FF; }
+        .quiz-option.correct { border-color: #52C41A; background: #F6FFED; color: #52C41A; }
+        .quiz-option.wrong { border-color: #FF4D4F; background: #FFF2F0; color: #FF4D4F; }
+        .option-label {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: #f5f5f5; color: #999;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 600;
+        }
+        .quiz-option.selected .option-label { background: #722ED1; color: white; }
+        .quiz-option.correct .option-label { background: #52C41A; color: white; }
+        .quiz-option.wrong .option-label { background: #FF4D4F; color: white; }
+        
+        /* 底部按钮 */
+        .bottom-section {
+            padding: 20px 12px 30px;
+        }
+        .complete-btn {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, #722ED1, #9254DE);
+            color: white; border: none; border-radius: 24px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 4px 20px rgba(114, 46, 209, 0.3);
+        }
+        .complete-btn:disabled {
+            opacity: 0.5; cursor: not-allowed;
+        }
+        .complete-btn.completed {
+            background: #52C41A;
+        }
+        
+        /* 状态徽章 */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 10px; border-radius: 12px;
+            font-size: 12px; font-weight: 500;
+        }
+        .badge-completed { background: #F6FFED; color: #52C41A; }
+        .badge-progress { background: #E6F7FF; color: #1890FF; }
+        .badge-pending { background: #FFF7E6; color: #FA8C16; }
+        .badge-locked { background: #f5f5f5; color: #999; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-chevron-left text-gray-700"></i>
+            </div>
+            <div style="font-size: 17px; font-weight: 600; color: #333; position: absolute; left: 50%; transform: translateX(-50%);">任务学习</div>
+            <div class="nav-right">
+                <div class="nav-btn" onclick="alert('帮助')">
+                    <i class="fas fa-question-circle text-gray-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area" id="contentArea">
+            <!-- 内容由JS动态生成 -->
+        </div>
+
+        <div class="page-indicator"></div>
+
+        <!-- Toast提示 -->
+        <div class="toast" id="toast">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-text">恭喜完成任务<br>获得 +40 经验值</div>
+        </div>
+    </div>
+
+    <script>
+        const taskData = {
+            1: {
+                title: '认识接单流程',
+                tag: '新手入门',
+                desc: '了解接单的基本步骤和流程',
+                reward: 20,
+                status: 'completed',
+                statusClass: 'badge-completed',
+                statusText: '已完成',
+                hasVideo: true,
+                videoDuration: '3:25',
+                videoCaption: '接单流程全解析',
+                steps: [
+                    { title: '登录并进入首页', desc: '打开快马日结APP，登录账号后进入首页，可以看到附近的日结岗位列表' },
+                    { title: '筛选合适的岗位', desc: '根据自身技能、距离、薪资等条件筛选岗位，点击岗位卡片查看详细信息' },
+                    { title: '查看任务详情', desc: '在任务详情页了解工作内容、时间、地点、薪资、要求等信息' },
+                    { title: '报名或抢单', desc: '对于报名类岗位点击"报名面试"，抢单类岗位点击"抢新单"按钮' },
+                    { title: '等待雇主确认', desc: '提交申请后等待雇主审核，审核通过后会收到面试通知' },
+                    { title: '按时参加面试', desc: '按照约定时间地点参加面试，面试成功后开始工作' },
+                    { title: '完成工作获得结算', desc: '按要求完成工作内容，工作结束后等待结算，薪资将在规定时间内到账' }
+                ],
+                knowledge: [
+                    { icon: '🎯', title: '选择岗位原则', desc: '优先选择距离近、薪资合理、评价好的岗位，减少沟通成本' },
+                    { icon: '⏰', title: '时间管理', desc: '合理安排面试和工作时间，避免冲突，提前规划路线' },
+                    { icon: '📱', title: '保持联系', desc: '接单后及时与雇主沟通确认细节，保持电话畅通' }
+                ],
+                quiz: {
+                    question: '以下哪个步骤是接单流程的第一步？',
+                    options: [
+                        '直接去工作地点',
+                        '登录APP浏览岗位',
+                        '联系雇主询问薪资',
+                        '等待系统分配任务'
+                    ],
+                    correctIndex: 1
+                }
+            },
+            2: {
+                title: '识别优质订单',
+                tag: '选单技巧',
+                desc: '学会辨别哪些订单更靠谱',
+                reward: 30,
+                status: 'completed',
+                statusClass: 'badge-completed',
+                statusText: '已完成',
+                hasVideo: true,
+                videoDuration: '4:10',
+                videoCaption: '如何筛选靠谱订单',
+                steps: [
+                    { title: '查看岗位标签', desc: '优质订单通常有"保障"、"免服务费"等标签，代表平台官方保障' },
+                    { title: '检查雇主信息', desc: '查看雇主的历史评价、完成订单数、响应速度等指标' },
+                    { title: '对比薪资水平', desc: '了解当地同类型岗位的平均薪资，薪资过高或过低都需警惕' },
+                    { title: '注意工作要求', desc: '仔细阅读工作内容、时间、地点等要求，确保自己能胜任' },
+                    { title: '查看订单数量', desc: '订单数量多的岗位通常更稳定，但也要注意是否存在"刷单"嫌疑' }
+                ],
+                knowledge: [
+                    { icon: '✅', title: '靠谱订单特征', desc: '有保障标签、雇主评分高、薪资合理、描述详细明确' },
+                    { icon: '⚠️', title: '警惕陷阱信号', desc: '薪资异常高、要求模糊、需要押金、联系方式异常等' },
+                    { icon: '🔍', title: '核实信息方法', desc: '通过地图确认地点、搜索雇主信息、查看其他工友评价' }
+                ],
+                quiz: {
+                    question: '以下哪个特征最可能是优质订单？',
+                    options: [
+                        '薪资比市场价高50%以上',
+                        '雇主无评价记录',
+                        '有保障标签且雇主评分高',
+                        '工作地点在偏僻地区'
+                    ],
+                    correctIndex: 2
+                }
+            },
+            3: {
+                title: '模拟接单操作',
+                tag: '实操演练',
+                desc: '实际演练接单的每一步操作',
+                reward: 50,
+                status: 'completed',
+                statusClass: 'badge-completed',
+                statusText: '已完成',
+                hasVideo: true,
+                videoDuration: '5:30',
+                videoCaption: '完整接单操作演示',
+                steps: [
+                    { title: '打开岗位列表', desc: '点击底部"抢日结"进入岗位列表页' },
+                    { title: '筛选目标岗位', desc: '通过筛选按钮选择工种、时间、薪资范围等条件' },
+                    { title: '点击岗位详情', desc: '点击感兴趣的岗位卡片，查看完整的岗位描述' },
+                    { title: '提交报名申请', desc: '点击"报名面试"或"抢新单"按钮提交申请' },
+                    { title: '查看报名状态', desc: '在"订单"页面查看报名状态和进度' },
+                    { title: '确认面试信息', desc: '收到面试通知后，确认时间、地点、联系电话' }
+                ],
+                knowledge: [
+                    { icon: '⚡', title: '抢单技巧', desc: '热门岗位数量有限，建议在发布时第一时间抢单' },
+                    { icon: '📋', title: '报名注意事项', desc: '填写真实信息，上传清晰头像，提高通过率' },
+                    { icon: '🔔', title: '消息提醒', desc: '开启APP推送通知，及时收到报名结果' }
+                ],
+                quiz: {
+                    question: '报名成功后应该做什么？',
+                    options: [
+                        '等待雇主联系，不用理会',
+                        '确认面试时间地点并做好准备',
+                        '直接去工作地点',
+                        '取消报名重新选择'
+                    ],
+                    correctIndex: 1
+                }
+            },
+            4: {
+                title: '与雇主有效沟通',
+                tag: '沟通技巧',
+                desc: '学习如何与雇主进行良好沟通',
+                reward: 40,
+                status: 'progress',
+                statusClass: 'badge-progress',
+                statusText: '进行中',
+                hasVideo: true,
+                videoDuration: '4:45',
+                videoCaption: '有效沟通话术教学',
+                steps: [
+                    { title: '礼貌开场', desc: '通话时先自我介绍，说明是通过快马日结接单的' },
+                    { title: '确认关键信息', desc: '确认工作时间、地点、薪资、联系人等重要信息' },
+                    { title: '提出合理问题', desc: '对不清楚的地方礼貌询问，如工作内容、要求等' },
+                    { title: '表达积极态度', desc: '表现出积极的工作态度，增加雇主好感' },
+                    { title: '确认结束', desc: '通话结束前再次确认时间地点，表示感谢' }
+                ],
+                knowledge: [
+                    { icon: '📞', title: '电话沟通要点', desc: '选择合适时间拨打，语气友好，表达清晰简洁' },
+                    { icon: '💬', title: '消息沟通技巧', desc: '使用礼貌用语，及时回复，避免使用不当言辞' },
+                    { icon: '🤝', title: '面谈注意事项', desc: '穿着整洁准时到达，主动打招呼，展现专业形象' }
+                ],
+                quiz: {
+                    question: '与雇主电话沟通时，以下哪种做法最合适？',
+                    options: [
+                        '直接询问薪资，其他不管',
+                        '礼貌确认信息，表达积极态度',
+                        '只说自己的情况，不听对方',
+                        '催促雇主尽快决定'
+                    ],
+                    correctIndex: 1
+                }
+            },
+            5: {
+                title: '工作中的安全防护',
+                tag: '安全知识',
+                desc: '了解工作中如何保护自身安全',
+                reward: 30,
+                status: 'pending',
+                statusClass: 'badge-pending',
+                statusText: '待学习',
+                hasVideo: true,
+                videoDuration: '3:50',
+                videoCaption: '工作安全防护指南',
+                steps: [
+                    { title: '了解安全风险', desc: '不同岗位有不同的安全风险，需要提前了解并预防' },
+                    { title: '佩戴防护装备', desc: '根据岗位要求佩戴安全帽、手套、护目镜等防护用品' },
+                    { title: '遵守操作规程', desc: '严格按照工作流程和安全规范操作，不违规作业' },
+                    { title: '保持警惕意识', desc: '注意周围环境，发现安全隐患及时报告' },
+                    { title: '紧急情况处理', desc: '了解紧急逃生路线和应急联系方式，遇到危险及时求助' }
+                ],
+                knowledge: [
+                    { icon: '🦺', title: '防护装备使用', desc: '正确穿戴和使用防护装备，定期检查是否完好' },
+                    { icon: '🚨', title: '紧急联系方式', desc: '记住报警电话110、急救电话120、火警电话119' },
+                    { icon: '📋', title: '保险保障', desc: '接单期间享有意外伤害保险，了解保险理赔流程' }
+                ],
+                quiz: {
+                    question: '以下哪项是工作中的正确做法？',
+                    options: [
+                        '为了效率跳过安全检查',
+                        '按要求佩戴防护装备并遵守规程',
+                        '在不熟悉的设备上操作',
+                        '独自处理危险情况'
+                    ],
+                    correctIndex: 1
+                }
+            },
+            6: {
+                title: '处理突发情况',
+                tag: '应急处理',
+                desc: '遇到突发情况时的应对方法',
+                reward: 60,
+                status: 'locked',
+                statusClass: 'badge-locked',
+                statusText: '未解锁',
+                hasVideo: true,
+                videoDuration: '5:15',
+                videoCaption: '突发情况应对实战',
+                steps: [
+                    { title: '保持冷静', desc: '遇到突发情况首先保持冷静，不要惊慌失措' },
+                    { title: '评估情况', desc: '快速判断情况的严重程度和可能的风险' },
+                    { title: '采取紧急措施', desc: '根据情况采取适当的应急措施，如停止操作、撤离等' },
+                    { title: '及时求助', desc: '必要时拨打报警、急救电话，或向周围人求助' },
+                    { title: '保留证据', desc: '事后保存相关证据，如照片、视频、证人联系方式等' },
+                    { title: '上报平台', desc: '及时向快马日结平台反馈情况，申请保险理赔或协助' }
+                ],
+                knowledge: [
+                    { icon: '🛡️', title: '人身安全第一', desc: '任何情况下人身安全最重要，不要冒险处理危险情况' },
+                    { icon: '📸', title: '证据收集', desc: '用手机拍摄现场照片、视频，记录时间地点和经过' },
+                    { icon: '📞', title: '求助热线', desc: '平台客服400-xxx-xxxx，保险理赔专线，24小时在线' }
+                ],
+                quiz: {
+                    question: '遇到工作中的突发危险情况，第一步应该做什么？',
+                    options: [
+                        '继续工作忽略危险',
+                        '保持冷静并评估情况',
+                        '立即逃离现场',
+                        '拍照发朋友圈'
+                    ],
+                    correctIndex: 1
+                }
+            }
+        };
+
+        const taskId = new URLSearchParams(window.location.search).get('id') || 1;
+        const task = taskData[taskId] || taskData[1];
+        let selectedAnswer = -1;
+        let quizAnswered = false;
+
+        function renderPage() {
+            const content = document.getElementById('contentArea');
+            const isCompleted = task.status === 'completed';
+            const isLocked = task.status === 'locked';
+
+            content.innerHTML = `
+                <!-- 头部区域 -->
+                <div class="hero-section">
+                    <span class="hero-tag">${task.tag}</span>
+                    <div class="hero-title">${task.title}</div>
+                    <div class="hero-desc">${task.desc}</div>
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <i class="fas fa-coins"></i>
+                            <span>奖励 +${task.reward}经验</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="status-badge ${task.statusClass}">${task.statusText}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 学习步骤 -->
+                <div class="steps-section">
+                    <div class="section-label">学习步骤</div>
+                    ${task.steps.map((step, idx) => `
+                        <div class="step-item">
+                            <div class="step-number">${idx + 1}</div>
+                            ${idx < task.steps.length - 1 ? '<div class="step-connector"></div>' : ''}
+                            <div class="step-content">
+                                <div class="step-title">${step.title}</div>
+                                <div class="step-desc">${step.desc}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- 视频演示 -->
+                <div class="demo-section">
+                    <div class="demo-header">
+                        <div class="demo-title"><i class="fas fa-play-circle" style="color: #722ED1;"></i> 视频演示</div>
+                        <div class="demo-duration">${task.videoDuration}</div>
+                    </div>
+                    <div class="demo-video" onclick="alert('播放视频：${task.videoCaption}')">
+                        <div class="play-btn"><i class="fas fa-play"></i></div>
+                        <div class="demo-caption">${task.videoCaption}</div>
+                    </div>
+                </div>
+
+                <!-- 知识要点 -->
+                <div class="knowledge-card">
+                    <div class="demo-header" style="border-bottom: none; padding-bottom: 10px;">
+                        <div class="demo-title"><i class="fas fa-lightbulb" style="color: #FA8C16;"></i> 核心知识要点</div>
+                    </div>
+                    ${task.knowledge.map(k => `
+                        <div class="knowledge-item">
+                            <div class="knowledge-icon">${k.icon}</div>
+                            <div class="knowledge-content">
+                                <div class="knowledge-title">${k.title}</div>
+                                <div class="knowledge-desc">${k.desc}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- 小测验 -->
+                <div class="quiz-section">
+                    <div class="quiz-title"><i class="fas fa-question-circle" style="color: #722ED1;"></i> 小测验</div>
+                    <div class="quiz-question">${task.quiz.question}</div>
+                    <div class="quiz-options" id="quizOptions">
+                        ${task.quiz.options.map((opt, idx) => `
+                            <div class="quiz-option" onclick="selectAnswer(${idx})" data-index="${idx}">
+                                <div class="option-label">${String.fromCharCode(65 + idx)}</div>
+                                <span>${opt}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- 底部按钮 -->
+                <div class="bottom-section">
+                    <button class="complete-btn ${isCompleted ? 'completed' : ''}" 
+                            onclick="completeTask()" 
+                            ${isCompleted || isLocked ? 'disabled' : ''}>
+                        ${isLocked ? '🔒 完成前置任务解锁' : isCompleted ? '✓ 已完成' : '完成学习任务'}
+                    </button>
+                </div>
+            `;
+        }
+
+        function selectAnswer(index) {
+            if (quizAnswered) return;
+            selectedAnswer = index;
+            const options = document.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('selected', 'correct', 'wrong'));
+            options.forEach((opt, idx) => {
+                if (idx === task.quiz.correctIndex) {
+                    opt.classList.add('correct');
+                } else if (idx === index) {
+                    opt.classList.add('wrong');
+                }
+            });
+            quizAnswered = true;
+        }
+
+        function completeTask() {
+            if (task.status === 'locked') {
+                alert('请先完成前置任务');
+                return;
+            }
+            if (!quizAnswered) {
+                alert('请先完成小测验');
+                return;
+            }
+            if (selectedAnswer !== task.quiz.correctIndex) {
+                alert('回答不正确，请再试一次');
+                quizAnswered = false;
+                selectedAnswer = -1;
+                renderPage();
+                return;
+            }
+            
+            const toast = document.getElementById('toast');
+            toast.querySelector('.toast-text').innerHTML = `恭喜完成任务<br>获得 +${task.reward} 经验值`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                window.history.back();
+            }, 2000);
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        renderPage();
+    </script>
+</body>
+</html>

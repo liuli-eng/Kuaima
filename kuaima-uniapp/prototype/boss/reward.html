@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>奖励金 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #FFF8E6; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: transparent; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #FFF8E6; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { display: flex; align-items: center; background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); border-radius: 9999px; padding: 3px 6px; gap: 2px; }
+        .nav-btn { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #555; font-size: 10px; }
+        .nav-divider { width: 1px; height: 10px; background: #ddd; }
+        .content { padding: 16px; height: calc(100% - 97px); overflow-y: auto; }
+        .content::-webkit-scrollbar { display: none; }
+        
+        .balance-card {
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            border-radius: 16px;
+            padding: 24px;
+            color: white;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);
+        }
+        .balance-label { font-size: 13px; opacity: 0.9; }
+        .balance-value { font-size: 32px; font-weight: 700; margin-top: 8px; }
+        .balance-actions { display: flex; gap: 12px; margin-top: 16px; }
+        .balance-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .balance-btn:active { background: rgba(255,255,255,0.3); }
+        
+        .income-section {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .income-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 12px; }
+        .income-list { display: flex; flex-direction: column; gap: 12px; }
+        .income-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .income-item:last-child { border-bottom: none; }
+        .income-info { display: flex; align-items: center; gap: 10px; }
+        .income-icon { width: 36px; height: 36px; border-radius: 8px; background: #FFF3E0; display: flex; align-items: center; justify-content: center; }
+        .income-icon i { font-size: 16px; color: #FF6B35; }
+        .income-name { font-size: 14px; color: #333; font-weight: 500; }
+        .income-date { font-size: 12px; color: #999; margin-top: 2px; }
+        .income-amount { font-size: 16px; font-weight: 600; color: #333; }
+        .income-amount.plus { color: #FF6B35; }
+        .income-amount.minus { color: #999; }
+        
+        .tab-switch { display: flex; background: white; border-radius: 10px; padding: 4px; margin-bottom: 12px; }
+        .tab-switch-item { flex: 1; text-align: center; padding: 8px; font-size: 14px; color: #666; cursor: pointer; border-radius: 8px; }
+        .tab-switch-item.active { background: #FF6B35; color: white; font-weight: 600; }
+        
+        .rules-card { background: white; border-radius: 12px; padding: 16px; }
+        .rules-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
+        .rules-item { font-size: 12px; color: #666; line-height: 1.8; }
+        
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; z-index: 10; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar">
+            <span>19:53</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <div class="nav-title">奖励金</div>
+            <div class="nav-right">
+                <div class="nav-btn"><i class="fas fa-ellipsis"></i></div>
+                <div class="nav-divider"></div>
+                <div class="nav-btn"><i class="fas fa-minus"></i></div>
+                <div class="nav-divider"></div>
+                <div class="nav-btn"><i class="fas fa-circle"></i></div>
+            </div>
+        </div>
+        <div class="content">
+            <div class="balance-card">
+                <div class="balance-label">我的奖励金</div>
+                <div class="balance-value">¥0.00</div>
+                <div class="balance-actions">
+                    <div class="balance-btn" onclick="recharge()">
+                        <i class="fas fa-plus mr-1"></i>充值
+                    </div>
+                    <div class="balance-btn" onclick="withdraw()">
+                        <i class="fas fa-arrow-down mr-1"></i>提现
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-switch">
+                <div class="tab-switch-item active" onclick="switchTab(this, 'all')">全部</div>
+                <div class="tab-switch-item" onclick="switchTab(this, 'income')">收入</div>
+                <div class="tab-switch-item" onclick="switchTab(this, 'expense')">支出</div>
+            </div>
+            
+            <div class="income-section">
+                <div class="income-title">收支明细</div>
+                <div class="income-list">
+                    <div class="income-item">
+                        <div class="income-info">
+                            <div class="income-icon"><i class="fas fa-gift"></i></div>
+                            <div>
+                                <div class="income-name">邀请好友奖励</div>
+                                <div class="income-date">2026-08-20 14:30</div>
+                            </div>
+                        </div>
+                        <div class="income-amount plus">+¥10.00</div>
+                    </div>
+                    <div class="income-item">
+                        <div class="income-info">
+                            <div class="income-icon"><i class="fas fa-bullhorn"></i></div>
+                            <div>
+                                <div class="income-name">发布订单消耗</div>
+                                <div class="income-date">2026-08-19 10:15</div>
+                            </div>
+                        </div>
+                        <div class="income-amount minus">-¥5.00</div>
+                    </div>
+                    <div class="income-item">
+                        <div class="income-info">
+                            <div class="income-icon"><i class="fas fa-trophy"></i></div>
+                            <div>
+                                <div class="income-name">新人奖励</div>
+                                <div class="income-date">2026-08-18 09:00</div>
+                            </div>
+                        </div>
+                        <div class="income-amount plus">+¥20.00</div>
+                    </div>
+                    <div class="income-item">
+                        <div class="income-info">
+                            <div class="income-icon"><i class="fas fa-share"></i></div>
+                            <div>
+                                <div class="income-name">分享奖励</div>
+                                <div class="income-date">2026-08-17 16:45</div>
+                            </div>
+                        </div>
+                        <div class="income-amount plus">+¥5.00</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="rules-card">
+                <div class="rules-title"><i class="fas fa-info-circle text-orange-400 mr-1"></i>奖励金说明</div>
+                <div class="rules-item">1. 奖励金可用于发布订单、购买积分等</div>
+                <div class="rules-item">2. 1元奖励金 = 1元现金，可提现至微信</div>
+                <div class="rules-item">3. 提现最低金额10元，T+1到账</div>
+                <div class="rules-item">4. 奖励金有效期永久有效</div>
+            </div>
+        </div>
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function goBack() { window.history.back(); }
+        function recharge() { alert('跳转到充值页面'); }
+        function withdraw() { alert('跳转到提现页面'); }
+        function switchTab(el, tab) {
+            document.querySelectorAll('.tab-switch-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+        }
+        function navigateTo(page) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "follow-qrcode", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "intent-personal", "intent-job", "intent-preference", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance", "realname", "points", "voucher", "reward"];
+            var path = page + '.html';
+            if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) >= 0) {
+                path = '../worker/' + path;
+            } else if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+    </script>
+</body>
+</html>

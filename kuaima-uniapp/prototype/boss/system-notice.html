@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统通知 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame { width: 390px; height: 844px; background: #f5f5f5; overflow: hidden; position: relative; border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a; }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { display: flex; gap: 14px; color: #333; font-size: 16px; cursor: pointer; }
+        .notice-item { background: #fff; margin: 12px 16px; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .notice-time { font-size: 12px; color: #999; margin-bottom: 8px; }
+        .notice-content { font-size: 14px; color: #333; line-height: 1.6; }
+        .notice-tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-right: 6px; }
+        .tag-system { background: #FFF3ED; color: #FF6B35; }
+        .tag-warning { background: #FFF8E6; color: #FA8C16; }
+        .tag-success { background: #F6FFED; color: #52C41A; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar"><span>19:53</span><div class="flex items-center gap-1"><i class="fas fa-signal text-sm"></i><i class="fas fa-wifi text-sm"></i><i class="fas fa-battery-full text-sm"></i></div></div>
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+            <div class="nav-title">系统通知</div>
+            <div class="nav-right"><i class="fas fa-ellipsis-h"></i></div>
+        </div>
+        <div class="overflow-y-auto" style="height: calc(100% - 97px - 16px);">
+            <div class="notice-item">
+                <div class="notice-time">2026-08-21 15:30</div>
+                <div class="notice-content"><span class="notice-tag tag-system">系统</span>您的企业认证审核已通过，恭喜您获得企业认证标识，将获得更多曝光机会！</div>
+            </div>
+            <div class="notice-item">
+                <div class="notice-time">2026-08-20 10:15</div>
+                <div class="notice-content"><span class="notice-tag tag-success">结算</span>您发布的「电商分拣打包工」岗位工资已完成结算，共计¥1,800元已到账。</div>
+            </div>
+            <div class="notice-item">
+                <div class="notice-time">2026-08-19 09:00</div>
+                <div class="notice-content"><span class="notice-tag tag-warning">提醒</span>您发布的「餐饮服务员」岗位已有5位零工报名，请及时处理报名申请。</div>
+            </div>
+            <div class="notice-item">
+                <div class="notice-time">2026-08-18 14:20</div>
+                <div class="notice-content"><span class="notice-tag tag-system">系统</span>平台升级通知：8月25日凌晨2点将进行系统维护，预计维护1小时，期间无法发布招聘。</div>
+            </div>
+            <div class="notice-item">
+                <div class="notice-time">2026-08-17 11:00</div>
+                <div class="notice-content"><span class="notice-tag tag-success">活动</span>邀请好友注册可获得50元奖励，多邀多得，上不封顶！</div>
+            </div>
+        </div>
+        <div class="page-indicator"></div>
+    </div>
+    <script>function goBack(){window.history.back();}</script>
+</body>
+</html>

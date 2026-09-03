@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识产权保护规则 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #fff; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .top-nav { padding: 8px 16px 12px; display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #f0f0f0; position: absolute; top: 47px; left: 0; right: 0; height: 52px; z-index: 10; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .nav-right { display: flex; align-items: center; background: rgba(255, 255, 255, 0.9); border-radius: 20px; padding: 4px 6px; gap: 2px; }
+        .nav-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+        .content-area { position: absolute; top: 99px; left: 0; right: 0; bottom: 34px; overflow-y: auto; background: #fff; padding: 16px 20px; }
+        .content-area::-webkit-scrollbar { display: none; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        
+        .intro-text { font-size: 14px; color: #666; line-height: 1.8; margin-bottom: 16px; }
+        .chapter-title { font-size: 16px; font-weight: 600; color: #333; margin: 20px 0 10px; }
+        .section-content { font-size: 14px; color: #666; line-height: 1.8; margin-bottom: 12px; text-indent: 2em; }
+        .number-list { font-size: 14px; color: #666; line-height: 1.8; margin-bottom: 8px; }
+        .highlight { font-weight: 600; color: #333; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="top-nav">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-chevron-left text-gray-700"></i>
+            </div>
+            <div class="nav-title" style="font-size: 17px; font-weight: 600; color: #333; position: absolute; left: 50%; transform: translateX(-50%);">知识产权保护规则</div>
+            <div class="nav-right">
+                <div class="nav-btn">
+                    <i class="fas fa-ellipsis text-gray-700" style="font-size: 13px;"></i>
+                </div>
+                <div style="width: 1px; height: 14px; background: #ddd; margin: 0 2px;"></div>
+                <div class="nav-btn">
+                    <i class="fas fa-circle text-gray-700" style="font-size: 11px;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <p class="intro-text">
+                《快马日结知识产权保护规则》（下称"本规则"）系由上海安加人力资源有限公司（下称"快马日结"）就用户（下称"用户"或"您"）使用快马日结产品或服务所订立的知识产权保护规则。快马日结非常重视知识产权及用户权益的保护，为有效保护权利人的合法权益，依据《中华人民共和国民法典》《中华人民共和国著作权法》《中华人民共和国商标法》《中华人民共和国专利法》《信息网络传播权保护条例》《最高人民法院关于审理利用信息网络侵害人身权益民事纠纷案件适用法律若干问题的规定》《上海市知识产权保护条例》等相关法律法规的规定，制定本规则。如果您作为权利人认为快马日结平台上发布的信息侵犯了您的合法权益，您可依据本规则通知快马日结，快马日结将依法处理。
+            </p>
+
+            <div class="chapter-title">一、知识产权归属与授权</div>
+            
+            <p class="number-list">
+                <span class="highlight">1.【快马日结知识产权】</span>快马日结平台（包括但不限于软件、网站、应用程序及其源代码、系统数据等）及相关产品或服务中提供的内容（包括但不限于软件、技术、程序、网页、图片、商标、标识、音频、视频、图表、版面设计、电子文档等）的知识产权属于快马日结所有。未经快马日结事先书面同意，任何人不得以任何形式进行使用，包括但不限于不得通过任何机器人、爬虫、蜘蛛等程序或设备进行截屏、监视、复制、传播、展示、镜像、上传、下载、转载、改编、翻译、汇编，或以其他任何方式使用或创造相关衍生作品，并不得通过反向工程、反编译、反汇编或其他类似行为获得源代码。
+            </p>
+
+            <p class="number-list">
+                <span class="highlight">2.【用户知识产权】</span>用户在使用快马日结的产品或服务上传、发布的内容（包括但不限于上传、发布的头像、昵称、自我介绍、公司介绍、文章、评论、答复等内容中涉及的文字、图片、音频、视频、链接、音乐、声音、对话、视觉设计、字体、人物肖像、姓名、商标、服务标志、品牌、标识和公司标记等所有内容）的知识产权属于用户或原始权利人。用户理解并确认，其发布、上传的内容均为用户原创或已获得合法授权（含转授权）。
+            </p>
+
+            <p class="number-list">
+                <span class="highlight">3.【知识产权授权】</span>用户理解并同意，快马日结作为获取、分享及传播信息的平台，为向用户提供更优质的服务，对于用户在快马日结平台上传、发布、传播的内容之全部或部分（包括但不限于头像、昵称、自我介绍、公司介绍、文章、评论、答复等内容中可能涉及的文字、图片、音频、视频、链接、音乐、声音、对话、视觉设计、字体、人物肖像、姓名、商标、服务标志、品牌、名称、标识和公司标记等所有内容），用户免费授予快马日结在全球范围内非独家的复制权、信息网络传播权及其他为进行合理传播、展示所需的所有相关权利，使用范围为快马日结平台的网站、应用程序、产品或终端设备等。
+            </p>
+
+            <div class="chapter-title">二、快马日结及用户的权利与义务</div>
+            
+            <p class="number-list">
+                <span class="highlight">1.【快马日结的权利与义务】</span>快马日结有权对平台上的内容进行审核、监管，并有权依照法律法规及本平台规则对违规内容进行处理。快马日结将依法保护用户的知识产权，对侵犯知识产权的行为进行处理。
+            </p>
+
+            <p class="number-list">
+                <span class="highlight">2.【用户的权利与义务】</span>用户有权在快马日结平台上发布、传播自己享有合法权益的内容，并有权依据本规则投诉侵权行为。用户不得在快马日结平台上发布、传播侵犯他人知识产权的内容。
+            </p>
+
+            <div class="chapter-title">三、侵权投诉处理</div>
+            
+            <p class="number-list">
+                <span class="highlight">1.【投诉方式】</span>权利人如发现快马日结平台上存在侵犯其知识产权的内容，可通过以下方式向快马日结投诉：
+            </p>
+            <p class="number-list" style="padding-left: 2em;">
+                （1）邮件投诉：copyright@kuaima.com
+            </p>
+            <p class="number-list" style="padding-left: 2em;">
+                （2）投诉需要提交的材料：投诉人身份证明、权属证明、侵权内容链接、具体投诉理由等。
+            </p>
+
+            <p class="number-list">
+                <span class="highlight">2.【处理流程】</span>快马日结收到投诉后，将在15个工作日内进行核实处理。核实后将对侵权内容采取删除、屏蔽、限制访问等措施。
+            </p>
+
+            <div class="chapter-title">四、免责声明</div>
+            
+            <p class="section-content">
+                快马日结平台作为信息服务提供者，对用户上传、发布的内容不承担事先审查义务。但快马日结有权依法对涉嫌侵权内容进行处理。快马日结对因用户行为导致的知识产权侵权纠纷不承担责任，但会依法配合权利人维护合法权益。
+            </p>
+
+            <div class="chapter-title">五、附则</div>
+            
+            <p class="section-content">
+                本规则自发布之日起生效，快马日结有权根据法律法规的变化及业务发展需要适时修改本规则。修改后的规则将在快马日结平台公布，自公布之日起生效。
+            </p>
+
+            <div style="height: 30px;"></div>
+        </div>
+
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() { window.history.back(); }
+    </script>
+</body>
+</html>

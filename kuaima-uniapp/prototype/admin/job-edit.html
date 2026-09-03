@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 编辑招工信息</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .edit-layout {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+            align-items: start;
+        }
+        .form-section {
+            padding: 20px 24px;
+        }
+        .form-section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-section-title i {
+            color: var(--primary);
+        }
+        .form-section-title .section-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px 24px;
+        }
+        .form-group .full-width {
+            grid-column: 1 / -1;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .form-label .required {
+            color: var(--danger);
+            margin-left: 2px;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255,107,53,0.1);
+        }
+        .form-input[readonly] {
+            background: var(--bg-page);
+            color: var(--text-muted);
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            line-height: 1.6;
+        }
+        .wage-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .wage-input .form-input {
+            flex: 1;
+        }
+        .wage-input span {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .benefit-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        .benefit-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        .benefit-checkbox:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        .benefit-checkbox input {
+            accent-color: var(--primary);
+        }
+        .status-radio {
+            display: flex;
+            gap: 8px;
+        }
+        .status-radio label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .status-radio input {
+            accent-color: var(--primary);
+        }
+        .status-radio input:checked + span {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .status-radio label:has(input:checked) {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        .edit-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .edit-header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .edit-header-info h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .edit-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .edit-id-badge {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--primary);
+            background: var(--primary-light);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .right-panel {
+            position: sticky;
+            top: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .right-panel .card {
+            padding: 0;
+        }
+        .summary-card {
+            padding: 20px;
+        }
+        .summary-cover {
+            width: 100%;
+            height: 120px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #FF6B35 0%, #FFB088 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 36px;
+            margin-bottom: 16px;
+        }
+        .summary-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .summary-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .summary-stat {
+            text-align: center;
+        }
+        .summary-stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .summary-stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .progress-section {
+            margin-top: 16px;
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .progress-header .label {
+            color: var(--text-secondary);
+        }
+        .progress-header .value {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-page);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FF6B35, #FFB088);
+            border-radius: 4px;
+        }
+        .image-upload {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .image-preview {
+            width: 110px;
+            height: 80px;
+            border-radius: 6px;
+            border: 2px dashed var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .image-preview:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .image-preview.has-image {
+            border-style: solid;
+            border-color: transparent;
+        }
+        .image-preview.has-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .image-preview .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            cursor: pointer;
+        }
+        .image-preview.has-image:hover .remove-btn {
+            display: flex;
+        }
+        .timeline-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+        .timeline-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            min-width: 130px;
+        }
+        .timeline-content {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        .timeline-content strong {
+            color: var(--text-secondary);
+        }
+        .bottom-actions {
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .bottom-actions-left {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .bottom-actions-left i {
+            margin-right: 6px;
+        }
+        .bottom-actions-right {
+            display: flex;
+            gap: 12px;
+        }
+        .editor-card {
+            padding: 0;
+            overflow: hidden;
+        }
+        .editor-card + .editor-card {
+            margin-top: 16px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+        <div class="admin-sidebar"></div>
+        <div class="admin-main">
+            <div class="admin-topbar"></div>
+            <div class="admin-content">
+                <div class="breadcrumb">
+                    <a href="../admin_index.html">首页</a> &rsaquo; <a href="jobs.html">招工管理</a> &rsaquo; <span>编辑招工信息</span>
+                </div>
+
+                <div class="edit-header">
+                    <div class="edit-header-left">
+                        <div class="edit-header-info">
+                            <h2>编辑招工信息</h2>
+                            <div class="edit-header-meta">
+                                <span class="edit-id-badge">ID: J20240315001</span>
+                                <span>最后更新：2024-03-15 16:45</span>
+                            </div>
+                        </div>
+                        <span class="status-badge success" style="margin-left: 4px;">招聘中</span>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-outline" onclick="history.back()"><i class="fas fa-arrow-left"></i> 返回列表</button>
+                        <button class="btn btn-outline"><i class="fas fa-eye"></i> 预览</button>
+                        <button class="btn btn-primary"><i class="fas fa-check"></i> 保存修改</button>
+                    </div>
+                </div>
+
+                <div class="edit-layout">
+                    <div class="left-col">
+                        <div class="card editor-card">
+                            <div class="form-section">
+                                <div class="form-section-title"><span class="section-num">1</span>基本信息</div>
+                                <div class="form-group">
+                                    <div>
+                                        <label class="form-label">工种名称<span class="required">*</span></label>
+                                        <input type="text" class="form-input" value="电子厂普工">
+                                    </div>
+                                    <div>
+                                        <label class="form-label">工种分类<span class="required">*</span></label>
+                                        <select class="form-select">
+                                            <option>电子厂</option>
+                                            <option>制造业</option>
+                                            <option>物流</option>
+                                            <option>仓储</option>
+                                            <option>餐饮</option>
+                                            <option>汽车</option>
+                                            <option>建筑</option>
+                                            <option>其他</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">雇主/企业<span class="required">*</span></label>
+                                        <input type="text" class="form-input" value="富士康科技集团" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">招工状态<span class="required">*</span></label>
+                                        <div class="status-radio">
+                                            <label><input type="radio" name="status" checked><span>招聘中</span></label>
+                                            <label><input type="radio" name="status"><span>已招满</span></label>
+                                            <label><input type="radio" name="status"><span>已关闭</span></label>
+                                            <label><input type="radio" name="status"><span>待审核</span></label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card editor-card">
+                            <div class="form-section">
+                                <div class="form-section-title"><span class="section-num">2</span>薪资与需求</div>
+                                <div class="form-group">
+                                    <div>
+                                        <label class="form-label">日薪金额<span class="required">*</span></label>
+                                        <div class="wage-input">
+                                            <input type="number" class="form-input" value="260">
+                                            <span>元/天</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">结算方式<span class="required">*</span></label>
+                                        <select class="form-select">
+                                            <option>当日结清</option>
+                                            <option>周结</option>
+                                            <option>月结</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">需求人数<span class="required">*</span></label>
+                                        <input type="number" class="form-input" value="200">
+                                    </div>
+                                    <div>
+                                        <label class="form-label">已招人数</label>
+                                        <input type="number" class="form-input" value="185" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">工作时长</label>
+                                        <input type="text" class="form-input" value="8小时/天，可加班">
+                                    </div>
+                                    <div>
+                                        <label class="form-label">性别要求</label>
+                                        <select class="form-select">
+                                            <option>不限</option>
+                                            <option>仅限男</option>
+                                            <option>仅限女</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">年龄要求</label>
+                                        <input type="text" class="form-input" value="18-45岁">
+                                    </div>
+                                    <div>
+                                        <label class="form-label">学历要求</label>
+                                        <select class="form-select">
+                                            <option>不限</option>
+                                            <option>初中及以上</option>
+                                            <option>高中及以上</option>
+                                            <option>大专及以上</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card editor-card">
+                            <div class="form-section">
+                                <div class="form-section-title"><span class="section-num">3</span>工作地点</div>
+                                <div class="form-group">
+                                    <div>
+                                        <label class="form-label">省/市/区<span class="required">*</span></label>
+                                        <input type="text" class="form-input" value="广东省深圳市龙华区">
+                                    </div>
+                                    <div>
+                                        <label class="form-label">详细地址</label>
+                                        <input type="text" class="form-input" value="龙华新区观澜街道富士康科技园">
+                                    </div>
+                                    <div class="full-width">
+                                        <label class="form-label">地标/交通</label>
+                                        <input type="text" class="form-input" value="地铁4号线观澜湖站B出口，步行5分钟">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card editor-card">
+                            <div class="form-section">
+                                <div class="form-section-title"><span class="section-num">4</span>福利待遇</div>
+                                <div class="benefit-checkboxes">
+                                    <label class="benefit-checkbox"><input type="checkbox" checked> <span>包吃</span></label>
+                                    <label class="benefit-checkbox"><input type="checkbox" checked> <span>包住</span></label>
+                                    <label class="benefit-checkbox"><input type="checkbox" checked> <span>交通补贴</span></label>
+                                    <label class="benefit-checkbox"><input type="checkbox" checked> <span>全勤奖</span></label>
+                                    <label class="benefit-checkbox"><input type="checkbox" checked> <span>当日结清</span></label>
+                                    <label class="benefit-checkbox"><input type="checkbox" checked> <span>免费体检</span></label>
+                                    <label class="benefit-checkbox"><input type="checkbox"> <span>节日福利</span></label>
+                                    <label class="benefit-checkbox"><input type="checkbox"> <span>加班补贴</span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card editor-card">
+                            <div class="form-section">
+                                <div class="form-section-title"><span class="section-num">5</span>招工描述</div>
+                                <textarea class="form-textarea" rows="4">电子厂普工岗位，工作内容为电子产品装配、检测等。工作环境整洁卫生，空调车间。要求身体健康，能吃苦耐劳。工作时间为8:00-18:00，可根据生产需要安排加班。欢迎有意向的零工朋友踊跃报名。</textarea>
+                            </div>
+                        </div>
+
+                        <div class="card editor-card">
+                            <div class="form-section">
+                                <div class="form-section-title"><span class="section-num">6</span>工作环境图片</div>
+                                <div class="image-upload">
+                                    <div class="image-preview has-image">
+                                        <img src="https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=200&h=150&fit=crop" alt="工作环境">
+                                        <div class="remove-btn"><i class="fas fa-times"></i></div>
+                                    </div>
+                                    <div class="image-preview has-image">
+                                        <img src="https://images.unsplash.com/photo-1565043589221-1a6fd9ae45c7?w=200&h=150&fit=crop" alt="工作环境">
+                                        <div class="remove-btn"><i class="fas fa-times"></i></div>
+                                    </div>
+                                    <div class="image-preview">
+                                        <i class="fas fa-plus"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card editor-card">
+                            <div class="form-section">
+                                <div class="form-section-title"><span class="section-num">7</span>发布设置</div>
+                                <div class="form-group">
+                                    <div>
+                                        <label class="form-label">发布时间</label>
+                                        <input type="text" class="form-input" value="2024-03-15 09:30" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">报名截止时间</label>
+                                        <input type="datetime-local" class="form-input" value="2024-03-30T23:59">
+                                    </div>
+                                    <div>
+                                        <label class="form-label">是否置顶</label>
+                                        <select class="form-select">
+                                            <option>否</option>
+                                            <option>是</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">是否推荐</label>
+                                        <select class="form-select">
+                                            <option>否</option>
+                                            <option>是</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bottom-actions">
+                            <div class="bottom-actions-left">
+                                <i class="fas fa-exclamation-circle"></i>
+                                请确认所有信息填写正确后再提交，修改将实时同步到零工端
+                            </div>
+                            <div class="bottom-actions-right">
+                                <button class="btn btn-outline" onclick="history.back()">取消</button>
+                                <button class="btn btn-outline">保存草稿</button>
+                                <button class="btn btn-primary"><i class="fas fa-check"></i> 保存修改</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="right-panel">
+                        <div class="card">
+                            <div class="summary-card">
+                                <div class="summary-cover">
+                                    <i class="fas fa-industry"></i>
+                                </div>
+                                <div class="summary-title">电子厂普工</div>
+                                <div class="summary-meta">富士康科技集团 · 深圳龙华</div>
+                                <div class="summary-stats">
+                                    <div class="summary-stat">
+                                        <div class="summary-stat-value">¥260</div>
+                                        <div class="summary-stat-label">日薪</div>
+                                    </div>
+                                    <div class="summary-stat">
+                                        <div class="summary-stat-value">185/200</div>
+                                        <div class="summary-stat-label">招聘</div>
+                                    </div>
+                                    <div class="summary-stat">
+                                        <div class="summary-stat-value">92%</div>
+                                        <div class="summary-stat-label">进度</div>
+                                    </div>
+                                </div>
+                                <div class="progress-section">
+                                    <div class="progress-header">
+                                        <span class="label">招聘进度</span>
+                                        <span class="value">92%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 92%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="form-section-title" style="padding: 16px 20px 0; border:none;"><i class="fas fa-history"></i> 操作日志</div>
+                            <div style="padding: 8px 20px 16px;">
+                                <div class="timeline-item">
+                                    <div class="timeline-time">03-15 09:30</div>
+                                    <div class="timeline-content"><strong>系统：</strong>招工发布成功</div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-time">03-15 09:35</div>
+                                    <div class="timeline-content"><strong>admin：</strong>审核通过</div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-time">03-15 14:20</div>
+                                    <div class="timeline-content"><strong>系统：</strong>新增15人报名</div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-time">03-15 16:45</div>
+                                    <div class="timeline-content"><strong>admin：</strong>调整薪资250→260</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+    </script>
+</body>
+</html>

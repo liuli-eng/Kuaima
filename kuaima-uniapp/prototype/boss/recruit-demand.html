@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>招工需求 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #FFF8E6; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: transparent; }
+        
+        .page-bg { background: #fff; height: calc(100% - 47px); position: relative; display: flex; flex-direction: column; overflow: hidden; }
+        
+        .nav-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px; background: white; flex-shrink: 0;
+        }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #333; font-size: 20px; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 700; color: #333; }
+        .nav-placeholder { width: 32px; }
+        
+        .stepper {
+            display: flex; align-items: center; justify-content: center;
+            padding: 12px 16px 16px; gap: 4px; flex-shrink: 0;
+        }
+        .step { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #999; }
+        .step .dot { width: 20px; height: 20px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; }
+        .step.active { color: #FF6B35; font-weight: 600; }
+        .step.active .dot { background: #FF6B35; }
+        .step-line { width: 40px; height: 2px; background: #ddd; }
+        .step-line.active { background: #FF6B35; }
+        
+        .scroll-area { flex: 1; overflow-y: auto; min-height: 0; background: #FFF8E6; }
+        .scroll-area::-webkit-scrollbar { display: none; }
+        
+        .section-card {
+            background: white; margin: 12px; border-radius: 12px; padding: 16px;
+        }
+        
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+        }
+        .section-title { font-size: 15px; font-weight: 600; color: #333; }
+        .section-tag {
+            font-size: 11px; color: white; background: #FF6B35;
+            padding: 3px 8px; border-radius: 4px;
+        }
+        
+        .counter-row { display: flex; align-items: center; justify-content: center; gap: 20px; }
+        .counter-btn {
+            width: 36px; height: 36px; border-radius: 50%; background: #F5F5F5;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #999; cursor: pointer; user-select: none;
+        }
+        .counter-btn.active { background: #FF6B35; color: white; }
+        .counter-value { font-size: 32px; font-weight: 700; color: #333; min-width: 60px; text-align: center; }
+        .counter-unit { font-size: 15px; color: #666; margin-left: 4px; }
+        
+        .tab-group {
+            display: flex; gap: 0; background: #F5F5F5; border-radius: 8px;
+            padding: 4px; margin-bottom: 12px;
+        }
+        .tab-item {
+            flex: 1; text-align: center; padding: 8px 0; font-size: 14px;
+            color: #666; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+        }
+        .tab-item.active {
+            background: white; color: #FF6B35; font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .form-row {
+            display: flex; align-items: center; padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5; cursor: pointer;
+        }
+        .form-row:last-child { border-bottom: none; }
+        .form-label { font-size: 14px; color: #333; flex-shrink: 0; margin-right: 12px; }
+        .form-value {
+            flex: 1; font-size: 14px; color: #333;
+            display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+        }
+        .form-value.placeholder { color: #BBB; }
+        .form-value .arrow { color: #CCC; font-size: 12px; }
+        .form-value .unit { color: #999; font-size: 13px; }
+        .form-value .tip-icon { color: #CCC; font-size: 14px; }
+        .link-btn {
+            color: #1E88E5; font-size: 14px;
+            display: inline-flex; align-items: center; gap: 2px;
+            cursor: pointer;
+        }
+        .form-value .link-btn {
+            color: #1E88E5; font-size: 14px; margin-left: 12px;
+            display: flex; align-items: center; gap: 2px;
+        }
+        .form-value .highlight { color: #FF6B35; font-weight: 500; }
+        
+        .salary-row {
+            display: flex; align-items: flex-start; padding: 12px 0; gap: 12px;
+        }
+        .salary-label { font-size: 14px; color: #333; flex-shrink: 0; padding-top: 2px; }
+        .salary-content {
+            flex: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+        }
+        .salary-value {
+            font-size: 16px; font-weight: 700; color: #333;
+            display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+        }
+        .salary-unit { font-size: 13px; color: #666; font-weight: 400; }
+        .salary-info { color: #CCC; font-size: 14px; }
+        .salary-sub {
+            font-size: 12px; color: #999;
+        }
+        
+        .two-row { display: flex; flex-direction: column; }
+        .two-row-top {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 4px 0;
+        }
+        .two-row-top .label { font-size: 14px; color: #333; }
+        .two-row-top .right {
+            display: flex; align-items: center; gap: 4px;
+            font-size: 14px; color: #333;
+        }
+        .two-row-bottom {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 4px 0 0 0;
+        }
+        .two-row-bottom .desc { font-size: 12px; color: #999; }
+        .two-row-bottom .sub { font-size: 13px; color: #FF6B35; font-weight: 500; }
+        
+        .single-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 0;
+        }
+        .single-row .label { font-size: 14px; color: #333; display: flex; align-items: center; gap: 4px; }
+        .single-row .desc {
+            font-size: 13px; color: #999; display: flex; align-items: center; gap: 6px;
+        }
+        .single-row .desc .arrow { color: #CCC; font-size: 12px; }
+        
+        .agreement-row { display: flex; align-items: flex-start; gap: 8px; padding: 0 4px; }
+        .agreement-checkbox {
+            width: 18px; height: 18px; border: 1.5px solid #DDD; border-radius: 50%;
+            flex-shrink: 0; margin-top: 2px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; transition: all 0.2s;
+        }
+        .agreement-checkbox.checked { background: #FF6B35; border-color: #FF6B35; }
+        .agreement-checkbox.checked::after {
+            content: '✓'; color: white; font-size: 12px; font-weight: bold;
+        }
+        .agreement-text { font-size: 12px; color: #666; line-height: 1.6; }
+        .agreement-text a { color: #FF6B35; text-decoration: none; }
+        
+        .fee-section {
+            background: #FFF8E6; margin: 12px; border-radius: 12px; padding: 14px 16px;
+        }
+        .fee-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: #333; }
+        .fee-value { color: #FF6B35; font-weight: 700; font-size: 16px; }
+        .fee-tag {
+            display: inline-block; background: #FF6B35; color: white;
+            font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-top: 4px;
+        }
+        .fee-detail-toggle {
+            font-size: 12px; color: #999; cursor: pointer;
+            display: flex; align-items: center; gap: 3px;
+        }
+        .fee-detail-toggle i { font-size: 9px; transition: transform 0.2s; }
+        .fee-detail-toggle.expanded i { transform: rotate(180deg); }
+        .fee-detail {
+            display: none; margin-top: 10px; padding-top: 10px;
+            border-top: 1px dashed #E8D5A8; font-size: 12px; color: #666;
+        }
+        .fee-detail.show { display: block; }
+        .fee-detail-item { display: flex; justify-content: space-between; padding: 4px 0; }
+        .fee-free { color: #FF6B35; font-weight: 600; }
+        
+        .service-fab {
+            position: absolute; right: 16px; bottom: 80px; width: 48px; height: 48px;
+            background: white; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 10px; color: #666; cursor: pointer; z-index: 10;
+        }
+        .service-fab i { font-size: 18px; color: #FF6B35; margin-bottom: 2px; }
+        
+        .bottom-bar {
+            background: white; padding: 12px 16px; border-top: 1px solid #f0f0f0;
+            flex-shrink: 0; padding-bottom: 20px;
+        }
+        .submit-btn {
+            width: 100%; height: 48px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: white; border: none; border-radius: 10px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+        }
+        
+        .page-indicator { width: 120px; height: 5px; background: #1a1a1a; border-radius: 3px; margin: 8px auto 0; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body>
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar">
+            <span>19:53</span>
+            <span class="flex items-center gap-1">
+                <i class="fas fa-signal text-xs"></i>
+                <i class="fas fa-wifi text-xs"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </span>
+        </div>
+        
+        <div class="page-bg">
+            <div class="nav-bar">
+                <div class="nav-back" onclick="goBack()"><i class="fas fa-chevron-left"></i></div>
+                <div class="nav-title">发布招工</div>
+                <div class="nav-placeholder"></div>
+            </div>
+            
+            <div class="stepper">
+                <div class="step active">
+                    <div class="dot"><i class="fas fa-check" style="font-size:10px;"></i></div>
+                    <span>基础信息</span>
+                </div>
+                <div class="step-line active"></div>
+                <div class="step active">
+                    <div class="dot">2</div>
+                    <span>招工需求</span>
+                </div>
+            </div>
+            
+            <div class="scroll-area">
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-title">需求人数</div>
+                    </div>
+                    <div class="counter-row">
+                        <div class="counter-btn" onclick="changeCount(-1)" id="minusBtn">
+                            <i class="fas fa-minus"></i>
+                        </div>
+                        <div>
+                            <span class="counter-value" id="countValue">1</span>
+                            <span class="counter-unit">人</span>
+                        </div>
+                        <div class="counter-btn active" onclick="changeCount(1)" id="plusBtn">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-title">工价设置</div>
+                    </div>
+                    <div class="tab-group">
+                        <div class="tab-item active" onclick="switchPayType(this, 'hourly')">计时</div>
+                        <div class="tab-item" onclick="switchPayType(this, 'piece')">计件</div>
+                    </div>
+                    
+                    <div id="hourlyPanel">
+                        <div class="form-row" onclick="setSalary()">
+                            <div class="form-value placeholder" id="salaryValue">
+                                <span>请设置工价</span>
+                                <i class="fas fa-chevron-right arrow"></i>
+                            </div>
+                        </div>
+                        <div class="salary-row">
+                            <div class="salary-label">预计报酬</div>
+                            <div class="salary-content">
+                                <div class="salary-value" id="salaryDisplay">
+                                    800<span class="salary-unit">元/天</span>
+                                    <i class="fas fa-info-circle salary-info"></i>
+                                </div>
+                                <div class="salary-sub" id="salarySub">每个零工100元/小时*8小时</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="piecePanel" style="display:none;">
+                        <div class="form-row" onclick="setPiecePrice()">
+                            <div style="font-size:14px; color:#333;">单价</div>
+                            <div class="form-value placeholder" id="piecePriceValue">
+                                <span>请设置单价</span>
+                                <i class="fas fa-chevron-right arrow"></i>
+                            </div>
+                        </div>
+                        <div class="form-row" onclick="setPieceUnit()" style="border-bottom:none;">
+                            <div style="font-size:14px; color:#333;">计件单位</div>
+                            <div class="form-value placeholder" id="pieceUnitValue">
+                                <span>请选择单位</span>
+                                <i class="fas fa-chevron-right arrow"></i>
+                            </div>
+                        </div>
+                        <div class="form-row" onclick="setEstOutput()" style="border-bottom:none;">
+                            <div style="font-size:14px; color:#333;">预估日产量</div>
+                            <div class="form-value placeholder" id="estOutputValue">
+                                <span>请设置预估产量</span>
+                                <i class="fas fa-chevron-right arrow"></i>
+                            </div>
+                        </div>
+                        <div class="salary-row">
+                            <div class="salary-label">预计报酬</div>
+                            <div class="salary-content">
+                                <div class="salary-value" id="pieceSalaryDisplay">
+                                    -<span class="salary-unit">元/天</span>
+                                    <i class="fas fa-info-circle salary-info"></i>
+                                </div>
+                                <div class="salary-sub" id="pieceSalarySub">单价×预估日产量</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section-card">
+                    <div class="section-header" style="justify-content:space-between;">
+                        <div class="section-title">联系电话</div>
+                        <div style="font-size:14px; color:#333;">13698756321</div>
+                    </div>
+                    <div class="form-row" style="border-bottom:none;">
+                        <div style="font-size:12px; color:#999;">零工电话报名、问路等</div>
+                        <div style="display:flex; align-items:center; gap:4px; margin-left:auto; cursor:pointer;" onclick="addBackupPhone()">
+                            <div class="link-btn" style="margin:0;">
+                                <i class="fas fa-plus"></i>
+                                添加备用联系人
+                            </div>
+                            <i class="fas fa-chevron-right" style="color:#1E88E5; font-size:12px;"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section-card">
+                    <div class="form-row" onclick="navigateTo('invite-worker')" style="border-bottom:none;">
+                        <div style="font-size:14px; color:#333;">邀请指定零工接单</div>
+                        <div class="form-value placeholder" style="flex:1; justify-content:flex-end;">
+                            <span>请选择</span>
+                            <i class="fas fa-chevron-right arrow"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section-card" onclick="navigateTo('recruit-settings')">
+                    <div class="single-row">
+                        <div class="label">招工设置 <span style="color:#FF6B35;">•</span></div>
+                        <div class="desc">
+                            <span>报名、结算等设置</span>
+                            <i class="fas fa-chevron-right arrow"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="height: 16px;"></div>
+            </div>
+            
+            <div class="service-fab" onclick="navigateTo('service-chat')">
+                <i class="fas fa-headset"></i>
+                <span>客服</span>
+            </div>
+            
+            <div class="bottom-bar">
+                <button class="submit-btn" onclick="publishJob()">发布招工</button>
+            </div>
+        </div>
+        
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        let workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+        let bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance", "realname", "points", "voucher", "reward", "add-address", "download-app", "personal-info", "task-content", "gender-age", "location", "recruit-demand", "invite-worker", "recruit-settings", "publish-success", "backup-phone"];
+        
+        let currentCount = 1;
+        let currentPayType = 'hourly';
+        let hasSalary = false;
+        let agreed = true;
+
+        function init() {
+            const selectedCount = sessionStorage.getItem('inviteWorkerCount');
+            if (selectedCount && parseInt(selectedCount) > 0) {
+                const valEl = document.querySelector('.form-row[onclick*="invite-worker"] .form-value');
+                if (valEl) {
+                    valEl.classList.remove('placeholder');
+                    valEl.innerHTML = '<span style="color:#FF6B35; font-weight:500;">已选' + selectedCount + '人</span>' +
+                        '<i class="fas fa-chevron-right arrow"></i>';
+                }
+                sessionStorage.removeItem('inviteWorkerCount');
+            }
+            const insurancePlan = sessionStorage.getItem('insurancePlan');
+            if (insurancePlan) {
+                const sub = document.querySelectorAll('.two-row-bottom .sub')[0];
+                if (sub) sub.textContent = insurancePlan.replace('保障', '');
+                sessionStorage.removeItem('insurancePlan');
+            }
+        }
+        init();
+        
+        function navigateTo(page) {
+            let path = page + '.html';
+            if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) >= 0) {
+                path = '../worker/' + path;
+            } else if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+        
+        function goBack() { window.history.back(); }
+        
+        function changeCount(delta) {
+            const max = 100;
+            const min = 1;
+            currentCount = Math.max(min, Math.min(max, currentCount + delta));
+            document.getElementById('countValue').textContent = currentCount;
+        }
+        
+        function switchPayType(el, type) {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            currentPayType = type;
+            if (type === 'hourly') {
+                document.getElementById('hourlyPanel').style.display = 'block';
+                document.getElementById('piecePanel').style.display = 'none';
+            } else {
+                document.getElementById('hourlyPanel').style.display = 'none';
+                document.getElementById('piecePanel').style.display = 'block';
+            }
+        }
+        
+        let piecePrice = 0;
+        let pieceUnit = '件';
+        let estOutput = 0;
+        
+        function setPiecePrice() {
+            const val = prompt('请输入单价（元/' + pieceUnit + '）', '10');
+            if (val && !isNaN(val) && parseFloat(val) > 0) {
+                piecePrice = parseFloat(val);
+                document.getElementById('piecePriceValue').classList.remove('placeholder');
+                document.getElementById('piecePriceValue').innerHTML = 
+                    '<span>' + val + '元/' + pieceUnit + '</span>' +
+                    '<i class="fas fa-chevron-right arrow"></i>';
+                updatePieceSalary();
+            }
+        }
+        
+        function setPieceUnit() {
+            const units = ['件', '个', '套', '箱', '包', '台', '米', '斤'];
+            const val = prompt('请输入计件单位（如：件、个、套、箱）', pieceUnit);
+            if (val && units.indexOf(val) >= 0) {
+                pieceUnit = val;
+                document.getElementById('pieceUnitValue').classList.remove('placeholder');
+                document.getElementById('pieceUnitValue').innerHTML = 
+                    '<span>' + val + '</span>' +
+                    '<i class="fas fa-chevron-right arrow"></i>';
+                document.getElementById('piecePriceValue').firstChild.textContent = piecePrice + '元/' + pieceUnit;
+                updatePieceSalary();
+            } else if (val) {
+                alert('请输入有效单位：' + units.join('、'));
+            }
+        }
+        
+        function setEstOutput() {
+            const val = prompt('请输入预估日产量（' + pieceUnit + '）', '100');
+            if (val && !isNaN(val) && parseInt(val) > 0) {
+                estOutput = parseInt(val);
+                document.getElementById('estOutputValue').classList.remove('placeholder');
+                document.getElementById('estOutputValue').innerHTML = 
+                    '<span>' + val + pieceUnit + '/天</span>' +
+                    '<i class="fas fa-chevron-right arrow"></i>';
+                updatePieceSalary();
+            }
+        }
+        
+        function updatePieceSalary() {
+            if (piecePrice > 0 && estOutput > 0) {
+                const total = piecePrice * estOutput;
+                document.getElementById('pieceSalaryDisplay').innerHTML = 
+                    total + '<span class="salary-unit">元/天</span>' +
+                    '<i class="fas fa-info-circle salary-info"></i>';
+                document.getElementById('pieceSalarySub').textContent = 
+                    piecePrice + '元/' + pieceUnit + ' × ' + estOutput + pieceUnit + '/天';
+            } else if (piecePrice > 0) {
+                document.getElementById('pieceSalaryDisplay').innerHTML = 
+                    '-<span class="salary-unit">元/天</span>' +
+                    '<i class="fas fa-info-circle salary-info"></i>';
+                document.getElementById('pieceSalarySub').textContent = 
+                    '单价：' + piecePrice + '元/' + pieceUnit + '，请继续设置预估产量';
+            }
+        }
+        
+        function setSalary() {
+            const val = prompt('请输入工价（元/小时）', '100');
+            if (val && !isNaN(val)) {
+                hasSalary = true;
+                document.getElementById('salaryValue').innerHTML = 
+                    '<span>' + val + '元/小时</span>' +
+                    '<i class="fas fa-chevron-right arrow"></i>';
+                const daily = val * 8;
+                document.getElementById('salaryDisplay').innerHTML = 
+                    daily + '<span class="salary-unit">元/天</span>' +
+                    '<i class="fas fa-info-circle salary-info"></i>';
+                document.getElementById('salarySub').textContent = '每个零工' + val + '元/小时*8小时';
+            }
+        }
+        
+        function addBackupPhone() { navigateTo('backup-phone'); }
+        
+        function toggleAgree() {
+            agreed = !agreed;
+            document.getElementById('agreeBox').classList.toggle('checked', agreed);
+        }
+        
+        function toggleFeeDetail(el) {
+            el.classList.toggle('expanded');
+            document.getElementById('feeDetail').classList.toggle('show');
+        }
+        
+        function publishJob() {
+            if (!agreed) { alert('请先同意发布规则和协议'); return; }
+            if (!hasSalary) { alert('请设置工价'); return; }
+            sessionStorage.setItem('recruitDemand', JSON.stringify({
+                count: currentCount, payType: currentPayType, salary: hasSalary
+            }));
+            location.href = 'publish-success.html';
+        }
+    </script>
+</body>
+</html>

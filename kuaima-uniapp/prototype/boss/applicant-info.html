@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报名信息 - 快马日结（老板）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', -apple-system, 'PingFang SC', sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #FFF8E6; overflow: hidden; position: relative;
+            border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+            display: flex; flex-direction: column;
+        }
+        .dynamic-island {
+            position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+            width: 120px; height: 32px; background: #000; border-radius: 20px; z-index: 60;
+        }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { width: 32px; }
+
+        .scroll-area { flex: 1; overflow-y: auto; background: #FFF8E6; }
+        .scroll-area::-webkit-scrollbar { display: none; }
+
+        .filter-tabs { display: flex; gap: 8px; padding: 0 16px 12px; overflow-x: auto; }
+        .filter-tabs::-webkit-scrollbar { display: none; }
+        .filter-tab {
+            white-space: nowrap; padding: 6px 14px; font-size: 13px;
+            color: #666; background: rgba(255,255,255,0.6);
+            border-radius: 16px; cursor: pointer; flex-shrink: 0;
+        }
+        .filter-tab.active {
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white; font-weight: 600;
+        }
+
+        /* 报名列表项 - 报名人+职位 */
+        .applicant-list { padding: 0 16px 16px; }
+        .applicant-record {
+            background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        }
+        .record-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 12px; border-bottom: 1px dashed #f0f0f0; margin-bottom: 12px;
+        }
+        .record-job { display: flex; align-items: center; gap: 8px; }
+        .record-job-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, #FFE4B5, #FFDAB9);
+            display: flex; align-items: center; justify-content: center;
+            color: #FF6B35; font-size: 16px;
+        }
+        .record-job-info { flex: 1; }
+        .record-job-title { font-size: 14px; font-weight: 600; color: #333; }
+        .record-job-meta { font-size: 11px; color: #999; margin-top: 2px; }
+        .record-wage { font-size: 14px; font-weight: 600; color: #FF6B35; }
+
+        .record-applicant {
+            display: flex; align-items: flex-start; gap: 10px;
+        }
+        .record-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: 600; font-size: 15px; flex-shrink: 0;
+        }
+        .record-applicant-info { flex: 1; }
+        .record-applicant-name {
+            font-size: 14px; font-weight: 500; color: #333;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .record-star { color: #FA8C16; font-size: 11px; }
+        .record-tag {
+            font-size: 10px; padding: 1px 6px; border-radius: 6px;
+            background: #FFF8E6; color: #FA8C16;
+        }
+        .record-tag.green { background: #F6FFED; color: #52C41A; }
+        .record-tag.blue { background: #E6F7FF; color: #1890FF; }
+        .record-meta { font-size: 12px; color: #999; margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .record-meta span { display: flex; align-items: center; gap: 3px; }
+        .record-meta i { color: #FF6B35; font-size: 10px; }
+
+        .record-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 12px; padding-top: 10px; border-top: 1px solid #f5f5f5;
+        }
+        .record-status {
+            font-size: 11px; padding: 3px 10px; border-radius: 10px; font-weight: 500;
+        }
+        .record-status.pending { background: #FFF8E6; color: #FA8C16; }
+        .record-status.accepted { background: #E6F7FF; color: #1890FF; }
+        .record-status.arrived { background: #F6FFED; color: #52C41A; }
+        .record-status.rejected { background: #FFF1F0; color: #FF4D4F; }
+        .record-status.completed { background: #F6FFED; color: #52C41A; }
+        .record-status.expired { background: #F5F5F5; color: #999; }
+
+        .record-actions { display: flex; gap: 8px; }
+        .record-btn {
+            padding: 5px 14px; border-radius: 14px; font-size: 12px;
+            font-weight: 500; cursor: pointer; border: 1px solid;
+        }
+        .record-btn.primary { background: #FF6B35; color: white; border-color: #FF6B35; }
+        .record-btn.secondary { background: #fff; color: #666; border-color: #E8E8E8; }
+
+        .empty-state {
+            text-align: center; padding: 60px 20px; color: #999; font-size: 14px;
+        }
+
+        .search-bar {
+            padding: 12px 16px; background: #fff;
+        }
+        .search-input-wrap {
+            display: flex; align-items: center; background: #F5F5F5;
+            border-radius: 20px; padding: 8px 14px;
+        }
+        .search-input-wrap i { color: #999; font-size: 13px; margin-right: 8px; }
+        .search-input-wrap input {
+            flex: 1; border: none; background: transparent; outline: none;
+            font-size: 13px; color: #333;
+        }
+        .search-input-wrap input::placeholder { color: #BBB; }
+        .search-clear {
+            display: none; width: 16px; height: 16px; border-radius: 50%;
+            background: #CCC; color: #fff; align-items: center; justify-content: center;
+            font-size: 10px; cursor: pointer;
+        }
+        .search-clear.show { display: flex; }
+
+        .page-indicator {
+            height: 5px; background: #000; border-radius: 3px;
+            position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <!-- 状态栏 -->
+        <div style="height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333;">
+            <span>19:53</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+            <div class="nav-title">报名信息</div>
+            <div class="nav-right"></div>
+        </div>
+
+        <div class="scroll-area">
+            <!-- 搜索框 -->
+            <div class="search-bar">
+                <div class="search-input-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="搜索岗位名称" oninput="handleSearch()">
+                    <div class="search-clear" id="searchClear" onclick="clearSearch()"><i class="fas fa-times"></i></div>
+                </div>
+            </div>
+
+            <!-- 筛选Tab -->
+            <div class="filter-tabs">
+                <div class="filter-tab active" onclick="switchFilter(this, 'all')">全部</div>
+                <div class="filter-tab" onclick="switchFilter(this, 'pending')">待录用</div>
+                <div class="filter-tab" onclick="switchFilter(this, 'accepted')">已录用</div>
+                <div class="filter-tab" onclick="switchFilter(this, 'arrived')">已到岗</div>
+                <div class="filter-tab" onclick="switchFilter(this, 'completed')">已完成</div>
+                <div class="filter-tab" onclick="switchFilter(this, 'rejected')">已拒绝</div>
+            </div>
+
+            <!-- 报名列表 -->
+            <div class="applicant-list" id="applicantList"></div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        // 所有报名记录：报名人信息 + 报名职位信息
+        var records = [
+            { id: 1, applicantId: 1, jobId: 1, status: 'pending' },
+            { id: 2, applicantId: 2, jobId: 1, status: 'accepted' },
+            { id: 3, applicantId: 3, jobId: 2, status: 'accepted' },
+            { id: 4, applicantId: 4, jobId: 3, status: 'arrived' },
+            { id: 5, applicantId: 5, jobId: 1, status: 'pending' },
+            { id: 6, applicantId: 6, jobId: 2, status: 'rejected' },
+            { id: 7, applicantId: 7, jobId: 4, status: 'pending' },
+            { id: 8, applicantId: 8, jobId: 3, status: 'completed' },
+            { id: 9, applicantId: 9, jobId: 5, status: 'expired' },
+            { id: 10, applicantId: 10, jobId: 4, status: 'pending' }
+        ];
+
+        var applicants = {
+            1: { name: '张伟', phone: '138****5678', star: 4.8, tag: '熟练' },
+            2: { name: '李强', phone: '139****1234', star: 4.5, tag: '熟练' },
+            3: { name: '陈静', phone: '138****5555', star: 4.3, tag: '' },
+            4: { name: '赵敏', phone: '137****4321', star: 4.6, tag: '老员工' },
+            5: { name: '王芳', phone: '136****9876', star: 4.2, tag: '' },
+            6: { name: '孙丽', phone: '136****7777', star: 4.1, tag: '' },
+            7: { name: '卫华', phone: '138****6666', star: 4.5, tag: '熟练' },
+            8: { name: '周鹏', phone: '138****1111', star: 4.9, tag: '优秀' },
+            9: { name: '沈涛', phone: '138****8888', star: 4.7, tag: '' },
+            10: { name: '蒋磊', phone: '139****7777', star: 4.3, tag: '' }
+        };
+
+        var jobs = {
+            1: { title: '电商分拣打包工', date: '2026-08-21', workers: 3, wage: 180, status: 'recruiting' },
+            2: { title: '餐饮服务员', date: '2026-08-21', workers: 2, wage: 150, status: 'full' },
+            3: { title: '快递搬运装卸工', date: '2026-08-20', workers: 4, wage: 200, status: 'done' },
+            4: { title: '冷库分拣员', date: '2026-08-22', workers: 2, wage: 220, status: 'recruiting' },
+            5: { title: '装配工', date: '2026-08-19', workers: 5, wage: 250, status: 'expired' }
+        };
+
+        var statusMap = {
+            pending: { text: '待录用', color: 'pending' },
+            accepted: { text: '已录用', color: 'accepted' },
+            arrived: { text: '已到岗', color: 'arrived' },
+            completed: { text: '已完成', color: 'completed' },
+            rejected: { text: '已拒绝', color: 'rejected' },
+            expired: { text: '已过期', color: 'expired' }
+        };
+
+        var jobIconMap = {
+            1: 'fa-box',
+            2: 'fa-utensils',
+            3: 'fa-truck',
+            4: 'fa-snowflake',
+            5: 'fa-tools'
+        };
+
+        var currentSearch = '';
+
+        function init() {
+            renderList('all');
+        }
+
+        function renderList(filter) {
+            var list = document.getElementById('applicantList');
+            var data = filter === 'all' ? records : records.filter(function(r) { return r.status === filter; });
+
+            // 搜索筛选
+            if (currentSearch) {
+                data = data.filter(function(r) {
+                    var job = jobs[r.jobId];
+                    return job.title.indexOf(currentSearch) !== -1;
+                });
+            }
+
+            if (data.length === 0) {
+                list.innerHTML = '<div class="empty-state">暂无报名记录</div>';
+                return;
+            }
+
+            list.innerHTML = data.map(function(record) {
+                var applicant = applicants[record.applicantId];
+                var job = jobs[record.jobId];
+                var statusInfo = statusMap[record.status];
+                var initial = applicant.name.charAt(0);
+                var tagClass = record.status === 'accepted' || record.status === 'arrived' || record.status === 'completed' ? 'green' : (record.status === '老员工' ? 'blue' : '');
+                
+                var actions = '';
+                if (record.status === 'pending') {
+                    actions = '<div class="record-actions">' +
+                        '<div class="record-btn primary" onclick="handleRecord(' + record.id + ',\'accept\')">录用</div>' +
+                        '<div class="record-btn secondary" onclick="handleRecord(' + record.id + ',\'reject\')">拒绝</div>' +
+                    '</div>';
+                } else if (record.status === 'accepted') {
+                    actions = '<div class="record-actions">' +
+                        '<div class="record-btn secondary" onclick="handleRecord(' + record.id + ',\'arrive\')">确认到岗</div>' +
+                    '</div>';
+                } else if (record.status === 'arrived') {
+                    actions = '<div class="record-actions">' +
+                        '<div class="record-btn primary" onclick="handleRecord(' + record.id + ',\'complete\')">确认完工</div>' +
+                    '</div>';
+                }
+
+                return '<div class="applicant-record">' +
+                    '<div class="record-header">' +
+                        '<div class="record-job">' +
+                            '<div class="record-job-icon"><i class="fas ' + (jobIconMap[record.jobId] || 'fa-briefcase') + '"></i></div>' +
+                            '<div class="record-job-info">' +
+                                '<div class="record-job-title">' + job.title + '</div>' +
+                                '<div class="record-job-meta"><i class="fas fa-calendar" style="margin-right:3px;color:#FF6B35;"></i>' + job.date + ' · 需' + job.workers + '人</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="record-wage">¥' + job.wage + '/天</div>' +
+                    '</div>' +
+                    '<div class="record-applicant">' +
+                        '<div class="record-avatar">' + initial + '</div>' +
+                        '<div class="record-applicant-info">' +
+                            '<div class="record-applicant-name">' + applicant.name +
+                                '<span class="record-star">★ ' + applicant.star + '</span>' +
+                                (applicant.tag ? '<span class="record-tag ' + tagClass + '">' + applicant.tag + '</span>' : '') +
+                            '</div>' +
+                            '<div class="record-meta">' +
+                                '<span><i class="fas fa-phone"></i>' + applicant.phone + '</span>' +
+                                '<span><i class="fas fa-map-marker-alt"></i>松江区</span>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="record-footer">' +
+                        '<div class="record-status ' + statusInfo.color + '">' + statusInfo.text + '</div>' +
+                        actions +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function handleRecord(id, action) {
+            var record = records.find(function(r) { return r.id === id; });
+            if (!record) return;
+            var applicant = applicants[record.applicantId];
+            var actionText = { accept: '录用', reject: '拒绝', arrive: '确认到岗', complete: '确认完工' }[action];
+            alert('已对「' + applicant.name + '」执行：' + actionText);
+            // 模拟状态变更
+            if (action === 'accept') record.status = 'accepted';
+            else if (action === 'reject') record.status = 'rejected';
+            else if (action === 'arrive') record.status = 'arrived';
+            else if (action === 'complete') record.status = 'completed';
+            var activeFilter = document.querySelector('.filter-tab.active').getAttribute('onclick').match(/'([^']+)'/)[1];
+            renderList(activeFilter);
+        }
+
+        function switchFilter(el, filter) {
+            document.querySelectorAll('.filter-tab').forEach(function(t) { t.classList.remove('active'); });
+            el.classList.add('active');
+            renderList(filter);
+        }
+
+        function handleSearch() {
+            var input = document.getElementById('searchInput');
+            var clear = document.getElementById('searchClear');
+            currentSearch = input.value.trim();
+            if (currentSearch) {
+                clear.classList.add('show');
+            } else {
+                clear.classList.remove('show');
+            }
+            var activeFilter = document.querySelector('.filter-tab.active').getAttribute('onclick').match(/'([^']+)'/)[1];
+            renderList(activeFilter);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            currentSearch = '';
+            document.getElementById('searchClear').classList.remove('show');
+            var activeFilter = document.querySelector('.filter-tab.active').getAttribute('onclick').match(/'([^']+)'/)[1];
+            renderList(activeFilter);
+        }
+
+        function navigateTo(pageName) {
+            window.location.href = pageName + '.html';
+        }
+
+        function goBack() { window.history.back(); }
+
+        init();
+    </script>
+</body>
+</html>

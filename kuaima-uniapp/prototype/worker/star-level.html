@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马星级 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #fff; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; background: #fff; }
+        .nav-back { display: flex; align-items: center; cursor: pointer; width: 32px; height: 32px; }
+        .nav-right { display: flex; align-items: center; background: rgba(255, 255, 255, 0.9); border-radius: 20px; padding: 4px 6px; gap: 2px; }
+        .nav-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .top-nav { position: absolute; top: 47px; left: 0; right: 0; height: 52px; background: #fff; z-index: 10; }
+        .content-area { position: absolute; top: 99px; left: 0; right: 0; bottom: 34px; overflow-y: auto; background: #f5f5f5; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        
+        /* 星级卡片 */
+        .level-card {
+            background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+            margin: 12px; border-radius: 16px; padding: 20px; color: white; position: relative;
+            overflow: hidden;
+        }
+        .level-tag {
+            position: absolute; top: 12px; left: 12px;
+            background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 11px;
+        }
+        .level-name { font-size: 32px; font-weight: 700; margin-top: 20px; }
+        .level-expire { font-size: 12px; opacity: 0.85; margin-top: 6px; }
+        .level-progress { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+        .progress-text { font-size: 13px; }
+        .upgrade-btn {
+            background: rgba(255,255,255,0.25); padding: 10px 24px; border-radius: 20px;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+        }
+        .level-decoration {
+            position: absolute; right: -30px; top: 30px; font-size: 120px; opacity: 0.15;
+        }
+        
+        /* 星级分 */
+        .score-section { background: white; margin: 12px; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .score-value { font-size: 20px; font-weight: 700; color: #333; }
+        .score-detail { font-size: 13px; color: #FF6B35; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        
+        /* 权益卡片 */
+        .benefits-section { background: white; margin: 12px; border-radius: 12px; padding: 16px; }
+        .benefits-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .benefits-title { font-size: 16px; font-weight: 600; color: #333; }
+        .benefits-detail { font-size: 13px; color: #FF6B35; cursor: pointer; }
+        .benefits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .benefit-item { text-align: center; padding: 12px 8px; background: #FFF8E6; border-radius: 10px; position: relative; }
+        .benefit-value { font-size: 22px; font-weight: 700; color: #FF6B35; }
+        .benefit-value.locked { color: #ccc; }
+        .benefit-label { font-size: 11px; color: #666; margin-top: 4px; }
+        .lock-icon { position: absolute; top: 8px; right: 8px; font-size: 10px; color: #999; }
+        
+        /* 常见问题 */
+        .faq-section { background: white; margin: 12px; border-radius: 12px; padding: 16px; }
+        .faq-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 12px; }
+        .faq-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-text { font-size: 14px; color: #333; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="top-nav">
+            <div class="nav-bar">
+                <div class="nav-back" onclick="goBack()">
+                    <i class="fas fa-chevron-left text-gray-700"></i>
+                </div>
+                <div class="nav-title">快马星级</div>
+                <div class="nav-right">
+                    <div class="nav-btn">
+                        <i class="fas fa-ellipsis text-gray-700" style="font-size: 13px;"></i>
+                    </div>
+                    <div style="width: 1px; height: 14px; background: #ddd; margin: 0 2px;"></div>
+                    <div class="nav-btn">
+                        <i class="fas fa-circle text-gray-700" style="font-size: 11px;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <!-- 星级卡片 -->
+            <div class="level-card">
+                <div class="level-tag">当前星级</div>
+                <div class="level-decoration"><i class="fas fa-gem"></i></div>
+                <div class="level-name">零星零工</div>
+                <div class="level-expire">星级保留至 2026-08-31</div>
+                <div class="level-progress">
+                    <div class="progress-text">距离升级还差 <b>200</b> 星级分</div>
+                    <div class="upgrade-btn" onclick="alert('去升级')">去升级</div>
+                </div>
+            </div>
+
+            <!-- 星级分 -->
+            <div class="score-section">
+                <div class="score-value">当前星级分 0</div>
+                <div class="score-detail" onclick="alert('星级分明细')">
+                    星级分明细 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                </div>
+            </div>
+
+            <!-- 权益 -->
+            <div class="benefits-section">
+                <div class="benefits-header">
+                    <div class="benefits-title">零星零工权益</div>
+                    <div class="benefits-detail" onclick="alert('权益详情')">
+                        详情 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                    </div>
+                </div>
+                <div class="benefits-grid">
+                    <div class="benefit-item">
+                        <div class="lock-icon"><i class="fas fa-lock"></i></div>
+                        <div class="benefit-value locked">9.5折</div>
+                        <div class="benefit-label">技术服务费优惠</div>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="lock-icon"><i class="fas fa-lock"></i></div>
+                        <div class="benefit-value locked">1次/月</div>
+                        <div class="benefit-label">优先接好单</div>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="lock-icon"><i class="fas fa-lock"></i></div>
+                        <div class="benefit-value locked">3次/天</div>
+                        <div class="benefit-label">报名次数</div>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-value">基础通知</div>
+                        <div class="benefit-label">岗位抢先知</div>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="lock-icon"><i class="fas fa-lock"></i></div>
+                        <div class="benefit-value locked">3人</div>
+                        <div class="benefit-label">关注好老板</div>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="lock-icon"><i class="fas fa-lock"></i></div>
+                        <div class="benefit-value locked">更多</div>
+                        <div class="benefit-label">解锁更多权益</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 常见问题 -->
+            <div class="faq-section">
+                <div class="faq-title">常见问题</div>
+                <div class="faq-item" onclick="alert('快马星级规则')">
+                    <span class="faq-text">快马星级规则</span>
+                    <i class="fas fa-chevron-right text-gray-400" style="font-size: 12px;"></i>
+                </div>
+                <div class="faq-item" onclick="alert('如何快速提升星级？')">
+                    <span class="faq-text">如何快速提升星级？</span>
+                    <i class="fas fa-chevron-right text-gray-400" style="font-size: 12px;"></i>
+                </div>
+                <div class="faq-item" onclick="alert('星级分计算规则？')">
+                    <span class="faq-text">星级分计算规则？</span>
+                    <i class="fas fa-chevron-right text-gray-400" style="font-size: 12px;"></i>
+                </div>
+            </div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() { window.history.back(); }
+    </script>
+</body>
+</html>

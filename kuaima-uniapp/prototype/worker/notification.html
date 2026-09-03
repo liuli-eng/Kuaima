@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统通知 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #f5f5f5; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .scroll-area { position: absolute; top: 47px; left: 0; right: 0; bottom: 34px; overflow-y: auto; background: #FFF8E6; -webkit-overflow-scrolling: touch; }
+        .scroll-area::-webkit-scrollbar { display: none; }
+        .nav-bar { padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; background: #FFE4B5; }
+        .nav-back { display: flex; align-items: center; cursor: pointer; width: 32px; height: 32px; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { display: flex; align-items: center; background: rgba(255, 255, 255, 0.9); border-radius: 20px; padding: 4px 6px; gap: 2px; }
+        .nav-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+        .filter-tabs { display: flex; padding: 12px 16px; gap: 10px; }
+        .filter-tab { flex: 1; text-align: center; padding: 8px 0; border-radius: 16px; font-size: 13px; cursor: pointer; }
+        .tab-active { background: linear-gradient(135deg, #FF6B35, #FF8C5A); color: white; font-weight: 500; }
+        .tab-inactive { background: white; color: #666; }
+        .date-group { padding: 12px 16px 8px; font-size: 13px; color: #999; }
+        .notification-card { background: white; margin: 6px 16px; border-radius: 12px; padding: 14px 16px; display: flex; gap: 12px; }
+        .notif-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .notif-content { flex: 1; min-width: 0; }
+        .notif-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .notif-title { font-size: 15px; font-weight: 600; color: #333; }
+        .notif-time { font-size: 11px; color: #999; }
+        .notif-desc { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 8px; }
+        .notif-action { font-size: 12px; color: #FF6B35; cursor: pointer; display: inline-flex; align-items: center; gap: 2px; }
+        .unread-dot { width: 8px; height: 8px; background: #FF4D4F; border-radius: 50%; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        .empty-state { text-align: center; padding: 80px 20px; }
+        .empty-icon { font-size: 60px; color: #ddd; margin-bottom: 16px; }
+        .empty-text { font-size: 14px; color: #999; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="scroll-area">
+            <!-- 顶部导航 -->
+            <div class="nav-bar">
+                <div class="nav-back" onclick="goBack()">
+                    <i class="fas fa-chevron-left text-gray-700"></i>
+                </div>
+                <div class="nav-title">系统通知</div>
+                <div class="nav-right">
+                    <div class="nav-btn">
+                        <i class="fas fa-ellipsis text-gray-700" style="font-size: 13px;"></i>
+                    </div>
+                    <div style="width: 1px; height: 14px; background: #ddd; margin: 0 2px;"></div>
+                    <div class="nav-btn">
+                        <i class="fas fa-circle text-gray-700" style="font-size: 11px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 筛选标签 -->
+            <div class="filter-tabs">
+                <div class="filter-tab tab-active" data-type="all" onclick="switchTab(this)">全部</div>
+                <div class="filter-tab tab-inactive" data-type="order" onclick="switchTab(this)">订单</div>
+                <div class="filter-tab tab-inactive" data-type="activity" onclick="switchTab(this)">活动</div>
+                <div class="filter-tab tab-inactive" data-type="notice" onclick="switchTab(this)">公告</div>
+            </div>
+
+            <!-- 今日 -->
+            <div class="date-group" data-group="today">今日</div>
+
+            <!-- 通知卡片 -->
+            <div class="notification-card" data-type="order">
+                <div class="notif-icon" style="background: #FFF4E6;">
+                    <i class="fas fa-bell" style="color: #FF6B35;"></i>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-header">
+                        <span class="notif-title">订单接单成功</span>
+                        <span class="notif-time">10:30</span>
+                    </div>
+                    <div class="notif-desc">您已成功接单【餐饮清洁工】任务，明天08:00-18:00，请准时到达泗泾镇工作地点。</div>
+                    <div class="notif-action" onclick="viewOrder()">
+                        查看订单详情 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notification-card" data-type="activity">
+                <div class="notif-icon" style="background: #E6F7FF;">
+                    <i class="fas fa-gift" style="color: #1890FF;"></i>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-header">
+                        <span class="notif-title">新用户福利</span>
+                        <span class="notif-time">09:15</span>
+                    </div>
+                    <div class="notif-desc">恭喜您成为快马日结新用户！完成首个订单可获得额外奖励金20元，快来接单赚钱吧！</div>
+                    <div class="notif-action" onclick="viewReward()">
+                        去完成首单 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notification-card" data-type="notice">
+                <div class="notif-icon" style="background: #F6FFED;">
+                    <i class="fas fa-check-circle" style="color: #52C41A;"></i>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-header">
+                        <span class="notif-title">实名认证审核通过</span>
+                        <span class="notif-time">08:00</span>
+                    </div>
+                    <div class="notif-desc">您的实名认证已审核通过，现在可以正常抢单赚钱啦！</div>
+                </div>
+            </div>
+
+            <!-- 昨天 -->
+            <div class="date-group" data-group="yesterday">昨天</div>
+
+            <div class="notification-card" data-type="order">
+                <div class="notif-icon" style="background: #FFF4E6;">
+                    <i class="fas fa-dollar-sign" style="color: #FA8C16;"></i>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-header">
+                        <span class="notif-title">工资结算通知</span>
+                        <span class="notif-time">18:30</span>
+                    </div>
+                    <div class="notif-desc">您昨天完成的【快递分拣员】订单工资96元已到账，可在钱包中查看并提现。</div>
+                    <div class="notif-action" onclick="viewWallet()">
+                        查看钱包 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notification-card" data-type="notice">
+                <div class="notif-icon" style="background: #FFF0F0;">
+                    <i class="fas fa-bullhorn" style="color: #F5222D;"></i>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-header">
+                        <span class="notif-title">平台公告</span>
+                        <span class="notif-time">15:00</span>
+                    </div>
+                    <div class="notif-desc">关于平台服务规则更新的通知，请前往【平台规则】查看详情，感谢您的支持。</div>
+                    <div class="notif-action" onclick="viewRule()">
+                        查看规则 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notification-card" data-type="order">
+                <div class="notif-icon" style="background: #E6F7FF;">
+                    <i class="fas fa-bell" style="color: #1890FF;"></i>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-header">
+                        <span class="notif-title">附近新岗位</span>
+                        <span class="notif-time">12:00</span>
+                    </div>
+                    <div class="notif-desc">松江区附近有新岗位发布，最高日薪280元，快来查看是否合适！</div>
+                    <div class="notif-action" onclick="viewJobs()">
+                        查看岗位 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 更早 -->
+            <div class="date-group" data-group="earlier">更早</div>
+
+            <!-- 空状态（默认隐藏） -->
+            <div class="empty-state" id="empty-state" style="display: none;">
+                <div class="empty-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <div class="empty-text">暂无相关通知</div>
+            </div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() { window.history.back(); }
+        function switchTab(el) {
+            document.querySelectorAll('.filter-tab').forEach(t => {
+                t.classList.remove('tab-active');
+                t.classList.add('tab-inactive');
+            });
+            el.classList.remove('tab-inactive');
+            el.classList.add('tab-active');
+
+            const type = el.dataset.type;
+            filterNotifications(type);
+        }
+        function filterNotifications(type) {
+            const cards = document.querySelectorAll('.notification-card');
+            const groups = document.querySelectorAll('.date-group');
+            const emptyState = document.getElementById('empty-state');
+            let hasVisibleCard = false;
+
+            cards.forEach(card => {
+                if (type === 'all' || card.dataset.type === type) {
+                    card.style.display = '';
+                    hasVisibleCard = true;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // 隐藏没有可见卡片的日期分组
+            groups.forEach(group => {
+                const nextCards = [];
+                let next = group.nextElementSibling;
+                while (next && !next.classList.contains('date-group')) {
+                    if (next.classList.contains('notification-card')) {
+                        nextCards.push(next);
+                    }
+                    next = next.nextElementSibling;
+                }
+                const hasVisible = nextCards.some(c => c.style.display !== 'none');
+                group.style.display = hasVisible ? '' : 'none';
+            });
+
+            emptyState.style.display = hasVisibleCard ? 'none' : 'block';
+        }
+        function viewOrder() { navigateTo('job-detail'); }
+        function viewReward() { navigateTo('home'); }
+        function viewWallet() { alert('查看钱包'); }
+        function viewRule() { navigateTo('rule'); }
+        function viewJobs() { navigateTo('home'); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>招工地址 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame { width: 390px; height: 844px; background: #f5f5f5; overflow: hidden; position: relative; border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a; }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { display: flex; gap: 14px; color: #333; font-size: 16px; cursor: pointer; }
+        .add-btn { margin: 12px 16px; padding: 12px; background: #fff; border: 1px dashed #FF6B35; border-radius: 10px; color: #FF6B35; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+        .address-card { background: #fff; margin: 8px 16px; border-radius: 12px; padding: 14px; }
+        .address-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .address-name { font-size: 15px; font-weight: 600; color: #333; }
+        .address-default { font-size: 11px; color: #FF6B35; background: #FFF3ED; padding: 2px 8px; border-radius: 4px; }
+        .address-detail { font-size: 13px; color: #666; line-height: 1.5; }
+        .address-actions { display: flex; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f5f5f5; }
+        .action-btn { padding: 4px 10px; font-size: 12px; color: #666; background: #f5f5f5; border-radius: 4px; cursor: pointer; }
+        .action-btn.danger { color: #FF4D4F; }
+        .empty-state { text-align: center; padding: 60px 40px; }
+        .empty-icon { font-size: 48px; color: #ddd; margin-bottom: 12px; }
+        .empty-text { font-size: 14px; color: #999; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar"><span>19:53</span><div class="flex items-center gap-1"><i class="fas fa-signal text-sm"></i><i class="fas fa-wifi text-sm"></i><i class="fas fa-battery-full text-sm"></i></div></div>
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+            <div class="nav-title">招工地址</div>
+            <div class="nav-right"><i class="fas fa-plus" onclick="navigateTo('add-address')"></i></div>
+        </div>
+        <div class="overflow-y-auto" style="height: calc(100% - 97px - 16px);">
+            <div class="add-btn" onclick="navigateTo('add-address')"><i class="fas fa-map-marker-alt"></i>添加招工地址</div>
+            <div class="address-card">
+                <div class="address-head"><div class="address-name">公司仓库</div><div class="address-default">默认</div></div>
+                <div class="address-detail">上海市浦东新区张江高科技园区科苑路88号</div>
+                <div class="address-actions">
+                    <div class="action-btn" onclick="alert('导航')"><i class="fas fa-location-arrow mr-1"></i>导航</div>
+                    <div class="action-btn" onclick="navigateTo('add-address')"><i class="fas fa-edit mr-1"></i>编辑</div>
+                    <div class="action-btn" onclick="alert('设为默认')">设为默认</div>
+                </div>
+            </div>
+            <div class="address-card">
+                <div class="address-head"><div class="address-name">闵行工厂</div></div>
+                <div class="address-detail">上海市闵行区莘庄工业区申富路366号</div>
+                <div class="address-actions">
+                    <div class="action-btn" onclick="alert('导航')"><i class="fas fa-location-arrow mr-1"></i>导航</div>
+                    <div class="action-btn" onclick="navigateTo('add-address')"><i class="fas fa-edit mr-1"></i>编辑</div>
+                    <div class="action-btn danger" onclick="alert('删除')"><i class="fas fa-trash mr-1"></i>删除</div>
+                </div>
+            </div>
+        </div>
+        <div class="page-indicator"></div>
+    </div>
+    <script>
+function goBack(){window.history.back();}
+function navigateTo(page) {
+    var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "follow-qrcode", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "intent-personal", "intent-job", "intent-preference", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+    var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance", "realname", "points", "voucher", "reward", "add-address"];
+    var path = page + '.html';
+    if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) >= 0) {
+        path = '../worker/' + path;
+    } else if (bossPages.indexOf(page) < 0 && workerPages.indexOf(page) < 0) {
+        path = '../' + path;
+    }
+    if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+}
+</script>
+</body>
+</html>

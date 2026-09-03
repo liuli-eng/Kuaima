@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>压薪日结 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', -apple-system, 'PingFang SC', sans-serif; }
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: #FFF8E6;
+            overflow: hidden;
+            position: relative;
+            border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+            display: flex;
+            flex-direction: column;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 32px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 60;
+        }
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .scroll-area::-webkit-scrollbar { display: none; }
+        .tab-bar {
+            flex-shrink: 0;
+            height: 83px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            padding-bottom: 20px;
+            z-index: 50;
+        }
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .tab-item.active .tab-label { color: #FF6B35; }
+        .tab-icon-wrap {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            margin-bottom: 3px;
+        }
+        .tab-label {
+            font-size: 10px;
+            color: #999;
+            font-weight: 500;
+        }
+        .tab-item.active .tab-icon-wrap {
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            color: white;
+            margin-bottom: 2px;
+            box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
+        }
+        .header-gradient {
+            background: linear-gradient(180deg, #FFE4B5 0%, #FFF8E6 100%);
+            padding: 0 16px 12px;
+        }
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+        }
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .action-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .title-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .title-main {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+        .title-text {
+            font-size: 28px;
+            font-weight: 800;
+            color: #8B4513;
+        }
+        .title-text.highlight {
+            color: #FF6B35;
+        }
+        .title-desc {
+            font-size: 13px;
+            color: #999;
+            margin-top: 6px;
+        }
+        .title-mascot {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #FFE4B5, #FFD48A);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(255, 180, 100, 0.3);
+        }
+        .title-mascot i {
+            font-size: 28px;
+            color: #FF6B35;
+        }
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+        }
+        .location {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 16px;
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+        }
+        .search-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 16px;
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+        }
+        .job-list {
+            padding: 8px 16px;
+        }
+        .job-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .job-card:active {
+            transform: scale(0.98);
+        }
+        .job-time {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .job-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #FFF3E0;
+            color: #FF6B35;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .job-distance {
+            margin-left: auto;
+            color: #999;
+        }
+        .job-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .job-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .feature-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #F5F5F5;
+            color: #666;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .feature-tag.green {
+            background: #E8F5E9;
+            color: #52C41A;
+        }
+        .feature-tag.blue {
+            background: #E6F7FF;
+            color: #1890FF;
+        }
+        .job-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .job-salary {
+            font-size: 22px;
+            font-weight: 800;
+            color: #FF6B35;
+        }
+        .job-salary .unit {
+            font-size: 14px;
+            font-weight: 500;
+            color: #999;
+        }
+        .job-salary .note {
+            font-size: 12px;
+            font-weight: 500;
+            color: #999;
+            margin-left: 4px;
+        }
+        .apply-btn {
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+        .bottom-slogan {
+            text-align: center;
+            padding: 16px;
+            font-size: 14px;
+            color: #ccc;
+        }
+        .slogan-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #E8D5B7;
+        }
+        .slogan-desc {
+            font-size: 12px;
+            color: #ddd;
+            margin-top: 4px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        
+        <!-- 状态栏 -->
+        <div style="height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333;">
+            <span>20:07</span>
+            <div class="flex items-center gap-1">
+                <span class="text-xs">6.5 K/s</span>
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <span class="text-xs">27</span>
+                <i class="fas fa-battery text-sm"></i>
+            </div>
+        </div>
+
+        <div class="scroll-area">
+            <!-- 页面头部 -->
+            <div class="header-gradient">
+                <div class="page-header">
+                    <div class="back-btn" onclick="navigateTo('home')">
+                        <i class="fas fa-chevron-left text-gray-700"></i>
+                    </div>
+                    <div class="header-actions">
+                        <div class="action-icon">
+                            <i class="fas fa-ellipsis text-gray-700 text-xs"></i>
+                        </div>
+                        <div class="action-icon">
+                            <i class="fas fa-circle text-gray-700 text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 标题区域 -->
+                <div class="title-section">
+                    <div>
+                        <div class="title-main">
+                            <span class="title-text">压薪</span>
+                            <span class="title-text highlight">日结</span>
+                        </div>
+                        <div class="title-desc">压薪N天后日结 干满工期可续单</div>
+                    </div>
+                    <div class="title-mascot">
+                        <i class="fas fa-sack-dollar"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 筛选栏 -->
+            <div class="filter-bar">
+                <div class="location">
+                    <i class="fas fa-map-marker-alt text-orange-400 text-sm"></i>
+                    <span>松江洞照路</span>
+                    <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                </div>
+                <div style="flex:1;"></div>
+                <div class="filter-btn" onclick="navigateTo('filter')">
+                    <i class="fas fa-filter text-gray-400 text-xs"></i>
+                    <span>筛选</span>
+                </div>
+                <div class="search-btn" onclick="navigateTo('search')">
+                    <i class="fas fa-search text-gray-400 text-xs"></i>
+                    <span>搜索</span>
+                </div>
+            </div>
+
+            <!-- 岗位列表 -->
+            <div class="job-list">
+                <!-- 岗位1 -->
+                <div class="job-card" onclick="navigateTo('job-detail')">
+                    <div class="job-time">
+                        <span>明天 09:00面试</span>
+                        <span class="job-tag">7天单</span>
+                        <span class="job-distance">方松街道 6.6km</span>
+                    </div>
+                    <div class="job-title">餐饮服务员、洗碗工、切配/帮厨</div>
+                    <div class="job-tags">
+                        <span class="feature-tag green">免服务费</span>
+                        <span class="feature-tag">包吃</span>
+                        <span class="feature-tag blue">有空调</span>
+                    </div>
+                    <div class="job-footer">
+                        <div>
+                            <span class="job-salary">170<span class="unit">元/天</span></span>
+                            <span class="note">（压薪1天后日结）</span>
+                        </div>
+                        <button class="apply-btn" onclick="event.stopPropagation(); navigateTo('job-detail')">报名面试</button>
+                    </div>
+                </div>
+
+                <!-- 岗位2 -->
+                <div class="job-card" onclick="navigateTo('job-detail')">
+                    <div class="job-time">
+                        <span>明天 07:00面试</span>
+                        <span class="job-tag">30天单</span>
+                        <span class="job-distance">香花桥街道 13.6km</span>
+                    </div>
+                    <div class="job-title">快递卸车，只卸不装，相对轻松</div>
+                    <div class="job-tags">
+                        <span class="feature-tag green">免服务费</span>
+                        <span class="feature-tag">包吃住</span>
+                    </div>
+                    <div class="job-footer">
+                        <div>
+                            <span class="job-salary">66<span class="unit">元/天</span></span>
+                            <span class="note">（压薪1天后日结）</span>
+                        </div>
+                        <button class="apply-btn" onclick="event.stopPropagation(); navigateTo('job-detail')">报名面试</button>
+                    </div>
+                </div>
+
+                <!-- 岗位3 -->
+                <div class="job-card" onclick="navigateTo('job-detail')">
+                    <div class="job-time">
+                        <span>明天 09:00面试</span>
+                        <span class="job-tag">30天单</span>
+                        <span class="job-distance">古美街道 15.4km</span>
+                    </div>
+                    <div class="job-title">后厨阿姨，杂工</div>
+                    <div class="job-tags">
+                        <span class="feature-tag green">免服务费</span>
+                        <span class="feature-tag">包吃住</span>
+                        <span class="feature-tag blue">有空调</span>
+                    </div>
+                    <div class="job-footer">
+                        <div>
+                            <span class="job-salary">221<span class="unit">元/天</span></span>
+                            <span class="note">（压薪1天后日结）</span>
+                        </div>
+                        <button class="apply-btn" onclick="event.stopPropagation(); navigateTo('job-detail')">报名面试</button>
+                    </div>
+                </div>
+
+                <!-- 岗位4 -->
+                <div class="job-card" onclick="navigateTo('job-detail')">
+                    <div class="job-time">
+                        <span>明天 11:00面试</span>
+                        <span class="job-tag">22天单</span>
+                        <span class="job-distance">虹梅路街道 17.5km</span>
+                    </div>
+                    <div class="job-title">餐饮服务员</div>
+                    <div class="job-tags">
+                        <span class="feature-tag green">免服务费</span>
+                        <span class="feature-tag">包吃</span>
+                    </div>
+                    <div class="job-footer">
+                        <div>
+                            <span class="job-salary">225<span class="unit">元/天</span></span>
+                            <span class="note">（压薪5天后日结）</span>
+                        </div>
+                        <button class="apply-btn" onclick="event.stopPropagation(); navigateTo('job-detail')">报名面试</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部标语 -->
+            <div class="bottom-slogan">
+                <div class="slogan-title">找日结 上快马</div>
+                <div class="slogan-desc">— 真老板 真工价 真日结 —</div>
+            </div>
+        </div>
+
+        <!-- 底部TabBar -->
+        <div class="tab-bar">
+            <div class="tab-item active" onclick="switchTab(this, 'home')">
+                <div class="tab-icon-wrap"><i class="fas fa-house text-lg"></i></div>
+                <span class="tab-label">抢日结</span>
+            </div>
+            <div class="tab-item" onclick="switchTab(this, 'order')">
+                <div class="tab-icon-wrap"><i class="fas fa-clipboard-list text-lg"></i></div>
+                <span class="tab-label">接单</span>
+            </div>
+            <div class="tab-item" onclick="switchTab(this, 'message')">
+                <div class="tab-icon-wrap"><i class="fas fa-comment-dots text-lg"></i></div>
+                <span class="tab-label">消息</span>
+            </div>
+            <div class="tab-item" onclick="switchTab(this, 'profile')">
+                <div class="tab-icon-wrap"><i class="fas fa-smile text-lg"></i></div>
+                <span class="tab-label">我的</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function switchTab(el, tab) {
+            document.querySelectorAll('.tab-item').forEach(i => {
+                i.classList.remove('active');
+                const iconWrap = i.querySelector('.tab-icon-wrap');
+                if (iconWrap) {
+                    iconWrap.style.background = '';
+                    iconWrap.style.borderRadius = '';
+                    iconWrap.style.width = '';
+                    iconWrap.style.height = '';
+                    iconWrap.style.color = '';
+                    iconWrap.style.marginBottom = '';
+                    iconWrap.style.boxShadow = '';
+                }
+            });
+            el.classList.add('active');
+            const activeIconWrap = el.querySelector('.tab-icon-wrap');
+            if (activeIconWrap) {
+                activeIconWrap.style.background = 'linear-gradient(135deg, #FF6B35, #FF8C5A)';
+                activeIconWrap.style.borderRadius = '50%';
+                activeIconWrap.style.width = '32px';
+                activeIconWrap.style.height = '32px';
+                activeIconWrap.style.color = 'white';
+                activeIconWrap.style.marginBottom = '2px';
+                activeIconWrap.style.boxShadow = '0 4px 10px rgba(255, 107, 53, 0.3)';
+            }
+            navigateTo(tab);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 账户设置</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .settings-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .settings-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+        }
+        .settings-card-title i {
+            color: var(--primary);
+        }
+        .bind-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .bind-item:last-child {
+            border-bottom: none;
+        }
+        .bind-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .bind-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .bind-icon.email { background: #EFF6FF; color: #3B82F6; }
+        .bind-icon.phone { background: #F0FDF4; color: #10B981; }
+        .bind-icon.wechat { background: #FEF3C7; color: #F59E0B; }
+        .bind-icon.dingtalk { background: #F0F4FF; color: #6366F1; }
+        .bind-content .bind-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        .bind-content .bind-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .bind-content .bind-value {
+            font-size: 13px;
+            color: var(--primary);
+        }
+        .bind-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .bind-status .status-tag {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 10px;
+        }
+        .status-tag.bound { background: #ECFDF5; color: #059669; }
+        .status-tag.unbound { background: #F3F4F6; color: #6B7280; }
+        .bind-action {
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--primary);
+        }
+        .bind-action:hover {
+            text-decoration: underline;
+        }
+        .notify-group {
+            margin-bottom: 20px;
+        }
+        .notify-group-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .notify-group-title i {
+            color: var(--primary);
+            font-size: 12px;
+        }
+        .notify-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .notify-item:last-child {
+            border-bottom: none;
+        }
+        .notify-info .notify-name {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        .notify-info .notify-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #E5E7EB;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .toggle-switch.active {
+            background: var(--primary);
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+        .lang-group {
+            display: flex;
+            gap: 12px;
+        }
+        .lang-option {
+            flex: 1;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .lang-option.active {
+            border-color: var(--primary);
+            background: #FFF8E6;
+        }
+        .lang-option .lang-flag {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+        .lang-option .lang-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .lang-option .lang-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .danger-zone {
+            background: #FEF2F2;
+            border: 1px solid #FECACA;
+            border-radius: 16px;
+            padding: 28px;
+        }
+        .danger-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #DC2626;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .danger-title i { color: #DC2626; }
+        .danger-desc {
+            font-size: 13px;
+            color: #991B1B;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .danger-list {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        .danger-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(220,38,38,0.15);
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        .danger-list li:last-child { border-bottom: none; }
+        .danger-list li span:first-child { color: #7F1D1D; }
+        .danger-list li span:last-child {
+            color: #DC2626;
+            font-weight: 500;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">账户设置</h1>
+                <p class="page-desc">管理账户绑定、通知偏好和系统设置</p>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-title">
+                    <i class="fas fa-link"></i> 账号绑定
+                </div>
+                <div class="bind-item">
+                    <div class="bind-info">
+                        <div class="bind-icon email">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="bind-content">
+                            <div class="bind-name">邮箱</div>
+                            <div class="bind-value">admin@kuaima.com</div>
+                            <div class="bind-desc">用于接收重要通知和找回密码</div>
+                        </div>
+                    </div>
+                    <div class="bind-status">
+                        <span class="status-tag bound">已绑定</span>
+                        <a class="bind-action" onclick="alert('修改邮箱')">修改</a>
+                    </div>
+                </div>
+                <div class="bind-item">
+                    <div class="bind-info">
+                        <div class="bind-icon phone">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <div class="bind-content">
+                            <div class="bind-name">手机号</div>
+                            <div class="bind-value">138****8888</div>
+                            <div class="bind-desc">已实名认证，可用于登录和接收短信</div>
+                        </div>
+                    </div>
+                    <div class="bind-status">
+                        <span class="status-tag bound">已绑定</span>
+                        <a class="bind-action" onclick="alert('修改手机号')">修改</a>
+                    </div>
+                </div>
+                <div class="bind-item">
+                    <div class="bind-info">
+                        <div class="bind-icon wechat">
+                            <i class="fab fa-weixin"></i>
+                        </div>
+                        <div class="bind-content">
+                            <div class="bind-name">企业微信</div>
+                            <div class="bind-desc">绑定后可接收企业微信消息通知</div>
+                        </div>
+                    </div>
+                    <div class="bind-status">
+                        <span class="status-tag unbound">未绑定</span>
+                        <a class="bind-action" onclick="alert('跳转企业微信授权')">去绑定</a>
+                    </div>
+                </div>
+                <div class="bind-item">
+                    <div class="bind-info">
+                        <div class="bind-icon dingtalk">
+                            <i class="fab fa-dochub"></i>
+                        </div>
+                        <div class="bind-content">
+                            <div class="bind-name">钉钉</div>
+                            <div class="bind-desc">绑定后可通过钉钉接收审批通知</div>
+                        </div>
+                    </div>
+                    <div class="bind-status">
+                        <span class="status-tag unbound">未绑定</span>
+                        <a class="bind-action" onclick="alert('跳转钉钉授权')">去绑定</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-title">
+                    <i class="fas fa-bell"></i> 通知偏好
+                </div>
+                <div class="notify-group">
+                    <div class="notify-group-title">
+                        <i class="fas fa-circle"></i> 系统通知
+                    </div>
+                    <div class="notify-item">
+                        <div class="notify-info">
+                            <div class="notify-name">系统公告</div>
+                            <div class="notify-desc">平台维护、版本更新等重要通知</div>
+                        </div>
+                        <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="notify-item">
+                        <div class="notify-info">
+                            <div class="notify-name">安全提醒</div>
+                            <div class="notify-desc">异常登录、密码修改等安全相关提醒</div>
+                        </div>
+                        <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                </div>
+                <div class="notify-group">
+                    <div class="notify-group-title">
+                        <i class="fas fa-circle"></i> 业务通知
+                    </div>
+                    <div class="notify-item">
+                        <div class="notify-info">
+                            <div class="notify-name">审核通知</div>
+                            <div class="notify-desc">新的认证审核、招工审核待处理时提醒</div>
+                        </div>
+                        <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="notify-item">
+                        <div class="notify-info">
+                            <div class="notify-name">举报通知</div>
+                            <div class="notify-desc">新的举报、投诉需要处理时提醒</div>
+                        </div>
+                        <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="notify-item">
+                        <div class="notify-info">
+                            <div class="notify-name">客服消息</div>
+                            <div class="notify-desc">用户反馈、客服会话需要回复时提醒</div>
+                        </div>
+                        <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                </div>
+                <div class="notify-group">
+                    <div class="notify-group-title">
+                        <i class="fas fa-circle"></i> 数据报表
+                    </div>
+                    <div class="notify-item">
+                        <div class="notify-info">
+                            <div class="notify-name">每日数据报表</div>
+                            <div class="notify-desc">每日9点推送前一日运营数据概览</div>
+                        </div>
+                        <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    <div class="notify-item">
+                        <div class="notify-info">
+                            <div class="notify-name">每周运营报告</div>
+                            <div class="notify-desc">每周一早10点汇总上周运营分析报告</div>
+                        </div>
+                        <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-title">
+                    <i class="fas fa-language"></i> 语言与地区
+                </div>
+                <div class="lang-group">
+                    <div class="lang-option active" onclick="selectLang(this)">
+                        <div class="lang-flag">🇨🇳</div>
+                        <div class="lang-name">简体中文</div>
+                        <div class="lang-desc">中国大陆</div>
+                    </div>
+                    <div class="lang-option" onclick="selectLang(this)">
+                        <div class="lang-flag">🇭🇰</div>
+                        <div class="lang-name">繁體中文</div>
+                        <div class="lang-desc">香港 / 澳门 / 台湾</div>
+                    </div>
+                    <div class="lang-option" onclick="selectLang(this)">
+                        <div class="lang-flag">🇬🇧</div>
+                        <div class="lang-name">English</div>
+                        <div class="lang-desc">Global</div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:20px;">
+                    <label class="form-label">时区</label>
+                    <select class="form-input">
+                        <option>(GMT+08:00) 北京，上海</option>
+                        <option>(GMT+09:00) 东京，大阪</option>
+                        <option>(GMT+00:00) 伦敦</option>
+                        <option>(GMT-05:00) 纽约，多伦多</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">货币单位</label>
+                    <select class="form-input">
+                        <option>人民币 (CNY ¥)</option>
+                        <option>美元 (USD $)</option>
+                        <option>港币 (HKD HK$)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-title">
+                    <i class="fas fa-palette"></i> 外观设置
+                </div>
+                <div class="form-group">
+                    <label class="form-label">主题模式</label>
+                    <div style="display:flex; gap:12px;">
+                        <div class="lang-option active" onclick="selectTheme(this, 'light')" style="flex:1;">
+                            <div class="lang-flag" style="font-size:24px;">☀️</div>
+                            <div class="lang-name">浅色主题</div>
+                        </div>
+                        <div class="lang-option" onclick="selectTheme(this, 'dark')" style="flex:1;">
+                            <div class="lang-flag" style="font-size:24px;">🌙</div>
+                            <div class="lang-name">深色主题</div>
+                        </div>
+                        <div class="lang-option" onclick="selectTheme(this, 'auto')" style="flex:1;">
+                            <div class="lang-flag" style="font-size:24px;">⚙️</div>
+                            <div class="lang-name">跟随系统</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="form-label">侧边栏样式</label>
+                    <div style="display:flex; gap:12px;">
+                        <div class="lang-option active" onclick="selectSidebar(this, 'expanded')" style="flex:1;">
+                            <div class="lang-flag" style="font-size:24px;">📐</div>
+                            <div class="lang-name">展开模式</div>
+                        </div>
+                        <div class="lang-option" onclick="selectSidebar(this, 'collapsed')" style="flex:1;">
+                            <div class="lang-flag" style="font-size:24px;">📏</div>
+                            <div class="lang-name">紧凑模式</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="danger-zone">
+                <div class="danger-title">
+                    <i class="fas fa-exclamation-triangle"></i> 危险操作
+                </div>
+                <div class="danger-desc">
+                    以下操作不可恢复，请谨慎操作。如需注销账户或清空数据，请联系平台运营主管审批。
+                </div>
+                <ul class="danger-list">
+                    <li>
+                        <span>导出所有个人操作记录</span>
+                        <span onclick="alert('已申请导出，将在24小时内发送至邮箱')" style="cursor:pointer;">申请导出 →</span>
+                    </li>
+                    <li>
+                        <span>清除所有个人偏好设置</span>
+                        <span onclick="if(confirm('确定要重置所有偏好设置吗？')) alert('已重置')" style="cursor:pointer;">重置设置 →</span>
+                    </li>
+                    <li>
+                        <span>注销管理员账户</span>
+                        <span onclick="alert('请联系运营主管审批处理')" style="cursor:pointer;">申请注销 →</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        function selectLang(el) {
+            document.querySelectorAll('.lang-option').forEach(o => {
+                if (o.parentElement === el.parentElement) o.classList.remove('active');
+            });
+            el.classList.add('active');
+        }
+
+        function selectTheme(el, theme) {
+            document.querySelectorAll('.settings-card')[3].querySelectorAll('.lang-option').forEach(o => o.classList.remove('active'));
+            el.classList.add('active');
+            alert('主题切换为：' + (theme === 'light' ? '浅色' : theme === 'dark' ? '深色' : '跟随系统'));
+        }
+
+        function selectSidebar(el, mode) {
+            document.querySelectorAll('.settings-card')[4].querySelectorAll('.lang-option').forEach(o => o.classList.remove('active'));
+            el.classList.add('active');
+            alert('侧边栏切换为：' + (mode === 'expanded' ? '展开模式' : '紧凑模式'));
+        }
+    </script>
+</body>
+</html>

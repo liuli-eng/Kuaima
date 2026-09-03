@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业自招认证 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame { width: 390px; height: 844px; background: #f5f5f5; overflow: hidden; position: relative; border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a; }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { display: flex; gap: 14px; color: #333; font-size: 16px; cursor: pointer; }
+
+        .cert-type { background: #fff; margin: 12px 16px; border-radius: 12px; padding: 16px; }
+        .cert-type-label { font-size: 13px; color: #999; }
+        .cert-type-value { font-size: 15px; font-weight: 600; color: #333; margin-top: 4px; }
+
+        .form-card { background: #fff; margin: 12px 16px; border-radius: 12px; padding: 16px; }
+        .form-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 12px; }
+        .form-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+        .form-item:last-child { border-bottom: none; }
+        .form-label { font-size: 14px; color: #333; width: 130px; }
+        .form-input { flex: 1; border: none; outline: none; background: transparent; font-size: 14px; color: #666; }
+        .form-input::placeholder { color: #ccc; }
+
+        .upload-area { border: 1px dashed #FF6B35; border-radius: 12px; padding: 24px; text-align: center; background: #FFF8F5; cursor: pointer; }
+        .upload-icon { font-size: 36px; color: #FF6B35; }
+        .upload-text { font-size: 14px; color: #333; margin-top: 8px; font-weight: 500; }
+        .upload-hint { font-size: 12px; color: #999; margin-top: 4px; }
+
+        .agree-row { display: flex; align-items: flex-start; gap: 8px; padding: 16px; }
+        .agree-checkbox { width: 16px; height: 16px; border: 1.5px solid #ddd; border-radius: 3px; flex-shrink: 0; margin-top: 2px; cursor: pointer; }
+        .agree-checkbox.checked { background: #FF6B35; border-color: #FF6B35; }
+        .agree-text { font-size: 12px; color: #666; line-height: 1.5; }
+        .agree-text a { color: #FF6B35; }
+
+        .submit-btn { width: calc(100% - 32px); padding: 14px; background: linear-gradient(135deg, #FF6B35, #FF8C5A); color: #fff; border: none; border-radius: 24px; font-size: 15px; font-weight: 600; margin: 20px 16px 30px; cursor: pointer; }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        .scroll-area { position: absolute; top: 97px; left: 0; right: 0; bottom: 0; overflow-y: auto; }
+        .scroll-area::-webkit-scrollbar { display: none; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar"><span>19:53</span><div class="flex items-center gap-1"><i class="fas fa-signal text-sm"></i><i class="fas fa-wifi text-sm"></i><i class="fas fa-battery-full text-sm"></i></div></div>
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+            <div class="nav-title">企业自招认证</div>
+            <div class="nav-right"><i class="fas fa-ellipsis-h"></i></div>
+        </div>
+        <div class="scroll-area">
+            <div class="cert-type">
+                <div class="cert-type-label">认证类型</div>
+                <div class="cert-type-value">企业自招（仅限本公司招工）</div>
+            </div>
+            <div class="form-card">
+                <div class="form-title">企业信息</div>
+                <div class="form-item">
+                    <span class="form-label">企业名称</span>
+                    <input class="form-input" placeholder="请输入营业执照上的全称" id="companyName">
+                </div>
+                <div class="form-item">
+                    <span class="form-label">统一社会信用代码</span>
+                    <input class="form-input" placeholder="请输入18位信用代码" id="creditCode">
+                </div>
+                <div class="form-item">
+                    <span class="form-label">法定代表人</span>
+                    <input class="form-input" placeholder="请输入法人姓名" id="legalPerson">
+                </div>
+                <div class="form-item">
+                    <span class="form-label">联系电话</span>
+                    <input class="form-input" placeholder="请输入联系电话" id="contactPhone">
+                </div>
+            </div>
+            <div class="form-card">
+                <div class="form-title">上传营业执照</div>
+                <div class="upload-area" onclick="alert('选择图片上传')">
+                    <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                    <div class="upload-text">点击上传营业执照</div>
+                    <div class="upload-hint">请上传原件或加盖公章的复印件，支持JPG/PNG格式，不超过5M</div>
+                </div>
+            </div>
+            <div class="agree-row">
+                <div class="agree-checkbox" id="agreeBox" onclick="toggleAgree()"></div>
+                <div class="agree-text">
+                    我已阅读并同意<a onclick="event.stopPropagation(); alert('《企业认证服务协议》')">《企业认证服务协议》</a>和<a onclick="event.stopPropagation(); alert('《信息发布规则》')">《信息发布规则》</a>，承诺所提交的材料真实有效。
+                </div>
+            </div>
+            <button class="submit-btn" id="submitBtn" onclick="submitForm()" disabled>提交认证</button>
+        </div>
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        let agreed = false;
+
+        function toggleAgree() {
+            agreed = !agreed;
+            document.getElementById('agreeBox').classList.toggle('checked', agreed);
+            document.getElementById('submitBtn').disabled = !agreed;
+        }
+
+        function submitForm() {
+            const name = document.getElementById('companyName').value.trim();
+            if (!name) {
+                alert('请填写企业名称');
+                return;
+            }
+            alert('提交成功！\n\n审核周期约1-3个工作日，请耐心等待。');
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "快马日结",
+  "appid": "__UNI__KUAIMA",
+  "description": "快马日结零工与招工平台",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "h5": { "title": "快马日结" },
+  "mp-weixin": { "appid": "wxe0f1ec79874ea809", "setting": { "urlCheck": false }, "usingComponents": true }
+}

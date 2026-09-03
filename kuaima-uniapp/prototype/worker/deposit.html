@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履约保证金 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #f5f5f5; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #f0f0f0; position: absolute; top: 47px; left: 0; right: 0; height: 52px; z-index: 10; }
+        .nav-back { display: flex; align-items: center; cursor: pointer; width: 32px; height: 32px; }
+        .nav-right { display: flex; align-items: center; gap: 8px; }
+        .nav-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .content-area { position: absolute; top: 99px; left: 0; right: 0; bottom: 34px; overflow-y: auto; background: #f5f5f5; }
+        .content-area::-webkit-scrollbar { display: none; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        
+        /* 头部黄色区域 */
+        .header-section {
+            background: linear-gradient(135deg, #FFD666 0%, #FFB347 100%);
+            padding: 20px 16px 40px;
+            position: relative;
+        }
+        .header-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #8B6914;
+            margin-bottom: 12px;
+        }
+        .total-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.5);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .total-label {
+            font-size: 14px;
+            color: #8B6914;
+        }
+        .total-amount {
+            font-size: 28px;
+            font-weight: 700;
+            color: #5A4A1F;
+        }
+        .detail-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.8);
+            border: none;
+            border-radius: 16px;
+            font-size: 13px;
+            color: #8B6914;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        /* 内容卡片 */
+        .content-section {
+            background: #fff;
+            margin: -20px 12px 12px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .balance-card {
+            padding: 20px 16px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .balance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .balance-label {
+            font-size: 14px;
+            color: #666;
+        }
+        .balance-amount {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .withdraw-btn {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            float: right;
+        }
+        .withdraw-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .frozen-card {
+            padding: 20px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .frozen-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .frozen-label {
+            font-size: 14px;
+            color: #666;
+        }
+        .info-icon {
+            width: 16px;
+            height: 16px;
+            background: #e0e0e0;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #999;
+            cursor: pointer;
+        }
+        .frozen-amount {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
+        .view-order-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid #ddd;
+            border-radius: 16px;
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+        }
+        
+        /* 说明区 */
+        .explain-section {
+            background: #fff;
+            margin: 0 12px 12px;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .explain-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .explain-list {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.8;
+        }
+        .explain-list li {
+            margin-bottom: 4px;
+        }
+        
+        /* 规则提示 */
+        .rule-tip {
+            background: #FFF9E6;
+            margin: 0 12px 12px;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 12px;
+            color: #8B7500;
+            line-height: 1.6;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-chevron-left text-gray-700"></i>
+            </div>
+            <div style="font-size: 17px; font-weight: 600; color: #333; position: absolute; left: 50%; transform: translateX(-50%);">履约保证金</div>
+            <div class="nav-right">
+                <div class="nav-btn" onclick="alert('帮助')">
+                    <i class="fas fa-question-circle text-gray-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <!-- 头部区域 -->
+            <div class="header-section">
+                <div class="header-title">履约保证金</div>
+                <div class="total-row">
+                    <div>
+                        <div class="total-label">履约保证金总额（元）</div>
+                        <div class="total-amount">0.00</div>
+                    </div>
+                    <button class="detail-btn" onclick="navigateTo('deposit-detail')">
+                        查看明细 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 内容卡片 -->
+            <div class="content-section">
+                <!-- 可退款余额 -->
+                <div class="balance-card">
+                    <div class="balance-header">
+                        <div class="balance-label">可退款余额</div>
+                    </div>
+                    <div class="balance-amount">0.00</div>
+                    <button class="withdraw-btn" onclick="withdraw()" disabled>退款</button>
+                </div>
+
+                <!-- 订单冻结 -->
+                <div class="frozen-card">
+                    <div class="frozen-left">
+                        <span class="frozen-label">订单冻结（元）</span>
+                        <span class="info-icon" onclick="alert('订单冻结金额说明：接单后保证金被临时冻结，完成订单后自动解冻')">?</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="frozen-amount">0.00</span>
+                        <button class="view-order-btn" onclick="navigateTo('order')">查看订单</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 说明区 -->
+            <div class="explain-section">
+                <div class="explain-title"><i class="fas fa-info-circle" style="color: #FF6B35;"></i>保证金说明</div>
+                <ul class="explain-list">
+                    <li>• 保证金用于保障订单履约</li>
+                    <li>• 接单后保证金将被临时冻结</li>
+                    <li>• 订单完成后保证金自动解冻</li>
+                    <li>• 违约将扣除相应保证金</li>
+                    <li>• 余额可随时申请退款</li>
+                </ul>
+            </div>
+
+            <!-- 规则提示 -->
+            <div class="rule-tip">
+                <i class="fas fa-lightbulb"></i> 温馨提示：保持良好的履约记录，保证金可全额退还。如发生违约，将根据情节扣除相应金额。
+            </div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function navigateTo(page) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = page + '.html';
+            if (workerPages.indexOf(page) < 0 && bossPages.indexOf(page) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(page) < 0 && bossPages.indexOf(page) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() {
+            window.history.back();
+        }
+
+        function withdraw() {
+            alert('退款申请已提交，预计1-3个工作日到账');
+        }
+    </script>
+</body>
+</html>

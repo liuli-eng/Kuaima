@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 积分管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .point-id-cell {
+            font-family: monospace;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .user-avatar-mini {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .user-name-text {
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .user-sub-text {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .point-amount {
+            font-weight: 600;
+        }
+        .point-amount.positive {
+            color: var(--success);
+        }
+        .point-amount.negative {
+            color: var(--danger);
+        }
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .type-recharge { background: #EFF6FF; color: var(--secondary); }
+        .type-consume { background: #FFF0EB; color: var(--primary); }
+        .type-gift { background: #ECFDF5; color: var(--success); }
+        .type-expire { background: #F3F4F6; color: var(--text-secondary); }
+        .balance-cell {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .order-cell {
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .time-cell {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .operator-cell {
+            font-size: 13px;
+        }
+        .action-cell {
+            display: flex;
+            gap: 6px;
+        }
+        .action-cell .btn {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .filter-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .balance-trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+        }
+        .balance-trend.up { color: var(--success); }
+        .balance-trend.down { color: var(--danger); }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">积分管理</h1>
+                <p class="page-desc">平台积分规则、充值消费记录</p>
+            </div>
+
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">积分总量</span>
+                        <div class="stat-card-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">28,650,000</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +8.6%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">本月充值</span>
+                        <div class="stat-card-icon blue">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">1,256,000</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +15.3%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">本月消费</span>
+                        <div class="stat-card-icon green">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">986,500</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +10.2%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">本月赠送</span>
+                        <div class="stat-card-icon yellow">
+                            <i class="fas fa-gift"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">256,000</div>
+                    <div class="stat-card-change down">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>较上月 -5.1%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="filter-bar">
+                    <div class="filter-item">
+                        <span>关键词</span>
+                        <div class="search-box" style="width:220px;">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="积分ID/用户/订单" style="width:220px; padding:7px 12px 7px 36px;">
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <span>积分类型</span>
+                        <select>
+                            <option value="">全部</option>
+                            <option value="recharge">充值</option>
+                            <option value="consume">消费</option>
+                            <option value="gift">赠送</option>
+                            <option value="expire">过期</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>日期范围</span>
+                        <input type="date" style="width:130px;">
+                        <span>至</span>
+                        <input type="date" style="width:130px;">
+                    </div>
+                    <button class="btn btn-primary btn-sm"><i class="fas fa-search"></i> 查询</button>
+                    <button class="btn btn-outline btn-sm"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <div style="flex:1;"></div>
+                    <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出数据</button>
+                </div>
+
+                <div style="display:flex; gap:8px; margin-bottom:16px;">
+                    <span class="filter-btn active">全部</span>
+                    <span class="filter-btn">充值 <span style="color:var(--text-muted);">(1,256)</span></span>
+                    <span class="filter-btn">消费 <span style="color:var(--text-muted);">(986)</span></span>
+                    <span class="filter-btn">赠送 <span style="color:var(--text-muted);">(256)</span></span>
+                    <span class="filter-btn">过期 <span style="color:var(--text-muted);">(45)</span></span>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>积分ID</th>
+                                <th>用户</th>
+                                <th>类型</th>
+                                <th>数量(+/-)</th>
+                                <th>余额</th>
+                                <th>关联订单</th>
+                                <th>操作时间</th>
+                                <th>操作人</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="point-id-cell">JF202408210001</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#FF8C42,#FF6B35);">张</span>
+                                        <div>
+                                            <div class="user-name-text">张建国</div>
+                                            <div class="user-sub-text">138****8562</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-recharge"><i class="fas fa-plus-circle"></i> 充值</span></td>
+                                <td><span class="point-amount positive">+1,000</span></td>
+                                <td class="balance-cell">12,850</td>
+                                <td class="order-cell">DD202408210001</td>
+                                <td class="time-cell">2024-08-21 18:30</td>
+                                <td class="operator-cell">系统自动</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210002</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#3B82F6,#2563EB);">李</span>
+                                        <div>
+                                            <div class="user-name-text">李美丽</div>
+                                            <div class="user-sub-text">139****3471</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-consume"><i class="fas fa-minus-circle"></i> 消费</span></td>
+                                <td><span class="point-amount negative">-200</span></td>
+                                <td class="balance-cell">8,450</td>
+                                <td class="order-cell">DD202408210002</td>
+                                <td class="time-cell">2024-08-21 17:45</td>
+                                <td class="operator-cell">系统自动</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210003</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#10B981,#059669);">王</span>
+                                        <div>
+                                            <div class="user-name-text">王小刚</div>
+                                            <div class="user-sub-text">136****7823</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-gift"><i class="fas fa-gift"></i> 赠送</span></td>
+                                <td><span class="point-amount positive">+500</span></td>
+                                <td class="balance-cell">6,200</td>
+                                <td class="order-cell">-</td>
+                                <td class="time-cell">2024-08-21 15:20</td>
+                                <td class="operator-cell">管理员</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                        <button class="btn btn-danger">撤销</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210004</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9);">陈</span>
+                                        <div>
+                                            <div class="user-name-text">陈大海</div>
+                                            <div class="user-sub-text">137****2945</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-consume"><i class="fas fa-minus-circle"></i> 消费</span></td>
+                                <td><span class="point-amount negative">-350</span></td>
+                                <td class="balance-cell">15,300</td>
+                                <td class="order-cell">DD202408210004</td>
+                                <td class="time-cell">2024-08-21 14:30</td>
+                                <td class="operator-cell">系统自动</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210005</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#F59E0B,#D97706);">刘</span>
+                                        <div>
+                                            <div class="user-name-text">刘芳</div>
+                                            <div class="user-sub-text">135****6781</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-recharge"><i class="fas fa-plus-circle"></i> 充值</span></td>
+                                <td><span class="point-amount positive">+2,000</span></td>
+                                <td class="balance-cell">28,600</td>
+                                <td class="order-cell">-</td>
+                                <td class="time-cell">2024-08-21 12:15</td>
+                                <td class="operator-cell">管理员</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210006</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#EC4899,#BE185D);">赵</span>
+                                        <div>
+                                            <div class="user-name-text">赵小红</div>
+                                            <div class="user-sub-text">188****1234</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-expire"><i class="fas fa-clock"></i> 过期</span></td>
+                                <td><span class="point-amount negative">-100</span></td>
+                                <td class="balance-cell">3,450</td>
+                                <td class="order-cell">-</td>
+                                <td class="time-cell">2024-08-21 10:00</td>
+                                <td class="operator-cell">系统自动</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210007</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#06B6D4,#0891B2);">周</span>
+                                        <div>
+                                            <div class="user-name-text">周志华</div>
+                                            <div class="user-sub-text">131****5566</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-consume"><i class="fas fa-minus-circle"></i> 消费</span></td>
+                                <td><span class="point-amount negative">-500</span></td>
+                                <td class="balance-cell">22,180</td>
+                                <td class="order-cell">DD202408210007</td>
+                                <td class="time-cell">2024-08-21 09:30</td>
+                                <td class="operator-cell">系统自动</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210008</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#64748B,#475569);">吴</span>
+                                        <div>
+                                            <div class="user-name-text">吴志强</div>
+                                            <div class="user-sub-text">132****7788</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-gift"><i class="fas fa-gift"></i> 赠送</span></td>
+                                <td><span class="point-amount positive">+300</span></td>
+                                <td class="balance-cell">9,800</td>
+                                <td class="order-cell">-</td>
+                                <td class="time-cell">2024-08-20 22:10</td>
+                                <td class="operator-cell">管理员</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                        <button class="btn btn-danger">撤销</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210009</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#F97316,#EA580C);">孙</span>
+                                        <div>
+                                            <div class="user-name-text">孙丽</div>
+                                            <div class="user-sub-text">158****4321</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-recharge"><i class="fas fa-plus-circle"></i> 充值</span></td>
+                                <td><span class="point-amount positive">+800</span></td>
+                                <td class="balance-cell">5,600</td>
+                                <td class="order-cell">-</td>
+                                <td class="time-cell">2024-08-20 18:45</td>
+                                <td class="operator-cell">管理员</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="point-id-cell">JF202408210010</td>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="user-avatar-mini" style="background:linear-gradient(135deg,#8B5CF6,#7C3AED);">郑</span>
+                                        <div>
+                                            <div class="user-name-text">郑伟</div>
+                                            <div class="user-sub-text">176****9900</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="type-badge type-consume"><i class="fas fa-minus-circle"></i> 消费</span></td>
+                                <td><span class="point-amount negative">-150</span></td>
+                                <td class="balance-cell">18,200</td>
+                                <td class="order-cell">DD202408210009</td>
+                                <td class="time-cell">2024-08-20 16:20</td>
+                                <td class="operator-cell">系统自动</td>
+                                <td>
+                                    <div class="action-cell">
+                                        <button class="btn btn-outline">详情</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <div class="pagination-info">共 28,650 条积分记录，当前显示 1-10 条</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" disabled><i class="fas fa-chevron-left" style="font-size:10px;"></i></button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn">3</button>
+                        <button class="page-btn">4</button>
+                        <button class="page-btn">5</button>
+                        <span style="color:var(--text-muted); padding:0 4px;">...</span>
+                        <button class="page-btn">2,865</button>
+                        <button class="page-btn"><i class="fas fa-chevron-right" style="font-size:10px;"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

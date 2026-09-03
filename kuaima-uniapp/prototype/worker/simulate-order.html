@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模拟接单 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: #f5f5f5;
+            overflow: hidden;
+            position: relative;
+            border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            border: 10px solid #1a1a1a;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 50;
+        }
+        .status-bar {
+            height: 47px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 28px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            background: #fff;
+        }
+        .top-nav {
+            padding: 8px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            position: absolute;
+            top: 47px;
+            left: 0;
+            right: 0;
+            height: 52px;
+            z-index: 10;
+        }
+        .nav-back {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .content-area {
+            position: absolute;
+            top: 99px;
+            left: 0;
+            right: 0;
+            bottom: 34px;
+            overflow-y: auto;
+            background: #f5f5f5;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #722ED1, #9254DE);
+            padding: 20px 16px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            bottom: -30px;
+            left: 30px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .hero-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+        .hero-desc {
+            font-size: 13px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        .progress-card {
+            background: #fff;
+            margin: 12px;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .progress-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+        .progress-count {
+            font-size: 24px;
+            font-weight: 700;
+            color: #722ED1;
+        }
+        .progress-count span {
+            font-size: 13px;
+            color: #999;
+            font-weight: normal;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #722ED1, #9254DE);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .progress-tip {
+            font-size: 12px;
+            color: #999;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            padding: 16px 16px 10px;
+        }
+        .task-list {
+            padding: 0 12px;
+        }
+        .task-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+        .task-card:active {
+            transform: scale(0.98);
+        }
+        .task-card.completed {
+            opacity: 0.6;
+        }
+        .task-card.locked {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .task-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .task-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #722ED1, #9254DE);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+        }
+        .task-card.completed .task-icon {
+            background: linear-gradient(135deg, #52C41A, #73D13D);
+        }
+        .task-card.locked .task-icon {
+            background: #ccc;
+        }
+        .task-info {
+            flex: 1;
+        }
+        .task-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 2px;
+        }
+        .task-desc {
+            font-size: 12px;
+            color: #999;
+        }
+        .task-status {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+        .status-pending {
+            background: #FFF1F0;
+            color: #FF4D4F;
+        }
+        .status-progress {
+            background: #E6F7FF;
+            color: #1890FF;
+        }
+        .status-completed {
+            background: #F6FFED;
+            color: #52C41A;
+        }
+        .status-locked {
+            background: #f5f5f5;
+            color: #999;
+        }
+        .task-reward {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            color: #FA8C16;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #f0f0f0;
+        }
+        .tips-section {
+            background: #FFF9E6;
+            margin: 12px;
+            border-radius: 12px;
+            padding: 14px;
+        }
+        .tips-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #B8860B;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tips-list {
+            font-size: 12px;
+            color: #8B7500;
+            line-height: 1.8;
+        }
+        .tips-list li {
+            margin-bottom: 4px;
+        }
+        .page-indicator {
+            height: 5px;
+            background: #000;
+            border-radius: 3px;
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <!-- 顶部导航 -->
+        <div class="top-nav">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-chevron-left text-gray-700 text-lg"></i>
+            </div>
+            <div class="nav-title">模拟接单</div>
+            <div class="nav-right">
+                <div class="nav-btn" onclick="alert('帮助')">
+                    <i class="fas fa-question-circle text-gray-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容区 -->
+        <div class="content-area">
+            <!-- 头部区域 -->
+            <div class="hero-section">
+                <div class="hero-title">🎮 模拟接单训练营</div>
+                <div class="hero-desc">零风险练习接单，掌握接单技巧</div>
+            </div>
+
+            <!-- 进度卡片 -->
+            <div class="progress-card">
+                <div class="progress-header">
+                    <div class="progress-title">我的进度</div>
+                    <div class="progress-count">3<span>/10</span></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 30%;"></div>
+                </div>
+                <div class="progress-tip">再完成 7 个任务即可获得「接单达人」徽章</div>
+            </div>
+
+            <!-- 今日任务 -->
+            <div class="section-title">今日任务</div>
+            <div class="task-list">
+                <!-- 任务1 - 已完成 -->
+                <div class="task-card completed" onclick="showTaskDetail(1)">
+                    <div class="task-header">
+                        <div class="task-icon"><i class="fas fa-check"></i></div>
+                        <div class="task-info">
+                            <div class="task-name">认识接单流程</div>
+                            <div class="task-desc">了解接单的基本步骤和流程</div>
+                        </div>
+                        <div class="task-status status-completed">已完成</div>
+                    </div>
+                    <div class="task-reward">
+                        <i class="fas fa-coins"></i>
+                        <span>完成奖励：+20 经验值</span>
+                    </div>
+                </div>
+
+                <!-- 任务2 - 已完成 -->
+                <div class="task-card completed" onclick="showTaskDetail(2)">
+                    <div class="task-header">
+                        <div class="task-icon"><i class="fas fa-check"></i></div>
+                        <div class="task-info">
+                            <div class="task-name">识别优质订单</div>
+                            <div class="task-desc">学会辨别哪些订单更靠谱</div>
+                        </div>
+                        <div class="task-status status-completed">已完成</div>
+                    </div>
+                    <div class="task-reward">
+                        <i class="fas fa-coins"></i>
+                        <span>完成奖励：+30 经验值</span>
+                    </div>
+                </div>
+
+                <!-- 任务3 - 已完成 -->
+                <div class="task-card completed" onclick="showTaskDetail(3)">
+                    <div class="task-header">
+                        <div class="task-icon"><i class="fas fa-check"></i></div>
+                        <div class="task-info">
+                            <div class="task-name">模拟接单操作</div>
+                            <div class="task-desc">实际演练接单的每一步操作</div>
+                        </div>
+                        <div class="task-status status-completed">已完成</div>
+                    </div>
+                    <div class="task-reward">
+                        <i class="fas fa-coins"></i>
+                        <span>完成奖励：+50 经验值</span>
+                    </div>
+                </div>
+
+                <!-- 任务4 - 进行中 -->
+                <div class="task-card" onclick="showTaskDetail(4)">
+                    <div class="task-header">
+                        <div class="task-icon"><i class="fas fa-play"></i></div>
+                        <div class="task-info">
+                            <div class="task-name">与雇主有效沟通</div>
+                            <div class="task-desc">学习如何与雇主进行良好沟通</div>
+                        </div>
+                        <div class="task-status status-progress">进行中</div>
+                    </div>
+                    <div class="task-reward">
+                        <i class="fas fa-coins"></i>
+                        <span>完成奖励：+40 经验值</span>
+                    </div>
+                </div>
+
+                <!-- 任务5 - 待学习 -->
+                <div class="task-card" onclick="showTaskDetail(5)">
+                    <div class="task-header">
+                        <div class="task-icon"><i class="fas fa-book"></i></div>
+                        <div class="task-info">
+                            <div class="task-name">工作中的安全防护</div>
+                            <div class="task-desc">了解工作中如何保护自身安全</div>
+                        </div>
+                        <div class="task-status status-pending">待学习</div>
+                    </div>
+                    <div class="task-reward">
+                        <i class="fas fa-coins"></i>
+                        <span>完成奖励：+30 经验值</span>
+                    </div>
+                </div>
+
+                <!-- 任务6 - 待学习 -->
+                <div class="task-card locked" onclick="showTaskDetail(6)">
+                    <div class="task-header">
+                        <div class="task-icon"><i class="fas fa-lock"></i></div>
+                        <div class="task-info">
+                            <div class="task-name">处理突发情况</div>
+                            <div class="task-desc">遇到突发情况时的应对方法</div>
+                        </div>
+                        <div class="task-status status-locked">未解锁</div>
+                    </div>
+                    <div class="task-reward">
+                        <i class="fas fa-coins"></i>
+                        <span>完成奖励：+60 经验值</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 温馨提示 -->
+            <div class="tips-section">
+                <div class="tips-title">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>学习小贴士</span>
+                </div>
+                <ul class="tips-list">
+                    <li>• 模拟接单不会影响您的真实账号数据</li>
+                    <li>• 完成所有任务可获得专属徽章和奖励</li>
+                    <li>• 学到的技巧可直接应用到真实接单中</li>
+                    <li>• 遇到问题可随时联系在线客服咨询</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 底部指示器 -->
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function navigateTo(page) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = page + '.html';
+            if (workerPages.indexOf(page) < 0 && bossPages.indexOf(page) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(page) < 0 && bossPages.indexOf(page) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() {
+            window.history.back();
+        }
+
+        function showTaskDetail(taskId) {
+            window.location.href = 'task-training.html?id=' + taskId;
+        }
+    </script>
+</body>
+</html>

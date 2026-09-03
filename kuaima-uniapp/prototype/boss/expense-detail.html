@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>费用报销明细 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame { width: 390px; height: 844px; background: #f5f5f5; overflow: hidden; position: relative; border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a; }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { display: flex; gap: 14px; color: #333; font-size: 16px; cursor: pointer; }
+        .summary-card { background: linear-gradient(135deg, #1890FF, #40A9FF); margin: 12px 16px; border-radius: 12px; padding: 16px; color: #fff; display: flex; justify-content: space-around; }
+        .summary-item { text-align: center; }
+        .summary-value { font-size: 22px; font-weight: 700; }
+        .summary-label { font-size: 12px; opacity: 0.9; margin-top: 4px; }
+        .record-card { background: #fff; margin: 8px 16px; border-radius: 12px; padding: 14px; }
+        .record-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .record-title { font-size: 14px; font-weight: 600; color: #333; }
+        .record-status { font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+        .status-approved { color: #52C41A; background: #F6FFED; }
+        .status-pending { color: #FA8C16; background: #FFF8E6; }
+        .status-rejected { color: #FF4D4F; background: #FFF2F0; }
+        .record-desc { font-size: 12px; color: #999; }
+        .record-amount { font-size: 16px; font-weight: 700; color: #FF6B35; text-align: right; }
+        .record-time { font-size: 11px; color: #bbb; margin-top: 4px; text-align: right; }
+        .empty-state { text-align: center; padding: 80px 40px; }
+        .empty-icon { font-size: 48px; color: #ddd; margin-bottom: 12px; }
+        .empty-text { font-size: 14px; color: #999; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar"><span>19:53</span><div class="flex items-center gap-1"><i class="fas fa-signal text-sm"></i><i class="fas fa-wifi text-sm"></i><i class="fas fa-battery-full text-sm"></i></div></div>
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()"><i class="fas fa-arrow-left"></i></div>
+            <div class="nav-title">费用报销明细</div>
+            <div class="nav-right"><i class="fas fa-plus"></i></div>
+        </div>
+        <div class="overflow-y-auto" style="height: calc(100% - 97px - 16px);">
+            <div class="summary-card">
+                <div class="summary-item"><div class="summary-value">¥0.00</div><div class="summary-label">已报销</div></div>
+                <div class="summary-item"><div class="summary-value">0</div><div class="summary-label">待审核</div></div>
+                <div class="summary-item"><div class="summary-value">0</div><div class="summary-label">已拒绝</div></div>
+            </div>
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-receipt"></i></div>
+                <div class="empty-text">暂无报销记录</div>
+                <div class="empty-text" style="margin-top: 4px;">点击右上角申请报销</div>
+            </div>
+        </div>
+        <div class="page-indicator"></div>
+    </div>
+    <script>function goBack(){window.history.back();}</script>
+</body>
+</html>

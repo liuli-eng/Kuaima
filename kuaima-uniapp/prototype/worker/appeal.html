@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信用分申诉 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #fff; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; background: #fff; }
+        .nav-back { display: flex; align-items: center; cursor: pointer; width: 32px; height: 32px; }
+        .nav-right { display: flex; align-items: center; background: rgba(255, 255, 255, 0.9); border-radius: 20px; padding: 4px 6px; gap: 2px; }
+        .nav-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+        .content-area { position: absolute; top: 47px; left: 0; right: 0; bottom: 34px; overflow-y: auto; background: #f5f5f5; }
+        .content-area::-webkit-scrollbar { display: none; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        
+        /* 提示卡片 */
+        .tip-card {
+            background: linear-gradient(135deg, #FFF2E8 0%, #FFE4CC 100%);
+            margin: 12px; padding: 16px; border-radius: 12px;
+        }
+        .tip-title { font-size: 15px; font-weight: 600; color: #FA8C16; margin-bottom: 8px; }
+        .tip-content { font-size: 13px; color: #666; line-height: 1.6; }
+        
+        /* 申诉记录 */
+        .section-title { font-size: 16px; font-weight: 600; color: #333; margin: 16px 16px 10px; }
+        .appeal-list { background: white; margin: 0 16px; border-radius: 12px; overflow: hidden; }
+        .appeal-item {
+            padding: 16px; border-bottom: 1px solid #f5f5f5;
+        }
+        .appeal-item:last-child { border-bottom: none; }
+        .appeal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .appeal-reason { font-size: 14px; color: #333; font-weight: 500; }
+        .appeal-status {
+            padding: 2px 10px; border-radius: 10px; font-size: 11px;
+        }
+        .status-pending { background: #FFF7E6; color: #FA8C16; }
+        .status-approved { background: #F6FFED; color: #52C41A; }
+        .status-rejected { background: #FFF1F0; color: #FF4D4F; }
+        .appeal-desc { font-size: 12px; color: #999; line-height: 1.5; }
+        .appeal-time { font-size: 11px; color: #ccc; margin-top: 6px; }
+        
+        /* 申诉按钮 */
+        .submit-btn {
+            margin: 24px 16px;
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white; padding: 14px; border-radius: 24px;
+            text-align: center; font-size: 15px; font-weight: 500;
+            cursor: pointer;
+        }
+        
+        /* 空状态 */
+        .empty-state { text-align: center; padding: 40px; }
+        .empty-icon { font-size: 48px; color: #ddd; margin-bottom: 12px; }
+        .empty-text { font-size: 14px; color: #999; }
+        
+        /* Toast提示 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .toast-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #52C41A, #73D13D);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .toast-text {
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <!-- 导航栏 -->
+            <div class="nav-bar">
+                <div class="nav-back" onclick="goBack()">
+                    <i class="fas fa-chevron-left text-gray-700"></i>
+                </div>
+                <div class="nav-title" style="font-size: 17px; font-weight: 600; color: #333; position: absolute; left: 50%; transform: translateX(-50%);">信用分申诉</div>
+                <div class="nav-right">
+                    <div class="nav-btn">
+                        <i class="fas fa-ellipsis text-gray-700" style="font-size: 13px;"></i>
+                    </div>
+                    <div style="width: 1px; height: 14px; background: #ddd; margin: 0 2px;"></div>
+                    <div class="nav-btn">
+                        <i class="fas fa-circle text-gray-700" style="font-size: 11px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 提示卡片 -->
+            <div class="tip-card">
+                <div class="tip-title"><i class="fas fa-lightbulb mr-1"></i>申诉说明</div>
+                <div class="tip-content">
+                    如您认为信用分扣分有误，可提交申诉。请在7个工作日内提交相关证据（如订单截图、沟通记录等），我们将在3个工作日内处理。
+                </div>
+            </div>
+
+            <!-- 申诉记录 -->
+            <div class="section-title">申诉记录</div>
+            <div class="appeal-list" id="appealList">
+                <div class="appeal-item">
+                    <div class="appeal-header">
+                        <div class="appeal-reason">订单误取消申诉</div>
+                        <div class="appeal-status status-approved">申诉通过</div>
+                    </div>
+                    <div class="appeal-desc">订单因老板原因取消，已补充相关截图证据</div>
+                    <div class="appeal-time">2026-08-15 14:30</div>
+                </div>
+                <div class="appeal-item">
+                    <div class="appeal-header">
+                        <div class="appeal-reason">迟到扣分申诉</div>
+                        <div class="appeal-status status-pending">处理中</div>
+                    </div>
+                    <div class="appeal-desc">因交通原因迟到，已提交地铁延误证明</div>
+                    <div class="appeal-time">2026-08-18 09:15</div>
+                </div>
+            </div>
+
+            <!-- 空状态（无申诉记录时显示） -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                <div class="empty-text">暂无申诉记录</div>
+            </div>
+
+            <!-- 提交申诉按钮 -->
+            <div class="submit-btn" onclick="submitAppeal()">
+                <i class="fas fa-plus mr-1"></i>提交新申诉
+            </div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <div class="page-indicator"></div>
+
+        <!-- Toast提示 -->
+        <div class="toast" id="toast">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-text">申诉提交成功<br>我们将在3个工作日内处理</div>
+        </div>
+    </div>
+
+    <script>
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() { window.history.back(); }
+        
+        function submitAppeal() {
+            navigateTo('appeal-submit');
+        }
+        
+        // 检查是否有提交成功的状态
+        window.onload = function() {
+            if (sessionStorage.getItem('appealSubmitSuccess') === 'true') {
+                // 清除状态
+                sessionStorage.removeItem('appealSubmitSuccess');
+                // 显示Toast提示
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                // 2秒后隐藏
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2000);
+            }
+        };
+    </script>
+</body>
+</html>

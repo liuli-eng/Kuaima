@@ -1,0 +1,28 @@
+{
+  "name": "kuaima-h5-vue3",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev:h5": "uni",
+    "build:h5": "uni build",
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "dev": "npm run dev:h5",
+    "build": "npm run build:h5",
+    "preview": "vite preview --outDir dist/build/h5"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "vue3",
+    "@dcloudio/uni-h5": "vue3",
+    "@dcloudio/uni-mp-weixin": "vue3",
+    "@dcloudio/vite-plugin-uni": "vue3",
+    "pinia": "^3.0.1",
+    "vite": "5.2.8",
+    "vue": "^3.4.21",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "sass": "^1.103.1"
+  }
+}

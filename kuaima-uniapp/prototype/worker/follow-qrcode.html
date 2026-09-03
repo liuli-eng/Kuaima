@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关注公众号 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', -apple-system, 'PingFang SC', sans-serif; }
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: #FFF8E6;
+            overflow: hidden;
+            position: relative;
+            border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 32px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 60;
+        }
+        .status-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 47px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 28px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            z-index: 40;
+            background: transparent;
+        }
+        .nav-bar {
+            position: absolute;
+            top: 47px;
+            left: 0;
+            right: 0;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: #FFF8E6;
+            z-index: 50;
+        }
+        .nav-back {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #333;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 9999px;
+            padding: 4px 6px;
+            gap: 2px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .nav-btn {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #555;
+            font-size: 12px;
+        }
+        .nav-divider {
+            width: 1px;
+            height: 12px;
+            background: #ddd;
+        }
+        .content-area {
+            position: absolute;
+            top: 99px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow-y: auto;
+            background: #FFF8E6;
+        }
+        .content-area::-webkit-scrollbar { display: none; }
+        .title-section {
+            padding: 30px 24px 20px;
+            text-align: center;
+        }
+        .main-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #8B4513;
+            line-height: 1.4;
+        }
+        .qr-container {
+            margin: 20px 32px;
+            background: #fff;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(139, 69, 19, 0.08);
+            text-align: center;
+        }
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+            position: relative;
+            background: #fff;
+        }
+        .qr-pattern {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(21, 1fr);
+            grid-template-rows: repeat(21, 1fr);
+            gap: 1px;
+        }
+        .qr-pattern div {
+            background: #333;
+        }
+        .qr-pattern div.empty {
+            background: #fff;
+        }
+        .qr-corner {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            background: #fff;
+        }
+        .qr-corner-tl { top: 0; left: 0; }
+        .qr-corner-tr { top: 0; right: 0; }
+        .qr-corner-bl { bottom: 0; left: 0; }
+        .qr-corner-inner {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border: 8px solid #333;
+            background: #fff;
+        }
+        .qr-corner-inner-tl { top: 4px; left: 4px; }
+        .qr-corner-inner-tr { top: 4px; right: 4px; }
+        .qr-corner-inner-bl { bottom: 4px; left: 4px; }
+        .qr-center-logo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 36px;
+            height: 36px;
+            background: #FF6B35;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .qr-hint {
+            margin-top: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        .qr-desc {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #999;
+            line-height: 1.6;
+        }
+        .city-skyline {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            overflow: hidden;
+            opacity: 0.6;
+        }
+        .building {
+            position: absolute;
+            bottom: 0;
+            background: linear-gradient(180deg, #FFD59E, #FFE4B5);
+            border-radius: 4px 4px 0 0;
+        }
+        .page-indicator {
+            height: 5px;
+            background: #000;
+            border-radius: 3px;
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+            z-index: 60;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+            <div class="nav-right">
+                <div class="nav-btn"><i class="fas fa-ellipsis"></i></div>
+                <div class="nav-divider"></div>
+                <div class="nav-btn"><i class="fas fa-minus"></i></div>
+                <div class="nav-divider"></div>
+                <div class="nav-btn"><i class="fas fa-circle"></i></div>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div class="title-section">
+                <div class="main-title">关注【快马日结】公众号，接收最新招工信息</div>
+            </div>
+
+            <div class="qr-container">
+                <div class="qr-code" id="qrCode"></div>
+                <div class="qr-hint">长按识别二维码</div>
+                <div class="qr-desc">
+                    如已关注但提示需关注公众号<br>可尝试取消关注并扫码重新关注
+                </div>
+            </div>
+
+            <div class="city-skyline">
+                <div class="building" style="left: 5%; width: 20px; height: 45px;"></div>
+                <div class="building" style="left: 12%; width: 28px; height: 65px;"></div>
+                <div class="building" style="left: 22%; width: 18px; height: 35px;"></div>
+                <div class="building" style="left: 30%; width: 32px; height: 80px;"></div>
+                <div class="building" style="left: 42%; width: 22px; height: 50px;"></div>
+                <div class="building" style="left: 52%; width: 26px; height: 70px;"></div>
+                <div class="building" style="left: 62%; width: 20px; height: 40px;"></div>
+                <div class="building" style="left: 70%; width: 30px; height: 55px;"></div>
+                <div class="building" style="left: 82%; width: 24px; height: 60px;"></div>
+                <div class="building" style="left: 92%; width: 18px; height: 35px;"></div>
+            </div>
+        </div>
+
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function goBack() {
+            window.history.back();
+        }
+
+        function generateQR() {
+            const qr = document.getElementById('qrCode');
+            const size = 21;
+            const grid = document.createElement('div');
+            grid.className = 'qr-pattern';
+            
+            for (let i = 0; i < size * size; i++) {
+                const cell = document.createElement('div');
+                const row = Math.floor(i / size);
+                const col = i % size;
+                
+                const isCornerArea = 
+                    (row < 7 && col < 7) ||
+                    (row < 7 && col >= size - 7) ||
+                    (row >= size - 7 && col < 7);
+                
+                if (isCornerArea) {
+                    const innerRow = row >= 2 && row <= 4;
+                    const innerCol = col >= 2 && col <= 4;
+                    const borderRow = row === 1 || row === 5 || (row >= 1 && row <= 5 && (col === 1 || col === 5));
+                    
+                    if (innerRow && innerCol) {
+                        cell.classList.add('empty');
+                    } else if (row === 0 || row === 6 || col === 0 || col === 6 || 
+                               (row >= 1 && row <= 5 && (col === 1 || col === 5)) ||
+                               (col >= 1 && col <= 5 && (row === 1 || row === 5))) {
+                        cell.classList.remove('empty');
+                    } else {
+                        cell.classList.add('empty');
+                    }
+                } else {
+                    const seed = (row * 31 + col * 17) % 7;
+                    if (seed < 3 && !(row >= 8 && row <= 12 && col >= 8 && col <= 12)) {
+                        cell.classList.remove('empty');
+                    } else {
+                        cell.classList.add('empty');
+                    }
+                }
+                
+                grid.appendChild(cell);
+            }
+            
+            qr.appendChild(grid);
+            
+            const corners = [
+                { cls: 'qr-corner-inner qr-corner-inner-tl' },
+                { cls: 'qr-corner-inner qr-corner-inner-tr' },
+                { cls: 'qr-corner-inner qr-corner-inner-bl' }
+            ];
+            corners.forEach(c => {
+                const corner = document.createElement('div');
+                corner.className = c.cls;
+                qr.appendChild(corner);
+            });
+            
+            const logo = document.createElement('div');
+            logo.className = 'qr-center-logo';
+            logo.textContent = '快';
+            qr.appendChild(logo);
+        }
+
+        generateQR();
+    </script>
+</body>
+</html>

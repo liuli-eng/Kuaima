@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 数据概览</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .chart-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .chart-legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        .legend-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+        .legend-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .donut-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 20px;
+        }
+        .donut-center-label {
+            text-align: center;
+            margin-top: -40px;
+        }
+        .donut-center-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .donut-center-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .mini-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #FF8C42 0%, #FF6B35 100%);
+        }
+        .avatar-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .avatar-cell .user-name-text {
+            font-weight: 500;
+        }
+        .trend-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .chart-y-axis {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 24px;
+            width: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: right;
+            padding-right: 8px;
+        }
+        .chart-svg-wrapper {
+            margin-left: 30px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">数据概览</h1>
+                <p class="page-desc">实时监控平台核心运营数据，掌握业务动态趋势</p>
+            </div>
+
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">零工总数</span>
+                        <div class="stat-card-icon">
+                            <i class="fas fa-user-friends"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">28,654</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +12.5%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">雇主总数</span>
+                        <div class="stat-card-icon blue">
+                            <i class="fas fa-building"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">3,218</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +8.3%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">今日订单</span>
+                        <div class="stat-card-icon green">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">1,856</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较昨日 +23.1%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">累计营收</span>
+                        <div class="stat-card-icon yellow">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">¥286,450</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +5.2%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-grid-2col" style="margin-bottom: 24px;">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">订单趋势</span>
+                        <div style="display:flex; gap:8px;">
+                            <select class="form-input form-select" style="padding:5px 10px; font-size:12px; width:auto;">
+                                <option>近7天</option>
+                                <option>近30天</option>
+                                <option>本月</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-y-axis">
+                            <span>250</span>
+                            <span>200</span>
+                            <span>150</span>
+                            <span>100</span>
+                            <span>50</span>
+                            <span>0</span>
+                        </div>
+                        <div class="chart-svg-wrapper" style="height:100%;">
+                            <svg viewBox="0 0 500 260" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%;">
+                                <defs>
+                                    <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#FF6B35" stop-opacity="0.35"/>
+                                        <stop offset="100%" stop-color="#FF6B35" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <line x1="30" y1="25" x2="490" y2="25" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="30" y1="75" x2="490" y2="75" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="30" y1="125" x2="490" y2="125" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="30" y1="175" x2="490" y2="175" stroke="#F3F4F6" stroke-width="1"/>
+                                <line x1="30" y1="225" x2="490" y2="225" stroke="#F3F4F6" stroke-width="1"/>
+
+                                <path d="M60,165 L130,140 L200,117 L270,145 L340,105 L410,85 L475,110 L475,225 L60,225 Z" 
+                                      fill="url(#areaGrad)"/>
+
+                                <path d="M60,165 L130,140 L200,117 L270,145 L340,105 L410,85 L475,110" 
+                                      fill="none" stroke="#FF6B35" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+
+                                <circle cx="60" cy="165" r="4" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="130" cy="140" r="4" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="200" cy="117" r="4" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="270" cy="145" r="4" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="340" cy="105" r="4" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="410" cy="85" r="4" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+                                <circle cx="475" cy="110" r="4" fill="#fff" stroke="#FF6B35" stroke-width="2"/>
+
+                                <text x="60" y="152" text-anchor="middle" font-size="11" fill="#6B7280" font-weight="500">120</text>
+                                <text x="130" y="127" text-anchor="middle" font-size="11" fill="#6B7280" font-weight="500">145</text>
+                                <text x="200" y="104" text-anchor="middle" font-size="11" fill="#6B7280" font-weight="500">168</text>
+                                <text x="270" y="132" text-anchor="middle" font-size="11" fill="#6B7280" font-weight="500">142</text>
+                                <text x="340" y="92" text-anchor="middle" font-size="11" fill="#6B7280" font-weight="500">190</text>
+                                <text x="410" y="72" text-anchor="middle" font-size="11" fill="#6B7280" font-weight="500">210</text>
+                                <text x="475" y="97" text-anchor="middle" font-size="11" fill="#6B7280" font-weight="500">185</text>
+
+                                <text x="60" y="245" text-anchor="middle" font-size="12" fill="#9CA3AF">周一</text>
+                                <text x="130" y="245" text-anchor="middle" font-size="12" fill="#9CA3AF">周二</text>
+                                <text x="200" y="245" text-anchor="middle" font-size="12" fill="#9CA3AF">周三</text>
+                                <text x="270" y="245" text-anchor="middle" font-size="12" fill="#9CA3AF">周四</text>
+                                <text x="340" y="245" text-anchor="middle" font-size="12" fill="#9CA3AF">周五</text>
+                                <text x="410" y="245" text-anchor="middle" font-size="12" fill="#9CA3AF">周六</text>
+                                <text x="475" y="245" text-anchor="middle" font-size="12" fill="#9CA3AF">周日</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">工种分布</span>
+                        <a class="card-action" href="jobs.html">查看详情</a>
+                    </div>
+                    <div class="donut-wrapper" style="padding: 10px 0;">
+                        <div style="position:relative;">
+                            <svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" width="180" height="180">
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#F3F4F6" stroke-width="22"/>
+                                <!-- 电子厂 40% -->
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#FF6B35" stroke-width="22"
+                                        stroke-dasharray="163.36 408.41" stroke-dashoffset="0"
+                                        transform="rotate(-90 90 90)"/>
+                                <!-- 物流 25% -->
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#2563EB" stroke-width="22"
+                                        stroke-dasharray="102.10 408.41" stroke-dashoffset="-163.36"
+                                        transform="rotate(-90 90 90)"/>
+                                <!-- 餐饮 20% -->
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#10B981" stroke-width="22"
+                                        stroke-dasharray="81.68 408.41" stroke-dashoffset="-265.46"
+                                        transform="rotate(-90 90 90)"/>
+                                <!-- 其他 15% -->
+                                <circle cx="90" cy="90" r="65" fill="none" stroke="#F59E0B" stroke-width="22"
+                                        stroke-dasharray="61.26 408.41" stroke-dashoffset="-347.14"
+                                        transform="rotate(-90 90 90)"/>
+                            </svg>
+                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
+                                <div style="font-size:20px; font-weight:700; color:var(--text-primary);">100%</div>
+                                <div style="font-size:11px; color:var(--text-secondary);">工种占比</div>
+                            </div>
+                        </div>
+                        <div class="chart-legend" style="flex:1;">
+                            <div class="chart-legend-item">
+                                <div class="legend-left">
+                                    <span class="legend-dot" style="background:#FF6B35;"></span>
+                                    <span>电子厂</span>
+                                </div>
+                                <span class="legend-value">40%</span>
+                            </div>
+                            <div class="chart-legend-item">
+                                <div class="legend-left">
+                                    <span class="legend-dot" style="background:#2563EB;"></span>
+                                    <span>物流</span>
+                                </div>
+                                <span class="legend-value">25%</span>
+                            </div>
+                            <div class="chart-legend-item">
+                                <div class="legend-left">
+                                    <span class="legend-dot" style="background:#10B981;"></span>
+                                    <span>餐饮</span>
+                                </div>
+                                <span class="legend-value">20%</span>
+                            </div>
+                            <div class="chart-legend-item">
+                                <div class="legend-left">
+                                    <span class="legend-dot" style="background:#F59E0B;"></span>
+                                    <span>其他</span>
+                                </div>
+                                <span class="legend-value">15%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">实时订单</span>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <a class="card-action" href="orders.html">刷新</a>
+                        <a class="card-action" href="orders.html">查看全部 <i class="fas fa-arrow-right" style="font-size:11px;"></i></a>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>雇主</th>
+                                <th>工种</th>
+                                <th>零工</th>
+                                <th>金额</th>
+                                <th>状态</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">KM20240315001</td>
+                                <td>深圳富士康科技集团</td>
+                                <td>电子厂装配工</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#FF8C42,#FF6B35);">张</span>
+                                        <span class="user-name-text">张建国</span>
+                                    </div>
+                                </td>
+                                <td style="font-weight:600; color:var(--text-primary);">¥280</td>
+                                <td><span class="status-badge success">已完成</span></td>
+                                <td>2024-03-15 18:30</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">KM20240315002</td>
+                                <td>顺丰速运有限公司</td>
+                                <td>快递分拣员</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#3B82F6,#2563EB);">李</span>
+                                        <span class="user-name-text">李美丽</span>
+                                    </div>
+                                </td>
+                                <td style="font-weight:600; color:var(--text-primary);">¥220</td>
+                                <td><span class="status-badge info">进行中</span></td>
+                                <td>2024-03-15 17:45</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">KM20240315003</td>
+                                <td>肯德基餐饮管理</td>
+                                <td>餐厅服务员</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#10B981,#059669);">王</span>
+                                        <span class="user-name-text">王小刚</span>
+                                    </div>
+                                </td>
+                                <td style="font-weight:600; color:var(--text-primary);">¥180</td>
+                                <td><span class="status-badge warning">待处理</span></td>
+                                <td>2024-03-15 17:20</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">KM20240315004</td>
+                                <td>京东物流仓储</td>
+                                <td>仓库理货员</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9);">陈</span>
+                                        <span class="user-name-text">陈大海</span>
+                                    </div>
+                                </td>
+                                <td style="font-weight:600; color:var(--text-primary);">¥320</td>
+                                <td><span class="status-badge success">已完成</span></td>
+                                <td>2024-03-15 16:50</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">KM20240315005</td>
+                                <td>比亚迪汽车工业</td>
+                                <td>电子厂操作工</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#F59E0B,#D97706);">刘</span>
+                                        <span class="user-name-text">刘芳</span>
+                                    </div>
+                                </td>
+                                <td style="font-weight:600; color:var(--text-primary);">¥260</td>
+                                <td><span class="status-badge info">进行中</span></td>
+                                <td>2024-03-15 16:15</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">KM20240315006</td>
+                                <td>麦当劳食品有限公司</td>
+                                <td>后厨助手</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#EC4899,#BE185D);">赵</span>
+                                        <span class="user-name-text">赵小红</span>
+                                    </div>
+                                </td>
+                                <td style="font-weight:600; color:var(--text-primary);">¥160</td>
+                                <td><span class="status-badge warning">待处理</span></td>
+                                <td>2024-03-15 15:40</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">KM20240315007</td>
+                                <td>顺丰速运有限公司</td>
+                                <td>司机</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#06B6D4,#0891B2);">周</span>
+                                        <span class="user-name-text">周志华</span>
+                                    </div>
+                                </td>
+                                <td style="font-weight:600; color:var(--text-primary);">¥450</td>
+                                <td><span class="status-badge success">已完成</span></td>
+                                <td>2024-03-15 14:30</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">KM20240315008</td>
+                                <td>格力电器制造</td>
+                                <td>装配钳工</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#64748B,#475569);">吴</span>
+                                        <span class="user-name-text">吴志强</span>
+                                    </div>
+                                </td>
+                                <td style="font-weight:600; color:var(--text-primary);">¥300</td>
+                                <td><span class="status-badge danger">已取消</span></td>
+                                <td>2024-03-15 13:20</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <div class="pagination-info">共 1,856 条订单记录</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" disabled><i class="fas fa-chevron-left" style="font-size:10px;"></i></button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn">3</button>
+                        <button class="page-btn">4</button>
+                        <button class="page-btn">5</button>
+                        <span style="color:var(--text-muted); padding:0 4px;">...</span>
+                        <button class="page-btn">93</button>
+                        <button class="page-btn"><i class="fas fa-chevron-right" style="font-size:10px;"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+    </script>
+</body>
+</html>

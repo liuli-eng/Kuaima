@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>添加招工地址 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #f5f5f5; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #fff; }
+        .nav-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; cursor: pointer; }
+        .nav-title { font-size: 17px; font-weight: 600; color: #333; }
+        .nav-right { width: 32px; }
+        
+        .map-container {
+            height: 200px;
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            position: relative;
+            overflow: hidden;
+        }
+        .map-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .map-pin {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            font-size: 36px;
+            color: #FF6B35;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+        }
+        .map-search-btn {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+        }
+        .map-search-btn i { color: #FF6B35; font-size: 18px; }
+        
+        .form-container { padding: 16px; }
+        .form-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .form-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .form-item:last-child { border-bottom: none; }
+        .form-label { font-size: 15px; color: #333; font-weight: 500; width: 80px; flex-shrink: 0; }
+        .form-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            color: #333;
+            background: transparent;
+        }
+        .form-input::placeholder { color: #ccc; }
+        .form-selector {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .form-selector .placeholder { color: #ccc; }
+        .form-selector .value { color: #333; }
+        .form-selector i { color: #ccc; font-size: 12px; }
+        
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 0;
+        }
+        .checkbox-custom {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .checkbox-custom.checked {
+            background: #FF6B35;
+            border-color: #FF6B35;
+        }
+        .checkbox-custom.checked::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: white;
+            font-size: 11px;
+        }
+        .checkbox-label { font-size: 14px; color: #333; }
+        
+        .save-btn {
+            width: 100%;
+            margin-top: 24px;
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white;
+            padding: 16px;
+            border-radius: 28px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);
+        }
+        .save-btn:active { transform: scale(0.98); }
+        
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; z-index: 10; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        <div class="status-bar">
+            <span>19:53</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+        
+        <div class="nav-bar">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <div class="nav-title">添加招工地址</div>
+            <div class="nav-right"></div>
+        </div>
+        
+        <div class="map-container" onclick="selectLocation()">
+            <div class="map-grid"></div>
+            <div class="map-pin"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="map-search-btn">
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+        
+        <div class="form-container">
+            <div class="form-card">
+                <div class="form-item">
+                    <div class="form-label">地址名称</div>
+                    <input type="text" class="form-input" placeholder="如：公司仓库、工厂">
+                </div>
+                <div class="form-item">
+                    <div class="form-label">联系人</div>
+                    <input type="text" class="form-input" placeholder="请输入联系人姓名">
+                </div>
+                <div class="form-item">
+                    <div class="form-label">联系电话</div>
+                    <input type="text" class="form-input" placeholder="请输入联系电话">
+                </div>
+            </div>
+            
+            <div class="form-card">
+                <div class="form-item" onclick="selectCity()">
+                    <div class="form-label">所在城市</div>
+                    <div class="form-selector">
+                        <span class="placeholder">请选择城市</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                <div class="form-item" onclick="selectDistrict()">
+                    <div class="form-label">所在区域</div>
+                    <div class="form-selector">
+                        <span class="placeholder">请选择区域</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                <div class="form-item">
+                    <div class="form-label">详细地址</div>
+                    <input type="text" class="form-input" placeholder="请输入详细地址">
+                </div>
+            </div>
+            
+            <div class="form-card">
+                <div class="checkbox-row" onclick="toggleDefault()">
+                    <div class="checkbox-custom" id="defaultCheck"></div>
+                    <div class="checkbox-label">设为默认地址</div>
+                </div>
+            </div>
+            
+            <button class="save-btn" onclick="saveAddress()">保存地址</button>
+        </div>
+        
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function goBack() { window.history.back(); }
+        
+        function selectLocation() { alert('打开地图选点'); }
+        
+        function selectCity() { alert('选择城市'); }
+        
+        function selectDistrict() { alert('选择区域'); }
+        
+        function toggleDefault() {
+            document.getElementById('defaultCheck').classList.toggle('checked');
+        }
+        
+        function saveAddress() {
+            alert('地址保存成功');
+            setTimeout(() => window.history.back(), 500);
+        }
+    </script>
+</body>
+</html>

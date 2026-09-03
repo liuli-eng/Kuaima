@@ -1,0 +1,335 @@
+<template>
+  <view class="page"
+    ><AppNavBar title="订单详情" :show-back="true" /><scroll-view
+      scroll-y
+      class="content"
+      ><view class="status-box"
+        ><text class="status-title">{{ order.statusText }}</text
+        ><text class="status-desc">{{ statusDesc }}</text></view
+      ><view class="card"
+        ><text class="section">岗位信息</text
+        ><view class="job"
+          ><text class="job-title">{{ order.title }}</text
+          ><text class="employer">{{ order.employer }}</text></view
+        ><view class="row"
+          ><text>工作时间</text><text>{{ order.time }}</text></view
+        ><view class="row"
+          ><text>工作地点</text><text>{{ order.address }}</text></view
+        ><view class="row"
+          ><text>结算方式</text><text>{{ order.unit }}</text></view
+        ><view class="row"
+          ><text>订单金额</text
+          ><text class="amount">¥{{ order.amount }}</text></view
+        ></view
+      ><view class="card"
+        ><text class="section">流程进度</text
+        ><view v-for="step in steps" :key="step.key" class="step"
+          ><text :class="['dot', { done: step.done }]">{{
+            step.done ? "✓" : ""
+          }}</text
+          ><view
+            ><text :class="['step-title', { doneText: step.done }]">{{
+              step.label
+            }}</text
+            ><text class="step-desc">{{ step.desc }}</text></view
+          ></view
+        ></view
+      ><view class="card safety"
+        ><text class="section">温馨提示</text
+        ><text
+          >请按约定时间到岗，遇到异常情况及时联系雇主或平台客服。</text
+        ></view
+      ></scroll-view
+    ><SafeBottomAction
+      ><view class="bottom-actions"
+        ><button class="service" @click="contact">联系客服</button
+        ><button class="action" :disabled="operating" @click="primaryAction">
+          {{ actionText }}
+        </button></view
+      ></SafeBottomAction
+    ></view
+  >
+</template>
+<script setup>
+import { computed, onMounted, ref } from "vue";
+import AppNavBar from "@/components/AppNavBar.vue";
+import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import { request } from "@/api/http";
+const pages = getCurrentPages();
+const options = pages[pages.length - 1]?.options || {};
+const order = ref({
+  id: options.id,
+  title: "餐饮清洁工",
+  employer: "松江餐饮店",
+  time: "今天 08:00-18:00",
+  address: "松江区泗泾镇",
+  amount: 162,
+  unit: "日结",
+  status: "applied",
+  statusText: "已报名",
+});
+const operating = ref(false);
+onMounted(async () => {
+  if (!options.id || String(options.id).startsWith("o")) return;
+  try {
+    const result = await request({ url: `/worker/orders/${options.id}` });
+    if (result)
+      order.value = {
+        ...order.value,
+        ...result,
+        statusText:
+          result.statusText || result.status || order.value.statusText,
+      };
+  } catch (_) {
+    /* 使用兜底订单 */
+  }
+});
+const statusDesc = computed(
+  () =>
+    ({
+      applied: "等待雇主审核报名信息",
+      hired: "雇主已录用，请按时到岗",
+      arrived: "已确认到岗，完成工作后等待结算",
+      done: "工作已完成，等待结算到账",
+    })[order.value.status] || "订单处理中",
+);
+const steps = computed(() => {
+  const orderList = ["applied", "hired", "arrived", "done"];
+  const index = orderList.indexOf(order.value.status);
+  return [
+    {
+      key: "applied",
+      label: "已报名",
+      desc: "报名信息已提交",
+      done: index >= 0,
+    },
+    {
+      key: "hired",
+      label: "已录用",
+      desc: "等待雇主确认录用",
+      done: index >= 1,
+    },
+    {
+      key: "arrived",
+      label: "已到岗",
+      desc: "到岗后由雇主确认",
+      done: index >= 2,
+    },
+    {
+      key: "done",
+      label: "已完成",
+      desc: "完成工作并进入结算",
+      done: index >= 3,
+    },
+  ];
+});
+const actionText = computed(
+  () =>
+    ({
+      applied: "取消报名",
+      hired: "查看到岗须知",
+      arrived: "查看工作信息",
+      done: "查看结算",
+    })[order.value.status] || "查看钱包",
+);
+function contact() {
+  uni.showToast({ title: "客服功能开发中", icon: "none" });
+}
+function primaryAction() {
+  if (order.value.status === "applied") return cancel();
+  if (order.value.status === "done")
+    return uni.navigateTo({
+      url: `/pages/worker/settlement-detail?id=${order.value.settlementId || "s1"}`,
+    });
+  if (order.value.status === "hired")
+    return uni.showModal({
+      title: "到岗须知",
+      content:
+        "请携带本人有效身份证件，按约定时间到达工作地点，并由雇主确认到岗。",
+      showCancel: false,
+    });
+  if (order.value.status === "arrived")
+    return uni.showModal({
+      title: "工作信息",
+      content: "请服从现场管理并按要求完成工作，完工后由雇主确认并发起结算。",
+      showCancel: false,
+    });
+  uni.navigateTo({ url: "/pages/worker/wallet" });
+}
+function cancel() {
+  uni.showModal({
+    title: "取消报名",
+    content: "确定取消本次报名吗？",
+    success: async ({ confirm }) => {
+      if (!confirm) return;
+      operating.value = true;
+      try {
+        await request({
+          url: `/boss/item/${order.value.id}/cancel`,
+          method: "PUT",
+        });
+        order.value.status = "cancelled";
+        order.value.statusText = "已取消";
+        uni.showToast({ title: "已取消报名", icon: "success" });
+      } catch (e) {
+        uni.showToast({ title: e.message || "取消失败", icon: "none" });
+      } finally {
+        operating.value = false;
+      }
+    },
+  });
+}
+</script>
+<style scoped>
+.page {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+.content {
+  height: calc(100vh - 176rpx);
+}
+.status-box {
+  background: linear-gradient(135deg, #fff4e6, #ffe4b5);
+  padding: 42rpx 32rpx;
+}
+.status-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #8b4513;
+}
+.status-desc {
+  display: block;
+  color: #a0522d;
+  font-size: 24rpx;
+  margin-top: 12rpx;
+}
+.card {
+  background: #fff;
+  border-radius: 22rpx;
+  margin: 22rpx;
+  padding: 28rpx;
+}
+.section {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 24rpx;
+}
+.job {
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f1f1f1;
+}
+.job-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #333;
+}
+.employer {
+  display: block;
+  color: #888;
+  font-size: 23rpx;
+  margin-top: 10rpx;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 20rpx;
+  color: #888;
+  font-size: 24rpx;
+}
+.row text:last-child {
+  color: #333;
+  max-width: 60%;
+  text-align: right;
+}
+.amount {
+  color: #ff4757 !important;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+.step {
+  display: flex;
+  gap: 20rpx;
+  position: relative;
+  padding-bottom: 26rpx;
+}
+.step:last-child {
+  padding-bottom: 0;
+}
+.step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 16rpx;
+  top: 34rpx;
+  width: 2rpx;
+  height: calc(100% - 22rpx);
+  background: #ddd;
+}
+.dot {
+  z-index: 1;
+  width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  text-align: center;
+  border-radius: 50%;
+  border: 2rpx solid #ddd;
+  color: #fff;
+  font-size: 20rpx;
+}
+.dot.done {
+  background: #52c41a;
+  border-color: #52c41a;
+}
+.step-title {
+  display: block;
+  color: #999;
+  font-size: 26rpx;
+}
+.step-title.doneText {
+  color: #333;
+  font-weight: 600;
+}
+.step-desc {
+  display: block;
+  color: #aaa;
+  font-size: 21rpx;
+  margin-top: 5rpx;
+}
+.safety text:last-child {
+  display: block;
+  color: #888;
+  font-size: 23rpx;
+  line-height: 1.7;
+}
+.bottom-actions {
+  display: flex;
+  gap: 18rpx;
+}
+.service,
+.action {
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 44rpx;
+  font-size: 26rpx;
+}
+.service {
+  width: 34%;
+  border: 1rpx solid #ddd;
+  background: #fff;
+  color: #666;
+}
+.action {
+  flex: 1;
+  border: 0;
+  background: linear-gradient(135deg, #ffd700, #ffa500);
+  color: #8b4513;
+  font-weight: 700;
+}
+.action[disabled] {
+  background: #bbb;
+  color: #fff;
+}
+</style>

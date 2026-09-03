@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日结战绩 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .phone-frame {
+            width: 390px; height: 844px; background: #fff; overflow: hidden;
+            position: relative; border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+        }
+        .dynamic-island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 35px; background: #000; border-radius: 20px; z-index: 50; }
+        .status-bar { height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333; background: #fff; }
+        .nav-bar { padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; background: #fff; }
+        .nav-back { display: flex; align-items: center; cursor: pointer; width: 32px; height: 32px; }
+        .nav-right { display: flex; align-items: center; background: rgba(255, 255, 255, 0.9); border-radius: 20px; padding: 4px 6px; gap: 2px; }
+        .nav-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+        .content-area { position: absolute; top: 47px; left: 0; right: 0; bottom: 34px; overflow-y: auto; background: #f5f5f5; }
+        .content-area::-webkit-scrollbar { display: none; }
+        .page-indicator { height: 5px; background: #000; border-radius: 3px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; }
+        
+        /* 顶部统计 */
+        .stats-header {
+            background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
+            margin: 12px; padding: 20px; border-radius: 12px; color: white;
+        }
+        .stats-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+        .stats-row { display: flex; justify-content: space-between; }
+        .stats-col { flex: 1; text-align: center; }
+        .stats-value { font-size: 24px; font-weight: 600; }
+        .stats-label { font-size: 12px; opacity: 0.9; margin-top: 4px; }
+        
+        /* Tab切换 */
+        .tabs { display: flex; background: white; margin: 0 12px; border-radius: 12px; overflow: hidden; }
+        .tab-item { flex: 1; text-align: center; padding: 12px; font-size: 14px; color: #666; cursor: pointer; }
+        .tab-item.active { color: #FF6B35; font-weight: 600; border-bottom: 2px solid #FF6B35; }
+        
+        /* 成就勋章 */
+        .section-title { font-size: 16px; font-weight: 600; color: #333; margin: 16px 16px 10px; }
+        .medal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 16px; }
+        .medal-item { text-align: center; }
+        .medal-icon {
+            width: 56px; height: 56px; margin: 0 auto 8px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+        }
+        .medal-unlocked { background: linear-gradient(135deg, #FFD700, #FFA500); color: white; }
+        .medal-locked { background: #f0f0f0; color: #ccc; }
+        .medal-name { font-size: 12px; color: #333; }
+        .medal-desc { font-size: 11px; color: #999; margin-top: 2px; }
+        
+        /* 月度报表 */
+        .report-card {
+            background: white; margin: 12px; border-radius: 12px; padding: 16px;
+        }
+        .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .report-title { font-size: 15px; font-weight: 600; color: #333; }
+        .report-month { font-size: 13px; color: #999; }
+        .report-stats { display: flex; justify-content: space-around; }
+        .report-item { text-align: center; }
+        .report-value { font-size: 20px; font-weight: 600; color: #FF6B35; }
+        .report-label { font-size: 12px; color: #999; margin-top: 4px; }
+        
+        /* 战绩列表 */
+        .record-list { background: white; margin: 12px; border-radius: 12px; overflow: hidden; }
+        .record-item {
+            padding: 14px 16px; border-bottom: 1px solid #f5f5f5;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .record-item:last-child { border-bottom: none; }
+        .record-info { flex: 1; }
+        .record-title { font-size: 14px; color: #333; font-weight: 500; }
+        .record-meta { font-size: 12px; color: #999; margin-top: 4px; }
+        .record-income { font-size: 16px; font-weight: 600; color: #FF6B35; }
+        
+        /* 空状态 */
+        .empty-state { text-align: center; padding: 40px; }
+        .empty-icon { font-size: 60px; color: #FFE4B5; margin-bottom: 12px; }
+        .empty-text { font-size: 14px; color: #999; }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <!-- 导航栏 -->
+            <div class="nav-bar">
+                <div class="nav-back" onclick="goBack()">
+                    <i class="fas fa-chevron-left text-gray-700"></i>
+                </div>
+                <div class="nav-title" style="font-size: 17px; font-weight: 600; color: #333; position: absolute; left: 50%; transform: translateX(-50%);">日结战绩</div>
+                <div class="nav-right">
+                    <div class="nav-btn">
+                        <i class="fas fa-ellipsis text-gray-700" style="font-size: 13px;"></i>
+                    </div>
+                    <div style="width: 1px; height: 14px; background: #ddd; margin: 0 2px;"></div>
+                    <div class="nav-btn">
+                        <i class="fas fa-circle text-gray-700" style="font-size: 11px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 顶部统计 -->
+            <div class="stats-header">
+                <div class="stats-title">我的战绩</div>
+                <div class="stats-row">
+                    <div class="stats-col">
+                        <div class="stats-value" id="statOrders">12</div>
+                        <div class="stats-label">累计接单</div>
+                    </div>
+                    <div class="stats-col">
+                        <div class="stats-value" id="statCompleted">8</div>
+                        <div class="stats-label">完单数量</div>
+                    </div>
+                    <div class="stats-col">
+                        <div class="stats-value" id="statIncome">¥360</div>
+                        <div class="stats-label">累计收入</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab切换 -->
+            <div class="tabs">
+                <div class="tab-item active" onclick="switchTab(this, 'day')">今日</div>
+                <div class="tab-item" onclick="switchTab(this, 'week')">本周</div>
+                <div class="tab-item" onclick="switchTab(this, 'month')">本月</div>
+                <div class="tab-item" onclick="switchTab(this, 'all')">全部</div>
+            </div>
+
+            <!-- 成就勋章 -->
+            <div class="section-title">成就勋章</div>
+            <div class="medal-grid">
+                <div class="medal-item">
+                    <div class="medal-icon medal-unlocked"><i class="fas fa-medal"></i></div>
+                    <div class="medal-name">新手勋章</div>
+                    <div class="medal-desc">完成首单</div>
+                </div>
+                <div class="medal-item">
+                    <div class="medal-icon medal-unlocked"><i class="fas fa-trophy"></i></div>
+                    <div class="medal-name">勤劳小蜜蜂</div>
+                    <div class="medal-desc">连做7天</div>
+                </div>
+                <div class="medal-item">
+                    <div class="medal-icon medal-locked"><i class="fas fa-star"></i></div>
+                    <div class="medal-name">接单达人</div>
+                    <div class="medal-desc">接满50单</div>
+                </div>
+                <div class="medal-item">
+                    <div class="medal-icon medal-locked"><i class="fas fa-fire"></i></div>
+                    <div class="medal-name">火爆接单</div>
+                    <div class="medal-desc">单日10单</div>
+                </div>
+                <div class="medal-item">
+                    <div class="medal-icon medal-locked"><i class="fas fa-crown"></i></div>
+                    <div class="medal-name">皇冠零工</div>
+                    <div class="medal-desc">好评100%</div>
+                </div>
+                <div class="medal-item">
+                    <div class="medal-icon medal-locked"><i class="fas fa-gem"></i></div>
+                    <div class="medal-name">钻石零工</div>
+                    <div class="medal-desc">收入破万</div>
+                </div>
+            </div>
+
+            <!-- 报表 -->
+            <div class="report-card">
+                <div class="report-header">
+                    <div class="report-title" id="reportTitle">8月报表</div>
+                    <div class="report-month" id="reportMonth">2026年8月</div>
+                </div>
+                <div class="report-stats">
+                    <div class="report-item">
+                        <div class="report-value" id="reportDays">12</div>
+                        <div class="report-label">接单天数</div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-value" id="reportOrders">8</div>
+                        <div class="report-label">完成订单</div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-value" id="reportIncome">¥360</div>
+                        <div class="report-label">本月收入</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 战绩列表 -->
+            <div class="section-title">最近战绩</div>
+            <div class="record-list" id="recordList">
+                <div class="record-item">
+                    <div class="record-info">
+                        <div class="record-title">餐饮清洁工</div>
+                        <div class="record-meta">2026-08-20 08:00-18:00 · 已完成</div>
+                    </div>
+                    <div class="record-income">¥180</div>
+                </div>
+                <div class="record-item">
+                    <div class="record-info">
+                        <div class="record-title">快递分拣员</div>
+                        <div class="record-meta">2026-08-19 14:00-22:00 · 已完成</div>
+                    </div>
+                    <div class="record-income">¥120</div>
+                </div>
+                <div class="record-item">
+                    <div class="record-info">
+                        <div class="record-title">商场导购</div>
+                        <div class="record-meta">2026-08-18 09:00-17:00 · 已完成</div>
+                    </div>
+                    <div class="record-income">¥100</div>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="empty-text">暂无战绩记录，快去接单吧！</div>
+            </div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(pageName) < 0 && bossPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() { window.history.back(); }
+        
+        // 不同时间范围的数据
+        const dataSets = {
+            day: {
+                stats: { orders: '2', completed: '2', income: '¥180' },
+                report: { title: '今日战绩', month: '2026-08-21', days: '1', orders: '2', income: '¥180' },
+                records: [
+                    { title: '餐饮清洁工', meta: '2026-08-21 08:00-18:00 · 已完成', income: '¥180' },
+                    { title: '快递分拣员', meta: '2026-08-21 14:00-18:00 · 进行中', income: '¥60' }
+                ]
+            },
+            week: {
+                stats: { orders: '5', completed: '4', income: '¥720' },
+                report: { title: '本周报表', month: '2026年第34周', days: '5', orders: '4', income: '¥720' },
+                records: [
+                    { title: '餐饮清洁工', meta: '2026-08-20 08:00-18:00 · 已完成', income: '¥180' },
+                    { title: '快递分拣员', meta: '2026-08-19 14:00-22:00 · 已完成', income: '¥120' },
+                    { title: '商场导购', meta: '2026-08-18 09:00-17:00 · 已完成', income: '¥100' },
+                    { title: '仓库理货员', meta: '2026-08-17 07:00-15:00 · 已完成', income: '¥150' },
+                    { title: '餐饮服务员', meta: '2026-08-15 10:00-20:00 · 已完成', income: '¥170' }
+                ]
+            },
+            month: {
+                stats: { orders: '12', completed: '8', income: '¥360' },
+                report: { title: '8月报表', month: '2026年8月', days: '12', orders: '8', income: '¥360' },
+                records: [
+                    { title: '餐饮清洁工', meta: '2026-08-20 08:00-18:00 · 已完成', income: '¥180' },
+                    { title: '快递分拣员', meta: '2026-08-19 14:00-22:00 · 已完成', income: '¥120' },
+                    { title: '商场导购', meta: '2026-08-18 09:00-17:00 · 已完成', income: '¥100' },
+                    { title: '仓库理货员', meta: '2026-08-15 07:00-15:00 · 已完成', income: '¥150' },
+                    { title: '餐饮服务员', meta: '2026-08-12 10:00-20:00 · 已完成', income: '¥170' },
+                    { title: '快递卸车工', meta: '2026-08-10 06:00-14:00 · 已完成', income: '¥160' },
+                    { title: '后厨阿姨', meta: '2026-08-08 09:00-18:00 · 已完成', income: '¥140' },
+                    { title: '促销员', meta: '2026-08-05 10:00-18:00 · 已完成', income: '¥120' }
+                ]
+            },
+            all: {
+                stats: { orders: '45', completed: '38', income: '¥2,860' },
+                report: { title: '累计报表', month: '全部时间', days: '45', orders: '38', income: '¥2,860' },
+                records: [
+                    { title: '餐饮清洁工', meta: '2026-08-20 08:00-18:00 · 已完成', income: '¥180' },
+                    { title: '快递分拣员', meta: '2026-08-19 14:00-22:00 · 已完成', income: '¥120' },
+                    { title: '商场导购', meta: '2026-08-18 09:00-17:00 · 已完成', income: '¥100' },
+                    { title: '仓库理货员', meta: '2026-08-15 07:00-15:00 · 已完成', income: '¥150' },
+                    { title: '餐饮服务员', meta: '2026-08-12 10:00-20:00 · 已完成', income: '¥170' },
+                    { title: '快递卸车工', meta: '2026-08-10 06:00-14:00 · 已完成', income: '¥160' },
+                    { title: '后厨阿姨', meta: '2026-08-08 09:00-18:00 · 已完成', income: '¥140' },
+                    { title: '促销员', meta: '2026-08-05 10:00-18:00 · 已完成', income: '¥120' },
+                    { title: '电焊工', meta: '2026-07-28 08:00-17:00 · 已完成', income: '¥280' },
+                    { title: '汽修学徒', meta: '2026-07-20 08:00-18:00 · 已完成', income: '¥200' }
+                ]
+            }
+        };
+        
+        function switchTab(el, type) {
+            // 切换Tab样式
+            document.querySelectorAll('.tab-item').forEach(t => {
+                t.classList.remove('active');
+            });
+            el.classList.add('active');
+            
+            // 更新数据
+            const data = dataSets[type];
+            if (data) {
+                // 更新顶部统计
+                document.getElementById('statOrders').textContent = data.stats.orders;
+                document.getElementById('statCompleted').textContent = data.stats.completed;
+                document.getElementById('statIncome').textContent = data.stats.income;
+                
+                // 更新报表
+                document.getElementById('reportTitle').textContent = data.report.title;
+                document.getElementById('reportMonth').textContent = data.report.month;
+                document.getElementById('reportDays').textContent = data.report.days;
+                document.getElementById('reportOrders').textContent = data.report.orders;
+                document.getElementById('reportIncome').textContent = data.report.income;
+                
+                // 更新战绩列表
+                const recordList = document.getElementById('recordList');
+                recordList.innerHTML = data.records.map(r => `
+                    <div class="record-item">
+                        <div class="record-info">
+                            <div class="record-title">${r.title}</div>
+                            <div class="record-meta">${r.meta}</div>
+                        </div>
+                        <div class="record-income">${r.income}</div>
+                    </div>
+                `).join('');
+            }
+        }
+    </script>
+</body>
+</html>

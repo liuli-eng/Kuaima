@@ -1,0 +1,617 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 招工管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        .page-title h1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .page-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .filter-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-item label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .filter-item select, .filter-item input {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            min-width: 140px;
+            background: #fff;
+        }
+        .filter-item input[type="date"] {
+            min-width: 130px;
+        }
+        .filter-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+        }
+        .filter-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #E55A2B;
+        }
+        .btn-secondary {
+            background: var(--secondary);
+            color: #fff;
+        }
+        .btn-secondary:hover {
+            background: #D45520;
+        }
+        .btn-outline {
+            background: #fff;
+            color: var(--text-secondary);
+            border-color: var(--border);
+        }
+        .btn-outline:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #DC2626;
+        }
+        .table-card {
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .table-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table th {
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-align: left;
+            background: var(--bg-page);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .data-table td {
+            padding: 14px 16px;
+            font-size: 14px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border);
+        }
+        .data-table tbody tr:hover {
+            background: #FFF8F3;
+        }
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .job-id {
+            font-family: monospace;
+            color: var(--primary);
+        }
+        .job-info-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .job-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .job-type-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .type-electronics { background: #EFF6FF; color: #2563EB; }
+        .type-manufacture { background: #FEF3C7; color: #D97706; }
+        .type-logistics { background: #D1FAE5; color: #059669; }
+        .type-warehouse { background: #DBEAFE; color: #0369A1; }
+        .type-catering { background: #FCE7F3; color: #BE185D; }
+        .type-auto { background: #E0E7FF; color: #4338CA; }
+        .type-food { background: #FEF3C7; color: #B45309; }
+        .type-service { background: #F3E8FF; color: #7C3AED; }
+        .boss-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .boss-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .boss-name-text {
+            font-size: 13px;
+        }
+        .demand-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .demand-text {
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .demand-progress {
+            width: 100px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .demand-progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+        .wage-cell {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .location-cell {
+            font-size: 13px;
+        }
+        .location-cell i {
+            color: var(--text-muted);
+            margin-right: 4px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .status-badge.success { background: #D1FAE5; color: #059669; }
+        .status-badge.info { background: #DBEAFE; color: #0284C7; }
+        .status-badge.warning { background: #FEF3C7; color: #D97706; }
+        .status-badge.danger { background: #FEE2E2; color: #DC2626; }
+        .status-badge.default { background: #F3F4F6; color: #6B7280; }
+        .action-btns {
+            display: flex;
+            gap: 4px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+        .action-btns .btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            gap: 3px;
+        }
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-top: 1px solid var(--border);
+        }
+        .pagination {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .pagination button {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .pagination button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .pagination button.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .pagination-info {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 8px;
+            width: 600px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .modal-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .detail-section {
+            margin-bottom: 20px;
+        }
+        .detail-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px 20px;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .detail-item .label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .detail-item .value {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar"></aside>
+        <div class="admin-main">
+            <header class="admin-topbar"></header>
+            <div class="admin-content">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>招工管理</h1>
+                        <p>管理平台所有招工信息、状态、数据</p>
+                    </div>
+                </div>
+
+                <div class="filter-card">
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label>关键词</label>
+                            <input type="text" placeholder="工种/雇主ID" style="width:160px;">
+                        </div>
+                        <div class="filter-item">
+                            <label>状态</label>
+                            <select>
+                                <option>全部</option>
+                                <option>招聘中</option>
+                                <option>已招满</option>
+                                <option>已关闭</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>工种类型</label>
+                            <select>
+                                <option>全部</option>
+                                <option>电子厂</option>
+                                <option>制造业</option>
+                                <option>物流</option>
+                                <option>仓储</option>
+                                <option>餐饮</option>
+                                <option>汽车</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>发布日期</label>
+                            <input type="date">
+                            <span>至</span>
+                            <input type="date">
+                        </div>
+                        <div class="filter-divider"></div>
+                        <div class="filter-actions">
+                            <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
+                            <button class="btn btn-outline"><i class="fas fa-undo"></i> 重置</button>
+                        </div>
+                        <div style="margin-left:auto;">
+                            <button class="btn btn-outline"><i class="fas fa-download"></i> 导出</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>招工ID</th>
+                                    <th>工种</th>
+                                    <th>雇主</th>
+                                    <th>需求人数/已招</th>
+                                    <th>工价</th>
+                                    <th>工作地点</th>
+                                    <th>发布时间</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jobTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <div class="pagination-info">共 8,456 条记录，当前显示 1-10 条</div>
+                        <div class="pagination">
+                            <button><i class="fas fa-chevron-left"></i></button>
+                            <button class="active">1</button>
+                            <button>2</button>
+                            <button>3</button>
+                            <button>4</button>
+                            <button>5</button>
+                            <button>...</button>
+                            <button>846</button>
+                            <button><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="jobDetailModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>招工详情</h3>
+                <button class="modal-close" onclick="closeJobDetail()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="jobDetailBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeJobDetail()">关闭</button>
+                <button class="btn btn-primary" onclick="closeJobDetail()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const jobData = [
+            { id: 'J20240315001', jobName: '电子厂普工', jobType: '电子厂', typeClass: 'type-electronics', bossName: '富士康科技集团', bossLogo: '富', bossColor: '#3B82F6', demand: 200, hired: 185, wage: '¥260/天', location: '深圳龙华', publishTime: '2024-03-15 09:30', status: '招聘中', statusClass: 'success' },
+            { id: 'J20240315002', jobName: '焊工', jobType: '制造业', typeClass: 'type-manufacture', bossName: '格力电器制造', bossLogo: '格', bossColor: '#06B6D4', demand: 15, hired: 15, wage: '¥450/天', location: '珠海香洲', publishTime: '2024-03-14 14:20', status: '已招满', statusClass: 'info' },
+            { id: 'J20240315003', jobName: '分拣员', jobType: '物流', typeClass: 'type-logistics', bossName: '顺丰速运', bossLogo: '顺', bossColor: '#F59E0B', demand: 50, hired: 32, wage: '¥220/天', location: '广州白云', publishTime: '2024-03-15 08:15', status: '招聘中', statusClass: 'success' },
+            { id: 'J20240315004', jobName: '搬运工', jobType: '仓储', typeClass: 'type-warehouse', bossName: '京东物流仓储', bossLogo: '京', bossColor: '#10B981', demand: 30, hired: 30, wage: '¥320/天', location: '佛山顺德', publishTime: '2024-03-13 16:45', status: '已招满', statusClass: 'info' },
+            { id: 'J20240315005', jobName: '餐厅服务员', jobType: '餐饮', typeClass: 'type-catering', bossName: '肯德基餐饮', bossLogo: '肯', bossColor: '#EC4899', demand: 20, hired: 12, wage: '¥180/天', location: '北京朝阳', publishTime: '2024-03-15 10:00', status: '招聘中', statusClass: 'success' },
+            { id: 'J20240315006', jobName: '装配钳工', jobType: '汽车', typeClass: 'type-auto', bossName: '比亚迪汽车', bossLogo: '比', bossColor: '#8B5CF6', demand: 50, hired: 48, wage: '¥380/天', location: '西安高新', publishTime: '2024-03-14 11:30', status: '招聘中', statusClass: 'success' },
+            { id: 'J20240315007', jobName: '仓库理货员', jobType: '仓储', typeClass: 'type-warehouse', bossName: '京东物流仓储', bossLogo: '京', bossColor: '#10B981', demand: 25, hired: 25, wage: '¥280/天', location: '上海青浦', publishTime: '2024-03-12 15:10', status: '已关闭', statusClass: 'default' },
+            { id: 'J20240315008', jobName: 'CNC操作工', jobType: '制造业', typeClass: 'type-manufacture', bossName: '精密机械有限公司', bossLogo: '精', bossColor: '#6366F1', demand: 8, hired: 5, wage: '¥520/天', location: '苏州工业园', publishTime: '2024-03-15 07:45', status: '招聘中', statusClass: 'success' },
+            { id: 'J20240315009', jobName: '后厨助手', jobType: '餐饮', typeClass: 'type-catering', bossName: '麦当劳食品', bossLogo: '麦', bossColor: '#F97316', demand: 12, hired: 12, wage: '¥160/天', location: '成都锦江', publishTime: '2024-03-11 13:20', status: '已招满', statusClass: 'info' },
+            { id: 'J20240315010', jobName: '质检工', jobType: '电子厂', typeClass: 'type-electronics', bossName: '京东方科技', bossLogo: '京', bossColor: '#0EA5E9', demand: 30, hired: 18, wage: '¥240/天', location: '重庆两江', publishTime: '2024-03-15 11:45', status: '招聘中', statusClass: 'success' }
+        ];
+
+        function renderTable() {
+            const tbody = document.getElementById('jobTableBody');
+            tbody.innerHTML = jobData.map((job, index) => {
+                const progress = Math.round((job.hired / job.demand) * 100);
+                const isOpen = job.status === '招聘中';
+                const toggleBtn = isOpen
+                    ? `<button class="btn btn-danger" onclick="toggleJobStatus(${index}, false)">关闭</button>`
+                    : `<button class="btn btn-secondary" onclick="toggleJobStatus(${index}, true)">开启</button>`;
+                return `
+                    <tr>
+                        <td><span class="job-id">${job.id}</span></td>
+                        <td>
+                            <div class="job-info-cell">
+                                <span class="job-name">${job.jobName}</span>
+                                <span class="job-type-tag ${job.typeClass}">${job.jobType}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="boss-cell">
+                                <span class="boss-logo" style="background:${job.bossColor};">${job.bossLogo}</span>
+                                <span class="boss-name-text">${job.bossName}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="demand-cell">
+                                <span class="demand-text">${job.demand}/${job.hired}</span>
+                                <div class="demand-progress"><div class="demand-progress-fill" style="width:${progress}%;"></div></div>
+                            </div>
+                        </td>
+                        <td><span class="wage-cell">${job.wage}</span></td>
+                        <td><span class="location-cell"><i class="fas fa-map-marker-alt"></i>${job.location}</span></td>
+                        <td>${job.publishTime}</td>
+                        <td><span class="status-badge ${job.statusClass}">${job.status}</span></td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-outline" onclick="showJobDetail(${index})">查看</button>
+                                <button class="btn btn-outline" style="color:var(--primary);" onclick="window.location.href='job-applicants.html?id=${job.id}'"><i class="fas fa-users"></i> 报名人员</button>
+                                <button class="btn btn-secondary" onclick="window.location.href='job-edit.html'">编辑</button>
+                                ${toggleBtn}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function showJobDetail(index) {
+            const job = jobData[index];
+            const body = document.getElementById('jobDetailBody');
+            body.innerHTML = `
+                <div class="detail-section">
+                    <div class="detail-section-title">基本信息</div>
+                    <div class="detail-grid">
+                        <div class="detail-item"><span class="label">招工ID</span><span class="value" style="color:var(--primary);">${job.id}</span></div>
+                        <div class="detail-item"><span class="label">工种</span><span class="value">${job.jobName}</span></div>
+                        <div class="detail-item"><span class="label">工种类型</span><span class="value">${job.jobType}</span></div>
+                        <div class="detail-item"><span class="label">工价</span><span class="value" style="color:var(--primary);font-weight:600;">${job.wage}</span></div>
+                        <div class="detail-item"><span class="label">工作地点</span><span class="value">${job.location}</span></div>
+                        <div class="detail-item"><span class="label">发布时间</span><span class="value">${job.publishTime}</span></div>
+                        <div class="detail-item"><span class="label">状态</span><span class="value"><span class="status-badge ${job.statusClass}">${job.status}</span></span></div>
+                        <div class="detail-item"><span class="label">需求人数</span><span class="value">${job.demand} 人</span></div>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">雇主信息</div>
+                    <div class="detail-grid">
+                        <div class="detail-item"><span class="label">雇主名称</span><span class="value">${job.bossName}</span></div>
+                        <div class="detail-item"><span class="label">雇主类型</span><span class="value">企业</span></div>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">招聘进度</div>
+                    <div class="detail-grid">
+                        <div class="detail-item"><span class="label">已报名</span><span class="value" style="color:var(--primary);font-weight:600;">${job.hired} 人</span></div>
+                        <div class="detail-item"><span class="label">需求人数</span><span class="value">${job.demand} 人</span></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('jobDetailModal').classList.add('active');
+        }
+
+        function closeJobDetail() {
+            document.getElementById('jobDetailModal').classList.remove('active');
+        }
+
+        function toggleJobStatus(index, open) {
+            const job = jobData[index];
+            if (open) {
+                job.status = '招聘中';
+                job.statusClass = 'success';
+            } else {
+                job.status = '已关闭';
+                job.statusClass = 'default';
+            }
+            renderTable();
+        }
+
+        renderTable();
+    </script>
+</body>
+</html>

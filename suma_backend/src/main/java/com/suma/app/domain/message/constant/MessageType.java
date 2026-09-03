@@ -1,0 +1,38 @@
+package com.suma.app.domain.message.constant;
+
+/**
+ * 站内消息类型常量。
+ * 事件发生时写入接收者收件箱(sys_message)，接收者角色与文案见注释。
+ */
+public final class MessageType {
+
+    /** 岗位发布(招聘广播) -> 全部员工 USER */
+    public static final String ORDER_PUBLISH = "ORDER_PUBLISH";
+
+    /** 有零工新报名 -> 订单老板 BOSS */
+    public static final String ORDER_APPLY = "ORDER_APPLY";
+
+    /** 零工被录用 -> 被录用者 USER */
+    public static final String ORDER_HIRE = "ORDER_HIRE";
+
+    /** 岗位快开始提醒 -> 该单已报名/已录用/已到岗 USER（预留，由前端/手动触发，暂不做定时） */
+    public static final String ORDER_START_REMIND = "ORDER_START_REMIND";
+
+    /** 订单取消招工 -> 该单未完成的报名者 USER */
+    public static final String ORDER_CANCEL = "ORDER_CANCEL";
+
+    /** 零工取消报名 -> 订单老板 BOSS */
+    public static final String ITEM_CANCEL = "ITEM_CANCEL";
+
+    /** 零工确认到岗 -> 订单老板 BOSS */
+    public static final String ITEM_WORK_CONFIRM = "ITEM_WORK_CONFIRM";
+
+    /** 工资结算到账 -> 收款零工 USER */
+    public static final String SETTLE_PAID = "SETTLE_PAID";
+
+    /** 提现打款失败已退回 -> 提现零工 USER */
+    public static final String WITHDRAW_FAIL = "WITHDRAW_FAIL";
+
+    private MessageType() {
+    }
+}

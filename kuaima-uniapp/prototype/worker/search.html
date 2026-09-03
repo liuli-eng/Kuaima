@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: #fff;
+            overflow: hidden;
+            position: relative;
+            border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            border: 10px solid #1a1a1a;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 50;
+        }
+        .status-bar {
+            height: 47px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 28px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            background: #fff;
+        }
+        .top-nav {
+            padding: 8px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            position: absolute;
+            top: 47px;
+            left: 0;
+            right: 0;
+            height: 52px;
+            z-index: 10;
+        }
+        .nav-back {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .search-bar {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: #f5f5f5;
+            border-radius: 20px;
+            padding: 8px 16px;
+            margin: 0 12px;
+        }
+        .search-bar input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 14px;
+            margin-left: 8px;
+        }
+        .search-bar input::placeholder {
+            color: #999;
+        }
+        .clear-btn {
+            width: 18px;
+            height: 18px;
+            background: #ccc;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            color: #fff;
+        }
+        .clear-btn.visible {
+            display: flex;
+        }
+        .search-btn {
+            color: #FF6B35;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .content-area {
+            position: absolute;
+            top: 99px;
+            left: 0;
+            right: 0;
+            bottom: 34px;
+            overflow-y: auto;
+            background: #f5f5f5;
+        }
+        .section {
+            background: #fff;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        .clear-history {
+            font-size: 12px;
+            color: #999;
+            cursor: pointer;
+        }
+        .clear-history:hover {
+            color: #FF6B35;
+        }
+        .hot-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .hot-item {
+            padding: 8px 16px;
+            background: #fff;
+            border: 1px solid #f0f0f0;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .hot-item:hover {
+            border-color: #FF6B35;
+            color: #FF6B35;
+        }
+        .hot-item.hot {
+            position: relative;
+        }
+        .hot-item.hot::before {
+            content: attr(data-rank);
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            width: 16px;
+            height: 16px;
+            background: #FF6B35;
+            color: #fff;
+            font-size: 10px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .history-item {
+            padding: 6px 12px;
+            background: #f5f5f5;
+            border-radius: 16px;
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .history-item:hover {
+            background: #e8e8e8;
+        }
+        .suggest-list {
+            padding: 0 16px;
+        }
+        .suggest-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+        }
+        .suggest-item:last-child {
+            border-bottom: none;
+        }
+        .suggest-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 14px;
+            margin-right: 12px;
+        }
+        .suggest-text {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+        .suggest-text .highlight {
+            color: #FF6B35;
+        }
+        .suggest-arrow {
+            color: #ccc;
+            font-size: 12px;
+        }
+        .page-indicator {
+            height: 5px;
+            background: #000;
+            border-radius: 3px;
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <!-- 搜索栏 -->
+        <div class="top-nav">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-chevron-left text-gray-700 text-lg"></i>
+            </div>
+            <div class="search-bar">
+                <i class="fas fa-search text-gray-400 text-sm"></i>
+                <input type="text" id="searchInput" placeholder="搜索岗位、工种" oninput="onSearchInput()">
+                <div class="clear-btn" id="clearBtn" onclick="clearSearch()">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div class="search-btn" onclick="doSearch()">搜索</div>
+        </div>
+
+        <!-- 内容区 -->
+        <div class="content-area" id="contentArea">
+            <!-- 默认显示：搜索历史和热门搜索 -->
+            <div id="defaultContent">
+                <!-- 搜索历史 -->
+                <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">搜索历史</div>
+                        <div class="clear-history" onclick="clearHistory()">
+                            <i class="far fa-trash-alt"></i> 清空
+                        </div>
+                    </div>
+                    <div class="history-list">
+                        <div class="history-item" onclick="searchKeyword('餐饮')">
+                            <i class="fas fa-history text-gray-400 text-xs"></i>
+                            <span>餐饮</span>
+                        </div>
+                        <div class="history-item" onclick="searchKeyword('快递')">
+                            <i class="fas fa-history text-gray-400 text-xs"></i>
+                            <span>快递</span>
+                        </div>
+                        <div class="history-item" onclick="searchKeyword('分拣员')">
+                            <i class="fas fa-history text-gray-400 text-xs"></i>
+                            <span>分拣员</span>
+                        </div>
+                        <div class="history-item" onclick="searchKeyword('包装工')">
+                            <i class="fas fa-history text-gray-400 text-xs"></i>
+                            <span>包装工</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 热门搜索 -->
+                <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">热门搜索</div>
+                    </div>
+                    <div class="hot-list">
+                        <div class="hot-item hot" data-rank="1" onclick="searchKeyword('餐饮服务员')">餐饮服务员</div>
+                        <div class="hot-item hot" data-rank="2" onclick="searchKeyword('快递员')">快递员</div>
+                        <div class="hot-item hot" data-rank="3" onclick="searchKeyword('分拣员')">分拣员</div>
+                        <div class="hot-item" onclick="searchKeyword('焊工')">焊工</div>
+                        <div class="hot-item" onclick="searchKeyword('电工')">电工</div>
+                        <div class="hot-item" onclick="searchKeyword('收银员')">收银员</div>
+                        <div class="hot-item" onclick="searchKeyword('后厨')">后厨</div>
+                        <div class="hot-item" onclick="searchKeyword('促销')">促销</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 搜索建议 -->
+            <div id="suggestContent" style="display: none;">
+                <div class="section-header" style="padding: 16px 16px 8px;">
+                    <div class="section-title">搜索建议</div>
+                </div>
+                <div class="suggest-list">
+                    <div class="suggest-item" onclick="searchKeyword('餐饮服务员')">
+                        <div class="suggest-icon"><i class="fas fa-search"></i></div>
+                        <div class="suggest-text"><span class="highlight">餐饮</span>服务员</div>
+                        <div class="suggest-arrow"><i class="fas fa-arrow-right"></i></div>
+                    </div>
+                    <div class="suggest-item" onclick="searchKeyword('餐饮后厨')">
+                        <div class="suggest-icon"><i class="fas fa-search"></i></div>
+                        <div class="suggest-text"><span class="highlight">餐饮</span>后厨</div>
+                        <div class="suggest-arrow"><i class="fas fa-arrow-right"></i></div>
+                    </div>
+                    <div class="suggest-item" onclick="searchKeyword('餐饮清洁')">
+                        <div class="suggest-icon"><i class="fas fa-search"></i></div>
+                        <div class="suggest-text"><span class="highlight">餐饮</span>清洁</div>
+                        <div class="suggest-arrow"><i class="fas fa-arrow-right"></i></div>
+                    </div>
+                    <div class="suggest-item" onclick="searchKeyword('餐饮兼职')">
+                        <div class="suggest-icon"><i class="fas fa-search"></i></div>
+                        <div class="suggest-text"><span class="highlight">餐饮</span>兼职</div>
+                        <div class="suggest-arrow"><i class="fas fa-arrow-right"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部指示器 -->
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function navigateTo(page) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = page + '.html';
+            if (workerPages.indexOf(page) < 0 && bossPages.indexOf(page) >= 0) {
+                path = '../boss/' + path;
+            } else if (workerPages.indexOf(page) < 0 && bossPages.indexOf(page) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function goBack() {
+            window.history.back();
+        }
+
+        function onSearchInput() {
+            const input = document.getElementById('searchInput');
+            const clearBtn = document.getElementById('clearBtn');
+            const keyword = input.value.trim();
+            
+            if (keyword) {
+                clearBtn.classList.add('visible');
+                document.getElementById('defaultContent').style.display = 'none';
+                document.getElementById('suggestContent').style.display = 'block';
+            } else {
+                clearBtn.classList.remove('visible');
+                document.getElementById('defaultContent').style.display = 'block';
+                document.getElementById('suggestContent').style.display = 'none';
+            }
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            onSearchInput();
+        }
+
+        function doSearch() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (keyword) {
+                alert('搜索：' + keyword);
+            }
+        }
+
+        function searchKeyword(keyword) {
+            document.getElementById('searchInput').value = keyword;
+            doSearch();
+        }
+
+        function clearHistory() {
+            alert('已清空搜索历史');
+        }
+    </script>
+</body>
+</html>

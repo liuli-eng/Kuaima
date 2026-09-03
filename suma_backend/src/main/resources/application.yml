@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: suma
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/suma?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowMultiQueries=true
+    username: root
+    password: 11112222
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      # 开发者模式：根据Entity自动更新表结构；生产务必改为 none
+      ddl-auto: update
+    # 打印执行SQL
+    show-sql: true
+   
+
+jwt:
+  # HS256 密钥，生产环境务必替换并通过环境变量注入
+  secret: suma-backend-jwt-secret-key-0123456789abcdef0123456789
+  # access token 有效期（毫秒），3 天
+  expiration: 259200000
+
+wechat:
+  # 微信小程序 AppID 与 AppSecret
+  appid: your-wechat-appid
+  secret: your-wechat-secret
+
+suma:
+  settle:
+    # 平台服务费率(% of 工资)，规则待定，默认 0 即暂不收取
+    service-fee-rate: 0

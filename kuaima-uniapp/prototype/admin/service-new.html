@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 新建会话</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .card-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+        }
+        .card-section-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .card-section-title .title-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-section-title i { color: var(--primary); }
+        .user-count {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-muted);
+            background: #F3F4F6;
+            padding: 3px 10px;
+            border-radius: 12px;
+        }
+
+        .search-user-box {
+            position: relative;
+            margin-bottom: 8px;
+        }
+        .search-user-box input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-user-box input:focus { border-color: var(--primary); }
+        .search-user-box i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+        .user-search-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 0 0 14px 0;
+            padding: 0 4px;
+        }
+
+        .user-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+        }
+        .user-item:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        .user-item.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            box-shadow: 0 0 0 2px rgba(255,107,53,0.15);
+        }
+        .user-item-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 600;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .user-item-info { flex: 1; }
+        .user-item-name {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        .user-item-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 8px;
+        }
+        .user-item-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .user-item-check {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--border);
+            color: transparent;
+            transition: all 0.2s;
+        }
+        .user-item.selected .user-item-check {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .action-bar {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .action-bar .btn { min-width: 120px; justify-content: center; }
+        .action-bar-tip {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .action-bar-tip strong {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .selected-user-preview {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: var(--primary-light);
+            border-radius: 8px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(255,107,53,0.15);
+        }
+        .selected-user-preview .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 600;
+        }
+        .selected-user-preview .info { flex: 1; }
+        .selected-user-preview .info .name { font-size: 14px; font-weight: 500; }
+        .selected-user-preview .info .meta { font-size: 12px; color: var(--text-secondary); }
+        .selected-user-preview .remove {
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px;
+        }
+        .selected-user-preview .remove:hover { color: var(--danger); }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="admin-layout">
+        <div class="admin-sidebar"></div>
+        <div class="admin-main">
+            <div class="admin-topbar"></div>
+            <div class="admin-content">
+                <div class="page-header">
+                    <h1 class="page-title">新建会话</h1>
+                    <p class="page-desc">选择用户后即可发起客服会话</p>
+                </div>
+
+                    <div class="card-section">
+                        <div class="card-section-title">
+                            <div class="title-left"><i class="fas fa-user-plus"></i> 选择用户</div>
+                            <span class="user-count"><span id="userCount">6</span> 位用户</span>
+                        </div>
+
+                        <div class="search-user-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="输入用户姓名、手机号或用户ID搜索..." oninput="filterUsers(this.value)">
+                        </div>
+                        <div class="user-search-hint">提示：可搜索零工或雇主用户</div>
+
+                        <div id="selectedPreview" style="display:none;"></div>
+
+                        <div class="user-list" id="userList">
+                            <div class="user-item" onclick="selectUser(this, '张', '张建国', '138****8562', '零工 · 认证用户', '#FF6B35')">
+                                <div class="user-item-avatar" style="background:linear-gradient(135deg,#FF8C42,#FF6B35);">张</div>
+                                <div class="user-item-info">
+                                    <div class="user-item-name">张建国</div>
+                                    <div class="user-item-meta">
+                                        <span><i class="fas fa-user"></i> 零工</span>
+                                        <span><i class="fas fa-phone"></i> 138****8562</span>
+                                        <span><i class="fas fa-shield-halved"></i> 已认证</span>
+                                    </div>
+                                </div>
+                                <div class="user-item-check"><i class="fas fa-check" style="font-size:12px;"></i></div>
+                            </div>
+                            <div class="user-item" onclick="selectUser(this, '李', '李美丽', '139****3471', '零工 · 认证用户', '#2563EB')">
+                                <div class="user-item-avatar" style="background:linear-gradient(135deg,#3B82F6,#2563EB);">李</div>
+                                <div class="user-item-info">
+                                    <div class="user-item-name">李美丽</div>
+                                    <div class="user-item-meta">
+                                        <span><i class="fas fa-user"></i> 零工</span>
+                                        <span><i class="fas fa-phone"></i> 139****3471</span>
+                                        <span><i class="fas fa-shield-halved"></i> 已认证</span>
+                                    </div>
+                                </div>
+                                <div class="user-item-check"><i class="fas fa-check" style="font-size:12px;"></i></div>
+                            </div>
+                            <div class="user-item" onclick="selectUser(this, '富', '富士康科技集团', '-', '雇主 · 企业认证', '#10B981')">
+                                <div class="user-item-avatar" style="background:linear-gradient(135deg,#34D399,#10B981);">富</div>
+                                <div class="user-item-info">
+                                    <div class="user-item-name">富士康科技集团</div>
+                                    <div class="user-item-meta">
+                                        <span><i class="fas fa-building"></i> 雇主</span>
+                                        <span><i class="fas fa-id-card"></i> 91***1234</span>
+                                        <span><i class="fas fa-shield-halved"></i> 已认证</span>
+                                    </div>
+                                </div>
+                                <div class="user-item-check"><i class="fas fa-check" style="font-size:12px;"></i></div>
+                            </div>
+                            <div class="user-item" onclick="selectUser(this, '王', '王小刚', '136****7823', '零工 · 认证用户', '#8B5CF6')">
+                                <div class="user-item-avatar" style="background:linear-gradient(135deg,#A78BFA,#8B5CF6);">王</div>
+                                <div class="user-item-info">
+                                    <div class="user-item-name">王小刚</div>
+                                    <div class="user-item-meta">
+                                        <span><i class="fas fa-user"></i> 零工</span>
+                                        <span><i class="fas fa-phone"></i> 136****7823</span>
+                                        <span><i class="fas fa-shield-halved"></i> 已认证</span>
+                                    </div>
+                                </div>
+                                <div class="user-item-check"><i class="fas fa-check" style="font-size:12px;"></i></div>
+                            </div>
+                            <div class="user-item" onclick="selectUser(this, '顺', '顺丰速运有限公司', '-', '雇主 · 企业认证', '#F59E0B')">
+                                <div class="user-item-avatar" style="background:linear-gradient(135deg,#FBBF24,#F59E0B);">顺</div>
+                                <div class="user-item-info">
+                                    <div class="user-item-name">顺丰速运有限公司</div>
+                                    <div class="user-item-meta">
+                                        <span><i class="fas fa-building"></i> 雇主</span>
+                                        <span><i class="fas fa-id-card"></i> 91***5678</span>
+                                        <span><i class="fas fa-shield-halved"></i> 已认证</span>
+                                    </div>
+                                </div>
+                                <div class="user-item-check"><i class="fas fa-check" style="font-size:12px;"></i></div>
+                            </div>
+                            <div class="user-item" onclick="selectUser(this, '陈', '陈大海', '137****2945', '零工 · 认证用户', '#EC4899')">
+                                <div class="user-item-avatar" style="background:linear-gradient(135deg,#F472B6,#EC4899);">陈</div>
+                                <div class="user-item-info">
+                                    <div class="user-item-name">陈大海</div>
+                                    <div class="user-item-meta">
+                                        <span><i class="fas fa-user"></i> 零工</span>
+                                        <span><i class="fas fa-phone"></i> 137****2945</span>
+                                        <span><i class="fas fa-shield-halved"></i> 已认证</span>
+                                    </div>
+                                </div>
+                                <div class="user-item-check"><i class="fas fa-check" style="font-size:12px;"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <div class="action-bar-tip" id="actionTip">请在上方列表中选择一位用户</div>
+                        <div>
+                            <button class="btn btn-outline" onclick="history.back()" style="margin-right:12px;"><i class="fas fa-arrow-left"></i> 取消</button>
+                            <button class="btn btn-primary" onclick="createSession()"><i class="fas fa-paper-plane"></i> 创建会话</button>
+                        </div>
+                    </div>
+            </div>
+        </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        let selectedUser = null;
+
+        function selectUser(el, avatar, name, phone, meta, color) {
+            document.querySelectorAll('.user-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedUser = { avatar, name, phone, meta, color };
+
+            const preview = document.getElementById('selectedPreview');
+            preview.style.display = 'flex';
+            preview.style.gap = '12px';
+            preview.style.alignItems = 'center';
+            preview.style.padding = '12px 16px';
+            preview.style.background = 'var(--primary-light)';
+            preview.style.borderRadius = '8px';
+            preview.innerHTML = `
+                <div class="avatar" style="background:linear-gradient(135deg, ${color}, ${color}cc); width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:14px;">${avatar}</div>
+                <div style="flex:1;">
+                    <div style="font-size:14px; font-weight:500;">${name}</div>
+                    <div style="font-size:12px; color:var(--text-secondary);">${meta}</div>
+                </div>
+                <span class="remove" onclick="clearSelection()" style="cursor:pointer; color:var(--text-muted); padding:4px;"><i class="fas fa-times"></i></span>
+            `;
+
+            const tip = document.getElementById('actionTip');
+            tip.innerHTML = '已选择：<strong>' + name + '</strong>，点击右侧按钮创建会话';
+        }
+
+        function clearSelection() {
+            selectedUser = null;
+            document.querySelectorAll('.user-item').forEach(i => i.classList.remove('selected'));
+            document.getElementById('selectedPreview').style.display = 'none';
+            document.getElementById('actionTip').textContent = '请在上方列表中选择一位用户';
+        }
+
+        function filterUsers(keyword) {
+            const items = document.querySelectorAll('.user-item');
+            let visibleCount = 0;
+            items.forEach(item => {
+                const name = item.querySelector('.user-item-name').textContent.toLowerCase();
+                const meta = item.querySelector('.user-item-meta').textContent.toLowerCase();
+                const match = name.includes(keyword.toLowerCase()) || meta.includes(keyword.toLowerCase());
+                item.style.display = match ? 'flex' : 'none';
+                if (match) visibleCount++;
+            });
+            document.getElementById('userCount').textContent = visibleCount;
+        }
+
+        function createSession() {
+            if (!selectedUser) {
+                alert('请先选择一个用户');
+                return;
+            }
+            alert('会话创建成功！正在跳转到会话处理页面...');
+            window.location.href = 'service-chat.html';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务详情 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: #fff;
+            overflow: hidden;
+            position: relative;
+            border-radius: 44px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            border: 10px solid #1a1a1a;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 50;
+        }
+        .status-bar {
+            height: 47px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 28px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            background: #fff;
+        }
+        .top-nav {
+            padding: 8px 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            position: absolute;
+            top: 47px;
+            left: 0;
+            right: 0;
+            height: 52px;
+            z-index: 10;
+        }
+        .nav-back {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 4px 6px;
+            gap: 2px;
+        }
+        .nav-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .content-area {
+            position: absolute;
+            top: 99px;
+            left: 0;
+            right: 0;
+            bottom: 83px;
+            overflow-y: auto;
+            background: #f5f5f5;
+        }
+        /* 头部工资区域 */
+        .salary-header {
+            background: linear-gradient(135deg, #FFF4E6, #FFE4B5);
+            padding: 20px 16px;
+        }
+        .salary-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .salary-tags {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .salary-tag {
+            background: #fff;
+            color: #666;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+        .salary-info {
+            display: flex;
+            gap: 20px;
+            padding: 12px 16px;
+            background: #fff;
+            border-radius: 12px;
+        }
+        .salary-item {
+            flex: 1;
+            text-align: center;
+        }
+        .salary-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        .salary-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #FF6B35;
+        }
+        .salary-value-gray {
+            color: #333;
+        }
+        /* 保险提示 */
+        .insurance-tip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #E6FFE6;
+            padding: 10px 16px;
+            font-size: 13px;
+            color: #52C41A;
+        }
+        .insurance-link {
+            margin-left: auto;
+            color: #1890FF;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+        }
+        /* 任务信息卡片 */
+        .info-card {
+            background: #fff;
+            margin: 12px 16px;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .icon-time {
+            background: #FFF0E6;
+            color: #FF6B35;
+        }
+        .icon-location {
+            background: #E6F4FF;
+            color: #1890FF;
+        }
+        .info-content {
+            flex: 1;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        .info-value {
+            font-size: 15px;
+            color: #333;
+            font-weight: 500;
+        }
+        .info-link {
+            color: #1890FF;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        /* 标签页 */
+        .tabs {
+            display: flex;
+            background: #fff;
+            padding: 0 16px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 14px 0;
+            font-size: 15px;
+            color: #666;
+            position: relative;
+            cursor: pointer;
+        }
+        .tab.active {
+            color: #FF6B35;
+            font-weight: 600;
+        }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 3px;
+            background: #FF6B35;
+            border-radius: 2px;
+        }
+        /* 任务描述 */
+        .desc-content {
+            background: #fff;
+            margin: 12px 16px;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .desc-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .desc-text {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.8;
+        }
+        .desc-text p {
+            margin-bottom: 8px;
+        }
+        .desc-list {
+            list-style: none;
+            padding: 0;
+        }
+        .desc-list li {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.8;
+            padding-left: 20px;
+            position: relative;
+            margin-bottom: 6px;
+        }
+        .desc-list li::before {
+            content: '•';
+            position: absolute;
+            left: 6px;
+            color: #FF6B35;
+        }
+        /* 实名提示条 */
+        .realname-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #FFF4E6, #FFE4B5);
+            padding: 14px 16px;
+            margin: 0 16px;
+            border-radius: 12px;
+        }
+        .realname-text {
+            font-size: 14px;
+            color: #8B4513;
+        }
+        .realname-text strong {
+            font-weight: 600;
+        }
+        .realname-btn {
+            color: #FF6B35;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        /* 底部操作栏 */
+        .bottom-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            padding-bottom: 40px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .bottom-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 0 8px;
+        }
+        .bottom-icon {
+            font-size: 20px;
+            color: #666;
+        }
+        .bottom-label {
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
+        }
+        .enroll-btn {
+            flex: 1;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #8B4513;
+            font-size: 17px;
+            font-weight: 700;
+            padding: 14px 24px;
+            border-radius: 28px;
+            border: none;
+            cursor: pointer;
+            margin: 0 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+        }
+        .enroll-btn:active {
+            transform: scale(0.98);
+        }
+        .enroll-info {
+            text-align: center;
+        }
+        .enroll-label {
+            font-size: 17px;
+            font-weight: 700;
+        }
+        .enroll-count {
+            font-size: 11px;
+            color: #666;
+        }
+        .page-indicator {
+            height: 5px;
+            background: #000;
+            border-radius: 3px;
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+        }
+        .urgent-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #FF6B35, #FF8C42);
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <span>19:48</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <!-- 顶部导航 -->
+        <div class="top-nav">
+            <div class="nav-back" onclick="goBack()">
+                <i class="fas fa-chevron-left text-gray-700 text-lg"></i>
+            </div>
+            <div class="nav-title">任务详情</div>
+            <div class="nav-right">
+                <div class="nav-btn">
+                    <i class="fas fa-ellipsis text-gray-700" style="font-size: 13px;"></i>
+                </div>
+                <div style="width: 1px; height: 14px; background: #ddd; margin: 0 2px;"></div>
+                <div class="nav-btn">
+                    <i class="fas fa-circle text-gray-700" style="font-size: 11px;"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容区 -->
+        <div class="content-area">
+            <!-- 头部工资区域 -->
+            <div class="salary-header">
+                <div class="salary-title">餐饮清洁工</div>
+                <div class="salary-tags">
+                    <span class="salary-tag">计时</span>
+                    <span class="salary-tag">28-48岁</span>
+                </div>
+                <div class="salary-info">
+                    <div class="salary-item">
+                        <div class="salary-label">预计时长</div>
+                        <div class="salary-value">4小时</div>
+                    </div>
+                    <div class="salary-item">
+                        <div class="salary-label">预计日收入</div>
+                        <div class="salary-value salary-value-gray">84元/天</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 任务时间 -->
+            <div class="info-card">
+                <div class="info-row">
+                    <div class="info-icon icon-time">
+                        <i class="far fa-clock"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">任务时间</div>
+                        <div class="info-value">今天 周四 19:20-23:20</div>
+                    </div>
+                </div>
+                <div class="mt-2 ml-12">
+                    <span class="text-orange-500 text-xs bg-orange-50 px-2 py-1 rounded">已过时 2小时18分</span>
+                </div>
+            </div>
+
+            <!-- 任务地点 -->
+            <div class="info-card">
+                <div class="info-row">
+                    <div class="info-icon icon-location">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">任务地点</div>
+                        <div class="info-value">上海市松江区新桥镇新界路*号微衡产业园*幢*层</div>
+                        <div class="text-gray-400 text-xs mt-1">距当前位置直线8.7公里</div>
+                    </div>
+                    <div class="info-link" onclick="viewRoute()">
+                        查看路线
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <span class="text-gray-400 text-xs">*接单后可查看详细门牌号</span>
+                </div>
+            </div>
+
+            <!-- 标签页 -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab(this, 'desc')">任务描述</div>
+                <div class="tab" onclick="switchTab(this, 'notice')">报名须知</div>
+                <div class="tab" onclick="switchTab(this, 'boss')">雇主信息</div>
+            </div>
+
+            <!-- 任务描述内容 -->
+            <div id="tab-desc">
+                <div class="desc-content">
+                    <div class="desc-title">
+                        <i class="fas fa-file-alt text-orange-500"></i>
+                        任务描述
+                    </div>
+                    <div class="desc-text">
+                        <p>本次招聘为餐饮行业短期清洁工作，工作内容包括：</p>
+                        <ul class="desc-list">
+                            <li>负责餐厅大堂及包间的卫生清洁</li>
+                            <li>协助整理餐桌、餐具清洗</li>
+                            <li>保持工作区域整洁卫生</li>
+                            <li>服从店长安排，配合团队工作</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 报名须知 -->
+            <div id="tab-notice" style="display: none;">
+                <div class="desc-content">
+                    <div class="desc-title">
+                        <i class="fas fa-exclamation-circle text-blue-500"></i>
+                        报名须知
+                    </div>
+                    <div class="desc-text">
+                        <ul class="desc-list">
+                            <li>需年满18周岁，身体健康</li>
+                            <li>需实名认证通过</li>
+                            <li>工作时间内不可擅自离岗</li>
+                            <li>完成工作内容后方可结算薪资</li>
+                            <li>如遇问题请及时联系雇主或客服</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 雇主信息 -->
+            <div id="tab-boss" style="display: none;">
+                <div class="desc-content">
+                    <div class="desc-title">
+                        <i class="fas fa-user text-green-500"></i>
+                        雇主信息
+                    </div>
+                    <div class="desc-text">
+                        <p><strong>雇主名称：</strong>松江区新桥餐饮服务有限公司</p>
+                        <p><strong>完成订单：</strong>156单</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="height: 20px;"></div>
+        </div>
+
+        <!-- 底部操作栏 -->
+        <div class="bottom-bar">
+            <div class="bottom-action" onclick="goHome()">
+                <i class="fas fa-home bottom-icon"></i>
+                <span class="bottom-label">首页</span>
+            </div>
+            <div class="bottom-action" onclick="shareJob()">
+                <i class="fas fa-share-alt bottom-icon"></i>
+                <span class="bottom-label">分享</span>
+            </div>
+            <button class="enroll-btn" onclick="enrollJob()">
+                <div class="enroll-info">
+                    <div class="enroll-label">电话报名</div>
+                    <div class="enroll-count">剩2个名额</div>
+                </div>
+            </button>
+        </div>
+
+        <!-- 底部指示条 -->
+        <div class="page-indicator"></div>
+    </div>
+
+    <script>
+        function goBack() {
+            window.history.back();
+        }
+
+        function goHome() {
+            goBack();
+        }
+
+        function shareJob() {
+            alert('分享任务链接');
+        }
+
+        function enrollJob() {
+            alert('电话报名成功！请保持手机畅通，雇主会尽快联系您。');
+        }
+
+        function viewInsurance() {
+            alert('查看保险详情');
+        }
+
+        function showTimeTip() {
+            alert('任务开始时间已过，建议电话联系雇主确认是否仍需人手');
+        }
+
+        function viewRoute() {
+            alert('查看路线导航');
+        }
+
+        function goRealname() {
+            alert('跳转到实名认证页面');
+        }
+
+        function switchTab(el, tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('tab-desc').style.display = tabName === 'desc' ? 'block' : 'none';
+            document.getElementById('tab-notice').style.display = tabName === 'notice' ? 'block' : 'none';
+            document.getElementById('tab-boss').style.display = tabName === 'boss' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

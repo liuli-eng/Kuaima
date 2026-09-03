@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布岗位 - 快马日结</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #FF6B35; }
+        * { -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', -apple-system, 'PingFang SC', sans-serif; }
+        .phone-frame {
+            width: 390px;
+            height: 844px;
+            background: #F5F5F5;
+            overflow: hidden;
+            position: relative;
+            border-radius: 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 10px solid #1a1a1a;
+            display: flex;
+            flex-direction: column;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 32px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 60;
+        }
+        .tab-bar {
+            flex-shrink: 0;
+            height: 83px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            padding-bottom: 20px;
+        }
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .tab-item.active .tab-icon,
+        .tab-item.active .tab-label { color: var(--primary); }
+        .tab-icon { font-size: 24px; color: #999; margin-bottom: 4px; }
+        .tab-label { font-size: 10px; color: #999; font-weight: 500; }
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 20px;
+        }
+        .scroll-area::-webkit-scrollbar { display: none; }
+        .card-shadow { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); }
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 10px;
+        }
+        .form-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .required::after {
+            content: '*';
+            color: #FF4D4F;
+            margin-left: 4px;
+        }
+        .tag-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .tag-item {
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            background: #F5F5F5;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tag-item.active {
+            background: var(--primary);
+            color: white;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #E8E8E8;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus {
+            border-color: var(--primary);
+        }
+        .number-input {
+            display: flex;
+            align-items: center;
+            border: 1px solid #E8E8E8;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .number-btn {
+            width: 40px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #666;
+            cursor: pointer;
+            background: #FAFAFA;
+        }
+        .number-btn:hover { background: #F0F0F0; }
+        .number-input input {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .submit-bar {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding: 12px 16px;
+            display: flex;
+            gap: 12px;
+            border-top: 1px solid #F0F0F0;
+        }
+        .save-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 24px;
+            background: #F5F5F5;
+            color: #666;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+        }
+        .publish-btn {
+            flex: 2;
+            padding: 14px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(255, 107, 53, 0.3);
+        }
+        .price-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .price-input input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #E8E8E8;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            outline: none;
+            text-align: center;
+        }
+        .price-unit {
+            padding: 8px 14px;
+            background: #FFF3EE;
+            color: var(--primary);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+    </style>
+<script src="/prototype-runtime.js?v=20260825-12"></script></head>
+<body class="bg-gray-100 flex justify-center items-start py-8">
+    <div class="phone-frame">
+        <div class="dynamic-island"></div>
+        
+        <!-- 状态栏 -->
+        <div style="height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; color: #333;">
+            <span>9:41</span>
+            <div class="flex items-center gap-1">
+                <i class="fas fa-signal text-sm"></i>
+                <i class="fas fa-wifi text-sm"></i>
+                <i class="fas fa-battery-full text-sm"></i>
+            </div>
+        </div>
+
+        <!-- 顶部导航 -->
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100">
+            <div class="w-8 h-8 flex items-center justify-center cursor-pointer" onclick="navigateTo('boss-home')">
+                <i class="fas fa-chevron-left text-gray-700"></i>
+            </div>
+            <span class="font-semibold text-base">发布岗位</span>
+            <span class="text-sm text-gray-400 cursor-pointer">草稿箱</span>
+        </div>
+
+        <div class="scroll-area">
+            <!-- 岗位类型 -->
+            <div class="form-section">
+                <div class="form-label required">岗位类型</div>
+                <div class="tag-group">
+                    <div class="tag-item active">分拣搬运</div>
+                    <div class="tag-item">餐饮服务</div>
+                    <div class="tag-item">商超零售</div>
+                    <div class="tag-item">活动会展</div>
+                    <div class="tag-item">物流配送</div>
+                    <div class="tag-item">建筑工程</div>
+                    <div class="tag-item">保洁安保</div>
+                    <div class="tag-item">技术兼职</div>
+                </div>
+            </div>
+
+            <!-- 岗位名称 -->
+            <div class="form-section">
+                <div class="form-label required">岗位名称</div>
+                <input type="text" class="form-input" placeholder="请输入岗位名称，如：仓库分拣员" value="仓库分拣员">
+            </div>
+
+            <!-- 薪资待遇 -->
+            <div class="form-section">
+                <div class="form-label required">薪资待遇</div>
+                <div class="price-input">
+                    <input type="number" value="200">
+                    <span class="price-unit">元/天</span>
+                </div>
+                <div class="mt-3">
+                    <div class="form-label text-xs" style="font-weight: 500;">结算方式</div>
+                    <div class="tag-group mt-2">
+                        <div class="tag-item active">日结</div>
+                        <div class="tag-item">周结</div>
+                        <div class="tag-item">月结</div>
+                        <div class="tag-item">完工结算</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 招聘人数 -->
+            <div class="form-section">
+                <div class="form-label required">招聘人数</div>
+                <div class="number-input" style="max-width: 200px;">
+                    <div class="number-btn" onclick="changeNumber(-1)">
+                        <i class="fas fa-minus"></i>
+                    </div>
+                    <input type="number" id="peopleCount" value="5">
+                    <div class="number-btn" onclick="changeNumber(1)">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 工作地点 -->
+            <div class="form-section">
+                <div class="form-label required">工作地点</div>
+                <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="px-3 py-3 bg-gray-50 text-sm text-gray-600 flex items-center gap-1">
+                        <i class="fas fa-map-marker-alt text-orange-500"></i>
+                        <span>北京市</span>
+                    </div>
+                    <input type="text" class="flex-1 py-3 px-3 outline-none text-sm" placeholder="请输入详细地址" value="朝阳区亦庄经济开发区">
+                </div>
+            </div>
+
+            <!-- 工作时间 -->
+            <div class="form-section">
+                <div class="form-label required">工作时间</div>
+                <div class="tag-group mb-3">
+                    <div class="tag-item active">今天</div>
+                    <div class="tag-item">明天</div>
+                    <div class="tag-item">本周</div>
+                    <div class="tag-item">指定日期</div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex-1">
+                        <div class="text-xs text-gray-500 mb-1">开始时间</div>
+                        <input type="time" class="form-input" value="08:00">
+                    </div>
+                    <div class="text-xl text-gray-300 mt-5">至</div>
+                    <div class="flex-1">
+                        <div class="text-xs text-gray-500 mb-1">结束时间</div>
+                        <input type="time" class="form-input" value="18:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 岗位要求 -->
+            <div class="form-section">
+                <div class="form-label">岗位要求</div>
+                <div class="tag-group mb-3">
+                    <div class="tag-item">无需经验</div>
+                    <div class="tag-item active">男女不限</div>
+                    <div class="tag-item">18-45岁</div>
+                    <div class="tag-item">身体健康</div>
+                </div>
+                <textarea class="form-input" rows="3" placeholder="请输入其他要求..."></textarea>
+            </div>
+
+            <!-- 福利待遇 -->
+            <div class="form-section">
+                <div class="form-label">福利待遇</div>
+                <div class="tag-group">
+                    <div class="tag-item active">包餐</div>
+                    <div class="tag-item active">提供饮水</div>
+                    <div class="tag-item">交通补贴</div>
+                    <div class="tag-item">免费培训</div>
+                    <div class="tag-item">工作轻松</div>
+                    <div class="tag-item">环境舒适</div>
+                </div>
+            </div>
+
+            <!-- 岗位描述 -->
+            <div class="form-section">
+                <div class="form-label">岗位描述</div>
+                <textarea class="form-input" rows="4" placeholder="请详细描述岗位工作内容..."></textarea>
+            </div>
+
+            <!-- 联系方式 -->
+            <div class="form-section">
+                <div class="form-label required">联系方式</div>
+                <div class="flex gap-3 mb-3">
+                    <div class="flex-1">
+                        <div class="text-xs text-gray-500 mb-1">联系人</div>
+                        <input type="text" class="form-input" value="张经理">
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xs text-gray-500 mb-1">联系电话</div>
+                        <input type="tel" class="form-input" value="138****8888">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部操作按钮 -->
+        <div class="submit-bar">
+            <div class="save-btn" onclick="saveDraft()">保存草稿</div>
+            <div class="publish-btn" onclick="publishJob()">立即发布</div>
+        </div>
+
+        <!-- 底部TabBar -->
+        <div class="tab-bar">
+            <div class="tab-item" onclick="switchTab(this, 'boss-home')">
+                <i class="fas fa-house tab-icon"></i>
+                <span class="tab-label">首页</span>
+            </div>
+            <div class="tab-item active" onclick="switchTab(this, 'boss-publish')">
+                <i class="fas fa-plus-square tab-icon"></i>
+                <span class="tab-label">发布</span>
+            </div>
+            <div class="tab-item" onclick="switchTab(this, 'boss-order')">
+                <i class="fas fa-users tab-icon"></i>
+                <span class="tab-label">招募</span>
+            </div>
+            <div class="tab-item" onclick="switchTab(this, 'boss-profile')">
+                <i class="fas fa-user-tie tab-icon"></i>
+                <span class="tab-label">我的</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function navigateTo(pageName) {
+            var workerPages = ["home", "profile", "classroom", "credit", "monthly-order", "monthly-salary", "order", "message", "press-order", "press-salary", "task-detail", "task-training", "coupon", "deposit", "wallet", "service", "switch-identity", "user-info", "follow", "record", "badge", "star-level", "banner", "filter", "search", "job-detail", "simulate-order", "course-order", "course-rule", "course-video", "download", "faq-detail", "intent", "invite", "join-group", "notification", "privacy", "realname", "rule", "rule-detail", "copyright", "user-agreement", "appeal", "appeal-submit", "report", "history-message"];
+            var bossPages = ["boss-employer", "boss-home", "boss-message", "boss-order", "boss-profile", "boss-publish", "search-worker", "select-job", "publish-info", "schedule-stats", "enterprise-cert", "enterprise-cert-form", "creditor-score", "talent-list", "expense-detail", "payment-detail", "recruit-manager", "recruit-address", "sub-account", "suspend-settle", "switch-account", "invite-code", "blacklist", "all-jobs", "boss-filter", "settlement", "contract", "system-notice", "missed-call", "signup-notice", "invite-friend", "service-chat", "insurance"];
+            var path = pageName + '.html';
+            if (bossPages.indexOf(pageName) < 0 && workerPages.indexOf(pageName) >= 0) {
+                path = '../worker/' + path;
+            } else if (bossPages.indexOf(pageName) < 0 && workerPages.indexOf(pageName) < 0) {
+                path = '../' + path;
+            }
+            if (window.top !== window.self) { window.open(new URL(path, window.location.href).href, '_blank'); } else { window.location.href = path; }
+        }
+
+
+        function switchTab(el, tab) {
+            document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            navigateTo(tab);
+        }
+
+        function changeNumber(delta) {
+            const input = document.getElementById('peopleCount');
+            let val = parseInt(input.value) || 1;
+            val = Math.max(1, val + delta);
+            input.value = val;
+        }
+
+        function saveDraft() {
+            alert('草稿已保存！');
+        }
+
+        function publishJob() {
+            if (confirm('确认发布这个岗位？')) {
+                alert('岗位发布成功！');
+                navigateTo('boss-home');
+            }
+        }
+
+        // 标签切换
+        document.querySelectorAll('.tag-group').forEach(group => {
+            group.querySelectorAll('.tag-item').forEach(tag => {
+                tag.addEventListener('click', function() {
+                    const isMulti = group.classList.contains('multi');
+                    if (isMulti) {
+                        this.classList.toggle('active');
+                    } else {
+                        group.querySelectorAll('.tag-item').forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
