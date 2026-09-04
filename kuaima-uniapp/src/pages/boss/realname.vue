@@ -1,34 +1,12 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <!-- 导航栏 -->
-    <view class="nav-bar">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${50 + statusBarHeight}px` }">
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
       <text class="nav-title">手机号验证</text>
-      <view class="nav-right">
-        <view class="nav-btn">
-          <text style="font-size:10px;color:#555;">⋯</text>
-        </view>
-        <view class="nav-divider"></view>
-        <view class="nav-btn">
-          <text style="font-size:10px;color:#555;">−</text>
-        </view>
-        <view class="nav-divider"></view>
-        <view class="nav-btn">
-          <text style="font-size:10px;color:#555;">●</text>
-        </view>
-      </view>
+      <view class="nav-space"></view>
     </view>
 
     <scroll-view scroll-y class="content">
@@ -59,7 +37,7 @@
       <view class="code-input-wrap">
         <view 
           class="code-box" 
-          :class="{ filled: code.length > i, active: code.length === i }"
+          :class="{ filled: code.length >= i, active: code.length === i - 1 }"
           v-for="i in 6" 
           :key="i"
         >{{ code[i-1] || '' }}</view>
@@ -88,17 +66,25 @@
 export default {
   data() {
     return {
+      statusBarHeight: 0,
       code: '',
       countdown: 0,
       agreed: false
     }
+  },
+  onLoad() {
+    try {
+      const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
+      this.statusBarHeight = Number(info.statusBarHeight || 0)
+    } catch (_) {}
   },
   methods: {
     goBack() {
       uni.navigateBack()
     },
     navigateTo(page) {
-      uni.navigateTo({ url: `/pages/${page}` })
+      const url = page === 'user-agreement' ? '/pages/worker/user-agreement' : `/pages/${page}`
+      uni.navigateTo({ url })
     },
     sendCode() {
       if (this.countdown > 0) return
@@ -166,6 +152,7 @@ export default {
   background: #fff;
   position: relative;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .nav-back {
@@ -174,6 +161,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.nav-space {
+  width: 32px;
+  height: 32px;
 }
 
 .nav-title {
@@ -208,8 +200,12 @@ export default {
 
 .content {
   flex: 1;
+  height: 0;
+  min-height: 0;
   overflow-y: auto;
-  padding: 20px 20px 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
 }
 
 .phone-icon {
@@ -291,12 +287,17 @@ export default {
   font-size: 13px;
   color: #FF6B35;
   font-weight: 500;
-  padding: 7px 16px;
-  margin-left: 8px;
+  padding: 7px 12px;
+  margin: 0 0 0 8px;
   border: 1px solid #FF6B35;
   border-radius: 999px;
   background: transparent;
   white-space: nowrap;
+}
+
+.send-code-btn::after,
+.verify-btn::after {
+  border: none;
 }
 
 .send-code-btn.disabled {

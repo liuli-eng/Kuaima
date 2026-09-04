@@ -12,9 +12,6 @@
           <el-option label="草稿" value="草稿" />
           <el-option label="已下架" value="已下架" />
         </el-select>
-        <el-button type="primary" style="margin-left: auto;" @click="handleCreate">
-          <i class="fas fa-plus" style="margin-right:4px;"></i>新增Banner
-        </el-button>
       </div>
 
       <div class="banner-grid">
@@ -50,12 +47,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listBanners, createBanner, updateBanner, deleteBanner } from '@/api/content'
-import { bannersData as fallbackBanners } from '@/mock'
+import { listBanners, updateBanner, deleteBanner } from '@/api/content'
 
-const banners = ref([...fallbackBanners])
+const banners = ref([])
 const statusFilter = ref('')
-const apiAvailable = ref(false)
 
 const filteredBanners = computed(() => {
   if (!statusFilter.value) return banners.value
@@ -65,49 +60,11 @@ const filteredBanners = computed(() => {
 const loadData = async () => {
   try {
     const res = await listBanners()
-    if (res && Array.isArray(res)) {
-      banners.value = res
-    } else if (res && Array.isArray(res.data)) {
-      banners.value = res.data
-    }
-    apiAvailable.value = true
+    banners.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
   } catch (e) {
-    console.warn('[API] listBanners 后端暂未接入，使用 mock 数据')
-    banners.value = [...fallbackBanners]
+    console.warn('[Banners] 加载失败:', e)
+    banners.value = []
   }
-}
-
-const handleCreate = () => {
-  ElMessageBox.prompt('请输入Banner标题', '新增Banner', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消'
-  }).then(async ({ value }) => {
-    if (!value) return
-    const newBanner = {
-      title: value,
-      position: '零工端首页',
-      weight: 5,
-      startTime: new Date().toISOString().slice(0, 10),
-      endTime: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-      status: '草稿',
-      statusClass: 'default'
-    }
-    try {
-      if (apiAvailable.value) {
-        const res = await createBanner(newBanner)
-        newBanner.id = res?.id || Date.now()
-      } else {
-        newBanner.id = Date.now()
-      }
-      banners.value.unshift(newBanner)
-      ElMessage.success('新增成功')
-    } catch (e) {
-      console.warn('[API] createBanner 后端暂未接入')
-      newBanner.id = Date.now()
-      banners.value.unshift(newBanner)
-      ElMessage.success('已在前端添加（mock 模式）')
-    }
-  }).catch(() => {})
 }
 
 const handleEdit = (banner) => {
@@ -117,17 +74,11 @@ const handleEdit = (banner) => {
     inputValue: banner.title
   }).then(async ({ value }) => {
     try {
-      if (apiAvailable.value) {
-        await updateBanner(banner.id, { ...banner, title: value })
-      } else {
-        console.warn('[API] updateBanner 后端暂未接入')
-      }
-      banner.title = value
+      await updateBanner(banner.id, { ...banner, title: value })
       ElMessage.success('修改成功')
+      await loadData()
     } catch (e) {
-      console.warn('[API] updateBanner 请求失败')
-      banner.title = value
-      ElMessage.success('已在前端修改（mock 模式）')
+      ElMessage.error('修改失败')
     }
   }).catch(() => {})
 }
@@ -136,35 +87,23 @@ const handleToggleStatus = async (banner) => {
   const newStatus = banner.status === '展示中' ? '已下架' : '展示中'
   const newClass = newStatus === '展示中' ? 'success' : 'default'
   try {
-    if (apiAvailable.value) {
-      await updateBanner(banner.id, { ...banner, status: newStatus, statusClass: newClass })
-    } else {
-      console.warn('[API] updateBanner 后端暂未接入')
-    }
-    banner.status = newStatus
-    banner.statusClass = newClass
+    await updateBanner(banner.id, { ...banner, status: newStatus, statusClass: newClass })
     ElMessage.success('状态更新成功')
+    await loadData()
   } catch (e) {
-    console.warn('[API] updateBanner 请求失败')
-    banner.status = newStatus
-    banner.statusClass = newClass
+    ElMessage.error('状态更新失败')
   }
 }
 
 const handleDelete = async (banner) => {
   try {
     await ElMessageBox.confirm('确定删除该 Banner？', '提示', { type: 'warning' })
-    if (apiAvailable.value) {
-      await deleteBanner(banner.id)
-    } else {
-      console.warn('[API] deleteBanner 后端暂未接入')
-    }
-    banners.value = banners.value.filter(b => b.id !== banner.id)
+    await deleteBanner(banner.id)
     ElMessage.success('删除成功')
+    await loadData()
   } catch (e) {
     if (e !== 'cancel') {
-      console.warn('[API] deleteBanner 请求失败')
-      banners.value = banners.value.filter(b => b.id !== banner.id)
+      ElMessage.error('删除失败')
     }
   }
 }

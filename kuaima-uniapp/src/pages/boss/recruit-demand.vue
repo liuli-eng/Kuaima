@@ -1,18 +1,11 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <view class="page-bg">
       <!-- 导航栏 -->
-      <view class="nav-bar">
+      <view
+        class="nav-bar"
+        :style="{ paddingTop: `${statusBarHeight + 14}px` }"
+      >
         <view class="nav-back" @click="goBack">
           <text>←</text>
         </view>
@@ -24,7 +17,7 @@
       <view class="stepper">
         <view class="step active">
           <view class="dot">
-            <text style="font-size:10px;">✓</text>
+            <text style="font-size: 10px">✓</text>
           </view>
           <text>基础信息</text>
         </view>
@@ -61,15 +54,25 @@
             <text class="section-title">工价设置</text>
           </view>
           <view class="tab-group">
-            <text class="tab-item" :class="{ active: payType === 'hourly' }" @click="payType = 'hourly'">计时</text>
-            <text class="tab-item" :class="{ active: payType === 'piece' }" @click="payType = 'piece'">计件</text>
+            <text
+              class="tab-item"
+              :class="{ active: payType === 'hourly' }"
+              @click="payType = 'hourly'"
+              >计时</text
+            >
+            <text
+              class="tab-item"
+              :class="{ active: payType === 'piece' }"
+              @click="payType = 'piece'"
+              >计件</text
+            >
           </view>
 
           <!-- 计时面板 -->
           <view v-if="payType === 'hourly'">
             <view class="form-row" @click="setSalary">
               <view class="form-value placeholder">
-                <text>{{ hasSalary ? salary + '元/小时' : '请设置工价' }}</text>
+                <text>{{ hasSalary ? salary + "元/小时" : "请设置工价" }}</text>
                 <text class="› arrow"></text>
               </view>
             </view>
@@ -80,7 +83,9 @@
                   <text>{{ hasSalary ? salary * 8 : 800 }}</text>
                   <text class="salary-unit">元/天</text>
                 </view>
-                <text class="salary-sub">每个零工{{ salary }}元/小时*8小时</text>
+                <text class="salary-sub"
+                  >每个零工{{ salary }}元/小时*8小时</text
+                >
               </view>
             </view>
           </view>
@@ -88,20 +93,44 @@
           <!-- 计件面板 -->
           <view v-if="payType === 'piece'">
             <view class="form-row" @click="setPiecePrice">
-              <text style="font-size:14px;color:#333;">单价</text>
+              <text style="font-size: 14px; color: #333">单价</text>
               <view class="form-value placeholder">
-                <text>请设置单价</text>
+                <text>{{
+                  piecePrice ? `${piecePrice}元/${pieceUnit}` : "请设置单价"
+                }}</text>
                 <text class="› arrow"></text>
               </view>
+            </view>
+            <view class="form-row" @click="setPieceUnit">
+              <text class="form-label">计件单位</text>
+              <view class="form-value placeholder"
+                ><text>{{ pieceUnit || "请选择单位" }}</text
+                ><text class="arrow">›</text></view
+              >
+            </view>
+            <view class="form-row" @click="setEstOutput">
+              <text class="form-label">预估日产量</text>
+              <view class="form-value placeholder"
+                ><text>{{
+                  estOutput ? `${estOutput}${pieceUnit}/天` : "请设置预估产量"
+                }}</text
+                ><text class="arrow">›</text></view
+              >
             </view>
             <view class="salary-row">
               <text class="salary-label">预计报酬</text>
               <view class="salary-content">
                 <view class="salary-value">
-                  <text>-</text>
+                  <text>{{
+                    piecePrice && estOutput ? piecePrice * estOutput : "-"
+                  }}</text>
                   <text class="salary-unit">元/天</text>
                 </view>
-                <text class="salary-sub">单价×预估日产量</text>
+                <text class="salary-sub">{{
+                  piecePrice && estOutput
+                    ? `${piecePrice}元/${pieceUnit} × ${estOutput}${pieceUnit}/天`
+                    : "单价×预估日产量"
+                }}</text>
               </view>
             </view>
           </view>
@@ -109,27 +138,44 @@
 
         <!-- 联系电话 -->
         <view class="section-card">
-          <view class="section-header" style="justify-content:space-between;">
+          <view class="section-header" style="justify-content: space-between">
             <text class="section-title">联系电话</text>
-            <text style="font-size:14px;color:#333;">13698756321</text>
+            <text style="font-size: 14px; color: #333">13698756321</text>
           </view>
-          <view class="form-row" style="border-bottom:none;">
-            <text style="font-size:12px;color:#999;">零工电话报名、问路等</text>
-            <view style="display:flex;align-items:center;gap:4px;margin-left:auto;" @click="navigateTo('backup-phone')">
+          <view class="form-row" style="border-bottom: none">
+            <text style="font-size: 12px; color: #999"
+              >零工电话报名、问路等</text
+            >
+            <view
+              style="
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                margin-left: auto;
+              "
+              @click="navigateTo('backup-phone')"
+            >
               <text class="link-btn">
-                <text style="margin-right:4px;">+</text>
+                <text style="margin-right: 4px">+</text>
                 添加备用联系人
               </text>
-              <text style="color:#1E88E5;font-size:12px;">›</text>
+              <text style="color: #1e88e5; font-size: 12px">›</text>
             </view>
           </view>
         </view>
 
         <!-- 邀请指定零工 -->
         <view class="section-card">
-          <view class="form-row" @click="navigateTo('invite-worker')" style="border-bottom:none;">
-            <text style="font-size:14px;color:#333;">邀请指定零工接单</text>
-            <view class="form-value placeholder" style="flex:1;justify-content:flex-end;">
+          <view
+            class="form-row"
+            @click="navigateTo('invite-worker')"
+            style="border-bottom: none"
+          >
+            <text style="font-size: 14px; color: #333">邀请指定零工接单</text>
+            <view
+              class="form-value placeholder"
+              style="flex: 1; justify-content: flex-end"
+            >
               <text>请选择</text>
               <text class="› arrow"></text>
             </view>
@@ -139,21 +185,23 @@
         <!-- 招工设置 -->
         <view class="section-card" @click="navigateTo('recruit-settings')">
           <view class="single-row">
-            <text class="label">招工设置 <text style="color:#FF6B35;">•</text></text>
+            <text class="label"
+              >招工设置 <text style="color: #ff6b35">•</text></text
+            >
             <view class="desc">
-              <text>报名、结算等设置</text>
+              <text>{{ settlementLabel }}、报名等设置</text>
               <text class="› arrow"></text>
             </view>
           </view>
         </view>
 
-        <view style="height: 16px;"></view>
+        <view class="scroll-bottom-space"></view>
       </scroll-view>
 
       <!-- 浮动客服 -->
       <view class="service-fab" @click="navigateTo('service-chat')">
-        <text style="font-size:18px;color:#FF6B35;margin-bottom:2px;">🎧</text>
-        <text style="font-size:10px;color:#666;">客服</text>
+        <text class="service-icon">◉</text>
+        <text>客服</text>
       </view>
 
       <!-- 底部按钮 -->
@@ -165,89 +213,231 @@
 </template>
 
 <script>
+import { createOrder, getOrder, updateOrder } from "@/api/backend";
+
 export default {
   data() {
     return {
+      statusBarHeight: 0,
       count: 1,
-      payType: 'hourly',
-      hasSalary: true,
-      salary: 100
+      payType: "hourly",
+      hasSalary: false,
+      salary: 100,
+      piecePrice: 0,
+      pieceUnit: "件",
+      estOutput: 0,
+      publishing: false,
+      jobName: "临时工岗位",
+      settlementType: "daily",
+      settlementLabel: "日结",
+      hasExplicitType: false,
+      orderId: "",
+    };
+  },
+  onLoad(options) {
+    try {
+      const info =
+        typeof uni.getWindowInfo === "function"
+          ? uni.getWindowInfo()
+          : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
+    } catch (_) {}
+    if (options?.job) this.jobName = decodeURIComponent(options.job);
+    if (options?.id) this.orderId = options.id;
+    if (options?.type) {
+      this.hasExplicitType = true;
+      this.applyRecruitSettings({ type: options.type });
     }
+    uni.$on("recruitSettingsSaved", this.applyRecruitSettings);
+    this.loadRecruitSettings();
+    if (this.orderId) this.loadOrder(this.orderId);
+  },
+  onShow() {
+    this.loadRecruitSettings();
+  },
+  onUnload() {
+    uni.$off("recruitSettingsSaved", this.applyRecruitSettings);
   },
   methods: {
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     navigateTo(page) {
-      uni.navigateTo({ url: `/pages/boss/${page}` })
+      uni.navigateTo({ url: `/pages/boss/${page}` });
+    },
+    loadRecruitSettings() {
+      if (this.hasExplicitType) return;
+      const saved = uni.getStorageSync("recruitSettings");
+      if (saved && typeof saved === "object") this.applyRecruitSettings(saved);
+    },
+    applyRecruitSettings(data = {}) {
+      const typeMap = {
+        daily: "日结",
+        heldBack: "压薪日结",
+        month: "月结",
+      };
+      if (!typeMap[data.type]) return;
+      this.settlementType = data.type;
+      this.settlementLabel = data.settleMode || typeMap[data.type];
+    },
+    async loadOrder(id) {
+      try {
+        const detail = await getOrder(id);
+        if (!detail || typeof detail !== "object") return;
+        this.jobName = detail.orderTitle || detail.postion || this.jobName;
+        this.count = Number(detail.orderNum || this.count);
+        this.settlementType = detail.type || this.settlementType;
+        this.applyRecruitSettings({ type: this.settlementType });
+        const hourly = String(detail.tags || "").match(/时薪:([\d.]+)/);
+        const piece = String(detail.tags || "").match(/计件单价:([\d.]+)/);
+        if (hourly) {
+          this.payType = "hourly";
+          this.salary = Number(hourly[1]);
+          this.hasSalary = true;
+        } else if (piece) {
+          this.payType = "piece";
+          this.piecePrice = Number(piece[1]);
+          this.estOutput = Number(detail.duration || 0);
+        }
+      } catch (_) {}
     },
     changeCount(delta) {
-      this.count = Math.max(1, Math.min(100, this.count + delta))
+      this.count = Math.max(1, Math.min(100, this.count + delta));
     },
     setSalary() {
       uni.showModal({
-        title: '设置工价',
+        title: "设置工价",
         editable: true,
-        placeholderText: '100',
+        placeholderText: "100",
         success: (res) => {
           if (res.confirm && res.content) {
-            this.salary = parseFloat(res.content) || 100
-            this.hasSalary = true
+            this.salary = parseFloat(res.content) || 100;
+            this.hasSalary = true;
           }
-        }
-      })
+        },
+      });
     },
     setPiecePrice() {
-      uni.showToast({ title: '设置单价', icon: 'none' })
+      uni.showModal({
+        title: "设置单价",
+        editable: true,
+        placeholderText: "请输入单价",
+        success: (res) => {
+          if (res.confirm && res.content)
+            this.piecePrice = Number(res.content) || this.piecePrice;
+        },
+      });
     },
-    publishJob() {
-      if (!this.hasSalary) {
-        uni.showToast({ title: '请设置工价', icon: 'none' })
-        return
+    setPieceUnit() {
+      uni.showActionSheet({
+        itemList: ["件", "个", "套", "箱", "包"],
+        success: (res) => {
+          this.pieceUnit = ["件", "个", "套", "箱", "包"][res.tapIndex];
+        },
+      });
+    },
+    setEstOutput() {
+      uni.showModal({
+        title: "预估日产量",
+        editable: true,
+        placeholderText: "请输入数量",
+        success: (res) => {
+          if (res.confirm && res.content)
+            this.estOutput = Number(res.content) || 0;
+        },
+      });
+    },
+    async publishJob() {
+      if (this.publishing) return;
+      if (this.payType === "hourly" && !this.hasSalary) {
+        uni.showToast({ title: "请设置工价", icon: "none" });
+        return;
       }
-      uni.showToast({ title: '发布成功', icon: 'success' })
-      setTimeout(() => {
-        uni.navigateTo({ url: '/pages/boss/publish-success' })
-      }, 1500)
-    }
-  }
-}
+      if (this.payType === "piece" && (!this.piecePrice || !this.estOutput)) {
+        uni.showToast({ title: "请完善计件价格和日产量", icon: "none" });
+        return;
+      }
+      this.publishing = true;
+      try {
+        const dateText = new Date().toISOString().slice(0, 10);
+        const workTime = uni.getStorageSync("workTimeSelection") || {};
+        const workLocation = uni.getStorageSync("workLocationSelection") || {};
+        const taskContent = uni.getStorageSync("taskContent") || {};
+        const durationMatch = String(workTime.duration || "").match(/[\d.]+/);
+        const workHours = Math.max(1, Number(durationMatch?.[0] || 8));
+        const workDays = Math.max(
+          1,
+          Number(workTime.selectedDates?.length || 1),
+        );
+        const duration = this.settlementType === "daily" ? workHours : workDays;
+        const salary =
+          this.payType === "hourly"
+            ? Number(this.salary) * workHours
+            : Number(this.piecePrice * this.estOutput);
+        const payTags =
+          this.payType === "hourly"
+            ? `计时,时薪:${Number(this.salary)}`
+            : `计件,计件单价:${Number(this.piecePrice)},计件单位:${this.pieceUnit}`;
+        const payload = {
+          orderTitle: this.jobName,
+          type: this.settlementType,
+          postion: this.jobName,
+          orderNum: Number(this.count),
+          duration,
+          address: workLocation.address || workLocation.display || "",
+          tags: payTags,
+          startTime: `${dateText} ${workTime.startTime || "08:00"}:00`,
+          endTime: `${dateText} ${workTime.endTime || "18:00"}:00`,
+          salary,
+          orderContent: taskContent.desc || taskContent.title || "",
+          orderRemark: [
+            taskContent.benefits,
+            taskContent.exp,
+            taskContent.requirements,
+          ]
+            .filter(Boolean)
+            .join("；"),
+        };
+        const editing = Boolean(this.orderId);
+        if (editing) await updateOrder(this.orderId, payload);
+        else await createOrder(payload);
+        uni.showToast({ title: "发布成功", icon: "success" });
+        setTimeout(
+          () =>
+            editing
+              ? uni.redirectTo({ url: "/pages/boss/order" })
+              : uni.navigateTo({ url: "/pages/boss/publish-success" }),
+          800,
+        );
+      } catch (error) {
+        uni.showToast({ title: error.message || "发布失败", icon: "none" });
+      } finally {
+        this.publishing = false;
+      }
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #fff8e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: transparent;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .page-bg {
   background: #fff;
   flex: 1;
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .nav-bar {
@@ -255,6 +445,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
+  box-sizing: border-box;
   background: white;
   flex-shrink: 0;
 }
@@ -309,12 +500,12 @@ export default {
 }
 
 .step.active {
-  color: #FF6B35;
+  color: #ff6b35;
   font-weight: 600;
 }
 
 .step.active .dot {
-  background: #FF6B35;
+  background: #ff6b35;
 }
 
 .step-line {
@@ -324,17 +515,31 @@ export default {
 }
 
 .step-line.active {
-  background: #FF6B35;
+  background: #ff6b35;
 }
 
 .scroll-area {
   flex: 1;
+  height: 0;
   overflow-y: auto;
-  background: #FFF8E6;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff8e6;
+}
+
+.scroll-bottom-space {
+  height: 120px;
 }
 
 .section-card {
   background: white;
+  display: block;
+  height: auto;
+  min-height: 0;
+  width: auto;
+  box-sizing: border-box;
+  min-width: 0;
   margin: 12px;
   border-radius: 12px;
   padding: 16px;
@@ -364,7 +569,7 @@ export default {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #F5F5F5;
+  background: #f5f5f5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -373,7 +578,7 @@ export default {
 }
 
 .counter-btn.active {
-  background: #FF6B35;
+  background: #ff6b35;
   color: white;
 }
 
@@ -394,7 +599,7 @@ export default {
 .tab-group {
   display: flex;
   gap: 0;
-  background: #F5F5F5;
+  background: #f5f5f5;
   border-radius: 8px;
   padding: 4px;
   margin-bottom: 12px;
@@ -411,9 +616,9 @@ export default {
 
 .tab-item.active {
   background: white;
-  color: #FF6B35;
+  color: #ff6b35;
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .form-row {
@@ -421,6 +626,13 @@ export default {
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid #f5f5f5;
+}
+
+.form-label {
+  font-size: 14px;
+  color: #333;
+  flex-shrink: 0;
+  margin-right: 12px;
 }
 
 .form-row:last-child {
@@ -438,16 +650,16 @@ export default {
 }
 
 .form-value.placeholder {
-  color: #BBB;
+  color: #bbb;
 }
 
 .form-value .arrow {
-  color: #CCC;
+  color: #ccc;
   font-size: 12px;
 }
 
 .link-btn {
-  color: #1E88E5;
+  color: #1e88e5;
   font-size: 14px;
   display: flex;
   align-items: center;
@@ -521,7 +733,7 @@ export default {
 }
 
 .single-row .desc .arrow {
-  color: #CCC;
+  color: #ccc;
   font-size: 12px;
 }
 
@@ -533,7 +745,7 @@ export default {
   height: 48px;
   background: white;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -543,22 +755,37 @@ export default {
   z-index: 10;
 }
 
+.service-icon {
+  font-size: 18px;
+  color: #ff6b35;
+  margin-bottom: 2px;
+}
+
 .bottom-bar {
   background: white;
   padding: 12px 16px;
   border-top: 1px solid #f0f0f0;
   flex-shrink: 0;
-  padding-bottom: 20px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  position: relative;
+  z-index: 20;
 }
 
 .submit-btn {
   width: 100%;
   height: 48px;
-  background: linear-gradient(135deg, #FFD700, #FFA500);
+  background: linear-gradient(135deg, #ffd700, #ffa500);
   color: white;
   border: none;
   border-radius: 10px;
   font-size: 16px;
   font-weight: 600;
+  margin: 0;
+  line-height: 48px;
+}
+
+.submit-btn::after {
+  border: none;
 }
 </style>

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 操作日志</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .type-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .type-login {
+            background: #EFF6FF;
+            color: var(--secondary);
+        }
+        .type-data {
+            background: #FFF0EB;
+            color: var(--primary);
+        }
+        .type-audit {
+            background: #ECFDF5;
+            color: var(--success);
+        }
+        .type-permission {
+            background: #FEF2F2;
+            color: var(--danger);
+        }
+        .type-delete {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+        .type-system {
+            background: #F3F4F6;
+            color: var(--text-secondary);
+        }
+        .log-detail-modal .log-detail-row {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .log-detail-row:last-child {
+            border-bottom: none;
+        }
+        .log-detail-label {
+            min-width: 100px;
+            color: var(--text-secondary);
+        }
+        .log-detail-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .log-detail-json {
+            background: var(--bg-page);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--text-primary);
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+        .log-detail-json .json-key {
+            color: var(--primary);
+        }
+        .log-detail-json .json-string {
+            color: var(--success);
+        }
+        .log-detail-json .json-number {
+            color: var(--danger);
+        }
+    </style>
+</head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">操作日志</h1>
+                <p class="page-desc">系统操作记录、日志查询</p>
+            </div>
+
+            <div class="card">
+                <div class="filter-bar">
+                    <div class="filter-item">
+                        <span>操作人</span>
+                        <input type="text" class="form-input" style="width:150px;" placeholder="搜索操作人">
+                    </div>
+                    <div class="filter-item">
+                        <span>操作类型</span>
+                        <select class="form-input form-select" style="width:150px;">
+                            <option value="">全部</option>
+                            <option>登录</option>
+                            <option>数据修改</option>
+                            <option>审核</option>
+                            <option>权限变更</option>
+                            <option>删除</option>
+                            <option>系统操作</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>时间范围</span>
+                        <input type="date" class="form-input" style="width:140px;">
+                        <span>至</span>
+                        <input type="date" class="form-input" style="width:140px;">
+                    </div>
+                    <div style="flex:1;"></div>
+                    <button class="btn btn-primary btn-sm" onclick="applyFilter()">
+                        <i class="fas fa-search"></i> 查询
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="resetFilter()">
+                        <i class="fas fa-undo"></i> 重置
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="alert('日志已导出')">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 16px;">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>日志ID</th>
+                                <th>操作人</th>
+                                <th>操作类型</th>
+                                <th>操作对象</th>
+                                <th>IP地址</th>
+                                <th>操作时间</th>
+                                <th>结果</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <div class="pagination-info">共 1,256 条日志记录</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" disabled><i class="fas fa-chevron-left" style="font-size:10px;"></i></button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn">3</button>
+                        <button class="page-btn">4</button>
+                        <button class="page-btn">5</button>
+                        <span style="color:var(--text-muted); padding:0 4px;">...</span>
+                        <button class="page-btn">63</button>
+                        <button class="page-btn"><i class="fas fa-chevron-right" style="font-size:10px;"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="logDetailModal" style="display:none;">
+        <div class="modal log-detail-modal" style="max-width:560px;">
+            <div class="modal-header">
+                <span class="modal-title">日志详情</span>
+                <div class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div class="modal-body" id="logDetailBody">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const logsData = [
+            {
+                id: 'LG20240315183001',
+                operator: '超级管理员',
+                operatorAvatar: '超',
+                operatorColor: '#EF4444',
+                type: 'login',
+                typeText: '登录',
+                target: '管理后台',
+                targetDetail: '管理员登录系统',
+                ip: '192.168.1.105',
+                time: '2024-03-15 18:30:25',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "username": "admin",\n  "login_type": "password",\n  "device": "Chrome on Windows",\n  "location": "深圳"\n}'
+            },
+            {
+                id: 'LG20240315181502',
+                operator: '王管理',
+                operatorAvatar: '王',
+                operatorColor: '#2563EB',
+                type: 'data',
+                typeText: '数据修改',
+                target: '订单 KM20240315001',
+                targetDetail: '修改订单状态：进行中 → 已完成',
+                ip: '192.168.1.108',
+                time: '2024-03-15 18:15:42',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "order_id": "KM20240315001",\n  "field": "status",\n  "old_value": "processing",\n  "new_value": "completed",\n  "remark": "雇主确认完工"\n}'
+            },
+            {
+                id: 'LG20240315175003',
+                operator: '李审核',
+                operatorAvatar: '李',
+                operatorColor: '#10B981',
+                type: 'audit',
+                typeText: '审核',
+                target: '招工信息 JZ20240315020',
+                targetDetail: '审核通过招工信息',
+                ip: '192.168.1.112',
+                time: '2024-03-15 17:50:18',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "job_id": "JZ20240315020",\n  "audit_result": "approved",\n  "audit_remark": "信息完整，符合要求",\n  "employer_id": "U20231"\n}'
+            },
+            {
+                id: 'LG20240315172004',
+                operator: '赵运营',
+                operatorAvatar: '赵',
+                operatorColor: '#F59E0B',
+                type: 'data',
+                typeText: '数据修改',
+                target: '零工 U10086',
+                targetDetail: '修改零工实名认证信息',
+                ip: '192.168.1.115',
+                time: '2024-03-15 17:20:33',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "user_id": "U10086",\n  "field": "real_name_auth",\n  "new_value": "verified",\n  "id_card": "****1234"\n}'
+            },
+            {
+                id: 'LG20240315164505',
+                operator: '超级管理员',
+                operatorAvatar: '超',
+                operatorColor: '#EF4444',
+                type: 'permission',
+                typeText: '权限变更',
+                target: '管理员 A003',
+                targetDetail: '修改审核员权限组',
+                ip: '192.168.1.105',
+                time: '2024-03-15 16:45:12',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "admin_id": "A003",\n  "old_role": "审核员",\n  "new_role": "高级审核员",\n  "permissions": ["audit", "content", "user"]\n}'
+            },
+            {
+                id: 'LG20240315160006',
+                operator: '王管理',
+                operatorAvatar: '王',
+                operatorColor: '#2563EB',
+                type: 'delete',
+                typeText: '删除',
+                target: '广告记录 AD20240301',
+                targetDetail: '删除过期广告Banner',
+                ip: '192.168.1.108',
+                time: '2024-03-15 16:00:05',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "ad_id": "AD20240301",\n  "delete_reason": "过期自动清理",\n  "banner_position": "首页顶部"\n}'
+            },
+            {
+                id: 'LG20240315152007',
+                operator: '系统',
+                operatorAvatar: '系',
+                operatorColor: '#6B7280',
+                type: 'system',
+                typeText: '系统操作',
+                target: '定时任务',
+                targetDetail: '自动结算3月15日订单',
+                ip: '127.0.0.1',
+                time: '2024-03-15 15:20:00',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "task_type": "auto_settlement",\n  "date": "2024-03-15",\n  "order_count": 156,\n  "total_amount": 42850.00\n}'
+            },
+            {
+                id: 'LG20240315143008',
+                operator: '李审核',
+                operatorAvatar: '李',
+                operatorColor: '#10B981',
+                type: 'audit',
+                typeText: '审核',
+                target: '认证申请 CERT20240315',
+                targetDetail: '驳回雇主认证申请',
+                ip: '192.168.1.112',
+                time: '2024-03-15 14:30:22',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "cert_id": "CERT20240315",\n  "audit_result": "rejected",\n  "reject_reason": "营业执照图片模糊，请重新上传",\n  "user_id": "U20567"\n}'
+            },
+            {
+                id: 'LG20240315134509',
+                operator: '陈查看',
+                operatorAvatar: '陈',
+                operatorColor: '#8B5CF6',
+                type: 'login',
+                typeText: '登录',
+                target: '管理后台',
+                targetDetail: '管理员登录',
+                ip: '203.0.113.42',
+                time: '2024-03-15 13:45:10',
+                result: 'fail',
+                resultText: '失败',
+                requestData: '{\n  "username": "chenchakan",\n  "reason": "密码错误",\n  "attempt": 3,\n  "locked": false\n}'
+            },
+            {
+                id: 'LG20240315120010',
+                operator: '超级管理员',
+                operatorAvatar: '超',
+                operatorColor: '#EF4444',
+                type: 'data',
+                typeText: '数据修改',
+                target: '系统设置',
+                targetDetail: '修改平台服务费比例 5% → 6%',
+                ip: '192.168.1.105',
+                time: '2024-03-15 12:00:55',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "setting_key": "service_fee_rate",\n  "old_value": 5,\n  "new_value": 6,\n  "effective_date": "2024-03-16",\n  "remark": "平台运营成本调整"\n}'
+            },
+            {
+                id: 'LG20240315112011',
+                operator: '王管理',
+                operatorAvatar: '王',
+                operatorColor: '#2563EB',
+                type: 'permission',
+                typeText: '权限变更',
+                target: '管理员 A004',
+                targetDetail: '停用赵运营账号',
+                ip: '192.168.1.108',
+                time: '2024-03-15 11:20:38',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "admin_id": "A004",\n  "action": "disable",\n  "reason": "请假期间临时停用",\n  "operator": "王管理"\n}'
+            },
+            {
+                id: 'LG20240315103012',
+                operator: '赵运营',
+                operatorAvatar: '赵',
+                operatorColor: '#F59E0B',
+                type: 'data',
+                typeText: '数据修改',
+                target: '公告Notice20240315',
+                targetDetail: '发布系统维护公告',
+                ip: '192.168.1.115',
+                time: '2024-03-15 10:30:14',
+                result: 'success',
+                resultText: '成功',
+                requestData: '{\n  "notice_title": "系统维护通知",\n  "notice_content": "平台将于2024-03-20 02:00-04:00进行系统升级",\n  "publish_time": "2024-03-15 10:30:00",\n  "target": "全部用户"\n}'
+            }
+        ];
+
+        const typeClassMap = {
+            login: 'type-login',
+            data: 'type-data',
+            audit: 'type-audit',
+            permission: 'type-permission',
+            delete: 'type-delete',
+            system: 'type-system'
+        };
+
+        const typeIconMap = {
+            login: 'fa-sign-in-alt',
+            data: 'fa-edit',
+            audit: 'fa-check-circle',
+            permission: 'fa-user-shield',
+            delete: 'fa-trash-alt',
+            system: 'fa-cog'
+        };
+
+        function renderTable() {
+            const tbody = document.getElementById('logTableBody');
+            tbody.innerHTML = logsData.map(l => {
+                const typeClass = typeClassMap[l.type] || 'type-system';
+                const typeIcon = typeIconMap[l.type] || 'fa-cog';
+                const resultBadge = l.result === 'success'
+                    ? `<span class="status-badge success">${l.resultText}</span>`
+                    : `<span class="status-badge danger">${l.resultText}</span>`;
+
+                return `
+                    <tr>
+                        <td style="font-family:monospace; color:var(--primary); font-size:12px;">${l.id}</td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span class="avatar-sm" style="background:linear-gradient(135deg, ${l.operatorColor}, ${l.operatorColor}cc); width:28px;height:28px;font-size:11px;">${l.operatorAvatar}</span>
+                                <span>${l.operator}</span>
+                            </div>
+                        </td>
+                        <td><span class="type-tag ${typeClass}"><i class="fas ${typeIconMap[l.type]}" style="font-size:10px;"></i> ${l.typeText}</span></td>
+                        <td>
+                            <div style="font-weight:500;">${l.target}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">${l.targetDetail}</div>
+                        </td>
+                        <td style="font-family:monospace; font-size:12px;">${l.ip}</td>
+                        <td style="font-size:12px;">${l.time}</td>
+                        <td>${resultBadge}</td>
+                        <td>
+                            <a class="card-action" onclick="showDetail('${l.id}')">详情</a>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function showDetail(id) {
+            const l = logsData.find(x => x.id === id);
+            if (!l) return;
+
+            const typeClass = typeClassMap[l.type] || 'type-system';
+
+            document.getElementById('logDetailBody').innerHTML = `
+                <div class="log-detail-row">
+                    <span class="log-detail-label">日志ID：</span>
+                    <span class="log-detail-value" style="font-family:monospace; color:var(--primary);">${l.id}</span>
+                </div>
+                <div class="log-detail-row">
+                    <span class="log-detail-label">操作人：</span>
+                    <span class="log-detail-value">
+                        <span class="avatar-sm" style="background:linear-gradient(135deg, ${l.operatorColor}, ${l.operatorColor}cc); width:24px;height:24px;font-size:10px;margin-right:6px;">${l.operatorAvatar}</span>
+                        ${l.operator}
+                    </span>
+                </div>
+                <div class="log-detail-row">
+                    <span class="log-detail-label">操作类型：</span>
+                    <span class="log-detail-value"><span class="type-tag ${typeClass}"><i class="fas ${typeIconMap[l.type]}" style="font-size:10px;"></i> ${l.typeText}</span></span>
+                </div>
+                <div class="log-detail-row">
+                    <span class="log-detail-label">操作对象：</span>
+                    <span class="log-detail-value">${l.target}</span>
+                </div>
+                <div class="log-detail-row">
+                    <span class="log-detail-label">详情描述：</span>
+                    <span class="log-detail-value">${l.targetDetail}</span>
+                </div>
+                <div class="log-detail-row">
+                    <span class="log-detail-label">IP地址：</span>
+                    <span class="log-detail-value" style="font-family:monospace;">${l.ip}</span>
+                </div>
+                <div class="log-detail-row">
+                    <span class="log-detail-label">操作时间：</span>
+                    <span class="log-detail-value">${l.time}</span>
+                </div>
+                <div class="log-detail-row">
+                    <span class="log-detail-label">操作结果：</span>
+                    <span class="log-detail-value">
+                        ${l.result === 'success'
+                            ? `<span class="status-badge success">${l.resultText}</span>`
+                            : `<span class="status-badge danger">${l.resultText}</span>`
+                        }
+                    </span>
+                </div>
+                <div style="margin-top:14px;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-primary);">请求参数</div>
+                    <div class="log-detail-json">${l.requestData}</div>
+                </div>
+            `;
+
+            document.getElementById('logDetailModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('logDetailModal').style.display = 'none';
+        }
+
+        function applyFilter() {
+            alert('筛选条件已应用');
+        }
+
+        function resetFilter() {
+            document.querySelectorAll('.filter-item select, .filter-item input').forEach(el => {
+                if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                else el.value = '';
+            });
+        }
+
+        renderTable();
+    </script>
+</body>
+</html>

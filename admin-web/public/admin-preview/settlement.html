@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 结算管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .stat-card-icon.red {
+            background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+            color: var(--danger);
+        }
+        .settle-id-cell {
+            font-family: monospace;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .employer-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .employer-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .employer-name-text {
+            font-weight: 500;
+            font-size: 13px;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .worker-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .worker-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .worker-name-text {
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .money-cell {
+            font-weight: 600;
+        }
+        .money-cell.primary {
+            color: var(--primary);
+        }
+        .money-cell.success {
+            color: var(--success);
+        }
+        .money-cell.danger {
+            color: var(--danger);
+        }
+        .payment-method {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .payment-method.wechat {
+            background: #ECFDF5;
+            color: #059669;
+        }
+        .payment-method.alipay {
+            background: #EFF6FF;
+            color: #2563EB;
+        }
+        .payment-method.bank {
+            background: #FFFBEB;
+            color: #D97706;
+        }
+        .payment-method.cash {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+        .action-btns .btn {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .fee-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .fee-orig {
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .fee-platform {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .fee-net {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--success);
+        }
+        .detail-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .detail-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .detail-info-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .detail-info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .settle-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .settle-summary-item {
+            background: var(--bg-page);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+        .settle-summary-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .settle-summary-value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .settle-summary-value.primary { color: var(--primary); }
+        .settle-summary-value.success { color: var(--success); }
+        .settle-summary-value.danger { color: var(--danger); }
+        .quick-filter {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .quick-filter:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .quick-filter.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .success-rate-ring {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .batch-action-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #FFF8E6;
+            border-radius: 10px;
+            margin-bottom: 16px;
+        }
+        .batch-action-info {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .batch-action-info strong {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">结算管理</h1>
+                <p class="page-desc">订单结算、财务核对、支付记录</p>
+            </div>
+
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">待结算订单</span>
+                        <div class="stat-card-icon yellow">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">236</div>
+                    <div class="stat-card-change down">
+                        <i class="fas fa-clock"></i>
+                        <span>需要处理</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">结算金额</span>
+                        <div class="stat-card-icon">
+                            <i class="fas fa-yen-sign"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">¥86,450</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>今日结算总额</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">已结算</span>
+                        <div class="stat-card-icon green">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">1,620</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>结算笔数</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">结算成功率</span>
+                        <div class="stat-card-icon blue">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">99.2%</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>本周平均</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="batch-action-bar">
+                <div class="batch-action-info">
+                    共 <strong>1,856</strong> 条结算记录，其中 <strong style="color:var(--warning);">236</strong> 条待结算
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-primary btn-sm" onclick="batchSettle()"><i class="fas fa-coins"></i> 批量结算</button>
+                    <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出报表</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="filter-bar">
+                    <div class="filter-item">
+                        <span>结算周期</span>
+                        <select id="cycleFilter">
+                            <option value="today">今日</option>
+                            <option value="week">本周</option>
+                            <option value="month">本月</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>结算状态</span>
+                        <select id="settleStatusFilter">
+                            <option value="">全部</option>
+                            <option value="pending">待结算</option>
+                            <option value="processing">结算中</option>
+                            <option value="settled">已结算</option>
+                            <option value="failed">已失败</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>支付方式</span>
+                        <select id="payMethodFilter">
+                            <option value="">全部</option>
+                            <option value="wechat">微信支付</option>
+                            <option value="alipay">支付宝</option>
+                            <option value="bank">银行卡</option>
+                            <option value="cash">现金</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>日期范围</span>
+                        <input type="date" style="width:130px;" id="dateStart">
+                        <span>至</span>
+                        <input type="date" style="width:130px;" id="dateEnd">
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="applyFilter()"><i class="fas fa-search"></i> 查询</button>
+                    <button class="btn btn-outline btn-sm" onclick="resetFilter()"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <div style="flex:1;"></div>
+                    <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出数据</button>
+                </div>
+
+                <div style="display:flex; gap:8px; margin-bottom:16px;">
+                    <span class="quick-filter active" onclick="quickFilter(this, '')">全部</span>
+                    <span class="quick-filter" onclick="quickFilter(this, 'pending')">待结算</span>
+                    <span class="quick-filter" onclick="quickFilter(this, 'processing')">结算中</span>
+                    <span class="quick-filter" onclick="quickFilter(this, 'settled')">已结算</span>
+                    <span class="quick-filter" onclick="quickFilter(this, 'failed')">已失败</span>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>结算单号</th>
+                                <th>订单号</th>
+                                <th>雇主</th>
+                                <th>零工</th>
+                                <th>结算金额</th>
+                                <th>平台费</th>
+                                <th>实付金额</th>
+                                <th>结算状态</th>
+                                <th>结算时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlementTableBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <div class="pagination-info">共 1,856 条结算记录，当前显示 1-10 条</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" disabled><i class="fas fa-chevron-left" style="font-size:10px;"></i></button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn">3</button>
+                        <button class="page-btn">4</button>
+                        <button class="page-btn">5</button>
+                        <span style="color:var(--text-muted); padding:0 4px;">...</span>
+                        <button class="page-btn">186</button>
+                        <button class="page-btn"><i class="fas fa-chevron-right" style="font-size:10px;"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settlementDetailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:700px; max-height:92vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <span style="font-size:18px; font-weight:600;">结算详情</span>
+                    <span class="status-badge" id="modalSettleStatus" style="margin-left:10px;"></span>
+                </div>
+                <div class="modal-close" onclick="closeSettleDetail()" style="cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted);">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div style="padding:24px; max-height:65vh; overflow-y:auto;">
+                <div class="settle-summary">
+                    <div class="settle-summary-item">
+                        <div class="settle-summary-label">结算金额</div>
+                        <div class="settle-summary-value primary" id="summaryAmount">-</div>
+                    </div>
+                    <div class="settle-summary-item">
+                        <div class="settle-summary-label">平台服务费</div>
+                        <div class="settle-summary-value danger" id="summaryFee">-</div>
+                    </div>
+                    <div class="settle-summary-item">
+                        <div class="settle-summary-label">实付金额</div>
+                        <div class="settle-summary-value success" id="summaryNet">-</div>
+                    </div>
+                </div>
+
+                <div class="detail-section-title">结算信息</div>
+                <div class="detail-info-grid" style="margin-bottom:20px;">
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">结算单号</span>
+                        <span class="detail-info-value" id="detailSettleId">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">关联订单号</span>
+                        <span class="detail-info-value" id="detailOrderId">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">结算周期</span>
+                        <span class="detail-info-value" id="detailCycle">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">支付方式</span>
+                        <span class="detail-info-value" id="detailPayMethod">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">结算时间</span>
+                        <span class="detail-info-value" id="detailSettleTime">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">支付流水号</span>
+                        <span class="detail-info-value" id="detailPayRef">-</span>
+                    </div>
+                </div>
+
+                <div class="detail-section-title">雇主信息</div>
+                <div class="detail-info-grid" style="margin-bottom:20px;">
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">雇主名称</span>
+                        <span class="detail-info-value" id="detailEmployer">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">联系电话</span>
+                        <span class="detail-info-value" id="detailEmployerPhone">-</span>
+                    </div>
+                </div>
+
+                <div class="detail-section-title">零工信息</div>
+                <div class="detail-info-grid" style="margin-bottom:20px;">
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">零工姓名</span>
+                        <span class="detail-info-value" id="detailWorker">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">收款账户</span>
+                        <span class="detail-info-value" id="detailWorkerAccount">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">账户实名</span>
+                        <span class="detail-info-value" id="detailWorkerRealname">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">实名认证</span>
+                        <span class="detail-info-value" style="color:var(--success);">已认证</span>
+                    </div>
+                </div>
+
+                <div class="detail-section-title">费用明细</div>
+                <div style="background:var(--bg-page); border-radius:10px; padding:16px;">
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--border);">
+                        <span style="color:var(--text-secondary);">订单金额</span>
+                        <span style="font-weight:600;" id="detailFeeAmount">-</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--border);">
+                        <span style="color:var(--text-secondary);">平台服务费 (10%)</span>
+                        <span style="font-weight:600; color:var(--danger);" id="detailPlatformFee">-</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; margin-top:4px;">
+                        <span style="font-weight:600;">实付金额</span>
+                        <span style="font-weight:700; font-size:16px; color:var(--success);" id="detailNetAmount">-</span>
+                    </div>
+                </div>
+
+                <div class="detail-section-title">服务费收款账户</div>
+                <div class="detail-info-grid" style="margin-bottom:16px;">
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">收款账户</span>
+                        <span class="detail-info-value">快马日结平台对公账户</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">收款银行</span>
+                        <span class="detail-info-value">工商银行上海分行</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">银行账号</span>
+                        <span class="detail-info-value">6222 **** **** 8888</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">账户名</span>
+                        <span class="detail-info-value">快马日结科技有限公司</span>
+                    </div>
+                </div>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+                <button class="btn btn-outline" onclick="closeSettleDetail()">关闭</button>
+                <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary);" onclick="sendReminder()"><i class="fas fa-comment-dots"></i> 发消息提醒</button>
+                <button class="btn btn-primary" onclick="markSettled()"><i class="fas fa-check-circle"></i> 财务确认结算</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:440px; overflow:hidden;">
+            <div style="padding:24px; text-align:center;">
+                <div style="width:60px; height:60px; border-radius:50%; background:#ECFDF5; color:var(--success); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:24px;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div style="font-size:18px; font-weight:600; margin-bottom:8px;">财务确认结算</div>
+                <div style="font-size:14px; color:var(--text-secondary); margin-bottom:20px;">
+                    确认后将标记该笔订单为已结算，<br>此操作不可撤销。
+                </div>
+                <div style="display:flex; justify-content:center; gap:12px;">
+                    <button class="btn btn-outline" onclick="closeConfirmModal()">取消</button>
+                    <button class="btn btn-primary" onclick="confirmSettle()"><i class="fas fa-check"></i> 确认结算</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="reminderModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:480px; overflow:hidden;">
+            <div style="padding:24px; text-align:center;">
+                <div style="width:60px; height:60px; border-radius:50%; background:#EFF6FF; color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:24px;">
+                    <i class="fas fa-comment-dots"></i>
+                </div>
+                <div style="font-size:18px; font-weight:600; margin-bottom:8px;">发消息提醒雇主结算</div>
+                <div style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;" id="reminderContent">
+                    将向雇主发送结算提醒消息
+                </div>
+                <div style="background:var(--bg-page); border-radius:8px; padding:12px; text-align:left; margin-bottom:20px; font-size:13px; color:var(--text-secondary); line-height:1.6;">
+                    <div style="font-weight:500; color:var(--text-primary); margin-bottom:4px;">消息预览：</div>
+                    您好，您有一笔订单需要结算，请尽快完成结算操作。
+                </div>
+                <div style="display:flex; justify-content:center; gap:12px;">
+                    <button class="btn btn-outline" onclick="closeReminderModal()">取消</button>
+                    <button class="btn btn-primary" onclick="sendReminderConfirm()"><i class="fas fa-paper-plane"></i> 发送消息</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="batchActionModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:480px; overflow:hidden;">
+            <div style="padding:24px; text-align:center;">
+                <div style="width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,#FFF0EB,#FFE8DC); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:24px;">
+                    <i class="fas fa-list-check"></i>
+                </div>
+                <div style="font-size:18px; font-weight:600; margin-bottom:8px;">批量结算操作</div>
+                <div style="font-size:14px; color:var(--text-secondary); margin-bottom:20px;">
+                    共 <span id="batchReminderCount" style="color:var(--primary); font-weight:600;">0</span> 笔待结算订单，请选择操作方式
+                </div>
+                <div style="display:flex; gap:12px; margin-bottom:16px;">
+                    <button class="btn btn-outline" style="flex:1; padding:16px; border-color:var(--primary); color:var(--primary);" onclick="batchSendReminder()">
+                        <i class="fas fa-comment-dots" style="font-size:20px; margin-bottom:8px;"></i>
+                        <div style="font-weight:600;">发消息提醒</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">批量发送提醒</div>
+                    </button>
+                    <button class="btn btn-primary" style="flex:1; padding:16px;" onclick="batchFinanceConfirm()">
+                        <i class="fas fa-check-circle" style="font-size:20px; margin-bottom:8px;"></i>
+                        <div style="font-weight:600;">财务确认结算</div>
+                        <div style="font-size:12px; opacity:0.9; margin-top:4px;">批量确认结算</div>
+                    </button>
+                </div>
+                <button class="btn btn-link" onclick="closeBatchActionModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="batchConfirmModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:440px; overflow:hidden;">
+            <div style="padding:24px; text-align:center;">
+                <div style="width:60px; height:60px; border-radius:50%; background:#ECFDF5; color:var(--success); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:24px;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div style="font-size:18px; font-weight:600; margin-bottom:8px;">确认批量结算</div>
+                <div style="font-size:14px; color:var(--text-secondary); margin-bottom:20px;" id="batchConfirmSummary">
+                    将批量确认订单为已结算状态
+                </div>
+                <div style="background:#FEF2F2; border-radius:8px; padding:12px; text-align:left; margin-bottom:20px; font-size:13px; color:var(--danger); line-height:1.6;">
+                    <i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i> 此操作不可撤销，请谨慎操作
+                </div>
+                <div style="display:flex; justify-content:center; gap:12px;">
+                    <button class="btn btn-outline" onclick="closeBatchConfirmModal()">取消</button>
+                    <button class="btn btn-primary" onclick="batchConfirmSettle()"><i class="fas fa-check"></i> 确认结算</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const settlementData = [
+            { id: 'JS202408210001', orderId: 'DD202408210001', employer: '富士康科技集团', employerShort: '富', employerColor: 'linear-gradient(135deg,#3B82F6,#2563EB)', worker: '张建国', workerShort: '张', workerColor: 'linear-gradient(135deg,#FF8C42,#FF6B35)', amount: 280, fee: 28, net: 252, status: 'settled', statusText: '已结算', payMethod: 'wechat', payMethodText: '微信支付', settleTime: '2024-08-21 19:05', payRef: 'WX202408211905001', cycle: '2024-08-21', workerAccount: '微信尾号 5678', workerRealname: '张建国' },
+            { id: 'JS202408210002', orderId: 'DD202408210002', employer: '顺丰速运有限公司', employerShort: '顺', employerColor: 'linear-gradient(135deg,#F59E0B,#D97706)', worker: '李美丽', workerShort: '李', workerColor: 'linear-gradient(135deg,#06B6D4,#0891B2)', amount: 220, fee: 22, net: 198, status: 'pending', statusText: '待结算', payMethod: 'alipay', payMethodText: '支付宝', settleTime: '-', payRef: '-', cycle: '2024-08-21', workerAccount: '支付宝尾号 2345', workerRealname: '李美丽' },
+            { id: 'JS202408210003', orderId: 'DD202408210004', employer: '京东物流仓储', employerShort: '京', employerColor: 'linear-gradient(135deg,#10B981,#059669)', worker: '陈大海', workerShort: '陈', workerColor: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', amount: 320, fee: 32, net: 288, status: 'settled', statusText: '已结算', payMethod: 'bank', payMethodText: '中国银行', settleTime: '2024-08-21 19:45', payRef: 'BK202408211945003', cycle: '2024-08-21', workerAccount: '6217****3456', workerRealname: '陈大海' },
+            { id: 'JS202408210004', orderId: 'DD202408210005', employer: '比亚迪汽车工业', employerShort: '比', employerColor: 'linear-gradient(135deg,#F97316,#EA580C)', worker: '刘芳', workerShort: '刘', workerColor: 'linear-gradient(135deg,#F59E0B,#D97706)', amount: 380, fee: 38, net: 342, status: 'processing', statusText: '结算中', payMethod: 'wechat', payMethodText: '微信支付', settleTime: '2024-08-21 20:30', payRef: 'WX202408212030005', cycle: '2024-08-21', workerAccount: '微信尾号 6789', workerRealname: '刘芳' },
+            { id: 'JS202408210005', orderId: 'DD202408210008', employer: '顺丰速运有限公司', employerShort: '顺', employerColor: 'linear-gradient(135deg,#F59E0B,#D97706)', worker: '周志华', workerShort: '周', workerColor: 'linear-gradient(135deg,#06B6D4,#0891B2)', amount: 500, fee: 50, net: 450, status: 'settled', statusText: '已结算', payMethod: 'alipay', payMethodText: '支付宝', settleTime: '2024-08-21 21:10', payRef: 'ALI202408212110008', cycle: '2024-08-21', workerAccount: '支付宝尾号 8901', workerRealname: '周志华' },
+            { id: 'JS202408210006', orderId: 'DD202408210006', employer: '麦当劳食品有限公司', employerShort: '麦', employerColor: 'linear-gradient(135deg,#64748B,#475569)', worker: '赵小红', workerShort: '赵', workerColor: 'linear-gradient(135deg,#EC4899,#BE185D)', amount: 160, fee: 16, net: 144, status: 'failed', statusText: '已失败', payMethod: 'wechat', payMethodText: '微信支付', settleTime: '2024-08-21 22:15', payRef: 'WX202408212215010', cycle: '2024-08-21', workerAccount: '微信尾号 1234', workerRealname: '赵小红' },
+            { id: 'JS202408210007', orderId: 'DD202408210009', employer: '京东方科技集团', employerShort: '京', employerColor: 'linear-gradient(135deg,#8B5CF6,#7C3AED)', worker: '郑小丽', workerShort: '郑', workerColor: 'linear-gradient(135deg,#3B82F6,#2563EB)', amount: 260, fee: 26, net: 234, status: 'settled', statusText: '已结算', payMethod: 'bank', payMethodText: '工商银行', settleTime: '2024-08-21 20:00', payRef: 'BK202408212000009', cycle: '2024-08-21', workerAccount: '6222****5678', workerRealname: '郑小丽' },
+            { id: 'JS202408210008', orderId: 'DD202408210003', employer: '肯德基餐饮管理', employerShort: '肯', employerColor: 'linear-gradient(135deg,#EC4899,#BE185D)', worker: '王小刚', workerShort: '王', workerColor: 'linear-gradient(135deg,#10B981,#059669)', amount: 180, fee: 18, net: 162, status: 'pending', statusText: '待结算', payMethod: 'wechat', payMethodText: '微信支付', settleTime: '-', payRef: '-', cycle: '2024-08-21', workerAccount: '微信尾号 9012', workerRealname: '王小刚' },
+            { id: 'JS202408210009', orderId: 'DD202408210010', employer: '绿源农业科技', employerShort: '绿', employerColor: 'linear-gradient(135deg,#22C55E,#16A34A)', worker: '孙大山', workerShort: '孙', workerColor: 'linear-gradient(135deg,#F59E0B,#D97706)', amount: 200, fee: 20, net: 180, status: 'processing', statusText: '结算中', payMethod: 'cash', payMethodText: '现金结算', settleTime: '2024-08-21 18:30', payRef: 'CSH202408211830010', cycle: '2024-08-21', workerAccount: '现金领取', workerRealname: '孙大山' },
+            { id: 'JS202408210010', orderId: 'DD202408210007', employer: '格力电器制造', employerShort: '格', employerColor: 'linear-gradient(135deg,#06B6D4,#0891B2)', worker: '吴志强', workerShort: '吴', workerColor: 'linear-gradient(135deg,#64748B,#475569)', amount: 450, fee: 45, net: 405, status: 'settled', statusText: '已结算', payMethod: 'alipay', payMethodText: '支付宝', settleTime: '2024-08-21 19:20', payRef: 'ALI202408211920007', cycle: '2024-08-21', workerAccount: '支付宝尾号 3456', workerRealname: '吴志强' }
+        ];
+
+        let currentSettleStatusFilter = '';
+        let currentPayMethodFilter = '';
+        let currentSettleIndex = 0;
+
+        function renderTable(data) {
+            const tbody = document.getElementById('settlementTableBody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px; color:var(--text-muted);">暂无结算数据</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map((s, idx) => {
+                let statusClass = '';
+                if (s.status === 'pending') statusClass = 'warning';
+                else if (s.status === 'processing') statusClass = 'info';
+                else if (s.status === 'settled') statusClass = 'success';
+                else if (s.status === 'failed') statusClass = 'danger';
+
+                let payIcon = '';
+                if (s.payMethod === 'wechat') payIcon = 'fa-weixin';
+                else if (s.payMethod === 'alipay') payIcon = 'fa-alipay';
+                else if (s.payMethod === 'bank') payIcon = 'fa-building-columns';
+                else if (s.payMethod === 'cash') payIcon = 'fa-money-bill';
+
+                let canSettle = s.status === 'pending';
+
+                return `
+                    <tr>
+                        <td class="settle-id-cell">${s.id}</td>
+                        <td style="font-family:monospace; color:var(--text-secondary); font-size:13px;">${s.orderId}</td>
+                        <td>
+                            <div class="employer-cell">
+                                <span class="employer-logo" style="background:${s.employerColor};">${s.employerShort}</span>
+                                <span class="employer-name-text">${s.employer}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="worker-cell">
+                                <span class="worker-avatar" style="background:${s.workerColor};">${s.workerShort}</span>
+                                <span class="worker-name-text">${s.worker}</span>
+                            </div>
+                        </td>
+                        <td class="money-cell primary">¥${s.amount}</td>
+                        <td class="money-cell danger">-¥${s.fee}</td>
+                        <td class="money-cell success">¥${s.net}</td>
+                        <td><span class="status-badge ${statusClass}">${s.statusText}</span></td>
+                        <td style="font-size:13px; color:var(--text-secondary);">${s.settleTime}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-outline" onclick="showSettleDetail(${idx})">查看</button>
+                                ${canSettle ? '<button class="btn btn-primary" onclick="showSettleDetail(' + idx + ')">结算</button>' : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function applyFilter() {
+            currentSettleStatusFilter = document.getElementById('settleStatusFilter').value;
+            currentPayMethodFilter = document.getElementById('payMethodFilter').value;
+            const filtered = settlementData.filter(s => {
+                if (currentSettleStatusFilter && s.status !== currentSettleStatusFilter) return false;
+                if (currentPayMethodFilter && s.payMethod !== currentPayMethodFilter) return false;
+                return true;
+            });
+            renderTable(filtered);
+        }
+
+        function resetFilter() {
+            document.getElementById('settleStatusFilter').value = '';
+            document.getElementById('payMethodFilter').value = '';
+            currentSettleStatusFilter = '';
+            currentPayMethodFilter = '';
+            renderTable(settlementData);
+            document.querySelectorAll('.quick-filter').forEach(f => f.classList.remove('active'));
+            document.querySelectorAll('.quick-filter')[0].classList.add('active');
+        }
+
+        function quickFilter(el, status) {
+            document.querySelectorAll('.quick-filter').forEach(f => f.classList.remove('active'));
+            el.classList.add('active');
+            currentSettleStatusFilter = status;
+            document.getElementById('settleStatusFilter').value = status;
+            const filtered = settlementData.filter(s => {
+                if (status && s.status !== status) return false;
+                return true;
+            });
+            renderTable(filtered);
+        }
+
+        function showSettleDetail(index) {
+            const s = settlementData[index];
+            currentSettleIndex = index;
+
+            document.getElementById('summaryAmount').textContent = '¥' + s.amount;
+            document.getElementById('summaryFee').textContent = '-¥' + s.fee;
+            document.getElementById('summaryNet').textContent = '¥' + s.net;
+
+            document.getElementById('detailSettleId').textContent = s.id;
+            document.getElementById('detailOrderId').textContent = s.orderId;
+            document.getElementById('detailCycle').textContent = s.cycle;
+            document.getElementById('detailPayMethod').textContent = s.payMethodText;
+            document.getElementById('detailSettleTime').textContent = s.settleTime;
+            document.getElementById('detailPayRef').textContent = s.payRef;
+            document.getElementById('detailEmployer').textContent = s.employer;
+            document.getElementById('detailEmployerPhone').textContent = '已隐藏';
+            document.getElementById('detailWorker').textContent = s.worker;
+            document.getElementById('detailWorkerAccount').textContent = s.workerAccount;
+            document.getElementById('detailWorkerRealname').textContent = s.workerRealname;
+            document.getElementById('detailFeeAmount').textContent = '¥' + s.amount;
+            document.getElementById('detailPlatformFee').textContent = '-¥' + s.fee;
+            document.getElementById('detailNetAmount').textContent = '¥' + s.net;
+
+            const badge = document.getElementById('modalSettleStatus');
+            let statusClass = '';
+            if (s.status === 'pending') statusClass = 'warning';
+            else if (s.status === 'processing') statusClass = 'info';
+            else if (s.status === 'settled') statusClass = 'success';
+            else if (s.status === 'failed') statusClass = 'danger';
+            badge.className = 'status-badge ' + statusClass;
+            badge.textContent = s.statusText;
+
+            document.getElementById('settlementDetailModal').style.display = 'flex';
+        }
+
+        function closeSettleDetail() {
+            document.getElementById('settlementDetailModal').style.display = 'none';
+        }
+
+        function markSettled() {
+            closeSettleDetail();
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+        }
+
+        function sendReminder() {
+            const s = settlementData[currentSettleIndex];
+            document.getElementById('reminderContent').textContent = '将向雇主【' + s.employer + '】发送结算提醒消息';
+            closeSettleDetail();
+            document.getElementById('reminderModal').style.display = 'flex';
+        }
+
+        function closeReminderModal() {
+            document.getElementById('reminderModal').style.display = 'none';
+        }
+
+        function sendReminderConfirm() {
+            closeReminderModal();
+            alert('提醒消息已发送给雇主');
+        }
+
+        function confirmSettle() {
+            const s = settlementData[currentSettleIndex];
+            s.status = 'processing';
+            s.statusText = '结算中';
+            s.settleTime = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
+            closeConfirmModal();
+            alert('结算已提交，正在处理中...');
+            renderTable(getFilteredData());
+        }
+
+        function printSettle() {
+            alert('正在生成结算凭证，请稍候...');
+        }
+
+        function getFilteredData() {
+            const filtered = settlementData.filter(s => {
+                if (currentSettleStatusFilter && s.status !== currentSettleStatusFilter) return false;
+                if (currentPayMethodFilter && s.payMethod !== currentPayMethodFilter) return false;
+                return true;
+            });
+            return filtered;
+        }
+
+        function batchSettle() {
+            const pendingCount = settlementData.filter(s => s.status === 'pending').length;
+            if (pendingCount === 0) {
+                alert('暂无待结算订单');
+                return;
+            }
+            document.getElementById('batchReminderCount').textContent = pendingCount;
+            document.getElementById('batchConfirmCount').textContent = pendingCount;
+            document.getElementById('batchActionModal').style.display = 'flex';
+        }
+
+        function closeBatchActionModal() {
+            document.getElementById('batchActionModal').style.display = 'none';
+        }
+
+        function batchSendReminder() {
+            closeBatchActionModal();
+            alert('已向 ' + document.getElementById('batchReminderCount').textContent + ' 位雇主批量发送结算提醒');
+        }
+
+        function batchFinanceConfirm() {
+            const pendingCount = document.getElementById('batchConfirmCount').textContent;
+            closeBatchActionModal();
+            document.getElementById('batchConfirmModal').style.display = 'flex';
+            document.getElementById('batchConfirmSummary').textContent = '将批量确认 ' + pendingCount + ' 笔订单为已结算状态';
+        }
+
+        function closeBatchConfirmModal() {
+            document.getElementById('batchConfirmModal').style.display = 'none';
+        }
+
+        function batchConfirmSettle() {
+            const pendingItems = settlementData.filter(s => s.status === 'pending');
+            pendingItems.forEach(s => {
+                s.status = 'settled';
+                s.statusText = '已结算';
+                s.settleTime = new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-');
+            });
+            closeBatchConfirmModal();
+            alert('批量确认结算成功，共处理 ' + pendingItems.length + ' 笔订单');
+            renderTable(getFilteredData());
+        }
+
+        renderTable(settlementData);
+    </script>
+</body>
+</html>

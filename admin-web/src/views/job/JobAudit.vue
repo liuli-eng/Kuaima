@@ -5,41 +5,6 @@
       <p class="page-desc">审核雇主发布的招工信息，确保内容真实合规</p>
     </div>
 
-    <div class="stat-cards">
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">待审核</span>
-          <div class="stat-card-icon yellow"><i class="fas fa-clock"></i></div>
-        </div>
-        <div class="stat-card-value">15</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>请及时处理</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">已通过</span>
-          <div class="stat-card-icon green"><i class="fas fa-check"></i></div>
-        </div>
-        <div class="stat-card-value">128</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>本月审核</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">已拒绝</span>
-          <div class="stat-card-icon"><i class="fas fa-times"></i></div>
-        </div>
-        <div class="stat-card-value">8</div>
-        <div class="stat-card-change down"><i class="fas fa-arrow-down"></i><span>本月拒绝</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">本月审核</span>
-          <div class="stat-card-icon blue"><i class="fas fa-file-alt"></i></div>
-        </div>
-        <div class="stat-card-value">151</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>较上月 +23</span></div>
-      </div>
-    </div>
-
     <!-- 审核列表 -->
     <div class="card">
       <div class="filter-bar">
@@ -171,14 +136,6 @@ const currentItem = ref(null)
 
 const auditData = ref([])
 
-// mock 数据（带状态映射，用于 fallback）
-const fallbackAuditData = [
-  { id: 'JB009', type: '电子厂操作工', employer: '某新注册企业', price: '150/天', count: 10, location: '深圳光明区', time: '2024-03-15 11:30', status: '待审核', statusClass: 'warning', risk: true, risk2: false },
-  { id: 'JB010', type: '快递分拣员', employer: '某快递公司', price: '20/小时', count: 20, location: '深圳宝安区', time: '2024-03-15 10:15', status: '待审核', statusClass: 'warning', risk: false, risk2: true },
-  { id: 'JB011', type: '餐厅服务员', employer: '某餐饮连锁', price: '180/天', count: 8, location: '深圳福田区', time: '2024-03-15 09:00', status: '已通过', statusClass: 'success', risk: false, risk2: false },
-  { id: 'JB012', type: '仓库理货员', employer: '某物流公司', price: '300/天', count: 15, location: '深圳龙岗区', time: '2024-03-14 16:00', status: '已拒绝', statusClass: 'danger', risk: true, risk2: false }
-]
-
 const statusClassMap = {
   '待审核': 'warning',
   '已通过': 'success',
@@ -220,8 +177,9 @@ const loadAuditData = async () => {
     const list = Array.isArray(d) ? d : (d?.content || d?.list || [])
     auditData.value = list.map(normalizeAudit)
   } catch (err) {
-    console.warn('[JobAudit] API 加载失败，使用 mock 数据:', err.message)
-    auditData.value = fallbackAuditData.map(normalizeAudit)
+    console.warn('[JobAudit] API 加载失败:', err.message)
+    auditData.value = []
+    ElMessage.error('加载审核数据失败')
   }
 }
 
@@ -260,12 +218,8 @@ const confirmApprove = async () => {
     ElMessage.success('审核通过')
     loadAuditData()
   } catch (err) {
-    // 失败时在 fallback mock 中模拟通过
-    detailVisible.value = false
     console.warn('[JobAudit] 审核通过 API 调用失败:', err.message)
-    ElMessage.success('审核通过（本地模拟）')
-    currentItem.value.status = '已通过'
-    currentItem.value.statusClass = 'success'
+    ElMessage.error('审核操作失败')
   }
 }
 
@@ -300,11 +254,8 @@ const confirmRejectSubmit = async () => {
     ElMessage.success('已拒绝')
     loadAuditData()
   } catch (err) {
-    rejectVisible.value = false
     console.warn('[JobAudit] 审核拒绝 API 调用失败:', err.message)
-    ElMessage.success('已拒绝（本地模拟）')
-    currentItem.value.status = '已拒绝'
-    currentItem.value.statusClass = 'danger'
+    ElMessage.error('拒绝操作失败')
   }
 }
 

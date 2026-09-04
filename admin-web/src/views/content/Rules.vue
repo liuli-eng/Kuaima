@@ -21,7 +21,6 @@
         </el-select>
         <el-button type="primary" @click="loadData">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>
-        <el-button type="primary" style="margin-left: auto;" @click="handleCreate"><i class="fas fa-plus" style="margin-right:4px;"></i>新增规则</el-button>
       </div>
 
       <el-table :data="filteredRules" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
@@ -55,13 +54,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listRules, createRules, updateRules, deleteRules } from '@/api/content'
-import { rulesData as fallbackRules } from '@/mock'
+import { listRules, updateRules, deleteRules } from '@/api/content'
 
-const rules = ref([...fallbackRules])
+const rules = ref([])
 const categoryFilter = ref('')
 const statusFilter = ref('')
-const apiAvailable = ref(false)
 
 const filteredRules = computed(() => {
   return rules.value.filter(r => {
@@ -74,52 +71,16 @@ const filteredRules = computed(() => {
 const loadData = async () => {
   try {
     const res = await listRules()
-    if (res && Array.isArray(res)) {
-      rules.value = res
-    } else if (res && Array.isArray(res.data)) {
-      rules.value = res.data
-    }
-    apiAvailable.value = true
+    rules.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
   } catch (e) {
-    console.warn('[API] listRules 后端暂未接入，使用 mock 数据')
-    rules.value = [...fallbackRules]
+    console.warn('[Rules] 加载失败:', e)
+    rules.value = []
   }
 }
 
 const resetFilters = () => {
   categoryFilter.value = ''
   statusFilter.value = ''
-}
-
-const handleCreate = () => {
-  ElMessageBox.prompt('请输入规则标题', '新增规则', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消'
-  }).then(async ({ value }) => {
-    if (!value) return
-    const newRule = {
-      title: value,
-      category: categoryFilter.value || '交易规则',
-      version: 'v1.0',
-      status: '草稿',
-      statusClass: 'default',
-      effectiveTime: '-'
-    }
-    try {
-      if (apiAvailable.value) {
-        const res = await createRules(newRule)
-        newRule.id = res?.id || Date.now()
-      } else {
-        newRule.id = Date.now()
-      }
-      rules.value.unshift(newRule)
-      ElMessage.success('新增成功')
-    } catch (e) {
-      console.warn('[API] createRules 后端暂未接入')
-      newRule.id = Date.now()
-      rules.value.unshift(newRule)
-    }
-  }).catch(() => {})
 }
 
 const handleEdit = (rule) => {
@@ -129,16 +90,11 @@ const handleEdit = (rule) => {
     inputValue: rule.title
   }).then(async ({ value }) => {
     try {
-      if (apiAvailable.value) {
-        await updateRules(rule.id, { ...rule, title: value })
-      } else {
-        console.warn('[API] updateRules 后端暂未接入')
-      }
-      rule.title = value
+      await updateRules(rule.id, { ...rule, title: value })
       ElMessage.success('修改成功')
+      await loadData()
     } catch (e) {
-      console.warn('[API] updateRules 请求失败')
-      rule.title = value
+      ElMessage.error('修改失败')
     }
   }).catch(() => {})
 }
@@ -146,53 +102,33 @@ const handleEdit = (rule) => {
 const handlePublish = async (rule) => {
   const now = new Date().toISOString().slice(0, 10)
   try {
-    if (apiAvailable.value) {
-      await updateRules(rule.id, { ...rule, status: '已发布', statusClass: 'success', effectiveTime: now })
-    } else {
-      console.warn('[API] updateRules 后端暂未接入')
-    }
-    rule.status = '已发布'
-    rule.statusClass = 'success'
-    rule.effectiveTime = now
+    await updateRules(rule.id, { ...rule, status: '已发布', statusClass: 'success', effectiveTime: now })
     ElMessage.success('已发布')
+    await loadData()
   } catch (e) {
-    console.warn('[API] updateRules 请求失败')
-    rule.status = '已发布'
-    rule.statusClass = 'success'
+    ElMessage.error('发布失败')
   }
 }
 
 const handleArchive = async (rule) => {
   try {
-    if (apiAvailable.value) {
-      await updateRules(rule.id, { ...rule, status: '已归档', statusClass: 'warning' })
-    } else {
-      console.warn('[API] updateRules 后端暂未接入')
-    }
-    rule.status = '已归档'
-    rule.statusClass = 'warning'
+    await updateRules(rule.id, { ...rule, status: '已归档', statusClass: 'warning' })
     ElMessage.success('已归档')
+    await loadData()
   } catch (e) {
-    console.warn('[API] updateRules 请求失败')
-    rule.status = '已归档'
-    rule.statusClass = 'warning'
+    ElMessage.error('归档失败')
   }
 }
 
 const handleDelete = async (rule) => {
   try {
     await ElMessageBox.confirm('确定删除该规则？', '提示', { type: 'warning' })
-    if (apiAvailable.value) {
-      await deleteRules(rule.id)
-    } else {
-      console.warn('[API] deleteRules 后端暂未接入')
-    }
-    rules.value = rules.value.filter(r => r.id !== rule.id)
+    await deleteRules(rule.id)
     ElMessage.success('删除成功')
+    await loadData()
   } catch (e) {
     if (e !== 'cancel') {
-      console.warn('[API] deleteRules 请求失败')
-      rules.value = rules.value.filter(r => r.id !== rule.id)
+      ElMessage.error('删除失败')
     }
   }
 }

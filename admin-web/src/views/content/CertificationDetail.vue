@@ -65,15 +65,13 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listCertifications, auditCertPass, auditCertReject } from '@/api/content'
-import { certificationData as fallbackCerts } from '@/mock'
 
 const router = useRouter()
 const route = useRoute()
-const apiAvailable = ref(false)
 
 const detail = reactive({
   applicant: '张建国',
@@ -96,31 +94,19 @@ const loadDetail = async () => {
       detail.type = found.type
       detail.applyTime = found.applyTime
     }
-    apiAvailable.value = true
   } catch (e) {
-    console.warn('[API] listCertifications 后端暂未接入，使用 mock 数据')
-    const found = fallbackCerts.find(c => String(c.id) === String(id))
-    if (found) {
-      detail.applicant = found.applicant
-      detail.type = found.type
-      detail.applyTime = found.applyTime
-    }
+    console.warn('[CertificationDetail] 加载失败:', e)
+    ElMessage.error('加载认证详情失败')
   }
 }
 
 const handleApprove = async () => {
   try {
-    if (apiAvailable.value) {
-      await auditCertPass(route.params.id)
-    } else {
-      console.warn('[API] auditCertPass 后端暂未接入')
-    }
+    await auditCertPass(route.params.id)
     ElMessage.success('审核通过')
     router.back()
   } catch (e) {
-    console.warn('[API] auditCertPass 请求失败')
-    ElMessage.success('审核通过（mock 模式）')
-    router.back()
+    ElMessage.error('操作失败')
   }
 }
 
@@ -131,18 +117,12 @@ const handleReject = async () => {
       cancelButtonText: '取消',
       inputPlaceholder: '请输入拒绝原因'
     }).catch(() => ({ value: '' }))
-    if (apiAvailable.value) {
-      await auditCertReject(route.params.id, reason || '不符合认证要求')
-    } else {
-      console.warn('[API] auditCertReject 后端暂未接入')
-    }
+    await auditCertReject(route.params.id, reason || '不符合认证要求')
     ElMessage.success('已拒绝')
     router.back()
   } catch (e) {
     if (e !== 'cancel') {
-      console.warn('[API] auditCertReject 请求失败')
-      ElMessage.success('已拒绝（mock 模式）')
-      router.back()
+      ElMessage.error('操作失败')
     }
   }
 }

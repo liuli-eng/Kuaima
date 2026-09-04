@@ -11,32 +11,32 @@
           <span class="stat-card-title">总雇主</span>
           <div class="stat-card-icon blue"><i class="fas fa-building"></i></div>
         </div>
-        <div class="stat-card-value">3,218</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>本月新增 +32</span></div>
+        <div class="stat-card-value">{{ stats.total }}</div>
+        <div class="stat-card-change"><span class="text-muted">全部雇主</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-title">正常</span>
+          <div class="stat-card-icon green"><i class="fas fa-check-circle"></i></div>
+        </div>
+        <div class="stat-card-value">{{ stats.normal }}</div>
+        <div class="stat-card-change"><span class="text-muted">正常状态</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-title">已冻结</span>
+          <div class="stat-card-icon yellow"><i class="fas fa-lock"></i></div>
+        </div>
+        <div class="stat-card-value">{{ stats.frozen }}</div>
+        <div class="stat-card-change"><span class="text-muted">冻结状态</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">已认证</span>
-          <div class="stat-card-icon green"><i class="fas fa-certificate"></i></div>
+          <div class="stat-card-icon"><i class="fas fa-certificate"></i></div>
         </div>
-        <div class="stat-card-value">2,986</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>认证率 92.8%</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">本月新增</span>
-          <div class="stat-card-icon"><i class="fas fa-user-plus"></i></div>
-        </div>
-        <div class="stat-card-value">32</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>较上月 +8.3%</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">待审核</span>
-          <div class="stat-card-icon yellow"><i class="fas fa-clock"></i></div>
-        </div>
-        <div class="stat-card-value">12</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>需及时处理</span></div>
+        <div class="stat-card-value">{{ stats.certified }}</div>
+        <div class="stat-card-change"><span class="text-muted">企业认证</span></div>
       </div>
     </div>
 
@@ -132,6 +132,30 @@ const pageSize = ref(10)
 const total = ref(0)
 const tableData = ref([])
 
+// 统计数据
+const stats = ref({ total: '-', normal: '-', frozen: '-', certified: '-' })
+
+// 加载统计
+const loadStats = async () => {
+  try {
+    const [allRes, normalRes, frozenRes] = await Promise.all([
+      listBosses({ page: 0, size: 1 }),
+      listBosses({ status: '正常', page: 0, size: 1 }),
+      listBosses({ status: '冻结', page: 0, size: 1 })
+    ])
+    stats.value.total = allRes.total ?? 0
+    stats.value.normal = normalRes.total ?? 0
+    stats.value.frozen = frozenRes.total ?? 0
+    // 已认证：加载全量数据客户端过滤
+    const allDataRes = await listBosses({ page: 0, size: 1000 })
+    const d = allDataRes.data
+    const list = Array.isArray(d) ? d : (d?.content || [])
+    stats.value.certified = list.filter(u => u.certStatus === 2 || u.certStatus === '已认证').length
+  } catch (e) {
+    console.warn('[Bosses] 加载统计失败:', e)
+  }
+}
+
 // 后端 Boss 真实字段（继承 Worker）+ companyName, contact, contactPhone, industry
 const normalizeBoss = (item) => {
   return {
@@ -199,6 +223,7 @@ const handleFreeze = async (row) => {
     await freezeUser(row.id)
     ElMessage.success('冻结成功')
     loadData()
+    loadStats()
   } catch (e) {
     if (e !== 'cancel') console.warn('[Bosses] 冻结失败:', e)
   }
@@ -209,6 +234,7 @@ const handleUnfreeze = async (row) => {
     await unfreezeUser(row.id)
     ElMessage.success('解冻成功')
     loadData()
+    loadStats()
   } catch (e) {
     if (e !== 'cancel') console.warn('[Bosses] 解冻失败:', e)
   }
@@ -216,6 +242,7 @@ const handleUnfreeze = async (row) => {
 
 onMounted(() => {
   loadData()
+  loadStats()
 })
 </script>
 

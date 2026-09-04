@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 老板管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .stat-card-icon.red {
+            background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+            color: var(--danger);
+        }
+        .avatar-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .avatar-cell .boss-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .avatar-cell .boss-name {
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .avatar-cell .boss-id {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .mini-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #FF8C42 0%, #FF6B35 100%);
+            flex-shrink: 0;
+        }
+        .industry-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .industry-elec { background: #EFF6FF; color: #2563EB; }
+        .industry-logistics { background: #FFFBEB; color: #F59E0B; }
+        .industry-catering { background: #FEF2F2; color: #EF4444; }
+        .industry-warehouse { background: #ECFDF5; color: #10B981; }
+        .industry-manufacture { background: #F3F4F6; color: #6B7280; }
+        .industry-auto { background: #F0F9FF; color: #0EA5E9; }
+        .industry-service { background: #FAF5FF; color: #8B5CF6; }
+        .industry-agriculture { background: #F0FDF4; color: #22C55E; }
+
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+        .action-btns .btn {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .company-name {
+            font-size: 13px;
+            color: var(--text-secondary);
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .contact-name {
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .contact-phone {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .job-count {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .auth-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .auth-badge .icon {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #fff;
+        }
+        .auth-badge.verified .icon { background: var(--success); }
+        .auth-badge.pending .icon { background: var(--warning); }
+        .auth-badge.unverified .icon { background: var(--text-muted); }
+
+        .detail-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .detail-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .detail-info-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .detail-info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-avatar-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, #FF8C42 0%, #FF6B35 100%);
+        }
+        .detail-basic-info h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .detail-basic-info p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .certificate-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .certificate-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .cert-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cert-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cert-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .cert-time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">老板管理</h1>
+                <p class="page-desc">管理雇主信息、企业认证、经营数据</p>
+            </div>
+
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">总雇主</span>
+                        <div class="stat-card-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">3,218</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +8.3%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">已认证</span>
+                        <div class="stat-card-icon green">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">2,856</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>认证率 88.8%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">本月新增</span>
+                        <div class="stat-card-icon blue">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">186</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +15.2%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">待审核</span>
+                        <div class="stat-card-icon yellow">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">45</div>
+                    <div class="stat-card-change down">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>待审核中</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="filter-bar">
+                    <div class="filter-item">
+                        <span>关键词</span>
+                        <div class="search-box" style="width:220px;">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="企业名称/联系人/ID" style="width:220px; padding:7px 12px 7px 36px;">
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <span>认证状态</span>
+                        <select>
+                            <option>全部</option>
+                            <option>已认证</option>
+                            <option>待审核</option>
+                            <option>未认证</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>企业类型</span>
+                        <select>
+                            <option>全部</option>
+                            <option>电子厂</option>
+                            <option>物流</option>
+                            <option>餐饮</option>
+                            <option>仓储</option>
+                            <option>制造业</option>
+                            <option>汽车</option>
+                            <option>服务业</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary btn-sm"><i class="fas fa-search"></i> 查询</button>
+                    <button class="btn btn-outline btn-sm"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <div style="flex:1;"></div>
+                    <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出数据</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>雇主ID</th>
+                                <th>头像+名称</th>
+                                <th>企业名称</th>
+                                <th>行业类型</th>
+                                <th>联系人</th>
+                                <th>手机号</th>
+                                <th>招工数</th>
+                                <th>认证状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0020156</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#3B82F6,#2563EB);">富</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">富士康科技</span>
+                                            <span class="boss-id">ID: B0020156</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">深圳富士康科技集团</td>
+                                <td><span class="industry-tag industry-elec">电子厂</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">王经理</span>
+                                        <span class="contact-phone">人事主管</span>
+                                    </div>
+                                </td>
+                                <td>138****5678</td>
+                                <td><span class="job-count">1,256</span></td>
+                                <td><span class="status-badge success"><i class="fas fa-check-circle"></i> 已认证</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(0)">查看</button>
+                                        <button class="btn btn-secondary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0020312</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#F59E0B,#D97706);">顺</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">顺丰速运</span>
+                                            <span class="boss-id">ID: B0020312</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">顺丰速运有限公司</td>
+                                <td><span class="industry-tag industry-logistics">物流</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">李主管</span>
+                                        <span class="contact-phone">调度经理</span>
+                                    </div>
+                                </td>
+                                <td>139****3456</td>
+                                <td><span class="job-count">892</span></td>
+                                <td><span class="status-badge success"><i class="fas fa-check-circle"></i> 已认证</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(1)">查看</button>
+                                        <button class="btn btn-secondary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0020445</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#EC4899,#BE185D);">肯</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">肯德基餐饮</span>
+                                            <span class="boss-id">ID: B0020445</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">肯德基餐饮管理有限公司</td>
+                                <td><span class="industry-tag industry-catering">餐饮</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">张店长</span>
+                                        <span class="contact-phone">运营经理</span>
+                                    </div>
+                                </td>
+                                <td>136****7890</td>
+                                <td><span class="job-count">568</span></td>
+                                <td><span class="status-badge warning"><i class="fas fa-clock"></i> 待审核</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(2)">查看</button>
+                                        <button class="btn btn-primary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0020589</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#10B981,#059669);">京</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">京东物流</span>
+                                            <span class="boss-id">ID: B0020589</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">京东物流仓储有限公司</td>
+                                <td><span class="industry-tag industry-warehouse">仓储</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">陈主任</span>
+                                        <span class="contact-phone">仓储主管</span>
+                                    </div>
+                                </td>
+                                <td>137****2345</td>
+                                <td><span class="job-count">734</span></td>
+                                <td><span class="status-badge success"><i class="fas fa-check-circle"></i> 已认证</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(3)">查看</button>
+                                        <button class="btn btn-secondary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0020678</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#F97316,#EA580C);">比</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">比亚迪</span>
+                                            <span class="boss-id">ID: B0020678</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">比亚迪汽车工业有限公司</td>
+                                <td><span class="industry-tag industry-auto">汽车</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">刘总监</span>
+                                        <span class="contact-phone">人事总监</span>
+                                    </div>
+                                </td>
+                                <td>135****6789</td>
+                                <td><span class="job-count">1,023</span></td>
+                                <td><span class="status-badge success"><i class="fas fa-check-circle"></i> 已认证</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(4)">查看</button>
+                                        <button class="btn btn-secondary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0020790</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#64748B,#475569);">美</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">麦当劳</span>
+                                            <span class="boss-id">ID: B0020790</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">麦当劳食品有限公司</td>
+                                <td><span class="industry-tag industry-catering">餐饮</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">赵经理</span>
+                                        <span class="contact-phone">区域经理</span>
+                                    </div>
+                                </td>
+                                <td>188****1234</td>
+                                <td><span class="job-count">412</span></td>
+                                <td><span class="status-badge warning"><i class="fas fa-clock"></i> 待审核</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(5)">查看</button>
+                                        <button class="btn btn-primary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0020845</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#06B6D4,#0891B2);">格</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">格力电器</span>
+                                            <span class="boss-id">ID: B0020845</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">格力电器制造有限公司</td>
+                                <td><span class="industry-tag industry-manufacture">制造业</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">周部长</span>
+                                        <span class="contact-phone">人事部长</span>
+                                    </div>
+                                </td>
+                                <td>131****5566</td>
+                                <td><span class="job-count">678</span></td>
+                                <td><span class="status-badge success"><i class="fas fa-check-circle"></i> 已认证</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(6)">查看</button>
+                                        <button class="btn btn-secondary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0020923</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#8B5CF6,#7C3AED);">58</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">58到家</span>
+                                            <span class="boss-id">ID: B0020923</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">58到家信息科技有限公司</td>
+                                <td><span class="industry-tag industry-service">服务业</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">吴总</span>
+                                        <span class="contact-phone">运营总监</span>
+                                    </div>
+                                </td>
+                                <td>132****7788</td>
+                                <td><span class="job-count">256</span></td>
+                                <td><span class="status-badge default">未认证</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(7)">查看</button>
+                                        <button class="btn btn-secondary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0021015</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#22C55E,#16A34A);">绿</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">绿源农业</span>
+                                            <span class="boss-id">ID: B0021015</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">绿源农业科技有限公司</td>
+                                <td><span class="industry-tag industry-agriculture">农业</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">孙老板</span>
+                                        <span class="contact-phone">创始人</span>
+                                    </div>
+                                </td>
+                                <td>158****4321</td>
+                                <td><span class="job-count">189</span></td>
+                                <td><span class="status-badge success"><i class="fas fa-check-circle"></i> 已认证</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(8)">查看</button>
+                                        <button class="btn btn-secondary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="font-family:monospace; color:var(--primary);">B0021099</td>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <span class="mini-avatar" style="background:linear-gradient(135deg,#EF4444,#DC2626);">京</span>
+                                        <div class="boss-info">
+                                            <span class="boss-name">京东方</span>
+                                            <span class="boss-id">ID: B0021099</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="company-name">京东方科技集团</td>
+                                <td><span class="industry-tag industry-elec">电子厂</span></td>
+                                <td>
+                                    <div class="contact-info">
+                                        <span class="contact-name">郑经理</span>
+                                        <span class="contact-phone">招聘经理</span>
+                                    </div>
+                                </td>
+                                <td>176****9900</td>
+                                <td><span class="job-count">542</span></td>
+                                <td><span class="status-badge success"><i class="fas fa-check-circle"></i> 已认证</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-outline" onclick="showBossDetail(9)">查看</button>
+                                        <button class="btn btn-secondary">审核</button>
+                                        <button class="btn btn-danger">冻结</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <div class="pagination-info">共 3,218 条记录，当前显示 1-10 条</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" disabled><i class="fas fa-chevron-left" style="font-size:10px;"></i></button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn">3</button>
+                        <button class="page-btn">4</button>
+                        <button class="page-btn">5</button>
+                        <span style="color:var(--text-muted); padding:0 4px;">...</span>
+                        <button class="page-btn">322</button>
+                        <button class="page-btn"><i class="fas fa-chevron-right" style="font-size:10px;"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 老板详情弹窗 -->
+            <div id="bossDetailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+                <div style="background:#fff; border-radius:16px; width:90%; max-width:680px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+                    <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                        <span style="font-size:18px; font-weight:600;">雇主详情</span>
+                        <div class="modal-close" onclick="closeBossDetail()" style="cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted);">
+                            <i class="fas fa-times"></i>
+                        </div>
+                    </div>
+                    <div style="padding:24px; overflow-y:auto; flex:1;">
+                        <div class="detail-avatar-section">
+                            <div class="detail-avatar" id="detailAvatar">富</div>
+                            <div class="detail-basic-info">
+                                <h3 id="detailName">富士康科技</h3>
+                                <p id="detailCompany">深圳富士康科技集团</p>
+                                <p><i class="fas fa-mobile-alt" style="color:var(--text-muted); width:16px;"></i> <span id="detailPhone">138****5678</span></p>
+                                <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                                    <span class="status-badge success" id="detailAuth">已认证</span>
+                                    <span class="industry-tag industry-elec" id="detailIndustry">电子厂</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="detail-section-title">企业信息</div>
+                        <div class="detail-info-grid" style="margin-bottom:20px;">
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">雇主ID</span>
+                                <span class="detail-info-value" id="detailId">B0020156</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">联系人</span>
+                                <span class="detail-info-value">王经理</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">联系电话</span>
+                                <span class="detail-info-value">138****5678</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">注册时间</span>
+                                <span class="detail-info-value">2024-01-15</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">所在地区</span>
+                                <span class="detail-info-value">深圳市龙华区</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">企业规模</span>
+                                <span class="detail-info-value">10000人以上</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section-title">经营数据</div>
+                        <div class="detail-info-grid" style="margin-bottom:20px;">
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">累计招工数</span>
+                                <span class="detail-info-value">1,256</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">进行中订单</span>
+                                <span class="detail-info-value">28</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">累计交易额</span>
+                                <span class="detail-info-value" style="color:var(--primary);">¥2,568,420</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="detail-info-label">投诉次数</span>
+                                <span class="detail-info-value">2</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section-title">认证资质</div>
+                        <div class="certificate-list">
+                            <div class="certificate-item">
+                                <div class="cert-info">
+                                    <div class="cert-icon"><i class="fas fa-file-alt"></i></div>
+                                    <div>
+                                        <div class="cert-name">营业执照</div>
+                                        <div class="cert-time">认证时间: 2024-01-15</div>
+                                    </div>
+                                </div>
+                                <span class="status-badge success">已通过</span>
+                            </div>
+                            <div class="certificate-item">
+                                <div class="cert-info">
+                                    <div class="cert-icon"><i class="fas fa-id-card"></i></div>
+                                    <div>
+                                        <div class="cert-name">法人身份证</div>
+                                        <div class="cert-time">认证时间: 2024-01-15</div>
+                                    </div>
+                                </div>
+                                <span class="status-badge success">已通过</span>
+                            </div>
+                            <div class="certificate-item">
+                                <div class="cert-info">
+                                    <div class="cert-icon"><i class="fas fa-building"></i></div>
+                                    <div>
+                                        <div class="cert-name">经营场所证明</div>
+                                        <div class="cert-time">认证时间: 2024-01-18</div>
+                                    </div>
+                                </div>
+                                <span class="status-badge success">已通过</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+                        <button class="btn btn-outline" onclick="closeBossDetail()">关闭</button>
+                        <button class="btn btn-secondary"><i class="fas fa-edit"></i> 编辑信息</button>
+                        <button class="btn btn-danger"><i class="fas fa-ban"></i> 冻结账户</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const bossData = [
+            { name: '富士康科技', fullName: '深圳富士康科技集团', avatarColor: '#2563EB', id: 'B0020156', phone: '138****5678', auth: '已认证', industry: '电子厂' },
+            { name: '顺丰速运', fullName: '顺丰速运有限公司', avatarColor: '#D97706', id: 'B0020312', phone: '139****3456', auth: '已认证', industry: '物流' },
+            { name: '肯德基餐饮', fullName: '肯德基餐饮管理有限公司', avatarColor: '#BE185D', id: 'B0020445', phone: '136****7890', auth: '待审核', industry: '餐饮' },
+            { name: '京东物流', fullName: '京东物流仓储有限公司', avatarColor: '#059669', id: 'B0020589', phone: '137****2345', auth: '已认证', industry: '仓储' },
+            { name: '比亚迪', fullName: '比亚迪汽车工业有限公司', avatarColor: '#EA580C', id: 'B0020678', phone: '135****6789', auth: '已认证', industry: '汽车' },
+            { name: '麦当劳', fullName: '麦当劳食品有限公司', avatarColor: '#475569', id: 'B0020790', phone: '188****1234', auth: '待审核', industry: '餐饮' },
+            { name: '格力电器', fullName: '格力电器制造有限公司', avatarColor: '#0891B2', id: 'B0020845', phone: '131****5566', auth: '已认证', industry: '制造业' },
+            { name: '58到家', fullName: '58到家信息科技有限公司', avatarColor: '#7C3AED', id: 'B0020923', phone: '132****7788', auth: '未认证', industry: '服务业' },
+            { name: '绿源农业', fullName: '绿源农业科技有限公司', avatarColor: '#16A34A', id: 'B0021015', phone: '158****4321', auth: '已认证', industry: '农业' },
+            { name: '京东方', fullName: '京东方科技集团', avatarColor: '#DC2626', id: 'B0021099', phone: '176****9900', auth: '已认证', industry: '电子厂' }
+        ];
+
+        const industryClassMap = {
+            '电子厂': 'industry-elec',
+            '物流': 'industry-logistics',
+            '餐饮': 'industry-catering',
+            '仓储': 'industry-warehouse',
+            '制造业': 'industry-manufacture',
+            '汽车': 'industry-auto',
+            '服务业': 'industry-service',
+            '农业': 'industry-agriculture'
+        };
+
+        function showBossDetail(index) {
+            const b = bossData[index];
+            const modal = document.getElementById('bossDetailModal');
+            document.getElementById('detailName').textContent = b.name;
+            document.getElementById('detailCompany').textContent = b.fullName;
+            document.getElementById('detailAvatar').textContent = b.name.charAt(0);
+            document.getElementById('detailAvatar').style.background = `linear-gradient(135deg, ${b.avatarColor}, ${b.avatarColor}cc)`;
+            document.getElementById('detailPhone').textContent = b.phone;
+            document.getElementById('detailId').textContent = b.id;
+            document.getElementById('detailIndustry').textContent = b.industry;
+            const indEl = document.getElementById('detailIndustry');
+            indEl.className = 'industry-tag ' + (industryClassMap[b.industry] || 'industry-service');
+
+            const authEl = document.getElementById('detailAuth');
+            authEl.textContent = b.auth;
+            authEl.className = 'status-badge ' + (b.auth === '已认证' ? 'success' : b.auth === '待审核' ? 'warning' : 'default');
+            modal.style.display = 'flex';
+        }
+
+        function closeBossDetail() {
+            document.getElementById('bossDetailModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

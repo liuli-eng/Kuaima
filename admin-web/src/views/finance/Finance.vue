@@ -52,9 +52,15 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
-import { financeStats, revenueTrendData } from '@/mock'
 
-console.warn('[Finance] 财务报表页面暂无后端 API 覆盖，当前使用 mock 数据。待后端提供 /admin/finance/stats 或 /admin/finance/trend 接口后可接入。')
+const financeStats = ref([
+  { title: '累计营收', value: '-', change: '-', up: true },
+  { title: '平台收入', value: '-', change: '-', up: true },
+  { title: '零工收入', value: '-', change: '-', up: true },
+  { title: '雇主支出', value: '-', change: '-', up: true }
+])
+
+const revenueTrendData = ref({ labels: [], platform: [], total: [] })
 
 const timeRange = ref('month')
 const revenueChart = ref(null)
@@ -72,14 +78,14 @@ const initRevenueChart = () => {
     tooltip: { trigger: 'axis' },
     legend: { data: ['平台收入', '总营收'] },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    xAxis: { type: 'category', boundaryGap: false, data: revenueTrendData.labels },
+    xAxis: { type: 'category', boundaryGap: false, data: revenueTrendData.value.labels },
     yAxis: { type: 'value', name: '万元' },
     series: [
       {
         name: '平台收入',
         type: 'line',
         smooth: true,
-        data: revenueTrendData.platform,
+        data: revenueTrendData.value.platform,
         itemStyle: { color: '#FF6B35' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -92,7 +98,7 @@ const initRevenueChart = () => {
         name: '总营收',
         type: 'line',
         smooth: true,
-        data: revenueTrendData.total,
+        data: revenueTrendData.value.total,
         itemStyle: { color: '#2563EB' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -115,12 +121,7 @@ const initPieChart = () => {
       type: 'pie',
       radius: ['40%', '70%'],
       center: ['35%', '50%'],
-      data: [
-        { value: 450, name: '平台服务费', itemStyle: { color: '#FF6B35' } },
-        { value: 50, name: '增值服务', itemStyle: { color: '#2563EB' } },
-        { value: 30, name: '保险佣金', itemStyle: { color: '#10B981' } },
-        { value: 20, name: '其他', itemStyle: { color: '#F59E0B' } }
-      ]
+      data: []
     }]
   })
 }
@@ -132,19 +133,19 @@ const initBarChart = () => {
     tooltip: { trigger: 'axis' },
     legend: { data: ['2023年', '2024年'] },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    xAxis: { type: 'category', data: revenueTrendData.labels },
+    xAxis: { type: 'category', data: revenueTrendData.value.labels },
     yAxis: { type: 'value', name: '万元' },
     series: [
       {
         name: '2023年',
         type: 'bar',
-        data: [280, 320, 380, 420, 520, 580, 620, 680, 750, 800, 860, 950],
+        data: [],
         itemStyle: { color: '#E5E7EB', borderRadius: [4, 4, 0, 0] }
       },
       {
         name: '2024年',
         type: 'bar',
-        data: revenueTrendData.total,
+        data: revenueTrendData.value.total,
         itemStyle: { color: '#FF6B35', borderRadius: [4, 4, 0, 0] }
       }
     ]

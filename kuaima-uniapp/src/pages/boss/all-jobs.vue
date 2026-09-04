@@ -1,20 +1,10 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <view class="page-bg">
       <!-- 头部 -->
-      <view class="modal-header">
-        <view class="modal-close" @click="goBack">
-          <text class="close-icon" style="font-size:44rpx;color:#999;">✕</text>
+      <view class="modal-header" :style="{ paddingTop: `${statusBarHeight + 20}px` }">
+        <view class="modal-close" :style="{ top: `${statusBarHeight + 20}px` }" @click="goBack">
+          <text class="close-icon">×</text>
         </view>
         <text class="modal-title">更多工种</text>
         <text class="modal-desc">选对工种，免费推荐更多熟手</text>
@@ -33,7 +23,7 @@
         <view class="tab-pane" :class="{ active: currentTab === 'industry' }">
           <view class="industry-item" v-for="(item, index) in industries" :key="index" @click="selectIndustry(item)">
             <text>{{ item }}</text>
-            <text class="arrow-icon" style="font-size:24rpx;color:#ccc;">›</text>
+            <text class="arrow-icon">›</text>
           </view>
         </view>
 
@@ -42,7 +32,7 @@
           <view class="type-item" :class="{ selected: selectedTypes.includes(item) }" v-for="(item, index) in types" :key="index" @click="selectType(item)">
             <text>{{ item }}</text>
             <view class="check" v-if="selectedTypes.includes(item)">
-              <text class="check-icon" style="font-size:24rpx;color:#fff;">✓</text>
+              <text class="check-icon">✓</text>
             </view>
           </view>
         </view>
@@ -54,15 +44,17 @@
               <text class="job-name">{{ job.name }}</text>
               <text class="job-desc">{{ job.desc }}</text>
             </view>
-            <view class="checkbox"></view>
+            <view class="checkbox">
+              <text v-if="selectedJobs.includes(index)" class="checkbox-icon">✓</text>
+            </view>
           </view>
         </view>
       </scroll-view>
 
       <!-- 底部按钮 -->
-      <view class="bottom-bar">
-        <button class="btn-prev" @click="prevStep">上一步</button>
-        <button class="btn-next" :disabled="!canNext" @click="nextStep">下一步</button>
+      <view class="bottom-bar" :style="{ paddingBottom: `calc(12px + ${safeBottom}px)` }">
+        <button class="btn-prev" @click="prevStep">{{ prevLabel }}</button>
+        <button class="btn-next" :disabled="!canNext" @click="nextStep">{{ nextLabel }}</button>
       </view>
     </view>
   </view>
@@ -72,6 +64,8 @@
 export default {
   data() {
     return {
+      statusBarHeight: 0,
+      safeBottom: 0,
       currentTab: 'industry',
       selectedIndustry: '',
       selectedTypes: [],
@@ -105,6 +99,13 @@ export default {
       ]
     }
   },
+  onLoad() {
+    try {
+      const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
+      this.statusBarHeight = Number(info.statusBarHeight || 0)
+      this.safeBottom = Number(info.safeAreaInsets?.bottom || 0)
+    } catch (_) {}
+  },
   computed: {
     canNext() {
       if (this.currentTab === 'industry') {
@@ -114,6 +115,13 @@ export default {
       } else {
         return this.selectedJobs.length > 0
       }
+    },
+    prevLabel() {
+      return this.currentTab === 'industry' ? '取消' : '上一步'
+    },
+    nextLabel() {
+      if (this.currentTab !== 'job') return '下一步'
+      return this.selectedJobs.length ? `完成 (${this.selectedJobs.length})` : '完成'
     }
   },
   methods: {
@@ -134,6 +142,8 @@ export default {
       } else {
         this.selectedTypes.push(name)
       }
+      // 原型中选择企业类型后直接进入工种多选
+      this.currentTab = 'job'
     },
     toggleJob(index) {
       const idx = this.selectedJobs.indexOf(index)
@@ -165,7 +175,9 @@ export default {
           jobs: selectedJobNames
         }
         uni.$emit('jobsSelected', data)
-        uni.navigateBack()
+        uni.navigateTo({
+          url: `/pages/boss/publish-info?job=${encodeURIComponent(selectedJobNames.join('、'))}`
+        })
       }
     }
   }
@@ -182,30 +194,13 @@ export default {
   overflow: hidden;
 }
 
-.status-bar {
-  height: 94rpx;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 56rpx;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #333;
-  background: transparent;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
 .page-bg {
   background: #fff;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .modal-header {
@@ -223,6 +218,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.close-icon {
+  color: #999;
+  font-size: 44rpx;
+  font-weight: 300;
+  line-height: 1;
 }
 
 .modal-title {
@@ -272,8 +274,8 @@ export default {
 
 .tab-content {
   flex: 1;
-  overflow-y: auto;
-  padding: 0 32rpx 160rpx;
+  box-sizing: border-box;
+  padding: 0 32rpx 200rpx;
 }
 
 .tab-pane {
@@ -293,6 +295,21 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.industry-item:last-child,
+.type-item:last-child,
+.job-row:last-child {
+  border-bottom: none;
+}
+
+.industry-item:active {
+  color: #FF6B35;
+}
+
+.arrow-icon {
+  color: #ccc;
+  font-size: 24rpx;
 }
 
 .type-item {
@@ -318,6 +335,11 @@ export default {
   background: #FF6B35;
   align-items: center;
   justify-content: center;
+}
+
+.check-icon {
+  color: #fff;
+  font-size: 24rpx;
 }
 
 .job-row {
@@ -359,15 +381,14 @@ export default {
   background: #FF6B35;
 }
 
-.job-row.selected .checkbox::after {
-  content: '✓';
+.checkbox-icon {
   color: #fff;
   font-size: 24rpx;
 }
 
 .bottom-bar {
   position: absolute;
-  bottom: 60rpx;
+  bottom: 0;
   left: 0;
   right: 0;
   background: #fff;
@@ -401,5 +422,16 @@ export default {
 
 .btn-next:disabled {
   opacity: 0.5;
+}
+
+.btn-prev,
+.btn-next {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.btn-prev::after,
+.btn-next::after {
+  border: none;
 }
 </style>

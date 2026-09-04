@@ -20,7 +20,6 @@
         </el-select>
         <el-button type="primary" @click="loadData">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>
-        <el-button type="primary" style="margin-left: auto;" @click="handleCreate"><i class="fas fa-plus" style="margin-right:4px;"></i>新建公告</el-button>
       </div>
 
       <el-table :data="filteredNotices" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
@@ -58,14 +57,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listNotices, createNotice, updateNotice, deleteNotice } from '@/api/content'
-import { noticesData as fallbackNotices } from '@/mock'
+import { listNotices, updateNotice, deleteNotice } from '@/api/content'
 
-const notices = ref([...fallbackNotices])
+const notices = ref([])
 const searchKeyword = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('')
-const apiAvailable = ref(false)
 
 const filteredNotices = computed(() => {
   return notices.value.filter(n => {
@@ -79,15 +76,10 @@ const filteredNotices = computed(() => {
 const loadData = async () => {
   try {
     const res = await listNotices()
-    if (res && Array.isArray(res)) {
-      notices.value = res
-    } else if (res && Array.isArray(res.data)) {
-      notices.value = res.data
-    }
-    apiAvailable.value = true
+    notices.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
   } catch (e) {
-    console.warn('[API] listNotices 后端暂未接入，使用 mock 数据')
-    notices.value = [...fallbackNotices]
+    console.warn('[Notices] 加载失败:', e)
+    notices.value = []
   }
 }
 
@@ -97,38 +89,6 @@ const resetFilters = () => {
   statusFilter.value = ''
 }
 
-const handleCreate = () => {
-  ElMessageBox.prompt('请输入公告标题', '新建公告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消'
-  }).then(async ({ value }) => {
-    if (!value) return
-    const newNotice = {
-      title: value,
-      type: '系统',
-      typeClass: 'info',
-      scope: '全平台',
-      status: '草稿',
-      statusClass: 'default',
-      publishTime: '-'
-    }
-    try {
-      if (apiAvailable.value) {
-        const res = await createNotice(newNotice)
-        newNotice.id = res?.id || Date.now()
-      } else {
-        newNotice.id = Date.now()
-      }
-      notices.value.unshift(newNotice)
-      ElMessage.success('新建成功')
-    } catch (e) {
-      console.warn('[API] createNotice 后端暂未接入')
-      newNotice.id = Date.now()
-      notices.value.unshift(newNotice)
-    }
-  }).catch(() => {})
-}
-
 const handleEdit = (notice) => {
   ElMessageBox.prompt('修改标题', '编辑公告', {
     confirmButtonText: '确定',
@@ -136,16 +96,11 @@ const handleEdit = (notice) => {
     inputValue: notice.title
   }).then(async ({ value }) => {
     try {
-      if (apiAvailable.value) {
-        await updateNotice(notice.id, { ...notice, title: value })
-      } else {
-        console.warn('[API] updateNotice 后端暂未接入')
-      }
-      notice.title = value
+      await updateNotice(notice.id, { ...notice, title: value })
       ElMessage.success('修改成功')
+      await loadData()
     } catch (e) {
-      console.warn('[API] updateNotice 请求失败')
-      notice.title = value
+      ElMessage.error('修改失败')
     }
   }).catch(() => {})
 }
@@ -153,53 +108,33 @@ const handleEdit = (notice) => {
 const handlePublish = async (notice) => {
   const now = new Date().toISOString().slice(0, 10)
   try {
-    if (apiAvailable.value) {
-      await updateNotice(notice.id, { ...notice, status: '已发布', statusClass: 'success', publishTime: now })
-    } else {
-      console.warn('[API] updateNotice 后端暂未接入')
-    }
-    notice.status = '已发布'
-    notice.statusClass = 'success'
-    notice.publishTime = now
+    await updateNotice(notice.id, { ...notice, status: '已发布', statusClass: 'success', publishTime: now })
     ElMessage.success('已发布')
+    await loadData()
   } catch (e) {
-    console.warn('[API] updateNotice 请求失败')
-    notice.status = '已发布'
-    notice.statusClass = 'success'
+    ElMessage.error('发布失败')
   }
 }
 
 const handleUnpublish = async (notice) => {
   try {
-    if (apiAvailable.value) {
-      await updateNotice(notice.id, { ...notice, status: '已下架', statusClass: 'warning' })
-    } else {
-      console.warn('[API] updateNotice 后端暂未接入')
-    }
-    notice.status = '已下架'
-    notice.statusClass = 'warning'
+    await updateNotice(notice.id, { ...notice, status: '已下架', statusClass: 'warning' })
     ElMessage.success('已下架')
+    await loadData()
   } catch (e) {
-    console.warn('[API] updateNotice 请求失败')
-    notice.status = '已下架'
-    notice.statusClass = 'warning'
+    ElMessage.error('下架失败')
   }
 }
 
 const handleDelete = async (notice) => {
   try {
     await ElMessageBox.confirm('确定删除该公告？', '提示', { type: 'warning' })
-    if (apiAvailable.value) {
-      await deleteNotice(notice.id)
-    } else {
-      console.warn('[API] deleteNotice 后端暂未接入')
-    }
-    notices.value = notices.value.filter(n => n.id !== notice.id)
+    await deleteNotice(notice.id)
     ElMessage.success('删除成功')
+    await loadData()
   } catch (e) {
     if (e !== 'cancel') {
-      console.warn('[API] deleteNotice 请求失败')
-      notices.value = notices.value.filter(n => n.id !== notice.id)
+      ElMessage.error('删除失败')
     }
   }
 }

@@ -1,38 +1,35 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <scroll-view scroll-y class="scroll-area">
       <!-- 头部 -->
-      <view class="header-bar">
+      <view
+        class="header-bar"
+        :style="{
+          paddingTop: `${statusBarHeight + 12}px`,
+          paddingRight: `${menuSafeRight}px`
+        }"
+      >
         <view class="title-row">
           <text class="page-title">消息</text>
-          <view class="nav-icons">
-            <view class="nav-icon-item">
-              <text>⋯</text>
-            </view>
-            <view class="nav-divider"></view>
-            <view class="nav-icon-item">
-              <text>●</text>
-            </view>
-          </view>
         </view>
       </view>
 
       <!-- 消息列表 -->
-      <view class="message-list card-shadow">
+      <view v-if="messages.length" class="message-list card-shadow">
+        <view v-for="message in messages" :key="message.id" class="message-item" @click="markMessageRead(message)">
+          <view class="message-icon icon-orange"><text class="message-icon-text">●</text></view>
+          <view class="message-content">
+            <text class="message-title">{{ message.title || '系统通知' }}</text>
+            <text class="message-desc">{{ message.content || '暂无消息内容' }}</text>
+          </view>
+          <view class="message-action"><text>›</text></view>
+        </view>
+      </view>
+      <view v-else class="message-list card-shadow">
         <!-- 企业认证提醒 -->
         <view class="message-item" @click="handleCertClick">
           <view class="message-icon icon-blue">
-            <text>🏢</text>
+            <text class="message-icon-text">▦</text>
             <view class="badge-dot"></view>
           </view>
           <view class="message-content">
@@ -47,7 +44,7 @@
         <!-- 系统通知 -->
         <view class="message-item" @click="navigateTo('system-notice')">
           <view class="message-icon icon-orange">
-            <text>🔔</text>
+            <text class="message-icon-text">●</text>
           </view>
           <view class="message-content">
             <text class="message-title">系统通知</text>
@@ -61,7 +58,7 @@
         <!-- 报名通知 -->
         <view class="message-item" @click="navigateTo('signup-notice')">
           <view class="message-icon icon-green">
-            <text>➕</text>
+            <text class="message-icon-text">＋</text>
             <view class="badge-dot"></view>
           </view>
           <view class="message-content">
@@ -76,7 +73,7 @@
         <!-- 结算消息 -->
         <view class="message-item" @click="navigateTo('settlement')">
           <view class="message-icon icon-purple">
-            <text>💵</text>
+            <text class="message-icon-text">¥</text>
           </view>
           <view class="message-content">
             <text class="message-title">结算消息</text>
@@ -105,19 +102,19 @@
     <!-- 底部TabBar -->
     <view class="tab-bar">
       <view class="tab-item" @click="switchTab('home')">
-        <view class="tab-icon-wrap">🏠</view>
+        <view class="tab-icon-wrap"><text class="tab-icon">⌂</text></view>
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" @click="switchTab('order')">
-        <view class="tab-icon-wrap">📋</view>
+        <view class="tab-icon-wrap"><text class="tab-icon">▣</text></view>
         <text class="tab-label">日结订单</text>
       </view>
       <view class="tab-item active" @click="switchTab('message')">
-        <view class="tab-icon-wrap">💬</view>
+        <view class="tab-icon-wrap"><text class="tab-icon">●</text></view>
         <text class="tab-label">消息</text>
       </view>
       <view class="tab-item" @click="switchTab('profile')">
-        <view class="tab-icon-wrap">😊</view>
+        <view class="tab-icon-wrap"><text class="tab-icon">☺</text></view>
         <text class="tab-label">我的</text>
       </view>
     </view>
@@ -125,11 +122,49 @@
 </template>
 
 <script>
+import { listMessages, unreadMessages, readMessage } from '@/api/backend'
+
 export default {
   data() {
-    return {}
+    return {
+      statusBarHeight: 0,
+      menuSafeRight: 16,
+      messages: [],
+      unreadCount: 0,
+      loading: false
+    }
+  },
+  onLoad() {
+    try {
+      const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
+      this.statusBarHeight = Number(info.statusBarHeight || 0)
+      // #ifdef MP-WEIXIN
+      const menu = uni.getMenuButtonBoundingClientRect()
+      if (menu?.left) this.menuSafeRight = Math.max(16, info.windowWidth - menu.left + 12)
+      // #endif
+    } catch (_) {}
+    this.loadMessages()
   },
   methods: {
+    async loadMessages() {
+      if (this.loading) return
+      this.loading = true
+      const userId = uni.getStorageSync('userId') || '2001'
+      try {
+        const [items, unread] = await Promise.all([listMessages(userId, { page: 0, size: 20 }), unreadMessages(userId)])
+        const rows = Array.isArray(items) ? items : items?.records || []
+        this.messages = rows
+        this.unreadCount = Number(unread || 0)
+      } catch (_) {
+        // 接口不可用时保留原型演示消息
+      } finally {
+        this.loading = false
+      }
+    },
+    async markMessageRead(message) {
+      if (!message?.id || message.readFlag === '已读' || message.readFlag === true) return
+      try { await readMessage(message.id, uni.getStorageSync('userId') || '2001') } catch (_) {}
+    },
     navigateTo(pageName) {
       const bossPages = [
         'boss-employer', 'boss-home', 'boss-message', 'boss-order', 'boss-profile', 
@@ -184,25 +219,11 @@ export default {
   overflow: hidden;
 }
 
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .scroll-area {
   flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
   background: #FFF8E6;
 }
@@ -210,6 +231,11 @@ export default {
 .header-bar {
   background: linear-gradient(180deg, #FFD59E 0%, #FFE4B5 100%);
   padding: 12px 16px 20px;
+}
+
+.message-icon-text {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .title-row {
@@ -310,18 +336,26 @@ export default {
 .message-content {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .message-title {
+  display: block;
   font-size: 16px;
   font-weight: 600;
   color: #333;
   margin-bottom: 4px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .message-desc {
+  display: block;
   font-size: 13px;
   color: #999;
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -377,11 +411,11 @@ export default {
 
 .tab-bar {
   flex-shrink: 0;
-  height: 83px;
+  min-height: 63px;
   background: rgba(255, 255, 255, 0.98);
   border-top: 0.5px solid rgba(0, 0, 0, 0.05);
   display: flex;
-  padding-bottom: 20px;
+  padding-bottom: env(safe-area-inset-bottom);
   z-index: 50;
 }
 
@@ -401,6 +435,19 @@ export default {
   justify-content: center;
   font-size: 20px;
   margin-bottom: 3px;
+}
+
+.tab-icon {
+  line-height: 1;
+}
+
+.tab-item.active .tab-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
 }
 
 .tab-label {

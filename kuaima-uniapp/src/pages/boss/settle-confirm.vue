@@ -1,19 +1,9 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <!-- 导航栏 -->
-    <view class="nav-bar">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${50 + statusBarHeight}px` }">
       <view class="nav-back" @click="goBack">
-        <text>←</text>
+        <text>‹</text>
       </view>
       <text class="nav-title">确认付款</text>
       <view class="nav-right"></view>
@@ -93,7 +83,7 @@
             @click="selectedAccount = type.value"
           >
             <view class="account-type-icon" :class="type.value">
-              <text class="iconfont" :class="type.icon" style="font-size:22px;"></text>
+              <text class="account-icon-text">{{ type.value === 'wechat' ? '微' : type.value === 'alipay' ? '支' : '¥' }}</text>
             </view>
             <view class="account-type-info">
               <text class="account-type-name">{{ type.name }}</text>
@@ -107,7 +97,7 @@
 
     <!-- 底部按钮 -->
     <view style="background:#fff;padding:12px 16px;border-top:1px solid #f0f0f0;">
-      <button class="confirm-btn" @click="submitSettle">确认付款</button>
+      <button class="confirm-btn" :disabled="!selectedAccount" @click="submitSettle">确认付款{{ selectedAccount ? ` ¥${finalAmount.toFixed(2)}` : '' }}</button>
     </view>
   </view>
 </template>
@@ -116,6 +106,7 @@
 export default {
   data() {
     return {
+      statusBarHeight: 0,
       amount: 0,
       count: 0,
       serviceFee: 0,
@@ -127,6 +118,13 @@ export default {
         { value: 'bank', name: '银行账号', desc: '使用银行卡付款', icon: 'icon-university' }
       ]
     }
+  },
+  onLoad(options = {}) {
+    try { const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync(); this.statusBarHeight = Number(info.statusBarHeight || 0) } catch (_) {}
+    this.amount = Number(options.amount || 0)
+    this.count = Number(options.count || 0)
+    this.serviceFee = this.amount * 0.1
+    this.finalAmount = this.amount + this.serviceFee
   },
   methods: {
     goBack() {
@@ -158,26 +156,8 @@ export default {
   overflow: hidden;
 }
 
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: #fff;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .nav-bar {
-  height: 50px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -191,6 +171,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 24px;
+  color: #333;
 }
 
 .nav-title {
@@ -205,6 +187,12 @@ export default {
   border-radius: 16px;
   padding: 20px;
   text-align: center;
+}
+
+.content-area {
+  min-height: 0;
+  height: 0;
+  box-sizing: border-box;
 }
 
 .amount-label {
@@ -343,7 +331,11 @@ export default {
   border-radius: 24px;
   font-size: 16px;
   font-weight: 600;
+  margin: 0;
+  line-height: 48px;
 }
+
+.confirm-btn::after { border: none; }
 
 .confirm-btn:disabled {
   opacity: 0.5;

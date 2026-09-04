@@ -16,7 +16,6 @@
         </el-select>
         <el-button type="primary" @click="loadData">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>
-        <el-button type="primary" style="margin-left: auto;" @click="handleCreate"><i class="fas fa-plus" style="margin-right:4px;"></i>新增管理员</el-button>
       </div>
 
       <el-table :data="filteredAdmins" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
@@ -51,13 +50,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listAdminUsers, createAdminUser, updateAdminUser, resetAdminPassword, deleteAdminUser } from '@/api/system'
-import { adminUserData as fallbackAdmins } from '@/mock'
+import { listAdminUsers, updateAdminUser, resetAdminPassword, deleteAdminUser } from '@/api/system'
 
-const admins = ref([...fallbackAdmins])
+const admins = ref([])
 const searchKeyword = ref('')
 const roleFilter = ref('')
-const apiAvailable = ref(false)
 
 const filteredAdmins = computed(() => {
   return admins.value.filter(a => {
@@ -80,54 +77,17 @@ const getRoleType = (role) => {
 const loadData = async () => {
   try {
     const res = await listAdminUsers({ page: 0, size: 100 })
-    const d = res?.data
-    admins.value = Array.isArray(res)
-      ? res
-      : Array.isArray(d)
-        ? d
-        : (d?.content || d?.list || [])
-    apiAvailable.value = true
+    const d = res.data
+    admins.value = Array.isArray(d) ? d : (d?.content || d?.list || [])
   } catch (e) {
-    console.warn('[API] listAdminUsers 后端暂未接入，使用 mock 数据')
-    admins.value = [...fallbackAdmins]
+    console.warn('[AdminUser] 加载失败:', e)
+    admins.value = []
   }
 }
 
 const resetFilters = () => {
   searchKeyword.value = ''
   roleFilter.value = ''
-}
-
-const handleCreate = () => {
-  ElMessageBox.prompt('请输入管理员账号', '新增管理员', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消'
-  }).then(async ({ value }) => {
-    if (!value) return
-    const newAdmin = {
-      account: value,
-      name: value,
-      role: '查看员',
-      dept: '待分配',
-      lastLogin: '-',
-      status: '启用',
-      statusClass: 'success'
-    }
-    try {
-      if (apiAvailable.value) {
-        const res = await createAdminUser(newAdmin)
-        newAdmin.id = res?.id || Date.now()
-      } else {
-        newAdmin.id = Date.now()
-      }
-      admins.value.unshift(newAdmin)
-      ElMessage.success('新增成功')
-    } catch (e) {
-      console.warn('[API] createAdminUser 后端暂未接入')
-      newAdmin.id = Date.now()
-      admins.value.unshift(newAdmin)
-    }
-  }).catch(() => {})
 }
 
 const handleEdit = (row) => {
@@ -137,16 +97,12 @@ const handleEdit = (row) => {
     inputValue: row.name
   }).then(async ({ value }) => {
     try {
-      if (apiAvailable.value) {
-        await updateAdminUser(row.id, { ...row, name: value })
-      } else {
-        console.warn('[API] updateAdminUser 后端暂未接入')
-      }
-      row.name = value
+      await updateAdminUser(row.id, { ...row, name: value })
       ElMessage.success('修改成功')
+      loadData()
     } catch (e) {
-      console.warn('[API] updateAdminUser 请求失败')
-      row.name = value
+      console.warn('[AdminUser] 修改失败:', e)
+      ElMessage.error('修改失败')
     }
   }).catch(() => {})
 }
@@ -155,18 +111,14 @@ const handleResetPwd = async (row) => {
   try {
     await ElMessageBox.confirm(`确定重置 ${row.name} 的密码为默认密码 admin123？`, '重置密码', { type: 'warning' })
     try {
-      if (apiAvailable.value) {
-        await resetAdminPassword(row.id)
-      } else {
-        console.warn('[API] resetAdminPassword 后端暂未接入')
-      }
+      await resetAdminPassword(row.id)
       ElMessage.success('密码已重置为 admin123')
     } catch (e) {
-      console.warn('[API] resetAdminPassword 请求失败')
-      ElMessage.success('密码已重置为 admin123（mock 模式）')
+      console.warn('[AdminUser] 重置密码失败:', e)
+      ElMessage.error('重置密码失败')
     }
   } catch (e) {
-    if (e !== 'cancel') console.warn('[API] resetAdminPassword 请求异常')
+    if (e !== 'cancel') console.warn('[AdminUser] 重置密码异常:', e)
   }
 }
 
@@ -174,18 +126,12 @@ const handleToggleStatus = async (row) => {
   const newStatus = row.status === '启用' ? '禁用' : '启用'
   const newClass = newStatus === '启用' ? 'success' : 'danger'
   try {
-    if (apiAvailable.value) {
-      await updateAdminUser(row.id, { ...row, status: newStatus, statusClass: newClass })
-    } else {
-      console.warn('[API] updateAdminUser 后端暂未接入')
-    }
-    row.status = newStatus
-    row.statusClass = newClass
+    await updateAdminUser(row.id, { ...row, status: newStatus, statusClass: newClass })
     ElMessage.success('状态更新成功')
+    loadData()
   } catch (e) {
-    console.warn('[API] updateAdminUser 请求失败')
-    row.status = newStatus
-    row.statusClass = newClass
+    console.warn('[AdminUser] 状态更新失败:', e)
+    ElMessage.error('状态更新失败')
   }
 }
 
@@ -193,17 +139,13 @@ const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(`确定删除管理员 ${row.name}？`, '删除确认', { type: 'warning' })
     try {
-      if (apiAvailable.value) {
-        await deleteAdminUser(row.id)
-      } else {
-        console.warn('[API] deleteAdminUser 后端暂未接入')
-      }
-      admins.value = admins.value.filter(a => a.id !== row.id)
+      await deleteAdminUser(row.id)
       ElMessage.success('删除成功')
+      loadData()
     } catch (e) {
       if (e !== 'cancel') {
-        console.warn('[API] deleteAdminUser 请求失败')
-        admins.value = admins.value.filter(a => a.id !== row.id)
+        console.warn('[AdminUser] 删除失败:', e)
+        ElMessage.error('删除失败')
       }
     }
   } catch (e) { /* cancel */ }

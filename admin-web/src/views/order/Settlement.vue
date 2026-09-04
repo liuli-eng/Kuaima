@@ -5,37 +5,6 @@
       <p class="page-desc">管理订单结算流程，支持确认结算、批量结算、导出报表</p>
     </div>
 
-    <div class="stat-cards">
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">待结算订单</span>
-          <div class="stat-card-icon yellow"><i class="fas fa-clock"></i></div>
-        </div>
-        <div class="stat-card-value">156</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">结算金额</span>
-          <div class="stat-card-icon"><i class="fas fa-yen-sign"></i></div>
-        </div>
-        <div class="stat-card-value">¥286,450</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">已结算</span>
-          <div class="stat-card-icon green"><i class="fas fa-check"></i></div>
-        </div>
-        <div class="stat-card-value">1,456</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">结算成功率</span>
-          <div class="stat-card-icon blue"><i class="fas fa-percentage"></i></div>
-        </div>
-        <div class="stat-card-value">98.5%</div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="filter-bar">
         <el-select v-model="statusFilter" placeholder="结算状态" clearable style="width: 120px;">
@@ -110,7 +79,6 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listSettlements, settlePay } from '@/api/settlement'
-import { settlementData as mockSettlementData } from '@/mock'
 
 const statusFilter = ref('')
 const methodFilter = ref('')
@@ -152,9 +120,10 @@ const loadSettlements = async () => {
     total.value = res.total ?? d?.totalElements ?? d?.total ?? list.length
     settlementData.value = list.map(normalizeSettlement)
   } catch (err) {
-    console.warn('[Settlement] API 加载失败，使用 mock 数据:', err.message)
-    settlementData.value = mockSettlementData.map(normalizeSettlement)
-    total.value = mockSettlementData.length
+    console.warn('[Settlement] API 加载失败:', err.message)
+    settlementData.value = []
+    total.value = 0
+    ElMessage.error('加载结算列表失败')
   }
 }
 
@@ -194,11 +163,8 @@ const handleSettlePay = async (row) => {
     ElMessage.success('结算成功')
     loadSettlements()
   } catch (err) {
-    // 失败时本地 mock 中模拟
     console.warn('[Settlement] settlePay API 调用失败:', err.message)
-    ElMessage.success('结算成功（本地模拟）')
-    row.status = '已结算'
-    row.statusClass = 'success'
+    ElMessage.error('结算失败，请重试')
   }
 }
 

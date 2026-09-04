@@ -55,13 +55,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { listLogs } from '@/api/system'
-import { logsData as fallbackLogs } from '@/mock'
 
-const logs = ref([...fallbackLogs])
+const logs = ref([])
 const searchKeyword = ref('')
 const typeFilter = ref('')
 const dateRange = ref([])
-const apiAvailable = ref(false)
 
 const filteredLogs = computed(() => {
   return logs.value.filter(l => {
@@ -74,16 +72,11 @@ const filteredLogs = computed(() => {
 const loadData = async () => {
   try {
     const res = await listLogs({ page: 0, size: 100 })
-    const d = res?.data
-    logs.value = Array.isArray(res)
-      ? res
-      : Array.isArray(d)
-        ? d
-        : (d?.content || d?.list || [])
-    apiAvailable.value = true
+    const d = res.data
+    logs.value = Array.isArray(d) ? d : (d?.content || d?.list || [])
   } catch (e) {
-    console.warn('[API] listLogs 后端暂未接入，使用 mock 数据')
-    logs.value = [...fallbackLogs]
+    console.warn('[Logs] 加载失败:', e)
+    logs.value = []
   }
 }
 

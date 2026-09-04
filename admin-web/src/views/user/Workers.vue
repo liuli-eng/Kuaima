@@ -12,32 +12,32 @@
           <span class="stat-card-title">总人数</span>
           <div class="stat-card-icon"><i class="fas fa-users"></i></div>
         </div>
-        <div class="stat-card-value">28,654</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>本月新增 +186</span></div>
+        <div class="stat-card-value">{{ stats.total }}</div>
+        <div class="stat-card-change"><span class="text-muted">全部零工用户</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
-          <span class="stat-card-title">本月新增</span>
-          <div class="stat-card-icon blue"><i class="fas fa-user-plus"></i></div>
+          <span class="stat-card-title">正常</span>
+          <div class="stat-card-icon green"><i class="fas fa-check-circle"></i></div>
         </div>
-        <div class="stat-card-value">186</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>较上月 +12%</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">在线人数</span>
-          <div class="stat-card-icon green"><i class="fas fa-wifi"></i></div>
-        </div>
-        <div class="stat-card-value">2,345</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>实时数据</span></div>
+        <div class="stat-card-value">{{ stats.normal }}</div>
+        <div class="stat-card-change"><span class="text-muted">正常状态</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">已冻结</span>
           <div class="stat-card-icon yellow"><i class="fas fa-lock"></i></div>
         </div>
-        <div class="stat-card-value">45</div>
-        <div class="stat-card-change down"><i class="fas fa-arrow-down"></i><span>较上月 -5</span></div>
+        <div class="stat-card-value">{{ stats.frozen }}</div>
+        <div class="stat-card-change"><span class="text-muted">冻结状态</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-title">已认证</span>
+          <div class="stat-card-icon blue"><i class="fas fa-id-card"></i></div>
+        </div>
+        <div class="stat-card-value">{{ stats.certified }}</div>
+        <div class="stat-card-change"><span class="text-muted">实名认证</span></div>
       </div>
     </div>
 
@@ -131,6 +131,30 @@ const pageSize = ref(10)
 const total = ref(0)
 const tableData = ref([])
 
+// 统计数据
+const stats = ref({ total: '-', normal: '-', frozen: '-', certified: '-' })
+
+// 加载统计
+const loadStats = async () => {
+  try {
+    const [allRes, normalRes, frozenRes] = await Promise.all([
+      listWorkers({ page: 0, size: 1 }),
+      listWorkers({ status: '正常', page: 0, size: 1 }),
+      listWorkers({ status: '冻结', page: 0, size: 1 })
+    ])
+    stats.value.total = allRes.total ?? 0
+    stats.value.normal = normalRes.total ?? 0
+    stats.value.frozen = frozenRes.total ?? 0
+    // 已认证：加载全量数据客户端过滤（数据量不大时可行）
+    const allDataRes = await listWorkers({ page: 0, size: 1000 })
+    const d = allDataRes.data
+    const list = Array.isArray(d) ? d : (d?.content || [])
+    stats.value.certified = list.filter(u => u.certStatus === true || u.certStatus === 1 || u.certStatus === '已认证').length
+  } catch (e) {
+    console.warn('[Workers] 加载统计失败:', e)
+  }
+}
+
 // 后端 Worker 真实字段：id, username, nickname, phone, role, status, age, gender, certStatus, creditScore, skills, timestamp
 const normalizeWorker = (item) => {
   return {
@@ -217,6 +241,7 @@ const handleFreeze = async (row) => {
     await freezeUser(row.id)
     ElMessage.success('冻结成功')
     loadData()
+    loadStats()
   } catch (e) {
     if (e !== 'cancel') console.warn('[Workers] 冻结失败:', e)
   }
@@ -227,6 +252,7 @@ const handleUnfreeze = async (row) => {
     await unfreezeUser(row.id)
     ElMessage.success('解冻成功')
     loadData()
+    loadStats()
   } catch (e) {
     if (e !== 'cancel') console.warn('[Workers] 解冻失败:', e)
   }
@@ -234,6 +260,7 @@ const handleUnfreeze = async (row) => {
 
 onMounted(() => {
   loadData()
+  loadStats()
 })
 </script>
 

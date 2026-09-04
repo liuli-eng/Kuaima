@@ -201,7 +201,7 @@ const handleLogin = async () => {
     const res = await userStore.loginAction(form.username, form.password)
     if (res?.success) {
       ElMessage.success('登录成功，正在跳转...')
-      router.push('/dashboard')
+      router.push('/admin/dashboard')
     } else {
       ElMessage.error(res?.message || '登录失败，请检查账号密码')
     }

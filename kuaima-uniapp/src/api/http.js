@@ -114,6 +114,47 @@ function resolveBackendUrl(url, userId, data) {
   }
   if (url === "/worker/notifications" || url.startsWith("/worker/notifications?")) return `/message/list?userId=${encodeURIComponent(userId)}&page=0&size=20`;
   if (url === "/worker/notification/unread") return `/message/unread?userId=${encodeURIComponent(userId)}`;
+
+  // Phase 1: 用户资料与认证
+  if (url.startsWith("/worker/profile/")) return url.replace("/worker/profile/", "/user/");
+  if (url.startsWith("/worker/credit/")) return url.replace("/worker/credit/", "/user/").replace("/credit", "/credit");
+  if (url === "/worker/credit" || url.startsWith("/worker/credit?")) {
+    return `/user/${userId}/credit`;
+  }
+  if (url.startsWith("/worker/switch-identity")) return `/auth/switch-role`;
+  if (url.startsWith("/worker/account-cancel")) return `/auth/cancel?userId=${userId}`;
+
+  // Phase 3: 岗位收藏/浏览
+  if (url.startsWith("/worker/favorites")) return url.replace("/worker/favorites", "/jobs/favorites");
+  if (url.startsWith("/worker/browse")) return url.replace("/worker/browse", "/jobs/history");
+
+  // Phase 4: 财务
+  if (url.startsWith("/worker/coupon")) return url.replace("/worker/coupon", "/coupons");
+  if (url.startsWith("/worker/deposit")) return url.replace("/worker/deposit", "/deposits");
+  if (url.startsWith("/worker/invite")) return url.replace("/worker/invite", "/invite");
+  if (url.startsWith("/worker/badge")) return `/badges/user/${userId}`;
+  if (url.startsWith("/worker/star-level")) return `/star-level/${userId}`;
+  if (url.startsWith("/worker/insurance")) return url.replace("/worker/insurance", "/insurance");
+
+  // Phase 5: 消息/通知
+  if (url.startsWith("/worker/notification-settings")) return url.replace("/worker/notification-settings", "/notification-settings");
+  if (url.startsWith("/worker/service-chat")) return url.replace("/worker/service-chat", "/chat");
+
+  // Phase 6: 学习/规则
+  if (url.startsWith("/worker/classroom")) return url.replace("/worker/classroom", "/courses");
+  if (url.startsWith("/worker/course-detail")) return url.replace("/worker/course-detail", "/courses");
+  if (url.startsWith("/worker/course-video")) return url.replace("/worker/course-video", "/courses");
+  if (url.startsWith("/worker/rule")) return url.replace("/worker/rule", "/rules");
+
+  // Phase 7: 社群/客服
+  if (url.startsWith("/worker/join-group")) return url.replace("/worker/join-group", "/social-groups");
+  if (url.startsWith("/worker/faq")) return url.replace("/worker/faq", "/faq");
+
+  // 月结/压薪订单
+  if (url.startsWith("/worker/monthly-order")) return `/boss/order/monthly?userId=${userId}`;
+  if (url.startsWith("/worker/press-order")) return `/boss/order/press-salary?userId=${userId}`;
+  if (url.startsWith("/worker/press-salary")) return `/boss/order/press-salary?userId=${userId}`;
+
   return url;
 }
 

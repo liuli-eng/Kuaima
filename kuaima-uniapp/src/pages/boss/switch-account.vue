@@ -1,89 +1,219 @@
 <template>
   <view class="container">
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
+      <view class="nav-inner">
+        <button class="nav-back" @click="goBack">‹</button>
+        <text class="nav-title">切换身份</text>
+        <view class="nav-space" />
       </view>
     </view>
-    <view class="nav-bar">
-      <view class="nav-back" @click="goBack">
-        <text>←</text>
+
+    <scroll-view scroll-y class="content-area">
+      <view class="avatar-section">
+        <view class="avatar-circle"><text class="avatar-text">晴</text></view>
       </view>
-      <text class="nav-title">更换账号</text>
-      <view style="width:32px;"></view>
-    </view>
-    <scroll-view scroll-y class="scroll-area">
-      <view class="account-card">
-        <text class="account-title">已登录账号</text>
-        <view class="account-item" v-for="(account, index) in accounts" :key="index">
-          <view class="account-avatar" :style="{ background: account.avatarBg }">{{ account.initial }}</view>
-          <view class="account-info">
-            <view class="account-name">
-              {{ account.name }}
-              <text class="current-badge" v-if="account.isCurrent">当前账号</text>
-            </view>
-            <text class="account-phone">{{ account.phone }}</text>
-          </view>
-          <button class="switch-btn" v-if="!account.isCurrent" @click="switchAccount(account)">切换</button>
-        </view>
+      <text class="identity-text">你当前身份是老板</text>
+      <view class="btn-section">
+        <button
+          class="btn-primary"
+          :disabled="switching"
+          @click="switchToWorker"
+        >
+          切换为零工身份
+        </button>
+        <button class="btn-secondary" @click="stayHere">暂不切换</button>
       </view>
-      <view class="add-btn" @click="addAccount">
-        <text style="margin-right:6px;">+</text>
-        <text>添加新账号</text>
-      </view>
-      <button class="logout-btn" @click="logout">退出登录</button>
-      <text class="tips">切换账号将保留各自的订单、消息和设置数据</text>
     </scroll-view>
   </view>
 </template>
 
 <script>
+import { wechatLogin } from "@/api/auth";
+import { USE_MOCK } from "@/api/http";
+
 export default {
   data() {
-    return {
-      accounts: [
-        { initial: '晴', name: '晴时见禾', phone: '138****5678', isCurrent: true, avatarBg: 'linear-gradient(135deg, #FF6B35, #FF8C5A)' },
-        { initial: '管', name: '企业管理员', phone: '139****1234', isCurrent: false, avatarBg: 'linear-gradient(135deg, #1890FF, #40A9FF)' }
-      ]
-    }
+    return { statusBarHeight: 0, switching: false };
+  },
+  onLoad() {
+    try {
+      const info =
+        typeof uni.getWindowInfo === "function"
+          ? uni.getWindowInfo()
+          : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
+    } catch (_) {}
   },
   methods: {
-    goBack() { uni.navigateBack() },
-    switchAccount(account) { uni.showToast({ title: `切换到${account.name}`, icon: 'none' }) },
-    addAccount() { uni.showToast({ title: '添加新账号', icon: 'none' }) },
-    logout() {
-      uni.showModal({
-        title: '提示',
-        content: '确定要退出登录吗？',
-        success: (res) => { if (res.confirm) { uni.reLaunch({ url: '/pages/boss/home' }) } }
-      })
-    }
-  }
-}
+    goBack() {
+      uni.navigateBack();
+    },
+    switchToWorker() {
+      if (this.switching) return;
+      this.switching = true;
+      if (USE_MOCK) {
+        this.finishSwitch({
+          role: "USER",
+          userId: uni.getStorageSync("userId") || "2001",
+          accessToken: uni.getStorageSync("token"),
+        });
+        return;
+      }
+      // API.md 规定身份切换复用微信登录接口，必须用新的 wx.login code 换取带目标角色的 JWT。
+      // #ifdef MP-WEIXIN
+      uni.login({
+        provider: "weixin",
+        success: async ({ code }) => {
+          try {
+            const result = await wechatLogin({ code, role: "USER" });
+            this.finishSwitch(result);
+          } catch (error) {
+            this.switching = false;
+            uni.showToast({
+              title: error.message || "身份切换失败",
+              icon: "none",
+            });
+          }
+        },
+        fail: () => {
+          this.switching = false;
+          uni.showToast({ title: "无法获取微信登录凭证", icon: "none" });
+        },
+      });
+      return;
+      // #endif
+      // #ifdef H5
+      this.switching = false;
+      uni.showToast({ title: "请在微信小程序中完成身份切换", icon: "none" });
+      // #endif
+    },
+    finishSwitch(result = {}) {
+      if (result.accessToken) uni.setStorageSync("token", result.accessToken);
+      if (result.userId !== undefined)
+        uni.setStorageSync("userId", String(result.userId));
+      uni.setStorageSync("role", result.role || "USER");
+      uni.showToast({ title: "已切换为零工身份", icon: "success" });
+      setTimeout(() => uni.reLaunch({ url: "/pages/worker/home" }), 500);
+    },
+    stayHere() {
+      uni.navigateBack();
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
-.container { width:100%; height:100vh; background:#f5f5f5; display:flex; flex-direction:column; overflow:hidden; }
-.status-bar { height:47px; display:flex; justify-content:space-between; align-items:center; padding:0 28px; font-size:15px; font-weight:600; color:#333; background:#fff; }
-.status-icons { display:flex; align-items:center; gap:4px; }
-.nav-bar { height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:#fff; }
-.nav-back { width:32px; height:32px; display:flex; align-items:center; justify-content:center; }
-.nav-title { font-size:17px; font-weight:600; color:#333; }
-.scroll-area { flex:1; overflow-y:auto; }
-.account-card { background:#fff; margin:12px 16px; border-radius:12px; padding:16px; }
-.account-title { font-size:15px; font-weight:600; color:#333; margin-bottom:12px; display:block; }
-.account-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #f5f5f5; }
-.account-item:last-child { border-bottom:none; }
-.account-avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:600; flex-shrink:0; }
-.account-info { flex:1; }
-.account-name { font-size:14px; font-weight:600; color:#333; display:flex; align-items:center; gap:6px; }
-.current-badge { font-size:11px; color:#FF6B35; background:#FFF3ED; padding:2px 6px; border-radius:4px; }
-.account-phone { font-size:12px; color:#999; margin-top:2px; display:block; }
-.switch-btn { padding:6px 12px; font-size:12px; color:#FF6B35; background:#FFF3ED; border-radius:14px; border:none; }
-.add-btn { display:flex; align-items:center; justify-content:center; gap:6px; padding:14px; margin:12px 16px; background:#fff; border:1px dashed #ddd; border-radius:10px; color:#666; font-size:14px; }
-.logout-btn { margin:24px 16px; padding:13px; background:#fff; color:#FF4D4F; border:none; border-radius:24px; font-size:15px; font-weight:500; width:calc(100% - 32px); }
-.tips { text-align:center; padding:0 16px; font-size:12px; color:#bbb; line-height:1.6; display:block; }
+.container {
+  width: 100%;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.nav-bar {
+  flex-shrink: 0;
+  background: #fff;
+  box-sizing: border-box;
+}
+.nav-inner {
+  height: 50px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+.nav-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #333;
+  font-size: 17px;
+  font-weight: 600;
+}
+.nav-back,
+.nav-space {
+  width: 32px;
+  height: 32px;
+}
+.nav-back {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #333;
+  font-size: 30px;
+  line-height: 28px;
+}
+.nav-back::after,
+.btn-primary::after,
+.btn-secondary::after {
+  border: 0;
+}
+.content-area {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  background: #fff;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+.avatar-section {
+  display: flex;
+  justify-content: center;
+  padding: 60px 0 30px;
+}
+.avatar-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffe4b5, #ffd966);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-text {
+  color: #ff6b35;
+  font-size: 48px;
+  font-weight: 700;
+}
+.identity-text {
+  display: block;
+  margin-bottom: 60px;
+  color: #333;
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+}
+.btn-section {
+  padding: 0 24px;
+}
+.btn-primary,
+.btn-secondary {
+  width: 100%;
+  height: 56px;
+  margin: 0 0 16px;
+  padding: 0;
+  border-radius: 28px;
+  font-size: 16px;
+  line-height: 56px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #ffd700, #ffa500);
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(255, 180, 50, 0.35);
+}
+.btn-primary[disabled] {
+  opacity: 0.6;
+}
+.btn-secondary {
+  color: #666;
+  background: #fff;
+  border: 1px solid #eee;
+  font-weight: 500;
+}
 </style>

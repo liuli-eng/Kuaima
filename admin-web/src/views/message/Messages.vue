@@ -57,15 +57,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { messageTemplates } from '@/mock'
-
-console.warn('[API] 消息模板 API 后端暂未接入，当前使用 mock 数据')
 
 const activeTab = ref('template')
 
-const pushRecords = [
-  { id: 1, template: '新订单通知', receiver: '全部零工', pushTime: '2024-03-15 18:30', status: '成功', statusClass: 'success' },
-  { id: 2, template: '认证审核结果', receiver: '张建国', pushTime: '2024-03-15 14:00', status: '成功', statusClass: 'success' },
-  { id: 3, template: '招工审核结果', receiver: '某企业', pushTime: '2024-03-14 16:00', status: '失败', statusClass: 'danger' }
-]
+const messageTemplates = ref([])
+
+const pushRecords = ref([])
 </script>

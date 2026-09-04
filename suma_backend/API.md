@@ -1,4 +1,4 @@
-# Suma 后端接口文档
+# Kuaima 后端接口文档
 
 > 业务流程（老板端 / 用户端）时序图与状态机见 [FLOW.md](./FLOW.md)。
 
@@ -400,7 +400,7 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 >
 > 当前为**钱包记账 + 模拟支付**阶段：
 > - 结算支付、提现打款均为模拟成功，不做真实扣款/入账渠道；
-> - 平台服务费率默认 0（`suma.settle.service-fee-rate`），字段与流水结构已预留。
+> - 平台服务费率默认 0（`kuaima.settle.service-fee-rate`），字段与流水结构已预留。
 
 ### 结算单状态
 
@@ -601,7 +601,19 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 
 **错误：** `400 用户名和密码不能为空`、`400 用户名或密码错误`、`403 账号已被禁用`
 
-### 2. Dashboard 统计
+### 2. 获取当前管理员
+
+- **URL**：`GET /admin/auth/me`
+- **鉴权**：需要
+- **说明**：返回当前登录管理员信息（预留接口，当前返回空对象）。
+
+**响应示例：**
+
+```json
+{ "code": 200, "message": "success", "data": {} }
+```
+
+### 3. Dashboard 统计
 
 - **URL**：`GET /admin/dashboard/stats`
 - **响应字段**：
@@ -614,7 +626,48 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 | `settledTotal` | long | 结算单总数（**条数**，非金额） |
 | `pendingAudit` | long | 待审核订单数 |
 
-### 3. 用户管理 `/admin/users`
+### 3a. 订单趋势
+
+- **URL**：`GET /admin/dashboard/trend`
+- **说明**：返回近 7 天每日订单数，用于折线图。
+
+**响应示例：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "labels": ["05-29", "05-30", "05-31", "06-01", "06-02", "06-03", "06-04"],
+    "values": [3, 5, 2, 8, 4, 6, 1]
+  }
+}
+```
+
+### 3b. 工种分布
+
+- **URL**：`GET /admin/dashboard/distribution`
+- **说明**：按招工类型（日结/压薪日结/月结）分组统计订单数，用于饼图。
+
+**响应示例：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    { "name": "日结", "value": 12, "color": "#FF6B35" },
+    { "name": "月结", "value": 5, "color": "#2563EB" }
+  ]
+}
+```
+
+### 3c. 最近订单
+
+- **URL**：`GET /admin/dashboard/recent-orders`
+- **说明**：返回最新 8 条订单（含 `employerName` 雇主名称），按 id 倒序。返回 `BossOrderView`（字段同 `/admin/jobs` 列表项）。
+
+### 4. 用户管理 `/admin/users`
 
 | 接口 | 说明 |
 | --- | --- |
@@ -628,11 +681,12 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 
 **错误：** `404 用户不存在: {id}`
 
-### 4. 管理员账号管理 `/admin/admin-users`
+### 5. 管理员账号管理 `/admin/admin-users`
 
 | 接口 | 说明 |
 | --- | --- |
 | `GET /admin/admin-users` | 管理员列表（分页，`page`/`size`） |
+| `GET /admin/admin-users/{id}` | 管理员详情 |
 | `POST /admin/admin-users` | 新增管理员。请求体 `AdminUser`（`username` 唯一、`password` 自动加密、`role`、`name`、`dept`、`phone`、`email`、`status`） |
 | `PUT /admin/admin-users/{id}` | 更新管理员，请求体字段非空才更新；`password` 非空则重加密 |
 | `PUT /admin/admin-users/{id}/reset-password` | 重置密码。请求体 `{"newPassword": "xxx"}`，缺省重置为 `admin123` |
@@ -640,7 +694,7 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 
 **错误：** `400 账号已存在`、`404`（`orElseThrow`，id 不存在返回 500 包装错误）
 
-### 5. 招工管理 / 招工审核 `/admin/jobs`
+### 6. 招工管理 / 招工审核 `/admin/jobs`
 
 | 接口 | 说明 |
 | --- | --- |
@@ -654,13 +708,13 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 
 **BossOrderView 字段**：`id`、`orderTitle`、`orderContent`、`orderNo`（暂为 null）、`orderNum`、`orderStatus`、`type`、`postion`、`duration`、`salary`、`address`、`tags`、`trialDuration`、`timestamp`、`startTime`、`endTime`、`employerName`
 
-### 6. 订单管理（报名记录全量视图） `/admin/orders`
+### 7. 订单管理（报名记录全量视图） `/admin/orders`
 
 | 接口 | 说明 |
 | --- | --- |
 | `GET /admin/orders` | 全部报名记录列表（非分页）。参数：`status` 可选（`已报名`/`已录用`/`已到岗`/`已完成`/`取消报名`/`取消招工`） |
 
-### 7. 结算管理 `/admin/settlements`
+### 8. 结算管理 `/admin/settlements`
 
 | 接口 | 说明 |
 | --- | --- |
@@ -670,13 +724,13 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 
 **错误：** `400 仅待支付的结算单可以支付`、`404 结算单不存在: {id}`
 
-### 8. 操作日志 `/admin/logs`
+### 9. 操作日志 `/admin/logs`
 
 | 接口 | 说明 |
 | --- | --- |
 | `GET /admin/logs` | 日志列表（分页，`page` 默认 0、`size` 默认 20，按 id 倒序）。`AdminLog` 字段：`operator`、`type`（登录/数据修改/审核/权限变更/删除/系统操作）、`target`、`ip`、`result`（成功/失败）、`detail`、`createTime` |
 
-### 9. 系统设置 `/admin/settings`
+### 10. 系统设置 `/admin/settings`
 
 KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主键）、`settingValue`、`category`（`platform`/`notification`/`security`/`points`）、`description`。
 
@@ -687,7 +741,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | `GET /admin/settings/{key}` | 按 key 查询单条 |
 | `PUT /admin/settings/{key}` | 保存/更新，请求体 `{"settingValue": "...", "category": "...", "description": "..."}` |
 
-### 10. Banner 管理 `/admin/banners`
+### 11. Banner 管理 `/admin/banners`
 
 `Banner` 字段：`title`、`imageUrl`、`position`（`worker-home`/`boss-home`/`admin-home`）、`weight`（排序权重）、`linkUrl`、`status`（`展示中`/`草稿`/`已下架`）、`startTime`、`endTime`、`createTime`、`updateTime`。
 
@@ -699,7 +753,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | `PUT /admin/banners/{id}` | 更新（字段非空才更新） |
 | `DELETE /admin/banners/{id}` | 删除 |
 
-### 11. 公告管理 `/admin/notices`
+### 12. 公告管理 `/admin/notices`
 
 `Notice` 字段：`title`、`type`（`系统`/`活动`/`政策`）、`scope`（`全部`/`零工`/`雇主`）、`content`（TEXT）、`status`（`已发布`/`草稿`/`已下架`）、`publishTime`、`createTime`、`updateTime`。新建/更新为 `已发布` 时自动记录 `publishTime`（仅首次）。
 
@@ -711,7 +765,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | `PUT /admin/notices/{id}` | 更新（字段非空才更新） |
 | `DELETE /admin/notices/{id}` | 删除 |
 
-### 12. 规则管理 `/admin/rules`
+### 13. 规则管理 `/admin/rules`
 
 `Rules` 字段：`title`、`category`（`通知公告`/`信用评定`/`收费标准`/`交易规则`/`隐私协议`）、`version`（默认 `v1.0`）、`status`（`草稿`/`已发布`/`已归档`）、`effectiveTime`、`content`（TEXT）、`createTime`、`updateTime`。
 
@@ -723,7 +777,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | `PUT /admin/rules/{id}` | 更新（字段非空才更新） |
 | `DELETE /admin/rules/{id}` | 删除 |
 
-### 13. 黑名单管理 `/admin/blacklists`
+### 14. 黑名单管理 `/admin/blacklists`
 
 `Blacklist` 字段：`userId`、`userType`（`零工`/`雇主`）、`reason`、`status`（`封禁中`/`已解封`）、`expireTime`、`createTime`、`updateTime`。
 
@@ -736,7 +790,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | `PUT /admin/blacklists/{id}/extend` | 延长封禁，请求体 `{"expireTime": "2026-12-31T00:00:00"}` |
 | `DELETE /admin/blacklists/{id}` | 删除 |
 
-### 14. 认证审核 `/admin/certifications`
+### 15. 认证审核 `/admin/certifications`
 
 `Certification` 字段：`userId`、`type`（`零工实名`/`企业认证`）、`applicantName`、`contactPhone`、`status`（`待审核`/`已通过`/`已拒绝`）、`rejectReason`、`auditTime`、`applyTime`、`createTime`。
 
@@ -747,7 +801,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | `PUT /admin/certifications/{id}/pass` | 审核通过（`status` 置为 `已通过`，记录 `auditTime`） |
 | `PUT /admin/certifications/{id}/reject?reason={原因}` | 审核拒绝（记录 `rejectReason`、`auditTime`） |
 
-### 15. 举报处理 `/admin/reports`
+### 16. 举报处理 `/admin/reports`
 
 `Report` 字段：`reporterId`（举报人）、`targetId`（被举报人）、`type`（`违规`/`纠纷`/`虚假信息`）、`reason`、`status`（`待处理`/`处理中`/`已处理`）、`result`（处理结果）、`orderId`（可选关联订单）、`handleTime`、`createTime`。
 
@@ -757,3 +811,586 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | `GET /admin/reports/{id}` | 详情 |
 | `POST /admin/reports` | 创建举报（来自用户端） |
 | `POST /admin/reports/{id}/handle?result={处理结果}` | 处理举报（`status` 置为 `已处理`，记录 `handleTime`） |
+
+---
+
+## 七、用户资料与认证 `/user`
+
+### 1. 获取用户资料
+
+`GET /user/{id}`
+
+返回 `User` 实体完整信息（含 `nickname`、`avatar`、`phone`、`certStatus`、`creditScore`、`companyName` 等）。
+
+### 2. 修改用户资料
+
+`PUT /user/{id}`
+
+请求体（JSON，所有字段可选）：`nickname`、`avatar`、`phone`、`email`、`age`、`gender`、`city`、`skills`、`remark`
+
+### 3. 提交实名认证
+
+`POST /user/{id}/realname`
+
+请求体：`{ "realName": "张三", "idCard": "340..." }`
+
+设置 `User.certType=REALNAME`、`certStatus=待审核`，同时写入 `Certification` 审核记录。
+
+### 4. 认证审核历史
+
+`GET /user/{id}/certifications`
+
+返回用户的认证审核记录列表。
+
+### 5. 信用分与近期流水
+
+`GET /user/{id}/credit`
+
+返回：`{ "creditScore": 85, "flows": [...] }`（flows 为最近 10 条 `CreditFlow`）
+
+### 6. 信用分明细分页
+
+`GET /user/{id}/credit/flows?page=0&size=20`
+
+分页返回 `CreditFlow` 列表（`userId`、`delta`、`reason`、`bizType`、`timestamp`）。
+
+### 7. 身份切换
+
+`POST /auth/switch-role?role=BOSS|USER`
+
+切换用户角色，返回新的 JWT `accessToken`。
+
+### 8. 账号注销
+
+`POST /auth/cancel?userId={id}&reason={原因}`
+
+软删除：设置 `User.status=注销`，记录注销原因。
+
+### 9. 提交企业认证
+
+`POST /boss/enterprise-cert`
+
+请求体：`{ "userId": 1, "companyName": "公司名", "industry": "电子厂", "licenseNo": "...", "legalRep": "..." }`
+
+设置 `User.certType=ENTERPRISE`、`certStatus=待审核`。
+
+### 10. 老板资料
+
+`GET /boss/profile/{userId}`
+
+返回老板用户完整信息（含企业字段）。
+
+### 11. 老板账户统计
+
+`GET /boss/profile/{userId}/stats`
+
+返回：`{ "totalOrders": 10, "recruitingCount": 3, "applicantCount": 25, "totalSpent": 5000 }`
+
+---
+
+## 八、老板端招工与人才
+
+### 1. 保存草稿
+
+`POST /boss/order/draft`
+
+请求体：BossOrder 字段。创建 `BossOrder` 且 `orderStatus=草稿`。
+
+### 2. 草稿列表
+
+`GET /boss/orders/drafts?userId={id}`
+
+返回当前用户的草稿订单列表。
+
+### 3. 更新草稿
+
+`PUT /boss/order/{id}/draft`
+
+请求体：BossOrder 更新字段。
+
+### 4. 首页统计
+
+`GET /boss/stats?userId={id}`
+
+返回：`{ "totalOrders": 10, "recruitingCount": 3, "applicantCount": 25, "settledAmount": 5000 }`
+
+### 5. 工种分类
+
+`GET /boss/job-categories`
+
+返回工种列表（`postion` distinct 值 + 静态分类）。
+
+### 6. 招工地址列表
+
+`GET /boss/addresses?userId={id}`
+
+返回 `BossAddress` 列表（`id`、`name`、`detail`、`lat`、`lng`、`isDefault`）。
+
+### 7. 新增地址
+
+`POST /boss/addresses`
+
+请求体：`{ "userId": 1, "name": "松江厂区", "detail": "上海市松江区...", "lat": 31.0, "lng": 121.2, "isDefault": true }`
+
+### 8. 删除地址
+
+`DELETE /boss/addresses/{id}`
+
+### 9. 设默认地址
+
+`PUT /boss/addresses/{id}/default`
+
+### 10. 联系人列表
+
+`GET /boss/contacts?userId={id}`
+
+返回 `BossContact` 列表（`id`、`name`、`phone`、`isDefault`）。
+
+### 11. 新增联系人
+
+`POST /boss/contacts`
+
+请求体：`{ "userId": 1, "name": "张三", "phone": "138...", "isDefault": true }`
+
+### 12. 删除联系人
+
+`DELETE /boss/contacts/{id}`
+
+### 13. 设默认联系人
+
+`PUT /boss/contacts/{id}/default`
+
+### 14. 搜索零工
+
+`GET /talent/search?keyword=&skill=&city=&page=0&size=20`
+
+返回 `User`（role=USER）分页列表。
+
+### 15. 收藏人才列表
+
+`GET /talent/favorites?bossId={id}`
+
+返回老板收藏的零工列表（含 User 详情）。
+
+### 16. 收藏零工
+
+`POST /talent/favorites`
+
+请求体：`{ "bossId": 1, "workerId": 2 }`
+
+### 17. 取消收藏
+
+`DELETE /talent/favorites/{id}`
+
+### 18. 历史合作零工
+
+`GET /talent/history?bossId={id}`
+
+返回历史合作过的零工列表（来自 `BaseOrderItem` 关联 `BossOrder`）。
+
+### 19. 邀请零工
+
+`POST /talent/invite`
+
+请求体：`{ "bossId": 1, "workerId": 2, "orderId": 3 }`
+
+创建 `Message`（type=BOSS_INVITE）通知零工。
+
+### 20. 老板黑名单
+
+`GET /talent/blacklist?bossId={id}`
+
+返回老板名下的黑名单列表。
+
+---
+
+## 九、零工端岗位与订单
+
+### 1. 高级筛选岗位
+
+`GET /boss/order/filter?city=&salaryMin=&salaryMax=&tag=&type=&duration=&page=0&size=20`
+
+扩展 `BossOrder` 查询参数，支持城市、薪资范围、标签筛选。
+
+### 2. 月结订单列表
+
+`GET /boss/order/monthly?userId={id}`
+
+返回零工的月结类型订单列表（`BaseOrderItem` 关联 `BossOrder` where `type=month`）。
+
+### 3. 压薪订单列表
+
+`GET /boss/order/press-salary?userId={id}`
+
+返回零工的压薪类型订单列表（`type=heldBack`）。
+
+### 4. 收藏岗位列表
+
+`GET /jobs/favorites?userId={id}`
+
+返回 `JobFavorite` 列表（关联 `BossOrder` 详情）。
+
+### 5. 收藏岗位
+
+`POST /jobs/favorites`
+
+请求体：`{ "userId": 1, "orderId": 2 }`
+
+### 6. 取消收藏
+
+`DELETE /jobs/favorites/{id}`
+
+### 7. 检查收藏状态
+
+`GET /jobs/favorites/check?userId={id}&orderId={id}`
+
+返回：`{ "favorited": true }`
+
+### 8. 浏览记录列表
+
+`GET /jobs/history?userId={id}&page=0&size=20`
+
+返回 `BrowseHistory` 分页列表（关联 `BossOrder` 详情）。
+
+### 9. 记录浏览
+
+`POST /jobs/history`
+
+请求体：`{ "userId": 1, "orderId": 2 }`
+
+### 10. 清空浏览记录
+
+`DELETE /jobs/history?userId={id}`
+
+### 11. 结算详情
+
+`GET /settle/{id}/detail`
+
+返回 `Settlement` 完整信息（含工资构成、工作天数、扣款、实发金额）。
+
+---
+
+## 十、财务系统
+
+### 积分 `/points`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/points/{userId}` | 积分余额 |
+| `GET` | `/points/{userId}/flows?page=0&size=20` | 积分明细 |
+
+### 奖励 `/rewards`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/rewards` | 奖励列表 |
+| `GET` | `/rewards/{id}` | 奖励详情 |
+| `POST` | `/rewards/{id}/exchange?userId=` | 积分兑换 |
+| `GET` | `/rewards/exchanges?userId=` | 兑换记录 |
+
+### 优惠券 `/coupons`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/coupons?userId=&status=` | 优惠券列表 |
+| `POST` | `/coupons/{id}/claim?userId=` | 领取优惠券 |
+
+### 押金 `/deposits`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/deposits/{userId}` | 押金记录 |
+| `POST` | `/deposits` | 缴纳押金（body: `userId`、`amount`） |
+| `POST` | `/deposits/{id}/refund` | 申请退还 |
+
+### 邀请 `/invite`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/invite/code?userId=` | 邀请码（自动生成） |
+| `GET` | `/invite/poster?userId=` | 海报数据（码+二维码+统计） |
+| `GET` | `/invite/relations?userId=` | 邀请记录 |
+
+### 子账号 `/boss/sub-accounts`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/boss/sub-accounts?parentId=` | 子账号列表 |
+| `POST` | `/boss/sub-accounts` | 创建子账号 |
+| `DELETE` | `/boss/sub-accounts/{id}` | 删除子账号 |
+| `PUT` | `/boss/sub-accounts/{id}/role?role=` | 修改角色 |
+
+### 勋章 `/badges`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/badges` | 勋章目录 |
+| `GET` | `/badges/user/{userId}` | 已获得勋章 |
+
+### 星级 `/star-level`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/star-level/{userId}` | 当前星级+进度 |
+
+### 费用/支付明细
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/expenses?userId=&page=0&size=20` | 费用明细（`WalletFlow` 筛选） |
+| `GET` | `/payments?userId=&page=0&size=20` | 支付明细（`WalletFlow` 筛选） |
+
+---
+
+## 十一、消息与通知
+
+### 1. 消息详情
+
+`GET /message/{id}`
+
+返回单条 `Message` 完整信息。
+
+### 2. 系统通知
+
+`GET /message/system?userId={id}&page=0&size=20`
+
+返回 `Message`（type=SYSTEM_NOTICE）分页列表。
+
+### 3. 通知设置 - 查询
+
+`GET /notification-settings/{userId}`
+
+返回 `NotificationSetting`（`orderNotif`、`activityNotif`、`systemNotif`、`sound`、`vibrate`）。
+不存在时自动创建默认设置。
+
+### 4. 通知设置 - 更新
+
+`PUT /notification-settings/{userId}`
+
+请求体：`NotificationSetting` 字段。
+
+### 5. 未接来电列表
+
+`GET /missed-calls?userId={id}&page=0&size=20`
+
+返回 `MissedCall` 分页列表（`fromUserId`、`callTime`、`duration`、`isRead`）。
+
+### 6. 未接来电标记已读
+
+`PUT /missed-calls/{id}/read`
+
+### 7. 开始客服会话
+
+`POST /chat/sessions`
+
+请求体：`{ "userId": 1 }`
+
+返回 `ChatSession`（含 `sessionId`、`status`）。
+
+### 8. 会话消息列表
+
+`GET /chat/sessions/{sessionId}/messages?page=0&size=50`
+
+返回 `ChatMessage` 列表（`fromId`、`fromType`、`content`、`contentType`）。
+
+### 9. 发送消息
+
+`POST /chat/sessions/{sessionId}/messages`
+
+请求体：`{ "fromId": 1, "content": "你好" }`
+
+返回自动回复消息。
+
+### 10. 公告列表
+
+`GET /notices?scope=&page=0&size=20`
+
+返回已发布公告列表（按 `scope` 筛选：全部/零工/雇主）。
+
+---
+
+## 十二、学习中心与规则
+
+### 1. 课程大厅
+
+`GET /courses?category=&page=0&size=20`
+
+返回 `Course` 分页列表（`title`、`category`、`coverUrl`、`intro`）。
+
+### 2. 课程详情
+
+`GET /courses/{id}`
+
+返回 `Course` + 关联 `CourseVideo` 列表。
+
+### 3. 课程视频列表
+
+`GET /courses/{id}/videos`
+
+返回 `CourseVideo` 列表（`title`、`videoUrl`、`duration`、`sortOrder`）。
+
+### 4. 获取考试
+
+`GET /exams/{courseId}`
+
+返回 `Exam` + 关联 `ExamQuestion` 列表（`content`、`options`、`score`）。
+
+### 5. 提交考试
+
+`POST /exams/{courseId}/submit`
+
+请求体：`{ "userId": 1, "answers": { "1": "A", "2": "B" } }`
+
+自动判分，返回 `ExamResult`（`score`、`passed`）。
+
+### 6. 考试结果
+
+`GET /exams/result?userId={id}&examId={id}`
+
+返回 `ExamResult`。
+
+### 7. 培训任务列表
+
+`GET /training-tasks?userId={id}`
+
+返回 `TrainingTask` 列表（`courseId`、`status`、`dueDate`）。
+
+### 8. 分配培训任务
+
+`POST /training-tasks`
+
+请求体：`{ "userId": 1, "courseId": 2 }`
+
+### 9. 完成培训任务
+
+`PUT /training-tasks/{id}/complete`
+
+### 10. 规则列表
+
+`GET /rules?category=`
+
+返回已发布规则列表。
+
+### 11. 规则详情
+
+`GET /rules/{id}`
+
+返回 `Rules` 完整信息。
+
+---
+
+## 十三、保险/合同/社群/客服
+
+### 1. 保险记录列表
+
+`GET /insurance?userId={id}`
+
+返回 `Insurance` 列表（`type`、`amount`、`premium`、`status`、`startTime`、`endTime`）。
+
+### 2. 购买保险
+
+`POST /insurance`
+
+请求体：`{ "userId": 1, "userType": "WORKER", "orderId": 2, "type": "意外险", "amount": 100, "premium": 5 }`
+
+### 3. 保险详情
+
+`GET /insurance/{id}`
+
+### 4. 合同列表
+
+`GET /boss/contracts?bossId={id}`
+
+返回 `Contract` 列表（`bossId`、`workerId`、`orderId`、`status`、`signedAt`）。
+
+### 5. 创建合同
+
+`POST /boss/contracts`
+
+请求体：`{ "bossId": 1, "workerId": 2, "orderId": 3, "content": "..." }`
+
+### 6. 社群列表
+
+`GET /social-groups`
+
+返回 `SocialGroup` 列表（`name`、`category`、`qrcodeUrl`、`memberCount`）。
+
+### 7. 常见问题
+
+`GET /faq?category=`
+
+返回 `Faq` 列表（`question`、`answer`、`category`、`sortOrder`）。
+
+---
+
+## 实体补充
+
+### Phase 1 新增实体
+
+| 实体 | 表名 | 关键字段 |
+| --- | --- | --- |
+| `CreditFlow` | `credit_flow` | `userId`、`delta`、`reason`、`bizType` |
+
+`User` 扩展字段：`idCard`、`realName`、`licenseNo`、`legalRep`、`parentUserId`、`subRole`、`city`
+
+### Phase 2 新增实体
+
+| 实体 | 表名 | 关键字段 |
+| --- | --- | --- |
+| `BossAddress` | `boss_address` | `userId`、`name`、`detail`、`lat`、`lng`、`isDefault` |
+| `BossContact` | `boss_contact` | `userId`、`name`、`phone`、`isDefault` |
+| `TalentFavorite` | `talent_favorite` | `bossId`、`workerId` |
+
+### Phase 3 新增实体
+
+| 实体 | 表名 | 关键字段 |
+| --- | --- | --- |
+| `JobFavorite` | `job_favorite` | `userId`、`orderId` |
+| `BrowseHistory` | `browse_history` | `userId`、`orderId`、`viewedAt` |
+
+### Phase 4 新增实体
+
+| 实体 | 表名 | 关键字段 |
+| --- | --- | --- |
+| `PointsAccount` | `points_account` | `userId`、`balance` |
+| `PointsFlow` | `points_flow` | `userId`、`delta`、`bizType`、`remark` |
+| `Reward` | `reward` | `title`、`description`、`pointsCost`、`stock`、`status` |
+| `RewardExchange` | `reward_exchange` | `userId`、`rewardId`、`status` |
+| `Coupon` | `coupon` | `title`、`type`、`amount`、`minSpend`、`validDays` |
+| `UserCoupon` | `user_coupon` | `userId`、`couponId`、`status`、`expireAt` |
+| `InviteCode` | `invite_code` | `userId`、`code` |
+| `InviteRelation` | `invite_relation` | `inviterId`、`inviteeId`、`rewardStatus` |
+| `Deposit` | `deposit` | `userId`、`amount`、`status`、`payTime`、`refundTime` |
+| `SubAccount` | `sub_account` | `parentId`、`userId`、`role`、`status` |
+| `Badge` | `badge` | `code`、`title`、`iconUrl`、`description`、`rule` |
+| `UserBadge` | `user_badge` | `userId`、`badgeId`、`unlockedAt` |
+| `UserStarLevel` | `user_star_level` | `userId`、`level`、`progress` |
+
+### Phase 5 新增实体
+
+| 实体 | 表名 | 关键字段 |
+| --- | --- | --- |
+| `MissedCall` | `missed_call` | `fromUserId`、`toUserId`、`callTime`、`duration`、`isRead` |
+| `ChatSession` | `chat_session` | `userId`、`agentId`、`status` |
+| `ChatMessage` | `chat_message` | `sessionId`、`fromId`、`fromType`、`content`、`contentType` |
+| `NotificationSetting` | `notification_setting` | `userId`、`orderNotif`、`activityNotif`、`systemNotif`、`sound`、`vibrate` |
+
+### Phase 6 新增实体
+
+| 实体 | 表名 | 关键字段 |
+| --- | --- | --- |
+| `Course` | `course` | `title`、`category`、`coverUrl`、`intro`、`status` |
+| `CourseVideo` | `course_video` | `courseId`、`title`、`videoUrl`、`duration` |
+| `Exam` | `course_exam` | `courseId`、`title`、`passScore` |
+| `ExamQuestion` | `course_exam_question` | `examId`、`content`、`options`、`answer`、`score` |
+| `ExamResult` | `course_exam_result` | `userId`、`examId`、`score`、`passed` |
+| `TrainingTask` | `course_training_task` | `userId`、`courseId`、`status`、`dueDate`、`completedAt` |
+
+### Phase 7 新增实体
+
+| 实体 | 表名 | 关键字段 |
+| --- | --- | --- |
+| `Insurance` | `insurance` | `userId`、`userType`、`orderId`、`type`、`amount`、`premium`、`status` |
+| `Contract` | `contract` | `bossId`、`workerId`、`orderId`、`status`、`signedAt` |
+| `SocialGroup` | `social_group` | `name`、`category`、`qrcodeUrl`、`memberCount` |
+| `Faq` | `faq` | `question`、`answer`、`category`、`sortOrder` |

@@ -11,28 +11,28 @@
           <span class="stat-card-title">进行中会话</span>
           <div class="stat-card-icon green"><i class="fas fa-comments"></i></div>
         </div>
-        <div class="stat-card-value">8</div>
+        <div class="stat-card-value">-</div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">等待中</span>
           <div class="stat-card-icon yellow"><i class="fas fa-clock"></i></div>
         </div>
-        <div class="stat-card-value">5</div>
+        <div class="stat-card-value">-</div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">今日已结束</span>
           <div class="stat-card-icon"><i class="fas fa-check-double"></i></div>
         </div>
-        <div class="stat-card-value">42</div>
+        <div class="stat-card-value">-</div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">平均响应</span>
           <div class="stat-card-icon blue"><i class="fas fa-bolt"></i></div>
         </div>
-        <div class="stat-card-value">1.2分钟</div>
+        <div class="stat-card-value">-</div>
       </div>
     </div>
 
@@ -93,10 +93,9 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { serviceData } from '@/mock'
+import { onMounted, ref } from 'vue'
 
-console.warn('[API] 客服会话 API 后端暂未接入，当前使用 mock 数据')
+const serviceData = ref([])
 
 const quickReplies = [
   '您好，请问有什么可以帮助您的？',

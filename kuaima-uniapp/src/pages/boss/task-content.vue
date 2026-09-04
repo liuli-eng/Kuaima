@@ -1,21 +1,18 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <view class="page-bg">
       <!-- 头部 -->
-      <view class="modal-header">
+      <view
+        class="modal-header"
+        :style="{ paddingTop: `${statusBarHeight + 18}px` }"
+      >
         <text class="modal-title">任务要求</text>
-        <view class="modal-close" @click="closePage">
-          <text style="font-size:18px;color:#999;">✕</text>
+        <view
+          class="modal-close"
+          :style="{ top: `${statusBarHeight + 14}px` }"
+          @click="closePage"
+        >
+          <text class="close-icon">×</text>
         </view>
       </view>
 
@@ -23,47 +20,74 @@
         <!-- 招工标题 -->
         <view class="section-card">
           <text class="field-label">招工标题</text>
-          <input class="title-input" v-model="jobTitle" maxlength="20" placeholder="请输入招工标题" />
+          <input
+            class="title-input"
+            v-model="jobTitle"
+            maxlength="20"
+            placeholder="请输入招工标题"
+          />
           <text class="title-count">{{ jobTitle.length }}/20</text>
         </view>
 
         <!-- 详情描述 -->
         <view class="section-card">
           <view class="field-label">
-            <text>详情描述 <text style="color:#999;font-weight:400;">(非必填)</text></text>
+            <text
+              >详情描述
+              <text style="color: #999; font-weight: 400">(非必填)</text></text
+            >
           </view>
-          <textarea class="desc-textarea" v-model="jobDesc" placeholder="补充工作要求或详细内容，请勿填写手机号或微信号" maxlength="200"></textarea>
+          <textarea
+            class="desc-textarea"
+            v-model="jobDesc"
+            placeholder="补充工作要求或详细内容，请勿填写手机号或微信号"
+            maxlength="200"
+          ></textarea>
           <text class="desc-count">{{ jobDesc.length }}/200</text>
 
           <view class="upload-row">
             <view class="upload-btn" @click="uploadVideo">
-              <text style="font-size:22px;color:#FF6B35;margin-bottom:4px;">🎬</text>
-              <text style="font-size:12px;color:#666;">上传视频</text>
+              <text class="upload-icon">▶</text>
+              <text class="upload-label">上传视频</text>
             </view>
             <view class="upload-btn" @click="uploadPhoto">
-              <text style="font-size:22px;color:#FF6B35;margin-bottom:4px;">📷</text>
-              <text style="font-size:12px;color:#666;">上传照片</text>
+              <text class="upload-icon">▧</text>
+              <text class="upload-label">上传照片</text>
             </view>
           </view>
-          <text class="upload-hint">
-            上传有工作内容的视频或照片，<text style="color:#FF6B35;font-weight:500;">增加50%的接单率</text>
-          </text>
+          <view class="upload-hint">
+            <view>
+              <text>上传有工作内容的视频或照片，</text>
+              <text class="upload-highlight">增加50%的接单率</text>
+            </view>
+            <view class="upload-examples">
+              <text class="upload-link" @click="showExample('图片')"
+                >图片示例</text
+              >
+              <text class="upload-link" @click="showExample('视频')"
+                >视频示例</text
+              >
+            </view>
+          </view>
         </view>
 
         <!-- 工作福利 -->
         <view class="section-card">
           <view class="field-label">
             <text>工作福利</text>
-            <text style="font-size:12px;color:#999;font-weight:400;">可多选</text>
+            <text style="font-size: 12px; color: #999; font-weight: 400"
+              >可多选</text
+            >
           </view>
           <view class="tag-group">
-            <text 
-              class="tag-item" 
+            <text
+              class="tag-item"
               :class="{ selected: benefits.includes(tag) }"
-              v-for="tag in benefitTags" 
+              v-for="tag in benefitTags"
               :key="tag"
               @click="toggleTag('benefits', tag)"
-            >{{ tag }}</text>
+              >{{ tag }}</text
+            >
           </view>
         </view>
 
@@ -71,13 +95,14 @@
         <view class="section-card">
           <text class="field-label">经验要求</text>
           <view class="tag-group">
-            <text 
-              class="tag-item" 
+            <text
+              class="tag-item"
               :class="{ selected: exp.includes(tag) }"
-              v-for="tag in expTags" 
+              v-for="tag in expTags"
               :key="tag"
               @click="toggleTag('exp', tag)"
-            >{{ tag }}</text>
+              >{{ tag }}</text
+            >
           </view>
         </view>
 
@@ -85,16 +110,19 @@
         <view class="section-card">
           <view class="field-label">
             <text>工作要求</text>
-            <text style="font-size:12px;color:#999;font-weight:400;">可多选</text>
+            <text style="font-size: 12px; color: #999; font-weight: 400"
+              >可多选</text
+            >
           </view>
           <view class="tag-group">
-            <text 
-              class="tag-item" 
+            <text
+              class="tag-item"
               :class="{ selected: requirements.includes(tag) }"
-              v-for="tag in requirementTags" 
+              v-for="tag in requirementTags"
               :key="tag"
               @click="toggleTag('requirements', tag)"
-            >{{ tag }}</text>
+              >{{ tag }}</text
+            >
           </view>
         </view>
       </scroll-view>
@@ -102,7 +130,7 @@
       <!-- 底部按钮 -->
       <view class="bottom-bar">
         <view class="customer-service" @click="contactService">
-          <text style="font-size:18px;color:#FF6B35;">🎧</text>
+          <text class="service-icon">◉</text>
         </view>
         <button class="submit-btn" @click="saveContent">完成</button>
       </view>
@@ -114,88 +142,121 @@
 export default {
   data() {
     return {
-      jobTitle: '电子厂普工',
-      jobDesc: '',
-      benefits: ['室内工作'],
-      exp: ['欢迎新手'],
+      statusBarHeight: 0,
+      jobTitle: "电子厂普工",
+      jobDesc: "",
+      benefits: ["室内工作"],
+      exp: ["欢迎新手"],
       requirements: [],
-      benefitTags: ['包工作餐', '中午包饭', '晚上包饭', '有空调', '有风扇', '室内工作'],
-      expTags: ['只要熟手', '欢迎新手'],
-      requirementTags: ['禁止吸烟', '认真负责', '手脚麻利', '提前到场', '不磨洋工', '禁穿凉鞋短裤']
+      benefitTags: [
+        "包工作餐",
+        "中午包饭",
+        "晚上包饭",
+        "有空调",
+        "有风扇",
+        "室内工作",
+      ],
+      expTags: ["只要熟手", "欢迎新手"],
+      requirementTags: [
+        "禁止吸烟",
+        "认真负责",
+        "手脚麻利",
+        "提前到场",
+        "不磨洋工",
+        "禁穿凉鞋短裤",
+      ],
+    };
+  },
+  onLoad() {
+    try {
+      const info =
+        typeof uni.getWindowInfo === "function"
+          ? uni.getWindowInfo()
+          : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
+    } catch (_) {}
+    const saved = uni.getStorageSync("taskContent");
+    if (saved && typeof saved === "object") {
+      this.jobTitle = saved.title || this.jobTitle;
+      this.jobDesc = saved.desc || this.jobDesc;
+      this.benefits = saved.benefits
+        ? String(saved.benefits).split("、").filter(Boolean)
+        : this.benefits;
+      this.exp = saved.exp
+        ? String(saved.exp).split("、").filter(Boolean)
+        : this.exp;
+      this.requirements = saved.requirements
+        ? String(saved.requirements).split("、").filter(Boolean)
+        : this.requirements;
     }
   },
   methods: {
     closePage() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     contactService() {
-      uni.showToast({ title: '客服', icon: 'none' })
+      uni.showToast({ title: "客服", icon: "none" });
+    },
+    showExample(type) {
+      uni.showModal({
+        title: `${type}示例`,
+        content: `请上传清晰的${type}，突出工作环境、工作内容和现场要求。`,
+        showCancel: false,
+      });
     },
     uploadVideo() {
-      uni.showToast({ title: '选择视频文件', icon: 'none' })
+      uni.showToast({ title: "选择视频文件", icon: "none" });
     },
     uploadPhoto() {
-      uni.chooseImage({ count: 9, success: () => {} })
+      uni.chooseImage({ count: 9, success: () => {} });
     },
     toggleTag(type, tag) {
-      const arr = this[type]
-      const idx = arr.indexOf(tag)
+      const arr = this[type];
+      const idx = arr.indexOf(tag);
       if (idx >= 0) {
-        arr.splice(idx, 1)
+        arr.splice(idx, 1);
       } else {
-        arr.push(tag)
+        arr.push(tag);
       }
     },
     saveContent() {
       const data = {
         title: this.jobTitle,
         desc: this.jobDesc,
-        benefits: this.benefits.join('、'),
-        exp: this.exp.join('、'),
-        requirements: this.requirements.join('、')
-      }
-      uni.$emit('taskContentSaved', data)
-      uni.showToast({ title: '保存成功', icon: 'success' })
-      setTimeout(() => { uni.navigateBack() }, 1500)
-    }
-  }
-}
+        benefits: this.benefits.join("、"),
+        exp: this.exp.join("、"),
+        requirements: this.requirements.join("、"),
+      };
+      uni.setStorageSync("taskContent", data);
+      uni.$emit("taskContentSaved", data);
+      uni.showToast({ title: "保存成功", icon: "success" });
+      setTimeout(() => {
+        uni.navigateBack();
+      }, 1500);
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #fff8e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: transparent;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .page-bg {
   background: #fff;
   flex: 1;
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .modal-header {
@@ -222,14 +283,29 @@ export default {
   justify-content: center;
 }
 
+.close-icon {
+  color: #999;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 300;
+}
+
 .modal-content {
   flex: 1;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   overflow-y: auto;
-  padding: 16px;
+  overflow-x: hidden;
+  padding: 16px 16px 24px;
+  min-height: 0;
 }
 
 .section-card {
   background: white;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
   border-radius: 14px;
   padding: 16px;
   margin-bottom: 14px;
@@ -243,19 +319,32 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
+}
+
+.field-label > text {
+  min-width: 0;
 }
 
 .title-input {
   width: 100%;
+  height: 42px;
+  line-height: 18px;
+  display: block;
   background: #f9f9f9;
   border: 1px solid #eee;
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 0 14px;
   font-size: 15px;
   color: #333;
   outline: none;
   margin-bottom: 8px;
   box-sizing: border-box;
+}
+
+.title-input::placeholder,
+.desc-textarea::placeholder {
+  color: #bbb;
 }
 
 .title-count {
@@ -268,6 +357,8 @@ export default {
 
 .desc-textarea {
   width: 100%;
+  display: block;
+  min-width: 0;
   min-height: 90px;
   background: #f9f9f9;
   border: 1px solid #eee;
@@ -277,6 +368,7 @@ export default {
   color: #333;
   outline: none;
   line-height: 1.6;
+  height: 210px;
   box-sizing: border-box;
 }
 
@@ -290,12 +382,15 @@ export default {
 
 .upload-row {
   display: flex;
+  width: 100%;
+  min-width: 0;
   gap: 10px;
   margin-top: 12px;
 }
 
 .upload-btn {
   flex: 1;
+  min-width: 0;
   height: 70px;
   background: #f9f9f9;
   border: 2px dashed #e0e0e0;
@@ -306,11 +401,43 @@ export default {
   justify-content: center;
 }
 
+.upload-btn:active {
+  border-color: #ff6b35;
+  background: #fff8e6;
+}
+
+.upload-icon {
+  color: #ff6b35;
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.upload-label {
+  color: #666;
+  font-size: 12px;
+}
+
 .upload-hint {
   font-size: 12px;
   color: #999;
   margin-top: 10px;
   display: block;
+}
+
+.upload-highlight {
+  color: #ff6b35;
+  font-weight: 500;
+}
+
+.upload-examples {
+  margin-top: 6px;
+}
+
+.upload-link {
+  color: #ff6b35;
+  font-size: 12px;
+  margin-right: 12px;
 }
 
 .tag-group {
@@ -328,10 +455,14 @@ export default {
   color: #666;
 }
 
+.tag-item:active {
+  opacity: 0.8;
+}
+
 .tag-item.selected {
-  background: #FFF8E6;
-  border-color: #FF6B35;
-  color: #FF6B35;
+  background: #fff8e6;
+  border-color: #ff6b35;
+  color: #ff6b35;
   font-weight: 500;
 }
 
@@ -343,29 +474,41 @@ export default {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-  padding-bottom: 20px;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: border-box;
 }
 
 .customer-service {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #FFF8E6, #FFE4B5);
+  background: linear-gradient(135deg, #fff8e6, #ffe4b5);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
+.service-icon {
+  color: #ff6b35;
+  font-size: 18px;
+}
+
 .submit-btn {
   flex: 1;
   height: 48px;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: white;
   border-radius: 9999px;
   font-size: 16px;
   font-weight: 600;
   border: none;
   box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+  margin: 0;
+  line-height: 48px;
+}
+
+.submit-btn::after {
+  border: none;
 }
 </style>

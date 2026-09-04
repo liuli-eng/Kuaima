@@ -89,12 +89,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listReports, handleReport } from '@/api/risk'
-import { reportsData as fallbackReports } from '@/mock'
 
-const reports = ref([...fallbackReports])
+const reports = ref([])
 const typeFilter = ref('')
 const statusFilter = ref('')
-const apiAvailable = ref(false)
 
 const filteredReports = computed(() => {
   return reports.value.filter(r => {
@@ -117,15 +115,10 @@ const handleRate = computed(() => {
 const loadData = async () => {
   try {
     const res = await listReports()
-    if (res && Array.isArray(res)) {
-      reports.value = res
-    } else if (res && Array.isArray(res.data)) {
-      reports.value = res.data
-    }
-    apiAvailable.value = true
+    reports.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
   } catch (e) {
-    console.warn('[API] listReports 后端暂未接入，使用 mock 数据')
-    reports.value = [...fallbackReports]
+    console.warn('[Reports] 加载失败:', e)
+    reports.value = []
   }
 }
 
@@ -141,19 +134,13 @@ const handleProcess = async (row) => {
       cancelButtonText: '取消',
       inputPlaceholder: '如：已对举报对象进行警告处理'
     }).catch(() => ({ value: '已处理' }))
-    if (apiAvailable.value) {
-      await handleReport(row.id, result)
-    } else {
-      console.warn('[API] handleReport 后端暂未接入')
-    }
-    row.status = '已处理'
-    row.statusClass = 'success'
+    await handleReport(row.id, result)
     ElMessage.success('处理完成')
+    loadData()
   } catch (e) {
     if (e !== 'cancel') {
-      console.warn('[API] handleReport 请求失败')
-      row.status = '已处理'
-      row.statusClass = 'success'
+      console.warn('[Reports] 处理失败:', e)
+      ElMessage.error('处理失败')
     }
   }
 }
@@ -161,17 +148,13 @@ const handleProcess = async (row) => {
 const handleBan = async (row) => {
   try {
     await ElMessageBox.confirm(`确定将 ${row.target} 加入黑名单？`, '封禁确认', { type: 'warning' })
-    if (apiAvailable.value) {
-      await handleReport(row.id, '封禁处理')
-    } else {
-      console.warn('[API] handleReport 后端暂未接入')
-    }
-    row.status = '已处理'
-    row.statusClass = 'success'
+    await handleReport(row.id, '封禁处理')
     ElMessage.success('已封禁')
+    loadData()
   } catch (e) {
     if (e !== 'cancel') {
-      console.warn('[API] handleReport 请求失败')
+      console.warn('[Reports] 封禁失败:', e)
+      ElMessage.error('封禁失败')
     }
   }
 }

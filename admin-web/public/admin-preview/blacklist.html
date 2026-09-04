@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 黑名单管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.red {
+            background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+            color: var(--danger);
+        }
+        .reason-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .reason-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+        .reason-bar-label {
+            min-width: 90px;
+            color: var(--text-secondary);
+        }
+        .reason-bar-track {
+            flex: 1;
+            height: 8px;
+            background: #F3F4F6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .reason-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+        .reason-bar-value {
+            min-width: 60px;
+            text-align: right;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .content-grid-2col-custom {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .detail-section {
+            margin-bottom: 20px;
+        }
+        .detail-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .detail-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .detail-info-item {
+            display: flex;
+            gap: 8px;
+            font-size: 13px;
+        }
+        .detail-info-label {
+            color: var(--text-secondary);
+            min-width: 80px;
+        }
+        .detail-info-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .history-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-page);
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        .history-time {
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .history-text {
+            color: var(--text-primary);
+        }
+        .history-operator {
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .tag-worker {
+            background: #EFF6FF;
+            color: var(--secondary);
+        }
+        .tag-employer {
+            background: #FFF0EB;
+            color: var(--primary);
+        }
+        .permanent-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            background: #FEF2F2;
+            color: var(--danger);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">黑名单管理</h1>
+                <p class="page-desc">违规用户黑名单、禁言解封</p>
+            </div>
+
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">黑名单</span>
+                        <div class="stat-card-icon red">
+                            <i class="fas fa-user-times"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">125</div>
+                    <div class="stat-card-change up" style="color:var(--danger);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>当前封禁中</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">本月新增</span>
+                        <div class="stat-card-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">23</div>
+                    <div class="stat-card-change up" style="color:var(--danger);">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +5.2%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">已解封</span>
+                        <div class="stat-card-icon green">
+                            <i class="fas fa-unlock"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">8</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较上月 +14.3%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">封禁原因</span>
+                        <div class="stat-card-icon blue">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                    </div>
+                    <div style="padding: 4px 0 0 0;">
+                        <div style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Top: 飞单45%</div>
+                        <div style="display:flex; gap:4px; font-size:11px;">
+                            <span style="padding:2px 6px; background:#FEF2F2; color:var(--danger); border-radius:3px;">飞单45%</span>
+                            <span style="padding:2px 6px; background:#FFFBEB; color:var(--warning); border-radius:3px;">虚假25%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-grid-2col-custom">
+                <div class="card">
+                    <div class="filter-bar">
+                        <div class="filter-item">
+                            <span>类型</span>
+                            <select class="form-input form-select" style="width:120px;">
+                                <option value="">全部</option>
+                                <option>零工</option>
+                                <option>雇主</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <span>原因</span>
+                            <select class="form-input form-select" style="width:140px;">
+                                <option value="">全部</option>
+                                <option>飞单</option>
+                                <option>虚假信息</option>
+                                <option>服务态度</option>
+                                <option>其他</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <span>状态</span>
+                            <select class="form-input form-select" style="width:140px;">
+                                <option value="">全部</option>
+                                <option>黑名单</option>
+                                <option>已解封</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;"></div>
+                        <button class="btn btn-primary btn-sm" onclick="applyFilter()">
+                            <i class="fas fa-search"></i> 查询
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="resetFilter()">
+                            <i class="fas fa-undo"></i> 重置
+                        </button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>记录ID</th>
+                                    <th>用户</th>
+                                    <th>类型</th>
+                                    <th>封禁原因</th>
+                                    <th>封禁时间</th>
+                                    <th>到期时间</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="blacklistTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <div class="pagination-info">共 125 条记录</div>
+                        <div class="pagination-controls">
+                            <button class="page-btn" disabled><i class="fas fa-chevron-left" style="font-size:10px;"></i></button>
+                            <button class="page-btn active">1</button>
+                            <button class="page-btn">2</button>
+                            <button class="page-btn">3</button>
+                            <button class="page-btn">4</button>
+                            <span style="color:var(--text-muted); padding:0 4px;">...</span>
+                            <button class="page-btn">7</button>
+                            <button class="page-btn"><i class="fas fa-chevron-right" style="font-size:10px;"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">封禁原因分布</span>
+                    </div>
+                    <div class="reason-bar">
+                        <div class="reason-bar-item">
+                            <span class="reason-bar-label">飞单</span>
+                            <div class="reason-bar-track">
+                                <div class="reason-bar-fill" style="width:45%; background:linear-gradient(90deg, #FF6B35, #FF8C42);"></div>
+                            </div>
+                            <span class="reason-bar-value">45%</span>
+                        </div>
+                        <div class="reason-bar-item">
+                            <span class="reason-bar-label">虚假信息</span>
+                            <div class="reason-bar-track">
+                                <div class="reason-bar-fill" style="width:25%; background:linear-gradient(90deg, #F59E0B, #FBBF24);"></div>
+                            </div>
+                            <span class="reason-bar-value">25%</span>
+                        </div>
+                        <div class="reason-bar-item">
+                            <span class="reason-bar-label">服务态度</span>
+                            <div class="reason-bar-track">
+                                <div class="reason-bar-fill" style="width:20%; background:linear-gradient(90deg, #2563EB, #3B82F6);"></div>
+                            </div>
+                            <span class="reason-bar-value">20%</span>
+                        </div>
+                        <div class="reason-bar-item">
+                            <span class="reason-bar-label">其他</span>
+                            <div class="reason-bar-track">
+                                <div class="reason-bar-fill" style="width:10%; background:linear-gradient(90deg, #6B7280, #9CA3AF);"></div>
+                            </div>
+                            <span class="reason-bar-value">10%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="detailModal" style="display:none;">
+        <div class="modal" style="max-width:620px;">
+            <div class="modal-header">
+                <span class="modal-title">黑名单详情</span>
+                <div class="modal-close" onclick="closeModal('detailModal')">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div class="modal-body" id="detailModalBody">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('detailModal')">关闭</button>
+                <button class="btn btn-success" style="background:var(--success); color:#fff;" onclick="showUnbanModal()">解封账号</button>
+                <button class="btn btn-danger" onclick="showPermanentBanModal()">永久封禁</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="actionModal" style="display:none;">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <span class="modal-title">确认操作</span>
+                <div class="modal-close" onclick="closeModal('actionModal')">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div class="modal-body" id="actionModalBody">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('actionModal')">取消</button>
+                <button class="btn btn-danger" onclick="confirmAction()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const blacklistData = [
+            {
+                id: 'BL20240315001',
+                userId: 'U10086',
+                userName: '张建国',
+                avatar: '张',
+                avatarColor: '#FF6B35',
+                type: 'worker',
+                reason: '飞单',
+                reasonDetail: '多次接单后无故不到岗，影响雇主正常生产',
+                bannedAt: '2024-03-15 09:30',
+                expireAt: '2024-04-15 09:30',
+                permanent: false,
+                status: 'banned',
+                operator: '管理员',
+                history: [
+                    { time: '2024-03-15 09:30', text: '因飞单被管理员封禁30天', operator: '管理员' },
+                    { time: '2024-02-20 14:20', text: '收到第3次飞单投诉', operator: '系统' }
+                ]
+            },
+            {
+                id: 'BL20240314002',
+                userId: 'U20231',
+                userName: '深圳富士康科技集团',
+                avatar: '富',
+                avatarColor: '#2563EB',
+                type: 'employer',
+                reason: '虚假信息',
+                reasonDetail: '发布虚假招工信息，骗取零工押金200元',
+                bannedAt: '2024-03-14 16:20',
+                expireAt: '永久',
+                permanent: true,
+                status: 'banned',
+                operator: '超级管理员',
+                history: [
+                    { time: '2024-03-14 16:20', text: '因发布虚假信息被永久封禁', operator: '超级管理员' },
+                    { time: '2024-03-14 10:00', text: '收到多名零工投诉骗取押金', operator: '系统' },
+                    { time: '2024-03-13 18:00', text: '平台介入调查取证', operator: '审核员' }
+                ]
+            },
+            {
+                id: 'BL20240313003',
+                userId: 'U30521',
+                userName: '王小刚',
+                avatar: '王',
+                avatarColor: '#10B981',
+                type: 'worker',
+                reason: '服务态度',
+                reasonDetail: '在工作场所与同事发生肢体冲突，严重影响现场秩序',
+                bannedAt: '2024-03-13 14:50',
+                expireAt: '2024-03-23 14:50',
+                permanent: false,
+                status: 'banned',
+                operator: '管理员',
+                history: [
+                    { time: '2024-03-13 14:50', text: '因服务态度问题被封禁10天', operator: '管理员' }
+                ]
+            },
+            {
+                id: 'BL20240312004',
+                userId: 'U10092',
+                userName: '李美丽',
+                avatar: '李',
+                avatarColor: '#3B82F6',
+                type: 'worker',
+                reason: '飞单',
+                reasonDetail: '接单后联系不上，雇主不得不重新招人',
+                bannedAt: '2024-03-12 08:40',
+                expireAt: '2024-04-12 08:40',
+                permanent: false,
+                status: 'banned',
+                operator: '管理员',
+                history: [
+                    { time: '2024-03-12 08:40', text: '因飞单被封禁31天', operator: '管理员' },
+                    { time: '2024-03-10 16:00', text: '收到第2次飞单投诉', operator: '系统' }
+                ]
+            },
+            {
+                id: 'BL20240310005',
+                userId: 'U40125',
+                userName: '顺丰速运有限公司',
+                avatar: '顺',
+                avatarColor: '#06B6D4',
+                type: 'employer',
+                reason: '虚假信息',
+                reasonDetail: '招工信息与实际不符，克扣工资',
+                bannedAt: '2024-03-10 11:20',
+                expireAt: '2024-03-20 11:20',
+                permanent: false,
+                status: 'banned',
+                operator: '审核员',
+                history: [
+                    { time: '2024-03-10 11:20', text: '因虚假信息被封禁10天', operator: '审核员' },
+                    { time: '2024-03-09 15:00', text: '核实招工信息与实际不符', operator: '审核员' }
+                ]
+            },
+            {
+                id: 'BL20240308006',
+                userId: 'U10033',
+                userName: '赵小红',
+                avatar: '赵',
+                avatarColor: '#EC4899',
+                type: 'worker',
+                reason: '其他',
+                reasonDetail: '恶意差评，给正常经营的雇主造成不良影响',
+                bannedAt: '2024-03-08 17:00',
+                expireAt: '2024-03-18 17:00',
+                permanent: false,
+                status: 'unbanned',
+                operator: '管理员',
+                history: [
+                    { time: '2024-03-15 10:00', text: '表现良好，提前解封', operator: '管理员' },
+                    { time: '2024-03-08 17:00', text: '因恶意差评被封禁10天', operator: '管理员' }
+                ]
+            },
+            {
+                id: 'BL20240305007',
+                userId: 'U20567',
+                userName: '王某',
+                avatar: '王',
+                avatarColor: '#F59E0B',
+                type: 'employer',
+                reason: '服务态度',
+                reasonDetail: '辱骂殴打零工，情节严重',
+                bannedAt: '2024-03-05 20:15',
+                expireAt: '永久',
+                permanent: true,
+                status: 'banned',
+                operator: '超级管理员',
+                history: [
+                    { time: '2024-03-05 20:15', text: '因殴打零工被永久封禁', operator: '超级管理员' }
+                ]
+            },
+            {
+                id: 'BL20240301008',
+                userId: 'U10078',
+                userName: '周志华',
+                avatar: '周',
+                avatarColor: '#06B6D4',
+                type: 'worker',
+                reason: '飞单',
+                reasonDetail: '连续3次飞单，屡教不改',
+                bannedAt: '2024-03-01 09:00',
+                expireAt: '2024-04-01 09:00',
+                permanent: false,
+                status: 'banned',
+                operator: '管理员',
+                history: [
+                    { time: '2024-03-01 09:00', text: '因连续飞单被封禁31天', operator: '管理员' },
+                    { time: '2024-02-28 18:00', text: '收到第3次飞单投诉', operator: '系统' }
+                ]
+            }
+        ];
+
+        const reasonTagColors = {
+            '飞单': 'tag-red',
+            '虚假信息': 'tag-yellow',
+            '服务态度': 'tag-blue',
+            '其他': 'tag-gray'
+        };
+
+        function renderTable() {
+            const tbody = document.getElementById('blacklistTableBody');
+            tbody.innerHTML = blacklistData.map(b => {
+                const typeTag = b.type === 'worker'
+                    ? `<span class="tag tag-worker">零工</span>`
+                    : `<span class="tag tag-employer">雇主</span>`;
+                const reasonTag = reasonTagColors[b.reason] || 'tag-gray';
+                const statusBadge = b.status === 'banned'
+                    ? `<span class="status-badge danger">封禁中</span>`
+                    : `<span class="status-badge success">已解封</span>`;
+                const expireText = b.permanent
+                    ? `<span class="permanent-badge"><i class="fas fa-infinity"></i> 永久</span>`
+                    : b.expireAt;
+
+                return `
+                    <tr>
+                        <td style="font-family:monospace; color:var(--primary);">${b.id}</td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span class="avatar-sm" style="background:linear-gradient(135deg, ${b.avatarColor}, ${b.avatarColor}cc);">${b.avatar}</span>
+                                <div>
+                                    <div style="font-weight:500;">${b.userName}</div>
+                                    <div style="font-size:12px;color:var(--text-muted);">${b.userId}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${typeTag}</td>
+                        <td><span class="tag ${reasonTag}">${b.reason}</span></td>
+                        <td>${b.bannedAt}</td>
+                        <td>${expireText}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <div style="display:flex;gap:6px;">
+                                <a class="card-action" onclick="showDetail('${b.id}')">查看</a>
+                                ${b.status === 'banned' ?
+                                    `<a class="card-action" onclick="showUnbanConfirm('${b.id}')">解封</a>` : ''
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function showDetail(id) {
+            const b = blacklistData.find(x => x.id === id);
+            if (!b) return;
+            const typeTag = b.type === 'worker'
+                ? `<span class="tag tag-worker">零工</span>`
+                : `<span class="tag tag-employer">雇主</span>`;
+            const reasonTag = reasonTagColors[b.reason] || 'tag-gray';
+            const statusBadge = b.status === 'banned'
+                ? `<span class="status-badge danger">封禁中</span>`
+                : `<span class="status-badge success">已解封</span>`;
+            const expireText = b.permanent
+                ? `<span class="permanent-badge"><i class="fas fa-infinity"></i> 永久封禁</span>`
+                : b.expireAt;
+
+            const historyHTML = b.history.map(h => `
+                <div class="history-item">
+                    <span class="history-time">${h.time}</span>
+                    <span class="history-text"><span class="history-operator">【${h.operator}】</span>${h.text}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('detailModalBody').innerHTML = `
+                <div class="detail-section">
+                    <div class="detail-section-title"><i class="fas fa-user" style="color:var(--primary);"></i> 用户信息</div>
+                    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+                        <span class="avatar-sm" style="background:linear-gradient(135deg, ${b.avatarColor}, ${b.avatarColor}cc); width:48px;height:48px;font-size:18px;">${b.avatar}</span>
+                        <div>
+                            <div style="font-size:16px;font-weight:600;">${b.userName}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">用户ID: ${b.userId}</div>
+                        </div>
+                    </div>
+                    <div class="detail-info-grid">
+                        <div class="detail-info-item">
+                            <span class="detail-info-label">用户类型：</span>
+                            <span class="detail-info-value">${typeTag}</span>
+                        </div>
+                        <div class="detail-info-item">
+                            <span class="detail-info-label">处理状态：</span>
+                            <span class="detail-info-value">${statusBadge}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title"><i class="fas fa-ban" style="color:var(--danger);"></i> 封禁信息</div>
+                    <div class="detail-info-grid">
+                        <div class="detail-info-item">
+                            <span class="detail-info-label">封禁原因：</span>
+                            <span class="detail-info-value"><span class="tag ${reasonTag}">${b.reason}</span></span>
+                        </div>
+                        <div class="detail-info-item">
+                            <span class="detail-info-label">操作人：</span>
+                            <span class="detail-info-value">${b.operator}</span>
+                        </div>
+                        <div class="detail-info-item">
+                            <span class="detail-info-label">封禁时间：</span>
+                            <span class="detail-info-value">${b.bannedAt}</span>
+                        </div>
+                        <div class="detail-info-item">
+                            <span class="detail-info-label">到期时间：</span>
+                            <span class="detail-info-value">${expireText}</span>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px;background:var(--bg-page);border-radius:8px;padding:12px;font-size:13px;color:var(--text-primary);line-height:1.6;">
+                        <strong>详情说明：</strong>${b.reasonDetail}
+                    </div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-section-title"><i class="fas fa-history" style="color:var(--primary);"></i> 操作记录</div>
+                    <div class="history-list">${historyHTML}</div>
+                </div>
+            `;
+
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+
+        let currentActionRecord = null;
+
+        function showUnbanConfirm(id) {
+            currentActionRecord = id;
+            document.getElementById('actionModalBody').innerHTML = `
+                <p style="font-size:14px;margin-bottom:12px;">确定要解封此用户吗？</p>
+                <div style="background:var(--bg-page);border-radius:8px;padding:12px;font-size:13px;color:var(--text-secondary);">
+                    <i class="fas fa-info-circle" style="color:var(--warning);"></i> 解封后用户将恢复正常使用权限，该操作会被记录到操作日志中。
+                </div>
+            `;
+            document.getElementById('actionModal').style.display = 'flex';
+        }
+
+        function showUnbanModal() {
+            document.getElementById('detailModal').style.display = 'none';
+            showUnbanConfirm(currentActionRecord || blacklistData[0].id);
+        }
+
+        function showPermanentBanModal() {
+            document.getElementById('actionModalBody').innerHTML = `
+                <p style="font-size:14px;margin-bottom:12px;color:var(--danger);"><i class="fas fa-exclamation-triangle"></i> 确定要永久封禁此用户吗？</p>
+                <div style="background:#FEF2F2;border-radius:8px;padding:12px;font-size:13px;color:var(--danger);">
+                    永久封禁将不可恢复，请谨慎操作！
+                </div>
+            `;
+            document.getElementById('actionModal').style.display = 'flex';
+        }
+
+        function confirmAction() {
+            alert('操作已成功执行！');
+            closeModal('actionModal');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function applyFilter() {
+            alert('筛选条件已应用');
+        }
+
+        function resetFilter() {
+            document.querySelectorAll('.filter-item select').forEach(el => {
+                el.selectedIndex = 0;
+            });
+        }
+
+        renderTable();
+    </script>
+</body>
+</html>

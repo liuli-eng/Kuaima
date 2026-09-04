@@ -24,17 +24,17 @@ import { listCertifications } from '@/api/content'
 import CertificationList from './components/CertificationList.vue'
 
 const activeTab = ref('worker')
-const workerCount = ref(56)
-const bossCount = ref(33)
+const workerCount = ref(0)
+const bossCount = ref(0)
 
 const loadCounts = async () => {
   try {
     const res = await listCertifications()
-    const list = Array.isArray(res) ? res : (res?.data || [])
-    workerCount.value = list.filter(c => c.type === '零工认证').length || 56
-    bossCount.value = list.filter(c => c.type === '雇主认证').length || 33
+    const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
+    workerCount.value = list.filter(c => c.type === '零工认证').length
+    bossCount.value = list.filter(c => c.type === '雇主认证').length
   } catch (e) {
-    console.warn('[API] listCertifications 后端暂未接入，使用默认计数')
+    console.warn('[Certification] 加载失败:', e)
   }
 }
 

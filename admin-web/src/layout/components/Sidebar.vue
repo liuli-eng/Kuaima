@@ -25,10 +25,14 @@
           <i :class="['fas', item.icon]"></i>
           <span v-show="!appStore.sidebarCollapsed">{{ item.name }}</span>
           <el-badge
-            v-if="item.badge && !appStore.sidebarCollapsed"
-            :value="item.badge"
+            v-if="item.badgeKey && badges[item.badgeKey] > 0 && !appStore.sidebarCollapsed"
+            :value="badges[item.badgeKey]"
             :max="99"
             class="menu-badge"
+          />
+          <span
+            v-else-if="item.badgeKey && badges[item.badgeKey] > 0 && appStore.sidebarCollapsed"
+            class="collapsed-dot"
           />
         </router-link>
       </template>
@@ -37,85 +41,125 @@
 </template>
 
 <script setup>
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
+import { listJobs } from '@/api/job'
+import { listCertifications } from '@/api/content'
+import { listReports } from '@/api/risk'
 
 const appStore = useAppStore()
+const route = useRoute()
+
+// 红点数量（0 时不显示）
+const badges = ref({
+  jobAudit: 0,
+  certAudit: 0,
+  reportPending: 0
+})
 
 const menuGroups = [
   {
     id: 'dashboard',
     name: '数据统计',
     items: [
-      { path: '/dashboard', name: '数据概览', icon: 'fa-chart-line' }
+      { path: '/admin/dashboard', name: '数据概览', icon: 'fa-chart-line' }
     ]
   },
   {
     id: 'user',
     name: '用户管理',
     items: [
-      { path: '/workers', name: '零工管理', icon: 'fa-user' },
-      { path: '/bosses', name: '老板管理', icon: 'fa-building' }
+      { path: '/admin/workers', name: '零工管理', icon: 'fa-user' },
+      { path: '/admin/bosses', name: '老板管理', icon: 'fa-building' }
     ]
   },
   {
     id: 'job',
     name: '招工管理',
     items: [
-      { path: '/jobs', name: '招工管理', icon: 'fa-briefcase' },
-      { path: '/job-audit', name: '招工审核', icon: 'fa-check-circle', badge: 5 }
+      { path: '/admin/jobs', name: '招工管理', icon: 'fa-briefcase' },
+      { path: '/admin/job-audit', name: '招工审核', icon: 'fa-check-circle', badgeKey: 'jobAudit' }
     ]
   },
   {
     id: 'order',
     name: '订单结算',
     items: [
-      { path: '/orders', name: '用工订单', icon: 'fa-clipboard-list' },
-      { path: '/settlement', name: '结算管理', icon: 'fa-coins' }
+      { path: '/admin/orders', name: '用工订单', icon: 'fa-clipboard-list' },
+      { path: '/admin/settlement', name: '结算管理', icon: 'fa-coins' }
     ]
   },
   {
     id: 'finance',
     name: '财务运营',
     items: [
-      { path: '/finance', name: '财务报表', icon: 'fa-chart-pie' },
-      { path: '/points', name: '积分管理', icon: 'fa-star' }
+      { path: '/admin/finance', name: '财务报表', icon: 'fa-chart-pie' },
+      { path: '/admin/points', name: '积分管理', icon: 'fa-star' }
     ]
   },
   {
     id: 'content',
     name: '内容管理',
     items: [
-      { path: '/certification', name: '认证审核', icon: 'fa-id-card', badge: 8 },
-      { path: '/notices', name: '公告管理', icon: 'fa-bullhorn' },
-      { path: '/rules', name: '规则管理', icon: 'fa-book' },
-      { path: '/banners', name: 'Banner管理', icon: 'fa-image' }
+      { path: '/admin/certification', name: '认证审核', icon: 'fa-id-card', badgeKey: 'certAudit' },
+      { path: '/admin/notices', name: '公告管理', icon: 'fa-bullhorn' },
+      { path: '/admin/rules', name: '规则管理', icon: 'fa-book' },
+      { path: '/admin/banners', name: 'Banner管理', icon: 'fa-image' }
     ]
   },
   {
     id: 'message',
     name: '消息客服',
     items: [
-      { path: '/messages', name: '消息管理', icon: 'fa-envelope' },
-      { path: '/service', name: '客服管理', icon: 'fa-headset' }
+      { path: '/admin/messages', name: '消息管理', icon: 'fa-envelope' },
+      { path: '/admin/service', name: '客服管理', icon: 'fa-headset' }
     ]
   },
   {
     id: 'risk',
     name: '风控管理',
     items: [
-      { path: '/reports', name: '举报处理', icon: 'fa-ban' },
-      { path: '/blacklist', name: '黑名单管理', icon: 'fa-user-times' }
+      { path: '/admin/reports', name: '举报处理', icon: 'fa-ban', badgeKey: 'reportPending' },
+      { path: '/admin/blacklist', name: '黑名单管理', icon: 'fa-user-times' }
     ]
   },
   {
     id: 'system',
     name: '系统管理',
     items: [
-      { path: '/settings', name: '系统设置', icon: 'fa-cog' },
-      { path: '/logs', name: '操作日志', icon: 'fa-file-alt' }
+      { path: '/admin/settings', name: '系统设置', icon: 'fa-cog' },
+      { path: '/admin/logs', name: '操作日志', icon: 'fa-file-alt' }
     ]
   }
 ]
+
+const loadBadges = async () => {
+  // 招工审核：待审核数量
+  try {
+    const res = await listJobs({ status: '待审核', page: 0, size: 1 })
+    badges.value.jobAudit = res.total || 0
+  } catch { badges.value.jobAudit = 0 }
+
+  // 认证审核：待审核数量（接口返回全量列表，客户端过滤）
+  try {
+    const res = await listCertifications()
+    const list = Array.isArray(res.data) ? res.data : (res.data?.content || [])
+    badges.value.certAudit = list.filter(c => c.status === '待审核').length
+  } catch { badges.value.certAudit = 0 }
+
+  // 举报处理：待处理数量
+  try {
+    const res = await listReports()
+    const list = Array.isArray(res.data) ? res.data : (res.data?.content || [])
+    badges.value.reportPending = list.filter(r => r.status === '待处理').length
+  } catch { badges.value.reportPending = 0 }
+}
+
+onMounted(loadBadges)
+
+// 路由变化时刷新红点
+watch(() => route.path, () => loadBadges())
 </script>
 
 <style scoped>
@@ -205,6 +249,7 @@ const menuGroups = [
   border-left: 3px solid transparent;
   text-decoration: none;
   font-size: 14px;
+  position: relative;
   
   &:hover {
     background: var(--sidebar-hover);
@@ -226,5 +271,16 @@ const menuGroups = [
 
 .menu-badge {
   margin-left: auto;
+}
+
+.collapsed-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  box-shadow: 0 0 0 2px var(--sidebar-bg);
 }
 </style>

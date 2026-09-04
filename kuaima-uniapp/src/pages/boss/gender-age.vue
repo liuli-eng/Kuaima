@@ -21,21 +21,48 @@
 
       <!-- 内容区 -->
       <scroll-view scroll-y class="modal-content">
+        <text class="section-title">性别要求</text>
+        <view class="gender-group">
+          <view
+            v-for="gender in genderOptions"
+            :key="gender"
+            class="gender-item"
+            :class="{ selected: selectedGender === gender }"
+            @click="selectGender(gender)"
+          >
+            {{ gender }}
+          </view>
+        </view>
+
         <text class="section-title">年龄要求</text>
         <view class="age-display">
           <text class="age-range-text">
-            {{ minAge }}岁~<text :style="maxAge >= 60 ? 'color:#999;' : ''">{{ maxAge >= 60 ? '不限' : maxAge }}</text>
+            {{ minAge }}岁~<text :style="maxAge >= 60 ? 'color:#999;' : ''">{{
+              maxAge >= 60 ? "不限" : maxAge
+            }}</text>
           </text>
         </view>
 
         <view class="slider-container">
           <view class="slider-track">
             <view class="slider-fill" :style="sliderFillStyle"></view>
-            <view class="slider-handle left" :style="leftHandleStyle" @touchstart="onTouchStart('min', $event)" @touchmove="onTouchMove('min', $event)" @touchend="onTouchEnd">
-              <text style="font-size:10px;color:#FF6B35;">☰</text>
+            <view
+              class="slider-handle left"
+              :style="leftHandleStyle"
+              @touchstart="onTouchStart('min', $event)"
+              @touchmove="onTouchMove('min', $event)"
+              @touchend="onTouchEnd"
+            >
+              <text style="font-size: 10px; color: #ff6b35">☰</text>
             </view>
-            <view class="slider-handle right" :style="rightHandleStyle" @touchstart="onTouchStart('max', $event)" @touchmove="onTouchMove('max', $event)" @touchend="onTouchEnd">
-              <text style="font-size:10px;color:#FF6B35;">☰</text>
+            <view
+              class="slider-handle right"
+              :style="rightHandleStyle"
+              @touchstart="onTouchStart('max', $event)"
+              @touchmove="onTouchMove('max', $event)"
+              @touchend="onTouchEnd"
+            >
+              <text style="font-size: 10px; color: #ff6b35">☰</text>
             </view>
           </view>
           <view class="slider-labels">
@@ -64,77 +91,93 @@ export default {
       maxAgeLimit: 60,
       minAge: 18,
       maxAge: 60,
-      selectedGender: '不限',
+      genderOptions: ["不限", "男性优选", "女性优选"],
+      selectedGender: "不限",
       activeHandle: null,
-      startX: 0
-    }
+      startX: 0,
+    };
   },
   computed: {
     leftPercent() {
-      return ((this.minAge - 18) / (this.maxAgeLimit - 18)) * 100
+      return ((this.minAge - 18) / (this.maxAgeLimit - 18)) * 100;
     },
     rightPercent() {
-      return ((this.maxAge - 18) / (this.maxAgeLimit - 18)) * 100
+      return ((this.maxAge - 18) / (this.maxAgeLimit - 18)) * 100;
     },
     leftHandleStyle() {
-      return `left: ${this.leftPercent}%;`
+      return `left: ${this.leftPercent}%;`;
     },
     rightHandleStyle() {
-      return `left: ${this.rightPercent}%;`
+      return `left: ${this.rightPercent}%;`;
     },
     sliderFillStyle() {
-      return `left: ${this.leftPercent}%; right: ${100 - this.rightPercent}%;`
+      return `left: ${this.leftPercent}%; right: ${100 - this.rightPercent}%;`;
+    },
+  },
+  onLoad() {
+    const saved = uni.getStorageSync("genderAgeSelection");
+    if (saved && typeof saved === "object") {
+      this.selectedGender = saved.gender || this.selectedGender;
+      this.minAge = Number(saved.ageMin || this.minAge);
+      this.maxAge =
+        saved.ageMax === "不限"
+          ? this.maxAgeLimit
+          : Number(saved.ageMax || this.maxAge);
     }
   },
   methods: {
     closePage() {
-      uni.navigateBack()
+      uni.navigateBack();
+    },
+    selectGender(gender) {
+      this.selectedGender = gender;
     },
     onTouchStart(type, e) {
-      this.activeHandle = type
-      this.startX = e.touches[0].clientX
+      this.activeHandle = type;
+      this.startX = e.touches[0].clientX;
     },
     onTouchMove(type, e) {
-      if (this.activeHandle !== type) return
-      const trackWidth = 300 // 滑块轨道宽度
-      const deltaX = e.touches[0].clientX - this.startX
-      const deltaPercent = deltaX / trackWidth
-      const deltaAge = Math.round(deltaPercent * (this.maxAgeLimit - 18))
+      if (this.activeHandle !== type) return;
+      const trackWidth = 300; // 滑块轨道宽度
+      const deltaX = e.touches[0].clientX - this.startX;
+      const deltaPercent = deltaX / trackWidth;
+      const deltaAge = Math.round(deltaPercent * (this.maxAgeLimit - 18));
 
-      if (type === 'min') {
-        let newAge = this.minAge + deltaAge
-        newAge = Math.max(18, Math.min(this.maxAge - 1, newAge))
-        this.minAge = newAge
+      if (type === "min") {
+        let newAge = this.minAge + deltaAge;
+        newAge = Math.max(18, Math.min(this.maxAge - 1, newAge));
+        this.minAge = newAge;
       } else {
-        let newAge = this.maxAge + deltaAge
-        newAge = Math.max(this.minAge + 1, Math.min(this.maxAgeLimit, newAge))
-        this.maxAge = newAge
+        let newAge = this.maxAge + deltaAge;
+        newAge = Math.max(this.minAge + 1, Math.min(this.maxAgeLimit, newAge));
+        this.maxAge = newAge;
       }
-      this.startX = e.touches[0].clientX
+      this.startX = e.touches[0].clientX;
     },
     onTouchEnd() {
-      this.activeHandle = null
+      this.activeHandle = null;
     },
     saveAndClose() {
-      const display = `${this.selectedGender}、${this.minAge}岁~${this.maxAge >= this.maxAgeLimit ? '不限' : this.maxAge}岁`
+      const display = `${this.selectedGender}、${this.minAge}岁~${this.maxAge >= this.maxAgeLimit ? "不限" : this.maxAge}岁`;
       const data = {
         gender: this.selectedGender,
         ageMin: this.minAge,
-        ageMax: this.maxAge >= this.maxAgeLimit ? '不限' : this.maxAge,
-        display: display
-      }
-      uni.$emit('genderAgeSelected', data)
-      uni.navigateBack()
-    }
-  }
-}
+        ageMax: this.maxAge >= this.maxAgeLimit ? "不限" : this.maxAge,
+        display: display,
+      };
+      uni.setStorageSync("genderAgeSelection", data);
+      uni.$emit("genderAgeSelected", data);
+      uni.navigateBack();
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #fff8e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -194,7 +237,10 @@ export default {
 
 .modal-content {
   flex: 1;
+  width: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px 16px;
 }
 
@@ -203,6 +249,37 @@ export default {
   color: #999;
   margin-bottom: 14px;
   display: block;
+}
+
+.gender-group {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gender-item {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: 48px;
+  box-sizing: border-box;
+  border: 1.5px solid #eee;
+  border-radius: 10px;
+  background: #f9f9f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #666;
+}
+
+.gender-item.selected {
+  border-color: #ff6b35;
+  background: #fff8e6;
+  color: #ff6b35;
+  font-weight: 600;
 }
 
 .age-display {
@@ -232,7 +309,7 @@ export default {
 .slider-fill {
   position: absolute;
   height: 100%;
-  background: #FF6B35;
+  background: #ff6b35;
   border-radius: 2px;
 }
 
@@ -243,7 +320,7 @@ export default {
   width: 28px;
   height: 28px;
   background: white;
-  border: 2px solid #FF6B35;
+  border: 2px solid #ff6b35;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -270,7 +347,7 @@ export default {
 .submit-btn {
   width: 100%;
   height: 48px;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: white;
   border-radius: 9999px;
   font-size: 16px;

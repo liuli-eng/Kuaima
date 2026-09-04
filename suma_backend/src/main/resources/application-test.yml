@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/kuaima?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowMultiQueries=true
+    username: root
+    password: 11112222
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+jwt:
+  secret: suma-backend-jwt-test-secret-key-0123456789abcdef0123456789
+  expiration: 3600000
+
+wechat:
+  appid: test-wechat-appid
+  secret: test-wechat-secret

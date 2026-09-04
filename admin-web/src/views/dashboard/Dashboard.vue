@@ -42,7 +42,7 @@
       <div class="card">
         <div class="card-header">
           <span class="card-title">工种分布</span>
-          <router-link to="/jobs" class="card-action">查看详情</router-link>
+          <router-link to="/admin/jobs" class="card-action">查看详情</router-link>
         </div>
         <div class="donut-wrapper">
           <div ref="donutChart" class="donut-chart"></div>
@@ -65,7 +65,7 @@
         <span class="card-title">实时订单</span>
         <div style="display: flex; gap: 12px; align-items: center;">
           <el-button link type="primary" :underline="false">刷新</el-button>
-          <router-link to="/orders" class="card-action">
+          <router-link to="/admin/orders" class="card-action">
             查看全部 <i class="fas fa-arrow-right" style="font-size:11px; margin-left:4px;"></i>
           </router-link>
         </div>
@@ -122,7 +122,7 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
-import { getStats } from '@/api/dashboard'
+import { getStats, getTrend, getDistribution, getRecentOrders } from '@/api/dashboard'
 
 // statCards：后端接口填充 value，其余字段保留原展示元数据
 // 后端 Dashboard 字段：workerTotal, bossTotal, orderTotal, settledTotal, pendingAudit
@@ -135,27 +135,15 @@ const statCards = reactive([
   { title: '待审核', value: '-', change: '需及时处理', up: true, icon: 'fa-clock', iconClass: 'yellow' }
 ])
 
-// 以下数据暂未有后端 API，保留为本地常量占位
-const orderTrendData = {
-  labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-  values: [120, 145, 168, 142, 190, 210, 185]
-}
-const jobTypeData = [
-  { name: '电子厂', value: 40, color: '#FF6B35' },
-  { name: '物流', value: 25, color: '#2563EB' },
-  { name: '餐饮', value: 20, color: '#10B981' },
-  { name: '其他', value: 15, color: '#F59E0B' }
-]
-const recentOrders = [
-  { id: 'KM20240315001', employer: '深圳富士康科技集团', job: '电子厂装配工', worker: '张建国', amount: '¥280', status: '已完成', statusClass: 'success', time: '2024-03-15 18:30', avatarColor: 'linear-gradient(135deg,#FF8C42,#FF6B35)', avatarLetter: '张' },
-  { id: 'KM20240315002', employer: '顺丰速运有限公司', job: '快递分拣员', worker: '李美丽', amount: '¥220', status: '进行中', statusClass: 'info', time: '2024-03-15 17:45', avatarColor: 'linear-gradient(135deg,#3B82F6,#2563EB)', avatarLetter: '李' },
-  { id: 'KM20240315003', employer: '肯德基餐饮管理', job: '餐厅服务员', worker: '王小刚', amount: '¥180', status: '待处理', statusClass: 'warning', time: '2024-03-15 17:20', avatarColor: 'linear-gradient(135deg,#10B981,#059669)', avatarLetter: '王' },
-  { id: 'KM20240315004', employer: '京东物流仓储', job: '仓库理货员', worker: '陈大海', amount: '¥320', status: '已完成', statusClass: 'success', time: '2024-03-15 16:50', avatarColor: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', avatarLetter: '陈' },
-  { id: 'KM20240315005', employer: '比亚迪汽车工业', job: '电子厂操作工', worker: '刘芳', amount: '¥260', status: '进行中', statusClass: 'info', time: '2024-03-15 16:15', avatarColor: 'linear-gradient(135deg,#F59E0B,#D97706)', avatarLetter: '刘' },
-  { id: 'KM20240315006', employer: '麦当劳食品有限公司', job: '后厨助手', worker: '赵小红', amount: '¥160', status: '待处理', statusClass: 'warning', time: '2024-03-15 15:40', avatarColor: 'linear-gradient(135deg,#EC4899,#BE185D)', avatarLetter: '赵' },
-  { id: 'KM20240315007', employer: '顺丰速运有限公司', job: '司机', worker: '周志华', amount: '¥450', status: '已完成', statusClass: 'success', time: '2024-03-15 14:30', avatarColor: 'linear-gradient(135deg,#06B6D4,#0891B2)', avatarLetter: '周' },
-  { id: 'KM20240315008', employer: '格力电器制造', job: '装配钳工', worker: '吴志强', amount: '¥300', status: '已取消', statusClass: 'danger', time: '2024-03-15 13:20', avatarColor: 'linear-gradient(135deg,#64748B,#475569)', avatarLetter: '吴' }
-]
+// 趋势和工种分布数据（从后端加载）
+const orderTrendData = reactive({ labels: ['周一','周二','周三','周四','周五','周六','周日'], values: [0,0,0,0,0,0,0] })
+const jobTypeData = ref([
+  { name: '日结', value: 0, color: '#FF6B35' },
+  { name: '压薪日结', value: 0, color: '#2563EB' },
+  { name: '月结', value: 0, color: '#10B981' },
+  { name: '其他', value: 0, color: '#F59E0B' }
+])
+const recentOrders = ref([])
 
 const trendRange = ref('7d')
 const trendChart = ref(null)
@@ -169,14 +157,73 @@ const loadStats = async () => {
   try {
     const result = await getStats()
     const d = result.data || {}
-    // 映射后端字段 → statCards.value
     statCards[0].value = formatNumber(d.workerTotal)   // 零工总数
     statCards[1].value = formatNumber(d.bossTotal)     // 雇主总数
     statCards[2].value = formatNumber(d.orderTotal)    // 今日订单
-    statCards[3].value = formatNumber(d.settledTotal)  // 已结算（后端 settledTotal）
+    statCards[3].value = formatNumber(d.settledTotal)  // 已结算
     statCards[4].value = formatNumber(d.pendingAudit)  // 待审核
   } catch (e) {
     console.warn('[Dashboard] 加载统计数据失败:', e)
+  }
+}
+
+// 加载订单趋势
+const loadTrend = async () => {
+  try {
+    const result = await getTrend()
+    const d = result.data || {}
+    if (d.labels && d.values) {
+      orderTrendData.labels = d.labels
+      orderTrendData.values = d.values
+    }
+  } catch (e) {
+    console.warn('[Dashboard] 加载趋势数据失败:', e)
+  }
+}
+
+// 加载工种分布
+const loadDistribution = async () => {
+  try {
+    const result = await getDistribution()
+    const d = result.data || []
+    if (Array.isArray(d) && d.length > 0) {
+      jobTypeData.value = d
+    }
+  } catch (e) {
+    console.warn('[Dashboard] 加载工种分布失败:', e)
+  }
+}
+
+// 加载最近订单
+const loadRecentOrders = async () => {
+  try {
+    const result = await getRecentOrders()
+    const d = result.data || []
+    const palette = ['#FF6B35', '#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#64748B']
+    recentOrders.value = (Array.isArray(d) ? d : []).map((o, i) => {
+      const employer = o.employerName || '未知'
+      const job = o.orderTitle || o.postion || '-'
+      const amount = o.salary ? `¥${o.salary}` : '-'
+      const status = o.orderStatus || '-'
+      const statusClass = status === '已完成' ? 'success' : status === '招工中' ? 'info' : status === '待审核' ? 'warning' : 'danger'
+      const ts = o.timestamp
+      const time = ts ? new Date(ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
+      const letter = employer.charAt(0) || '?'
+      return {
+        id: `KM${o.id || ''}`,
+        employer,
+        job,
+        worker: '-',
+        amount,
+        status,
+        statusClass,
+        time,
+        avatarColor: `linear-gradient(135deg, ${palette[i % palette.length]}, ${palette[(i+1) % palette.length]})`,
+        avatarLetter: letter
+      }
+    })
+  } catch (e) {
+    console.warn('[Dashboard] 加载最近订单失败:', e)
   }
 }
 
@@ -287,11 +334,19 @@ const handleResize = () => {
   donutChartInstance?.resize()
 }
 
-onMounted(() => {
-  loadStats()
+onMounted(async () => {
   initTrendChart()
   initDonutChart()
   window.addEventListener('resize', handleResize)
+  // 加载真实数据
+  await Promise.all([loadStats(), loadTrend(), loadDistribution(), loadRecentOrders()])
+  // 数据加载后刷新图表
+  if (trendChartInstance) {
+    trendChartInstance.setOption({ xAxis: { data: orderTrendData.labels }, series: [{ data: orderTrendData.values }] })
+  }
+  if (donutChartInstance) {
+    donutChartInstance.setOption({ series: [{ data: jobTypeData.value }] })
+  }
 })
 
 onBeforeUnmount(() => {

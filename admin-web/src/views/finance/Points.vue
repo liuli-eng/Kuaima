@@ -11,28 +11,28 @@
           <span class="stat-card-title">积分总量</span>
           <div class="stat-card-icon yellow"><i class="fas fa-star"></i></div>
         </div>
-        <div class="stat-card-value">856,450</div>
+        <div class="stat-card-value">-</div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">本月充值</span>
           <div class="stat-card-icon green"><i class="fas fa-plus"></i></div>
         </div>
-        <div class="stat-card-value">28,500</div>
+        <div class="stat-card-value">-</div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">本月消费</span>
           <div class="stat-card-icon"><i class="fas fa-minus"></i></div>
         </div>
-        <div class="stat-card-value">15,200</div>
+        <div class="stat-card-value">-</div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">本月赠送</span>
           <div class="stat-card-icon blue"><i class="fas fa-gift"></i></div>
         </div>
-        <div class="stat-card-value">8,600</div>
+        <div class="stat-card-value">-</div>
       </div>
     </div>
 
@@ -85,7 +85,7 @@
 
       <div class="pagination">
         <div class="pagination-info">共 {{ pointsData.length }} 条记录</div>
-        <el-pagination background layout="total, prev, pager, next, jumper" :total="8560" :page-size="10" />
+        <el-pagination background layout="total, prev, pager, next, jumper" :total="0" :page-size="10" />
       </div>
     </div>
   </div>
@@ -93,9 +93,8 @@
 
 <script setup>
 import { ref } from 'vue'
-import { pointsData } from '@/mock'
 
-console.warn('[Points] 积分管理页面暂无后端 API 覆盖，当前使用 mock 数据。待后端提供 /admin/points/records 接口后可接入。')
+const pointsData = ref([])
 
 const typeFilter = ref('')
 const userFilter = ref('')

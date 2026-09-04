@@ -88,7 +88,7 @@
             </div>
           </div>
           <div class="notification-footer">
-            <router-link to="/messages" style="color: var(--primary); text-decoration: none; font-size: 13px;">
+            <router-link to="/admin/messages" style="color: var(--primary); text-decoration: none; font-size: 13px;">
               查看全部消息 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
             </router-link>
           </div>
@@ -183,13 +183,13 @@ const matchedBreadcrumbs = computed(() => {
 const handleCommand = (command) => {
   switch (command) {
     case 'profile':
-      router.push('/profile')
+      router.push('/admin/profile')
       break
     case 'password':
-      router.push('/password')
+      router.push('/admin/password')
       break
     case 'settings':
-      router.push('/settings')
+      router.push('/admin/account')
       break
     case 'logout':
       logoutVisible.value = true

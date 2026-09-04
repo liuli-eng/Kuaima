@@ -13,16 +13,18 @@
     <!-- 顶部导航 -->
     <view class="top-nav">
       <view class="nav-back" @click="goBack">
-        <text style="color:#333;font-size:18px;">←</text>
+        <text style="color: #333; font-size: 18px">←</text>
       </view>
       <text class="nav-title">筛选</text>
       <view class="nav-right">
         <view class="nav-btn">
-          <text style="color:#333;font-size:13px;">⋯</text>
+          <text style="color: #333; font-size: 13px">⋯</text>
         </view>
-        <view style="width:1px;height:14px;background:#ddd;margin:0 2px;"></view>
+        <view
+          style="width: 1px; height: 14px; background: #ddd; margin: 0 2px"
+        ></view>
         <view class="nav-btn">
-          <text style="color:#333;font-size:11px;">●</text>
+          <text style="color: #333; font-size: 11px">●</text>
         </view>
       </view>
     </view>
@@ -33,13 +35,14 @@
       <view class="filter-section">
         <text class="section-title">招工日期</text>
         <view class="filter-options">
-          <text 
-            v-for="(item, index) in dateOptions" 
+          <text
+            v-for="(item, index) in dateOptions"
             :key="index"
             class="filter-option"
             :class="{ active: dateActive === index }"
             @click="dateActive = index"
-          >{{ item }}</text>
+            >{{ item }}</text
+          >
         </view>
       </view>
 
@@ -47,13 +50,14 @@
       <view class="filter-section">
         <text class="section-title">工种类型</text>
         <view class="filter-options">
-          <text 
-            v-for="(item, index) in jobTypeOptions" 
+          <text
+            v-for="(item, index) in jobTypeOptions"
             :key="index"
             class="filter-option"
             :class="{ active: jobTypeActive === index }"
             @click="jobTypeActive = index"
-          >{{ item }}</text>
+            >{{ item }}</text
+          >
         </view>
       </view>
 
@@ -61,13 +65,14 @@
       <view class="filter-section">
         <text class="section-title">薪资范围</text>
         <view class="filter-options">
-          <text 
-            v-for="(item, index) in salaryOptions" 
+          <text
+            v-for="(item, index) in salaryOptions"
             :key="index"
             class="filter-option"
             :class="{ active: salaryActive === index }"
             @click="salaryActive = index"
-          >{{ item }}</text>
+            >{{ item }}</text
+          >
         </view>
       </view>
 
@@ -75,13 +80,14 @@
       <view class="filter-section">
         <text class="section-title">工作地点</text>
         <view class="filter-options">
-          <text 
-            v-for="(item, index) in locationOptions" 
+          <text
+            v-for="(item, index) in locationOptions"
             :key="index"
             class="filter-option"
             :class="{ active: locationActive === index }"
             @click="locationActive = index"
-          >{{ item }}</text>
+            >{{ item }}</text
+          >
         </view>
       </view>
 
@@ -89,13 +95,14 @@
       <view class="filter-section">
         <text class="section-title">零工经验</text>
         <view class="filter-options">
-          <text 
-            v-for="(item, index) in experienceOptions" 
+          <text
+            v-for="(item, index) in experienceOptions"
             :key="index"
             class="filter-option"
             :class="{ active: experienceActive === index }"
             @click="experienceActive = index"
-          >{{ item }}</text>
+            >{{ item }}</text
+          >
         </view>
       </view>
 
@@ -103,13 +110,14 @@
       <view class="filter-section">
         <text class="section-title">性别要求</text>
         <view class="filter-options">
-          <text 
-            v-for="(item, index) in genderOptions" 
+          <text
+            v-for="(item, index) in genderOptions"
             :key="index"
             class="filter-option"
             :class="{ active: genderActive === index }"
             @click="genderActive = index"
-          >{{ item }}</text>
+            >{{ item }}</text
+          >
         </view>
       </view>
 
@@ -117,13 +125,14 @@
       <view class="filter-section">
         <text class="section-title">特色标签</text>
         <view class="filter-options">
-          <text 
-            v-for="(item, index) in tagOptions" 
+          <text
+            v-for="(item, index) in tagOptions"
             :key="index"
             class="filter-option"
             :class="{ active: tagActive.includes(index) }"
             @click="toggleTag(index)"
-          >{{ item }}</text>
+            >{{ item }}</text
+          >
         </view>
       </view>
     </scroll-view>
@@ -140,42 +149,95 @@
 export default {
   data() {
     return {
-      dateOptions: ['全部', '今天', '明天', '后天', '本周内', '本月内'],
+      dateOptions: ["全部", "今天", "明天", "后天", "本周内", "本月内"],
       dateActive: 0,
-      jobTypeOptions: ['全部', '餐饮服务', '快递配送', '仓储物流', '制造业', '建筑装修', '零售促销', '家政服务'],
+      jobTypeOptions: [
+        "全部",
+        "餐饮服务",
+        "快递配送",
+        "仓储物流",
+        "制造业",
+        "建筑装修",
+        "零售促销",
+        "家政服务",
+      ],
       jobTypeActive: 0,
-      salaryOptions: ['不限', '100元以下', '100-200元', '200-300元', '300元以上', '日结周结'],
+      salaryOptions: [
+        "不限",
+        "100元以下",
+        "100-200元",
+        "200-300元",
+        "300元以上",
+        "日结周结",
+      ],
       salaryActive: 0,
-      locationOptions: ['不限', '3公里内', '5公里内', '10公里内', '同城'],
+      locationOptions: ["不限", "3公里内", "5公里内", "10公里内", "同城"],
       locationActive: 0,
-      experienceOptions: ['不限', '新手可做', '有经验优先', '熟练工', '技术工人'],
+      experienceOptions: [
+        "不限",
+        "新手可做",
+        "有经验优先",
+        "熟练工",
+        "技术工人",
+      ],
       experienceActive: 0,
-      genderOptions: ['不限', '男', '女', '男女均可'],
+      genderOptions: ["不限", "男", "女", "男女均可"],
       genderActive: 0,
-      tagOptions: ['包吃住', '有空调', '日结', '可长期', '报销路费', '提供工具'],
-      tagActive: []
-    }
+      tagOptions: [
+        "包吃住",
+        "有空调",
+        "日结",
+        "可长期",
+        "报销路费",
+        "提供工具",
+      ],
+      tagActive: [],
+    };
+  },
+  onLoad() {
+    const saved = uni.getStorageSync("bossOrderFilter");
+    if (!saved || typeof saved !== "object") return;
+    this.dateActive = Math.max(0, this.dateOptions.indexOf(saved.date));
+    this.jobTypeActive = Math.max(
+      0,
+      this.jobTypeOptions.indexOf(saved.jobType),
+    );
+    this.salaryActive = Math.max(0, this.salaryOptions.indexOf(saved.salary));
+    this.locationActive = Math.max(
+      0,
+      this.locationOptions.indexOf(saved.location),
+    );
+    this.experienceActive = Math.max(
+      0,
+      this.experienceOptions.indexOf(saved.experience),
+    );
+    this.genderActive = Math.max(0, this.genderOptions.indexOf(saved.gender));
+    this.tagActive = Array.isArray(saved.tags)
+      ? saved.tags
+          .map((tag) => this.tagOptions.indexOf(tag))
+          .filter((index) => index >= 0)
+      : [];
   },
   methods: {
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     toggleTag(index) {
-      const idx = this.tagActive.indexOf(index)
+      const idx = this.tagActive.indexOf(index);
       if (idx >= 0) {
-        this.tagActive.splice(idx, 1)
+        this.tagActive.splice(idx, 1);
       } else {
-        this.tagActive.push(index)
+        this.tagActive.push(index);
       }
     },
     resetFilter() {
-      this.dateActive = 0
-      this.jobTypeActive = 0
-      this.salaryActive = 0
-      this.locationActive = 0
-      this.experienceActive = 0
-      this.genderActive = 0
-      this.tagActive = []
+      this.dateActive = 0;
+      this.jobTypeActive = 0;
+      this.salaryActive = 0;
+      this.locationActive = 0;
+      this.experienceActive = 0;
+      this.genderActive = 0;
+      this.tagActive = [];
     },
     confirmFilter() {
       const filterData = {
@@ -185,13 +247,14 @@ export default {
         location: this.locationOptions[this.locationActive],
         experience: this.experienceOptions[this.experienceActive],
         gender: this.genderOptions[this.genderActive],
-        tags: this.tagActive.map(i => this.tagOptions[i])
-      }
-      uni.$emit('filterChanged', filterData)
-      uni.navigateBack()
-    }
-  }
-}
+        tags: this.tagActive.map((i) => this.tagOptions[i]),
+      };
+      uni.setStorageSync("bossOrderFilter", filterData);
+      uni.$emit("filterChanged", filterData);
+      uni.navigateBack();
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -293,7 +356,7 @@ export default {
 }
 
 .filter-option.active {
-  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
   color: #fff;
   border-color: transparent;
 }
@@ -328,7 +391,7 @@ export default {
 .confirm-btn {
   width: 140px;
   padding: 12px;
-  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
   border: none;
   border-radius: 24px;
   font-size: 15px;

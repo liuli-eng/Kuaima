@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 用工订单</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .stat-card-icon.red {
+            background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+            color: var(--danger);
+        }
+        .order-id-cell {
+            font-family: monospace;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .employer-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .employer-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .employer-name-text {
+            font-weight: 500;
+            font-size: 13px;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .worker-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .worker-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .worker-name-text {
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .job-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .job-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .job-type-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            width: fit-content;
+        }
+        .type-elec { background: #EFF6FF; color: #2563EB; }
+        .type-logistics { background: #FFFBEB; color: #F59E0B; }
+        .type-catering { background: #FEF2F2; color: #EF4444; }
+        .type-warehouse { background: #ECFDF5; color: #10B981; }
+        .type-manufacture { background: #F3F4F6; color: #6B7280; }
+        .type-service { background: #FAF5FF; color: #8B5CF6; }
+        .type-auto { background: #F0F9FF; color: #0EA5E9; }
+        .type-agriculture { background: #F0FDF4; color: #22C55E; }
+        .amount-cell {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .time-cell {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .time-cell .time-range {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+        .action-btns .btn {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .detail-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .detail-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .detail-info-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .detail-info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .timeline-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0;
+            position: relative;
+        }
+        .timeline-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 34px;
+            bottom: -6px;
+            width: 2px;
+            background: var(--border);
+        }
+        .timeline-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .timeline-content {
+            flex: 1;
+        }
+        .timeline-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .timeline-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .dispute-form {
+            background: #FEF2F2;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #FECACA;
+        }
+        .quick-filter {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .quick-filter:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .quick-filter.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">用工订单</h1>
+                <p class="page-desc">管理所有日结订单、状态追踪、异常处理</p>
+            </div>
+
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">今日订单</span>
+                        <div class="stat-card-icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">1,856</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>较昨日 +23.1%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">进行中</span>
+                        <div class="stat-card-icon blue">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">423</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>活跃订单</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">已完成</span>
+                        <div class="stat-card-icon green">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">1,356</div>
+                    <div class="stat-card-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>完成率 73.0%</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">纠纷订单</span>
+                        <div class="stat-card-icon red">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">21</div>
+                    <div class="stat-card-change down">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>待处理 8 单</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="filter-bar">
+                    <div class="filter-item">
+                        <span>订单号</span>
+                        <div class="search-box" style="width:200px;">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="输入订单号搜索" style="width:200px; padding:7px 12px 7px 36px;">
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <span>订单状态</span>
+                        <select id="statusFilter">
+                            <option value="">全部</option>
+                            <option value="pending">待确认</option>
+                            <option value="progress">进行中</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                            <option value="dispute">纠纷</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>工种类型</span>
+                        <select id="jobTypeFilter">
+                            <option value="">全部</option>
+                            <option value="elec">电子厂</option>
+                            <option value="logistics">物流</option>
+                            <option value="catering">餐饮</option>
+                            <option value="warehouse">仓储</option>
+                            <option value="manufacture">制造业</option>
+                            <option value="auto">汽车</option>
+                            <option value="agriculture">农业</option>
+                            <option value="service">服务</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span>日期范围</span>
+                        <input type="date" style="width:130px;" id="dateStart">
+                        <span>至</span>
+                        <input type="date" style="width:130px;" id="dateEnd">
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="applyFilter()"><i class="fas fa-search"></i> 查询</button>
+                    <button class="btn btn-outline btn-sm" onclick="resetFilter()"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <div style="flex:1;"></div>
+                    <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出数据</button>
+                </div>
+
+                <div style="display:flex; gap:8px; margin-bottom:16px;">
+                    <span class="quick-filter active" onclick="quickFilter(this, '')">全部订单</span>
+                    <span class="quick-filter" onclick="quickFilter(this, 'pending')">待确认</span>
+                    <span class="quick-filter" onclick="quickFilter(this, 'progress')">进行中</span>
+                    <span class="quick-filter" onclick="quickFilter(this, 'completed')">已完成</span>
+                    <span class="quick-filter" onclick="quickFilter(this, 'dispute')">纠纷</span>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>雇主</th>
+                                <th>零工</th>
+                                <th>工种</th>
+                                <th>金额</th>
+                                <th>开始/结束时间</th>
+                                <th>订单状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <div class="pagination-info">共 1,856 条订单记录，当前显示 1-10 条</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" disabled><i class="fas fa-chevron-left" style="font-size:10px;"></i></button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn">3</button>
+                        <button class="page-btn">4</button>
+                        <button class="page-btn">5</button>
+                        <span style="color:var(--text-muted); padding:0 4px;">...</span>
+                        <button class="page-btn">186</button>
+                        <button class="page-btn"><i class="fas fa-chevron-right" style="font-size:10px;"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="orderDetailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:760px; max-height:92vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <span style="font-size:18px; font-weight:600;">订单详情</span>
+                    <span class="status-badge" id="modalStatusBadge" style="margin-left:10px;"></span>
+                </div>
+                <div class="modal-close" onclick="closeOrderDetail()" style="cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted);">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div style="padding:24px; max-height:65vh; overflow-y:auto;">
+                <div class="detail-section-title">基本信息</div>
+                <div class="detail-info-grid" style="margin-bottom:20px;">
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">订单号</span>
+                        <span class="detail-info-value" id="detailOrderId">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">订单金额</span>
+                        <span class="detail-info-value" id="detailAmount" style="color:var(--primary); font-size:16px;">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">工种</span>
+                        <span class="detail-info-value" id="detailJobName">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">工价</span>
+                        <span class="detail-info-value" id="detailWage">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">开始时间</span>
+                        <span class="detail-info-value" id="detailStartTime">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">结束时间</span>
+                        <span class="detail-info-value" id="detailEndTime">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">工作地点</span>
+                        <span class="detail-info-value" id="detailLocation">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">结算方式</span>
+                        <span class="detail-info-value">日结</span>
+                    </div>
+                </div>
+
+                <div class="detail-section-title">雇主信息</div>
+                <div class="detail-info-grid" style="margin-bottom:20px;">
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">雇主名称</span>
+                        <span class="detail-info-value" id="detailEmployer">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">联系人</span>
+                        <span class="detail-info-value" id="detailContact">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">联系电话</span>
+                        <span class="detail-info-value" id="detailPhone">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">雇主评分</span>
+                        <span class="detail-info-value" style="color:var(--warning);" id="detailEmployerRating">-</span>
+                    </div>
+                </div>
+
+                <div class="detail-section-title">零工信息</div>
+                <div class="detail-info-grid" style="margin-bottom:20px;">
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">姓名</span>
+                        <span class="detail-info-value" id="detailWorker">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">联系电话</span>
+                        <span class="detail-info-value" id="detailWorkerPhone">-</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">实名认证</span>
+                        <span class="detail-info-value" style="color:var(--success);">已认证</span>
+                    </div>
+                    <div class="detail-info-item">
+                        <span class="detail-info-label">信用评分</span>
+                        <span class="detail-info-value" style="color:var(--primary);" id="detailWorkerRating">-</span>
+                    </div>
+                </div>
+
+                <div class="detail-section-title">订单时间线</div>
+                <div id="detailTimeline"></div>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+                <button class="btn btn-outline" onclick="closeOrderDetail()">关闭</button>
+                <button class="btn btn-primary" onclick="handleDispute()">处理纠纷</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="disputeModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:560px; max-height:92vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:18px; font-weight:600;">处理纠纷</span>
+                <div class="modal-close" onclick="closeDispute()" style="cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted);">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div style="padding:24px; max-height:65vh; overflow-y:auto;">
+                <div class="dispute-form">
+                    <div style="font-size:14px; font-weight:600; margin-bottom:8px; color:var(--danger);">
+                        <i class="fas fa-exclamation-circle"></i> 订单纠纷处理
+                    </div>
+                    <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+                        请根据纠纷实际情况进行处理，处理结果将通知双方当事人。
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="form-label">纠纷类型</label>
+                    <select class="form-input form-select" id="disputeType">
+                        <option value="">请选择纠纷类型</option>
+                        <option value="wage">工资争议</option>
+                        <option value="worktime">工时争议</option>
+                        <option value="workcondition">工作环境</option>
+                        <option value="other">其他纠纷</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">处理结果</label>
+                    <select class="form-input form-select" id="disputeResult">
+                        <option value="">请选择处理结果</option>
+                        <option value="full">全额结算给零工</option>
+                        <option value="partial">部分结算</option>
+                        <option value="cancel">取消订单全额退款</option>
+                        <option value="negotiate">双方协商解决</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">纠纷说明</label>
+                    <textarea class="form-input form-textarea" id="disputeRemark" placeholder="请详细说明纠纷情况及处理依据" style="min-height:100px;"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">调整金额 (¥)</label>
+                    <input type="number" class="form-input" id="disputeAmount" placeholder="如涉及金额调整，请填写">
+                </div>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+                <button class="btn btn-outline" onclick="closeDispute()">取消</button>
+                <button class="btn btn-primary" onclick="submitDispute()">提交处理</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const ordersData = [
+            { id: 'DD202408210001', employer: '富士康科技集团', employerShort: '富', employerColor: 'linear-gradient(135deg,#3B82F6,#2563EB)', worker: '张建国', workerShort: '张', workerColor: 'linear-gradient(135deg,#FF8C42,#FF6B35)', job: '电子厂装配工', jobType: 'elec', amount: 280, start: '2024-08-21 08:00', end: '2024-08-21 18:00', status: 'completed', statusText: '已完成', contact: '王经理', phone: '138****5678', employerRating: '4.8', workerRating: '4.9', location: '深圳龙华', wage: '¥280/天' },
+            { id: 'DD202408210002', employer: '顺丰速运有限公司', employerShort: '顺', employerColor: 'linear-gradient(135deg,#F59E0B,#D97706)', worker: '李美丽', workerShort: '李', workerColor: 'linear-gradient(135deg,#06B6D4,#0891B2)', job: '快递分拣员', jobType: 'logistics', amount: 220, start: '2024-08-21 07:00', end: '2024-08-21 17:00', status: 'progress', statusText: '进行中', contact: '陈主管', phone: '139****2345', employerRating: '4.6', workerRating: '4.7', location: '广州白云', wage: '¥220/天' },
+            { id: 'DD202408210003', employer: '肯德基餐饮管理', employerShort: '肯', employerColor: 'linear-gradient(135deg,#EC4899,#BE185D)', worker: '王小刚', workerShort: '王', workerColor: 'linear-gradient(135deg,#10B981,#059669)', job: '餐厅服务员', jobType: 'catering', amount: 180, start: '2024-08-21 09:00', end: '2024-08-21 20:00', status: 'pending', statusText: '待确认', contact: '刘经理', phone: '137****6789', employerRating: '4.5', workerRating: '4.6', location: '北京朝阳', wage: '¥180/天' },
+            { id: 'DD202408210004', employer: '京东物流仓储', employerShort: '京', employerColor: 'linear-gradient(135deg,#10B981,#059669)', worker: '陈大海', workerShort: '陈', workerColor: 'linear-gradient(135deg,#8B5CF6,#6D28D9)', job: '仓库理货员', jobType: 'warehouse', amount: 320, start: '2024-08-21 06:30', end: '2024-08-21 18:30', status: 'completed', statusText: '已完成', contact: '赵组长', phone: '135****3456', employerRating: '4.7', workerRating: '4.8', location: '佛山顺德', wage: '¥320/天' },
+            { id: 'DD202408210005', employer: '比亚迪汽车工业', employerShort: '比', employerColor: 'linear-gradient(135deg,#F97316,#EA580C)', worker: '刘芳', workerShort: '刘', workerColor: 'linear-gradient(135deg,#F59E0B,#D97706)', job: '电子厂操作工', jobType: 'auto', amount: 380, start: '2024-08-21 08:00', end: '2024-08-21 19:00', status: 'progress', statusText: '进行中', contact: '孙经理', phone: '136****4567', employerRating: '4.9', workerRating: '4.5', location: '西安高新', wage: '¥380/天' },
+            { id: 'DD202408210006', employer: '麦当劳食品有限公司', employerShort: '麦', employerColor: 'linear-gradient(135deg,#64748B,#475569)', worker: '赵小红', workerShort: '赵', workerColor: 'linear-gradient(135deg,#EC4899,#BE185D)', job: '后厨助手', jobType: 'catering', amount: 160, start: '2024-08-21 10:00', end: '2024-08-21 21:00', status: 'dispute', statusText: '纠纷', contact: '周店长', phone: '138****7890', employerRating: '4.3', workerRating: '4.4', location: '成都锦江', wage: '¥160/天' },
+            { id: 'DD202408210007', employer: '格力电器制造', employerShort: '格', employerColor: 'linear-gradient(135deg,#06B6D4,#0891B2)', worker: '吴志强', workerShort: '吴', workerColor: 'linear-gradient(135deg,#64748B,#475569)', job: '装配钳工', jobType: 'manufacture', amount: 450, start: '2024-08-21 07:30', end: '2024-08-21 18:30', status: 'cancelled', statusText: '已取消', contact: '郑主管', phone: '137****8901', employerRating: '4.8', workerRating: '4.9', location: '珠海香洲', wage: '¥450/天' },
+            { id: 'DD202408210008', employer: '顺丰速运有限公司', employerShort: '顺', employerColor: 'linear-gradient(135deg,#F59E0B,#D97706)', worker: '周志华', workerShort: '周', workerColor: 'linear-gradient(135deg,#06B6D4,#0891B2)', job: '司机', jobType: 'logistics', amount: 500, start: '2024-08-21 06:00', end: '2024-08-21 20:00', status: 'completed', statusText: '已完成', contact: '陈主管', phone: '139****2345', employerRating: '4.6', workerRating: '5.0', location: '广州白云', wage: '¥500/天' },
+            { id: 'DD202408210009', employer: '京东方科技集团', employerShort: '京', employerColor: 'linear-gradient(135deg,#8B5CF6,#7C3AED)', worker: '郑小丽', workerShort: '郑', workerColor: 'linear-gradient(135deg,#3B82F6,#2563EB)', job: '质检工', jobType: 'elec', amount: 260, start: '2024-08-21 08:00', end: '2024-08-21 18:00', status: 'progress', statusText: '进行中', contact: '李经理', phone: '135****3456', employerRating: '4.7', workerRating: '4.6', location: '重庆两江', wage: '¥260/天' },
+            { id: 'DD202408210010', employer: '绿源农业科技', employerShort: '绿', employerColor: 'linear-gradient(135deg,#22C55E,#16A34A)', worker: '孙大山', workerShort: '孙', workerColor: 'linear-gradient(135deg,#F59E0B,#D97706)', job: '农业采摘工', jobType: 'agriculture', amount: 200, start: '2024-08-21 06:00', end: '2024-08-21 17:00', status: 'pending', statusText: '待确认', contact: '王老板', phone: '133****4567', employerRating: '4.4', workerRating: '4.7', location: '昆明呈贡', wage: '¥200/天' }
+        ];
+
+        let currentStatusFilter = '';
+        let currentJobTypeFilter = '';
+        let currentOrderIndex = 0;
+
+        function renderTable(data) {
+            const tbody = document.getElementById('ordersTableBody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">暂无订单数据</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map((o, idx) => {
+                let statusClass = '';
+                if (o.status === 'pending') statusClass = 'warning';
+                else if (o.status === 'progress') statusClass = 'info';
+                else if (o.status === 'completed') statusClass = 'success';
+                else if (o.status === 'cancelled') statusClass = 'danger';
+                else if (o.status === 'dispute') statusClass = 'danger';
+
+                const showDisputeBtn = o.status === 'dispute';
+
+                return `
+                    <tr>
+                        <td class="order-id-cell">${o.id}</td>
+                        <td>
+                            <div class="employer-cell">
+                                <span class="employer-logo" style="background:${o.employerColor};">${o.employerShort}</span>
+                                <span class="employer-name-text">${o.employer}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="worker-cell">
+                                <span class="worker-avatar" style="background:${o.workerColor};">${o.workerShort}</span>
+                                <span class="worker-name-text">${o.worker}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="job-cell">
+                                <span class="job-name">${o.job}</span>
+                                <span class="job-type-tag type-${o.jobType}">${getJobTypeLabel(o.jobType)}</span>
+                            </div>
+                        </td>
+                        <td class="amount-cell">¥${o.amount}</td>
+                        <td>
+                            <div class="time-cell">
+                                <div class="time-range">
+                                    <span><i class="fas fa-arrow-up" style="color:var(--success); font-size:10px;"></i> ${o.start}</span>
+                                    <span><i class="fas fa-arrow-down" style="color:var(--danger); font-size:10px;"></i> ${o.end}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="status-badge ${statusClass}">${o.statusText}</span></td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-outline" onclick="showOrderDetail(${idx})">查看详情</button>
+                                ${showDisputeBtn ? '<button class="btn btn-primary" onclick="showDispute(' + idx + ')">处理纠纷</button>' : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getJobTypeLabel(type) {
+            const map = { elec: '电子厂', logistics: '物流', catering: '餐饮', warehouse: '仓储', manufacture: '制造业', auto: '汽车', agriculture: '农业', service: '服务' };
+            return map[type] || type;
+        }
+
+        function applyFilter() {
+            currentStatusFilter = document.getElementById('statusFilter').value;
+            currentJobTypeFilter = document.getElementById('jobTypeFilter').value;
+            const keyword = document.querySelector('.filter-bar .search-box input').value.toLowerCase();
+            const filtered = ordersData.filter(o => {
+                if (currentStatusFilter && o.status !== currentStatusFilter) return false;
+                if (currentJobTypeFilter && o.jobType !== currentJobTypeFilter) return false;
+                if (keyword && !o.id.toLowerCase().includes(keyword)) return false;
+                return true;
+            });
+            renderTable(filtered);
+        }
+
+        function resetFilter() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('jobTypeFilter').value = '';
+            document.querySelectorAll('.filter-bar .search-box input').forEach(i => i.value = '');
+            currentStatusFilter = '';
+            currentJobTypeFilter = '';
+            renderTable(ordersData);
+            document.querySelectorAll('.quick-filter').forEach(f => f.classList.remove('active'));
+            document.querySelectorAll('.quick-filter')[0].classList.add('active');
+        }
+
+        function quickFilter(el, status) {
+            document.querySelectorAll('.quick-filter').forEach(f => f.classList.remove('active'));
+            el.classList.add('active');
+            currentStatusFilter = status;
+            document.getElementById('statusFilter').value = status;
+            const filtered = ordersData.filter(o => {
+                if (status && o.status !== status) return false;
+                return true;
+            });
+            renderTable(filtered);
+        }
+
+        function showOrderDetail(index) {
+            const o = ordersData[index];
+            currentOrderIndex = index;
+            document.getElementById('detailOrderId').textContent = o.id;
+            document.getElementById('detailAmount').textContent = '¥' + o.amount;
+            document.getElementById('detailJobName').textContent = o.job;
+            document.getElementById('detailWage').textContent = o.wage;
+            document.getElementById('detailStartTime').textContent = o.start;
+            document.getElementById('detailEndTime').textContent = o.end;
+            document.getElementById('detailLocation').textContent = o.location;
+            document.getElementById('detailEmployer').textContent = o.employer;
+            document.getElementById('detailContact').textContent = o.contact;
+            document.getElementById('detailPhone').textContent = o.phone;
+            document.getElementById('detailEmployerRating').textContent = o.employerRating + ' / 5.0';
+            document.getElementById('detailWorker').textContent = o.worker;
+            document.getElementById('detailWorkerPhone').textContent = o.phone;
+            document.getElementById('detailWorkerRating').textContent = o.workerRating + ' / 5.0';
+
+            const badge = document.getElementById('modalStatusBadge');
+            let statusClass = '';
+            if (o.status === 'pending') statusClass = 'warning';
+            else if (o.status === 'progress') statusClass = 'info';
+            else if (o.status === 'completed') statusClass = 'success';
+            else if (o.status === 'cancelled') statusClass = 'danger';
+            else if (o.status === 'dispute') statusClass = 'danger';
+            badge.className = 'status-badge ' + statusClass;
+            badge.textContent = o.statusText;
+
+            const timeline = document.getElementById('detailTimeline');
+            let timelineHTML = '';
+            const timelineDotColors = {
+                green: { bg: 'var(--success)', icon: 'fa-check' },
+                blue: { bg: 'var(--secondary)', icon: 'fa-clock' },
+                orange: { bg: 'var(--primary)', icon: 'fa-info' },
+                gray: { bg: 'var(--text-muted)', icon: 'fa-minus' }
+            };
+
+            let t1Color = timelineDotColors.blue;
+            if (o.status === 'completed') t1Color = timelineDotColors.green;
+            else if (o.status === 'cancelled') t1Color = timelineDotColors.gray;
+            else if (o.status === 'dispute') t1Color = timelineDotColors.orange;
+
+            timelineHTML += `
+                <div class="timeline-item">
+                    <div class="timeline-dot" style="background:${t1Color.bg};">
+                        <i class="fas ${t1Color.icon}"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">订单${o.statusText}</div>
+                        <div class="timeline-time">${o.start} 开始</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot" style="background:var(--primary);">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">零工已确认接单</div>
+                        <div class="timeline-time">${o.start}</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot" style="background:var(--secondary);">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">到达工作地点 - ${o.location}</div>
+                        <div class="timeline-time">${o.start}</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot" style="background:${o.status === 'pending' ? 'var(--warning)' : 'var(--success)'}; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-flag" style="font-size:11px; color:#fff;"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">结束时间 ${o.end}</div>
+                        <div class="timeline-time">${o.status === 'pending' ? '待确认' : o.status === 'progress' ? '进行中' : '已完成'}</div>
+                    </div>
+                </div>
+            `;
+            timeline.innerHTML = timelineHTML;
+
+            document.getElementById('orderDetailModal').style.display = 'flex';
+        }
+
+        function closeOrderDetail() {
+            document.getElementById('orderDetailModal').style.display = 'none';
+        }
+
+        function showDispute(index) {
+            currentOrderIndex = index;
+            closeOrderDetail();
+            document.getElementById('disputeType').value = '';
+            document.getElementById('disputeResult').value = '';
+            document.getElementById('disputeRemark').value = '';
+            document.getElementById('disputeAmount').value = '';
+            document.getElementById('disputeModal').style.display = 'flex';
+        }
+
+        function closeDispute() {
+            document.getElementById('disputeModal').style.display = 'none';
+        }
+
+        function handleDispute() {
+            showDispute(currentOrderIndex);
+        }
+
+        function submitDispute() {
+            const type = document.getElementById('disputeType').value;
+            const result = document.getElementById('disputeResult').value;
+            const remark = document.getElementById('disputeRemark').value;
+            const amount = document.getElementById('disputeAmount').value;
+
+            if (!type) { alert('请选择纠纷类型'); return; }
+            if (!result) { alert('请选择处理结果'); return; }
+            if (!remark) { alert('请填写纠纷说明'); return; }
+
+            const o = ordersData[currentOrderIndex];
+            alert('纠纷处理成功！\n订单 ' + o.id + '\n处理结果已通知双方当事人。');
+            closeDispute();
+        }
+
+        renderTable(ordersData);
+    </script>
+</body>
+</html>

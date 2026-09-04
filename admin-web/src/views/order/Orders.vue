@@ -5,38 +5,6 @@
       <p class="page-desc">查看和管理平台所有日结订单，追踪订单状态和处理纠纷</p>
     </div>
 
-    <div class="stat-cards">
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">今日订单</span>
-          <div class="stat-card-icon"><i class="fas fa-calendar-day"></i></div>
-        </div>
-        <div class="stat-card-value">1,856</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>较昨日 +23.1%</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">进行中</span>
-          <div class="stat-card-icon blue"><i class="fas fa-play"></i></div>
-        </div>
-        <div class="stat-card-value">456</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">已完成</span>
-          <div class="stat-card-icon green"><i class="fas fa-check"></i></div>
-        </div>
-        <div class="stat-card-value">1,245</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">纠纷订单</span>
-          <div class="stat-card-icon yellow"><i class="fas fa-exclamation-triangle"></i></div>
-        </div>
-        <div class="stat-card-value">12</div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="filter-bar">
         <el-input v-model="searchKeyword" placeholder="订单号/雇主/零工" clearable style="width: 240px;" prefix-icon="Search" />
@@ -99,8 +67,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { listOrders } from '@/api/order'
-import { ordersData as mockOrdersData } from '@/mock'
 
 const searchKeyword = ref('')
 const statusFilter = ref('')
@@ -146,9 +114,10 @@ const loadOrders = async () => {
     total.value = res.total ?? d?.totalElements ?? d?.total ?? list.length
     ordersData.value = list.map(normalizeOrder)
   } catch (err) {
-    console.warn('[Orders] API 加载失败，使用 mock 数据:', err.message)
-    ordersData.value = mockOrdersData.map(normalizeOrder)
-    total.value = mockOrdersData.length
+    console.warn('[Orders] API 加载失败:', err.message)
+    ordersData.value = []
+    total.value = 0
+    ElMessage.error('加载订单列表失败')
   }
 }
 

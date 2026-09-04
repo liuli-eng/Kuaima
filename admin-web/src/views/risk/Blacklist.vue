@@ -34,7 +34,7 @@
               <span class="stat-card-title">封禁原因Top</span>
               <div class="stat-card-icon blue"><i class="fas fa-chart-bar"></i></div>
             </div>
-            <div class="stat-card-value" style="font-size: 20px;">飞单 45%</div>
+            <div class="stat-card-value" style="font-size: 20px;">-</div>
           </div>
         </div>
 
@@ -55,8 +55,6 @@
           </el-select>
           <el-button type="primary" @click="loadData">查询</el-button>
           <el-button @click="resetFilters">重置</el-button>
-          <el-button style="margin-left: auto;" @click="handleAdd"><i class="fas fa-plus" style="margin-right:4px;"></i>新增封禁</el-button>
-          <el-button><i class="fas fa-download" style="margin-right:4px;"></i>导出</el-button>
         </div>
 
         <el-table :data="filteredBlacklist" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
@@ -95,14 +93,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listBlacklist, addBlacklist, unfreezeBlacklist } from '@/api/risk'
-import { blacklistData as fallbackBlacklist } from '@/mock'
+import { listBlacklist, unfreezeBlacklist } from '@/api/risk'
 
-const blacklist = ref([...fallbackBlacklist])
+const blacklist = ref([])
 const typeFilter = ref('')
 const reasonFilter = ref('')
 const statusFilter = ref('')
-const apiAvailable = ref(false)
 
 const filteredBlacklist = computed(() => {
   return blacklist.value.filter(b => {
@@ -119,15 +115,10 @@ const unfrozenCount = computed(() => blacklist.value.filter(b => b.status === '�
 const loadData = async () => {
   try {
     const res = await listBlacklist()
-    if (res && Array.isArray(res)) {
-      blacklist.value = res
-    } else if (res && Array.isArray(res.data)) {
-      blacklist.value = res.data
-    }
-    apiAvailable.value = true
+    blacklist.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
   } catch (e) {
-    console.warn('[API] listBlacklist 后端暂未接入，使用 mock 数据')
-    blacklist.value = [...fallbackBlacklist]
+    console.warn('[Blacklist] 加载失败:', e)
+    blacklist.value = []
   }
 }
 
@@ -137,59 +128,20 @@ const resetFilters = () => {
   statusFilter.value = ''
 }
 
-const handleAdd = async () => {
-  try {
-    const { value: userId } = await ElMessageBox.prompt('请输入用户ID', '新增封禁', {
-      confirmButtonText: '下一步',
-      cancelButtonText: '取消'
-    }).catch(() => ({ value: null }))
-    if (!userId) return
-    const newItem = {
-      id: 'BL' + Date.now(),
-      user: '用户' + userId,
-      type: '零工',
-      reason: '飞单行为',
-      time: new Date().toISOString().slice(0, 10),
-      expireTime: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
-      status: '封禁中',
-      statusClass: 'danger'
-    }
-    try {
-      if (apiAvailable.value) {
-        await addBlacklist({ userId, reason: '飞单行为' })
-      } else {
-        console.warn('[API] addBlacklist 后端暂未接入')
-      }
-      blacklist.value.unshift(newItem)
-      ElMessage.success('封禁成功')
-    } catch (e) {
-      console.warn('[API] addBlacklist 请求失败')
-      blacklist.value.unshift(newItem)
-      ElMessage.success('已在前端添加（mock 模式）')
-    }
-  } catch (e) { /* cancel */ }
-}
-
 const handleUnfreeze = async (row) => {
   try {
     await ElMessageBox.confirm(`确定解封用户 ${row.user}？`, '解封确认', { type: 'warning' })
     try {
-      if (apiAvailable.value) {
-        await unfreezeBlacklist(row.id)
-      } else {
-        console.warn('[API] unfreezeBlacklist 后端暂未接入')
-      }
-      row.status = '已解封'
-      row.statusClass = 'default'
+      await unfreezeBlacklist(row.id)
       ElMessage.success('已解封')
+      loadData()
     } catch (e) {
-      console.warn('[API] unfreezeBlacklist 请求失败')
-      row.status = '已解封'
-      row.statusClass = 'default'
+      console.warn('[Blacklist] 解封失败:', e)
+      ElMessage.error('解封失败')
     }
   } catch (e) {
     if (e !== 'cancel') {
-      console.warn('[API] unfreezeBlacklist 请求异常')
+      console.warn('[Blacklist] 解封异常:', e)
     }
   }
 }

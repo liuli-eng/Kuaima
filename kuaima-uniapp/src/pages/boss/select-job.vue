@@ -1,7 +1,13 @@
 <template>
   <view class="container">
     <!-- 导航栏 -->
-    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${50 + statusBarHeight}px` }">
+    <view
+      class="nav-bar"
+      :style="{
+        paddingTop: `${statusBarHeight}px`,
+        height: `${50 + statusBarHeight}px`,
+      }"
+    >
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
@@ -16,8 +22,13 @@
 
       <!-- 搜索框 -->
       <view class="search-box">
-        <text style="color:#999;margin-right:10px;font-size:14px;">🔍</text>
-        <input type="text" placeholder="填写工种名称，如'普工'" v-model="searchText" @input="filterJobs" />
+        <text style="color: #999; margin-right: 10px; font-size: 14px">🔍</text>
+        <input
+          type="text"
+          placeholder="填写工种名称，如'普工'"
+          v-model="searchText"
+          @input="filterJobs"
+        />
       </view>
 
       <!-- 热门工种 -->
@@ -27,12 +38,13 @@
       </view>
 
       <view class="hot-grid">
-        <text 
-          class="hot-item" 
-          v-for="(job, index) in filteredJobs" 
+        <text
+          class="hot-item"
+          v-for="(job, index) in filteredJobs"
           :key="index"
           @click="selectJob(job)"
-        >{{ job }}</text>
+          >{{ job }}</text
+        >
       </view>
 
       <view class="view-all" @click="viewAllJobs">
@@ -53,56 +65,92 @@ export default {
   data() {
     return {
       statusBarHeight: 0,
-      searchText: '',
+      searchText: "",
       allJobs: [
-        '电子厂普工', '五金厂CNC操作工', '注塑厂注塑工', '快递分拣打包工',
-        '快递搬运装卸工', '电商分拣打包工', '电商手工活', '餐饮服务员',
-        '餐饮服务员、洗碗工', '厨师/厨师助理', '酒水促销员', '营业员/收银员',
-        '超市理货员', '冷库分拣员', '装配工', '包装工', '质检员', '仓管员',
-        '叉车司机', '货运司机', '网约车司机', '保洁员', '保安', '物业维修工',
-        '汽修学徒', '美容美发助理', '服装/家纺缝纫工', '电子维修工', '电焊工',
-        '氩弧焊/气保焊', '厨师/面点师', '前台接待', '电话客服', '售后客服'
+        "电子厂普工",
+        "五金厂CNC操作工",
+        "注塑厂注塑工",
+        "快递分拣打包工",
+        "快递搬运装卸工",
+        "电商分拣打包工",
+        "电商手工活",
+        "餐饮服务员",
+        "餐饮服务员、洗碗工",
+        "厨师/厨师助理",
+        "酒水促销员",
+        "营业员/收银员",
+        "超市理货员",
+        "冷库分拣员",
+        "装配工",
+        "包装工",
+        "质检员",
+        "仓管员",
+        "叉车司机",
+        "货运司机",
+        "网约车司机",
+        "保洁员",
+        "保安",
+        "物业维修工",
+        "汽修学徒",
+        "美容美发助理",
+        "服装/家纺缝纫工",
+        "电子维修工",
+        "电焊工",
+        "氩弧焊/气保焊",
+        "厨师/面点师",
+        "前台接待",
+        "电话客服",
+        "售后客服",
       ],
       hotJobs: [
-        '电子厂普工', '五金厂CNC操作工', '注塑厂注塑工', '快递分拣打包工',
-        '快递搬运装卸工', '电商分拣打包工', '电商手工活', '餐饮服务员'
-      ]
-    }
+        "电子厂普工",
+        "五金厂CNC操作工",
+        "注塑厂注塑工",
+        "快递分拣打包工",
+        "快递搬运装卸工",
+        "电商分拣打包工",
+        "电商手工活",
+        "餐饮服务员",
+      ],
+    };
   },
   onLoad() {
     try {
-      const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
-      this.statusBarHeight = Number(info.statusBarHeight || 0)
+      const info =
+        typeof uni.getWindowInfo === "function"
+          ? uni.getWindowInfo()
+          : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
     } catch (_) {}
   },
   computed: {
     filteredJobs() {
-      if (!this.searchText) return this.hotJobs
-      return this.allJobs.filter(j => j.includes(this.searchText))
-    }
+      if (!this.searchText) return this.hotJobs;
+      return this.allJobs.filter((j) => j.includes(this.searchText));
+    },
   },
   methods: {
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     filterJobs() {
       // 搜索逻辑已通过computed实现
     },
     selectJob(jobName) {
-      this.searchText = jobName
+      this.searchText = jobName;
       // 原型交互：选择工种后进入发布招工信息页，并把工种带入下一步
       uni.navigateTo({
-        url: `/pages/boss/publish-info?job=${encodeURIComponent(jobName)}`
-      })
+        url: `/pages/boss/publish-info?job=${encodeURIComponent(jobName)}`,
+      });
     },
     viewAllJobs() {
-      uni.navigateTo({ url: '/pages/boss/all-jobs' })
+      uni.navigateTo({ url: "/pages/boss/all-jobs" });
     },
     navigateTo(page) {
-      uni.navigateTo({ url: `/pages/boss/${page}` })
-    }
-  }
-}
+      uni.navigateTo({ url: `/pages/boss/${page}` });
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -115,26 +163,8 @@ export default {
   overflow: hidden;
 }
 
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: #fff;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .nav-bar {
-  height: 50px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -148,6 +178,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 18px;
+  color: #333;
 }
 
 .nav-title {
@@ -207,7 +239,19 @@ export default {
 .section-header {
   display: flex;
   align-items: center;
+  gap: 6px;
   margin-bottom: 14px;
+}
+
+.section-icon {
+  color: #ff6b35;
+  font-size: 14px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
 }
 
 .hot-grid {
@@ -217,19 +261,30 @@ export default {
 }
 
 .hot-item {
-  background: #F8F8F8;
+  background: #f8f8f8;
   border-radius: 10px;
   padding: 16px;
   text-align: center;
   font-size: 14px;
   color: #333;
+  transition: all 0.2s;
+}
+
+.hot-item:active {
+  background: #fff3ed;
+  color: #ff6b35;
 }
 
 .view-all {
   text-align: center;
   margin-top: 24px;
   font-size: 14px;
-  color: #FF6B35;
+  color: #ff6b35;
+}
+
+.view-all-arrow {
+  font-size: 12px;
+  margin-left: 3px;
 }
 
 .float-service {
@@ -240,11 +295,22 @@ export default {
   height: 56px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 100;
+}
+
+.service-icon {
+  font-size: 18px;
+  color: #ff6b35;
+}
+
+.service-label {
+  font-size: 10px;
+  color: #ff6b35;
+  margin-top: 2px;
 }
 </style>

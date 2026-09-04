@@ -44,16 +44,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listCertifications, auditCertPass, auditCertReject } from '@/api/content'
-import { certificationData as fallbackCerts } from '@/mock'
 
 const props = defineProps({ type: { type: String, default: 'worker' } })
 const router = useRouter()
 
-const tableData = ref([...fallbackCerts])
+const tableData = ref([])
 const statusFilter = ref('')
 const searchKeyword = ref('')
 const dateRange = ref([])
-const apiAvailable = ref(false)
 
 const typeMap = { worker: '零工认证', boss: '雇主认证' }
 
@@ -69,15 +67,10 @@ const filteredData = computed(() => {
 const loadData = async () => {
   try {
     const res = await listCertifications()
-    if (res && Array.isArray(res)) {
-      tableData.value = res
-    } else if (res && Array.isArray(res.data)) {
-      tableData.value = res.data
-    }
-    apiAvailable.value = true
+    tableData.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
   } catch (e) {
-    console.warn('[API] listCertifications 后端暂未接入，使用 mock 数据')
-    tableData.value = [...fallbackCerts]
+    console.warn('[CertificationList] 加载失败:', e)
+    tableData.value = []
   }
 }
 
@@ -88,23 +81,16 @@ const resetFilters = () => {
 }
 
 const viewDetail = (row) => {
-  router.push(`/content/certification/${row.id}`)
+  router.push(`/admin/certification/detail/${row.id}`)
 }
 
 const handleApprove = async (row) => {
   try {
-    if (apiAvailable.value) {
-      await auditCertPass(row.id)
-    } else {
-      console.warn('[API] auditCertPass 后端暂未接入')
-    }
-    row.status = '已通过'
-    row.statusClass = 'success'
+    await auditCertPass(row.id)
     ElMessage.success('已通过')
+    await loadData()
   } catch (e) {
-    console.warn('[API] auditCertPass 请求失败')
-    row.status = '已通过'
-    row.statusClass = 'success'
+    ElMessage.error('操作失败')
   }
 }
 
@@ -115,19 +101,12 @@ const handleReject = async (row) => {
       cancelButtonText: '取消',
       inputPlaceholder: '请输入拒绝原因'
     }).catch(() => ({ value: '' }))
-    if (apiAvailable.value) {
-      await auditCertReject(row.id, reason || '不符合认证要求')
-    } else {
-      console.warn('[API] auditCertReject 后端暂未接入')
-    }
-    row.status = '已拒绝'
-    row.statusClass = 'danger'
+    await auditCertReject(row.id, reason || '不符合认证要求')
     ElMessage.success('已拒绝')
+    await loadData()
   } catch (e) {
     if (e !== 'cancel') {
-      console.warn('[API] auditCertReject 请求失败')
-      row.status = '已拒绝'
-      row.statusClass = 'danger'
+      ElMessage.error('操作失败')
     }
   }
 }

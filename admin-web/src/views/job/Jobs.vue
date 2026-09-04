@@ -5,41 +5,6 @@
       <p class="page-desc">管理平台所有招工信息，支持查看、编辑、开启/关闭等操作</p>
     </div>
 
-    <div class="stat-cards">
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">总招工数</span>
-          <div class="stat-card-icon"><i class="fas fa-list"></i></div>
-        </div>
-        <div class="stat-card-value">1,256</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>本月新增 +128</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">进行中</span>
-          <div class="stat-card-icon green"><i class="fas fa-play"></i></div>
-        </div>
-        <div class="stat-card-value">456</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>活跃招工</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">已结束</span>
-          <div class="stat-card-icon blue"><i class="fas fa-check"></i></div>
-        </div>
-        <div class="stat-card-value">768</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>累计完成</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">待审核</span>
-          <div class="stat-card-icon yellow"><i class="fas fa-clock"></i></div>
-        </div>
-        <div class="stat-card-value">32</div>
-        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>需及时处理</span></div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="filter-bar">
         <el-input v-model="searchKeyword" placeholder="搜索招工名称/雇主" clearable style="width: 240px;" prefix-icon="Search" />
@@ -63,10 +28,6 @@
         <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" />
         <el-button type="primary" @click="handleSearch"><i class="fas fa-search" style="margin-right:4px;"></i>查询</el-button>
         <el-button @click="handleReset">重置</el-button>
-        <div style="margin-left: auto; display: flex; gap: 8px;">
-          <el-button><i class="fas fa-download" style="margin-right:4px;"></i>导出</el-button>
-          <el-button type="primary"><i class="fas fa-plus" style="margin-right:4px;"></i>新增招工</el-button>
-        </div>
       </div>
 
       <el-table :data="jobsData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
@@ -85,7 +46,7 @@
         <el-table-column prop="count" label="招聘人数" width="100" />
         <el-table-column prop="applications" label="报名人数" width="100">
           <template #default="{ row }">
-            <router-link :to="`/jobs/applicants/${row.id}`" style="color: var(--primary);">{{ row.applications }}</router-link>
+            <router-link :to="`/admin/jobs/applicants/${row.id}`" style="color: var(--primary);">{{ row.applications }}</router-link>
           </template>
         </el-table-column>
         <el-table-column prop="location" label="地点" min-width="140" />
@@ -98,7 +59,7 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small">详情</el-button>
-            <router-link :to="`/jobs/edit/${row.id}`" style="margin-right: 8px;">
+            <router-link :to="`/admin/jobs/edit/${row.id}`" style="margin-right: 8px;">
               <el-button link type="primary" size="small">编辑</el-button>
             </router-link>
             <el-button link type="warning" size="small">{{ row.status === '进行中' ? '关闭' : '开启' }}</el-button>
@@ -117,8 +78,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { listJobs } from '@/api/job'
-import { jobsData as mockJobsData } from '@/mock'
 
 const searchKeyword = ref('')
 const typeFilter = ref('')
@@ -162,9 +123,10 @@ const loadJobs = async () => {
     total.value = res.total ?? d?.totalElements ?? d?.total ?? list.length
     jobsData.value = list.map(normalizeJob)
   } catch (err) {
-    console.warn('[Jobs] API 加载失败，使用 mock 数据:', err.message)
-    jobsData.value = mockJobsData.map(normalizeJob)
-    total.value = mockJobsData.length
+    console.warn('[Jobs] API 加载失败:', err.message)
+    jobsData.value = []
+    total.value = 0
+    ElMessage.error('加载招工列表失败')
   }
 }
 

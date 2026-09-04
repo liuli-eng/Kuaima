@@ -36,36 +36,40 @@
 
         <!-- 搜索栏 -->
         <view class="search-bar">
-          <text style="color:#999;font-size:14px;">🔍</text>
+          <text style="color: #999; font-size: 14px">🔍</text>
           <input type="text" placeholder="搜索地址或地点" />
         </view>
 
         <!-- 定位按钮 -->
         <view class="locate-btn" @click="locateMe">
-          <text style="font-size:14px;">🎯</text>
+          <text style="font-size: 14px">🎯</text>
         </view>
 
         <!-- 地图标记 -->
         <view class="map-pin">
           <view class="pin-pulse"></view>
           <view class="pin-outer">
-            <text style="font-size:16px;">📍</text>
+            <text style="font-size: 16px">📍</text>
           </view>
         </view>
 
         <!-- 地图控制 -->
         <view class="map-controls">
           <view class="map-ctrl-btn" @click="zoomIn">
-            <text style="font-size:14px;">+</text>
+            <text style="font-size: 14px">+</text>
           </view>
           <view class="map-ctrl-btn" @click="zoomOut">
-            <text style="font-size:14px;">−</text>
+            <text style="font-size: 14px">−</text>
           </view>
         </view>
       </view>
 
       <!-- 滚动区域 -->
-      <scroll-view scroll-y class="scroll-area" style="flex:1;overflow-y:auto;min-height:0;">
+      <scroll-view
+        scroll-y
+        class="scroll-area"
+        style="flex: 1; overflow-y: auto; min-height: 0"
+      >
         <!-- 位置信息 -->
         <view class="location-info">
           <view class="location-title-row">
@@ -84,24 +88,32 @@
 
         <!-- 地址列表 -->
         <view class="address-list">
-          <view 
-            class="address-item" 
+          <view
+            class="address-item"
             :class="{ selected: selectedIndex === index }"
-            v-for="(item, index) in addresses" 
+            v-for="(item, index) in addresses"
             :key="index"
             @click="selectAddress(index)"
           >
             <view class="address-icon">
-              <text class="iconfont" :class="item.icon" style="font-size:16px;"></text>
+              <text
+                class="iconfont"
+                :class="item.icon"
+                style="font-size: 16px"
+              ></text>
             </view>
             <view class="address-info">
               <view class="address-name">
                 {{ item.name }}
-                <text class="addr-tag hot" v-if="item.tag === '最近'">{{ item.tag }}</text>
+                <text class="addr-tag hot" v-if="item.tag === '最近'">{{
+                  item.tag
+                }}</text>
               </view>
               <text class="address-detail">{{ item.address }}</text>
-              <view class="address-tags" style="margin-top:4px;">
-                <text class="addr-tag" v-for="(t, i) in item.tags" :key="i">{{ t }}</text>
+              <view class="address-tags" style="margin-top: 4px">
+                <text class="addr-tag" v-for="(t, i) in item.tags" :key="i">{{
+                  t
+                }}</text>
               </view>
             </view>
           </view>
@@ -109,7 +121,7 @@
 
         <!-- 新增地址 -->
         <view class="add-address-btn" @click="addNewAddress">
-          <text style="font-size:14px;">+</text>
+          <text style="font-size: 14px">+</text>
           <text>新增工作地点</text>
         </view>
       </scroll-view>
@@ -127,62 +139,92 @@ export default {
   data() {
     return {
       selectedIndex: 0,
-      distance: '1.2',
+      distance: "1.2",
       addresses: [
-        { name: '观澜电子厂', address: '龙华区观澜街道桂月路316号', icon: 'icon-industry', tag: '最近', tags: ['电子厂', '有空调'] },
-        { name: '龙华物流园', address: '龙华区民治街道华旺路88号', icon: 'icon-warehouse', tag: '', tags: ['物流', '仓库'] },
-        { name: '宝安美食广场', address: '宝安区福永街道兴围社区美食街18号', icon: 'icon-hotel', tag: '', tags: ['餐饮'] }
-      ]
-    }
+        {
+          name: "观澜电子厂",
+          address: "龙华区观澜街道桂月路316号",
+          icon: "icon-industry",
+          tag: "最近",
+          tags: ["电子厂", "有空调"],
+        },
+        {
+          name: "龙华物流园",
+          address: "龙华区民治街道华旺路88号",
+          icon: "icon-warehouse",
+          tag: "",
+          tags: ["物流", "仓库"],
+        },
+        {
+          name: "宝安美食广场",
+          address: "宝安区福永街道兴围社区美食街18号",
+          icon: "icon-hotel",
+          tag: "",
+          tags: ["餐饮"],
+        },
+      ],
+    };
   },
   computed: {
     selectedAddress() {
-      return this.addresses[this.selectedIndex] || { name: '', address: '' }
-    }
+      return this.addresses[this.selectedIndex] || { name: "", address: "" };
+    },
+  },
+  onLoad() {
+    const saved = uni.getStorageSync("workLocationSelection");
+    if (!saved || typeof saved !== "object") return;
+
+    const savedIndex = this.addresses.findIndex(
+      (item) => item.name === saved.name && item.address === saved.address,
+    );
+    if (savedIndex >= 0) this.selectedIndex = savedIndex;
+    if (saved.distance) this.distance = saved.distance;
   },
   methods: {
     closePage() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     locateMe() {
-      uni.showToast({ title: '正在获取当前位置...', icon: 'loading' })
+      uni.showToast({ title: "正在获取当前位置...", icon: "loading" });
     },
     zoomIn() {
-      uni.showToast({ title: '放大地图', icon: 'none' })
+      uni.showToast({ title: "放大地图", icon: "none" });
     },
     zoomOut() {
-      uni.showToast({ title: '缩小地图', icon: 'none' })
+      uni.showToast({ title: "缩小地图", icon: "none" });
     },
     selectAddress(index) {
-      this.selectedIndex = index
-      this.distance = (Math.random() * 3 + 0.5).toFixed(1)
+      this.selectedIndex = index;
+      this.distance = (Math.random() * 3 + 0.5).toFixed(1);
     },
     manageAddress() {
-      uni.showToast({ title: '管理地址', icon: 'none' })
+      uni.showToast({ title: "管理地址", icon: "none" });
     },
     addNewAddress() {
-      uni.showToast({ title: '新增工作地点', icon: 'none' })
+      uni.showToast({ title: "新增工作地点", icon: "none" });
     },
     saveLocation() {
-      const addr = this.selectedAddress
+      const addr = this.selectedAddress;
       const data = {
         name: addr.name,
         address: addr.address,
         tag: addr.tag,
-        display: `${addr.name} ${addr.address}`
-      }
-      uni.$emit('workLocationSelected', data)
-      uni.navigateBack()
-    }
-  }
-}
+        distance: this.distance,
+        display: `${addr.name} ${addr.address}`,
+      };
+      uni.setStorageSync("workLocationSelection", data);
+      uni.$emit("workLocationSelected", data);
+      uni.navigateBack();
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #fff8e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -246,7 +288,7 @@ export default {
 .map-container {
   position: relative;
   height: 260px;
-  background: linear-gradient(180deg, #E8F4FD 0%, #F0EDE4 100%);
+  background: linear-gradient(180deg, #e8f4fd 0%, #f0ede4 100%);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -258,8 +300,8 @@ export default {
   right: 0;
   bottom: 0;
   background-image:
-    linear-gradient(rgba(200,200,200,0.3) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(200,200,200,0.3) 1px, transparent 1px);
+    linear-gradient(rgba(200, 200, 200, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 200, 200, 0.3) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -269,22 +311,78 @@ export default {
   border-radius: 4px;
 }
 
-.map-road-h { height: 14px; top: 60px; left: 0; right: 0; }
-.map-road-h2 { height: 10px; top: 160px; left: 0; right: 0; }
-.map-road-v { width: 14px; top: 0; bottom: 0; left: 100px; }
-.map-road-v2 { width: 10px; top: 0; bottom: 0; right: 80px; }
+.map-road-h {
+  height: 14px;
+  top: 60px;
+  left: 0;
+  right: 0;
+}
+.map-road-h2 {
+  height: 10px;
+  top: 160px;
+  left: 0;
+  right: 0;
+}
+.map-road-v {
+  width: 14px;
+  top: 0;
+  bottom: 0;
+  left: 100px;
+}
+.map-road-v2 {
+  width: 10px;
+  top: 0;
+  bottom: 0;
+  right: 80px;
+}
 
 .map-building {
   position: absolute;
   border-radius: 4px;
 }
 
-.b1 { width: 50px; height: 40px; background: #B8D4E3; top: 80px; left: 30px; }
-.b2 { width: 45px; height: 55px; background: #C5DDB0; top: 180px; left: 40px; }
-.b3 { width: 60px; height: 35px; background: #E8D5B7; top: 90px; right: 40px; }
-.b4 { width: 40px; height: 50px; background: #D4C5DD; top: 180px; right: 100px; }
-.b5 { width: 35px; height: 30px; background: #F5D7B5; top: 25px; left: 180px; }
-.b6 { width: 55px; height: 45px; background: #B8D4E3; top: 30px; right: 20px; }
+.b1 {
+  width: 50px;
+  height: 40px;
+  background: #b8d4e3;
+  top: 80px;
+  left: 30px;
+}
+.b2 {
+  width: 45px;
+  height: 55px;
+  background: #c5ddb0;
+  top: 180px;
+  left: 40px;
+}
+.b3 {
+  width: 60px;
+  height: 35px;
+  background: #e8d5b7;
+  top: 90px;
+  right: 40px;
+}
+.b4 {
+  width: 40px;
+  height: 50px;
+  background: #d4c5dd;
+  top: 180px;
+  right: 100px;
+}
+.b5 {
+  width: 35px;
+  height: 30px;
+  background: #f5d7b5;
+  top: 25px;
+  left: 180px;
+}
+.b6 {
+  width: 55px;
+  height: 45px;
+  background: #b8d4e3;
+  top: 30px;
+  right: 20px;
+}
 
 .map-pin {
   position: absolute;
@@ -300,7 +398,7 @@ export default {
 .pin-outer {
   width: 36px;
   height: 36px;
-  background: #FF6B35;
+  background: #ff6b35;
   border: 3px solid white;
   border-radius: 50%;
   display: flex;
@@ -323,8 +421,14 @@ export default {
 }
 
 @keyframes pulse {
-  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
 }
 
 .map-controls {
@@ -344,7 +448,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   color: #333;
 }
 
@@ -359,8 +463,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  color: #FF6B35;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: #ff6b35;
 }
 
 .search-bar {
@@ -374,7 +478,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 0 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .search-bar input {
@@ -394,7 +498,7 @@ export default {
   margin: -16px 12px 12px;
   border-radius: 14px;
   padding: 14px 16px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   position: relative;
   z-index: 20;
 }
@@ -414,8 +518,8 @@ export default {
 
 .location-tag {
   font-size: 11px;
-  color: #FF6B35;
-  background: #FFF0E8;
+  color: #ff6b35;
+  background: #fff0e8;
   padding: 2px 8px;
   border-radius: 4px;
   margin-right: 6px;
@@ -448,7 +552,7 @@ export default {
 
 .section-action {
   font-size: 13px;
-  color: #FF6B35;
+  color: #ff6b35;
 }
 
 .address-list {
@@ -466,19 +570,19 @@ export default {
 }
 
 .address-item.selected {
-  background: #FFF8E6;
-  border-color: #FF6B35;
+  background: #fff8e6;
+  border-color: #ff6b35;
 }
 
 .address-icon {
   width: 36px;
   height: 36px;
-  background: #F5F5F5;
+  background: #f5f5f5;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #FF6B35;
+  color: #ff6b35;
   margin-right: 12px;
   flex-shrink: 0;
 }
@@ -515,12 +619,12 @@ export default {
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 3px;
-  background: #F0F0F0;
+  background: #f0f0f0;
   color: #666;
 }
 
 .addr-tag.hot {
-  background: #FF6B35;
+  background: #ff6b35;
   color: white;
 }
 
@@ -553,7 +657,7 @@ export default {
 .submit-btn {
   width: 100%;
   height: 48px;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: white;
   border-radius: 9999px;
   font-size: 16px;

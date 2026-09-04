@@ -147,7 +147,7 @@ const form = reactive({
 
 const handleSubmit = () => {
   ElMessage.success('已提交审核')
-  router.push('/job-audit')
+  router.push('/admin/job-audit')
 }
 
 const handleSaveDraft = () => ElMessage.success('已保存草稿')

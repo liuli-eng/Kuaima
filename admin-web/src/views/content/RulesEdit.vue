@@ -42,16 +42,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listRules, createRules, updateRules } from '@/api/content'
-import { rulesData as fallbackRules } from '@/mock'
 
 const router = useRouter()
 const route = useRoute()
 const isEdit = computed(() => !!route.params.id)
-const apiAvailable = ref(false)
 
 const form = reactive({
   title: '',
@@ -76,16 +74,9 @@ const loadExisting = async () => {
       form.effectiveTime = found.effectiveTime
       form.content = found.content || ''
     }
-    apiAvailable.value = true
   } catch (e) {
-    console.warn('[API] listRules 后端暂未接入，使用 mock 数据')
-    const found = fallbackRules.find(r => String(r.id) === String(id))
-    if (found) {
-      form.title = found.title
-      form.category = found.category
-      form.version = found.version
-      form.effectiveTime = found.effectiveTime
-    }
+    console.warn('[RulesEdit] 加载失败:', e)
+    ElMessage.error('加载规则失败')
   }
 }
 
@@ -96,38 +87,30 @@ const handlePublish = async () => {
   }
   const payload = { ...form, status: '已发布', statusClass: 'success' }
   try {
-    if (apiAvailable.value && isEdit.value) {
+    if (isEdit.value) {
       await updateRules(route.params.id, payload)
-    } else if (apiAvailable.value) {
-      await createRules(payload)
     } else {
-      console.warn('[API] createRules/updateRules 后端暂未接入')
+      await createRules(payload)
     }
     ElMessage.success('已发布')
     router.back()
   } catch (e) {
-    console.warn('[API] 保存失败')
-    ElMessage.success('已在前端保存（mock 模式）')
-    router.back()
+    ElMessage.error('发布失败')
   }
 }
 
 const handleSave = async () => {
   const payload = { ...form, status: '草稿', statusClass: 'default' }
   try {
-    if (apiAvailable.value && isEdit.value) {
+    if (isEdit.value) {
       await updateRules(route.params.id, payload)
-    } else if (apiAvailable.value) {
-      await createRules(payload)
     } else {
-      console.warn('[API] createRules/updateRules 后端暂未接入')
+      await createRules(payload)
     }
     ElMessage.success('已存草稿')
     router.back()
   } catch (e) {
-    console.warn('[API] 保存失败')
-    ElMessage.success('已在前端存草稿（mock 模式）')
-    router.back()
+    ElMessage.error('保存失败')
   }
 }
 

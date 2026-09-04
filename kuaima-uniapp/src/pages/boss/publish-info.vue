@@ -1,33 +1,29 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <!-- 导航栏 -->
-    <view class="nav-bar">
+    <view
+      class="nav-bar"
+      :style="{
+        paddingTop: `${statusBarHeight}px`,
+        height: `${50 + statusBarHeight}px`,
+      }"
+    >
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
       <text class="nav-title">发布招工</text>
-      <view style="width:32px;"></view>
+      <view style="width: 32px"></view>
     </view>
 
     <!-- 步骤条 -->
     <view class="stepper">
       <view class="step-dot">
-        <text style="font-size:9px;">✓</text>
+        <text style="font-size: 9px">✓</text>
       </view>
       <text class="step-label">基础信息</text>
       <view class="step-line"></view>
       <view class="step-dot-pending">
-        <text style="font-size:6px;">●</text>
+        <text style="font-size: 6px">●</text>
       </view>
       <text class="step-label-pending">招工需求</text>
     </view>
@@ -42,12 +38,16 @@
         </view>
         <view class="form-item" @click="navigateTo('task-content')">
           <text class="form-label">干活内容</text>
-          <text class="form-value" :class="{ placeholder: !workContent }">{{ workContent || '请选择' }}</text>
+          <text class="form-value" :class="{ placeholder: !workContent }">{{
+            workContent || "请选择"
+          }}</text>
           <text class="› form-arrow"></text>
         </view>
         <view class="form-item" @click="navigateTo('task-content')">
           <text class="form-label">任务详情</text>
-          <text class="form-value placeholder">电子厂普工、焊锡工 未填写详情</text>
+          <text class="form-value" :class="{ placeholder: !taskDetail }">{{
+            taskDetail || "未填写详情"
+          }}</text>
           <text class="› form-arrow"></text>
         </view>
         <view class="form-item" @click="navigateTo('gender-age')">
@@ -61,10 +61,10 @@
       <view class="date-section">
         <text class="date-section-title">工作日期</text>
         <view class="date-options">
-          <view 
-            class="date-chip" 
+          <view
+            class="date-chip"
             :class="{ selected: date.selected }"
-            v-for="(date, index) in dates" 
+            v-for="(date, index) in dates"
             :key="index"
             @click="toggleDate(index)"
           >
@@ -78,21 +78,30 @@
       <view class="form-section">
         <view class="form-item" @click="navigateTo('select-work-time')">
           <text class="form-label">工作时间</text>
-          <text class="form-value link">选择工作时间 ›</text>
+          <text class="form-value" :class="{ link: !workTimeValue }">
+            {{ workTimeValue || "选择工作时间" }} ›
+          </text>
         </view>
         <view class="form-item" @click="navigateTo('location')">
           <text class="form-label">干活地点</text>
-          <text class="form-value link">设置干活地点 <text style="color:#FF6B35;font-size:14px;margin-left:4px;">📍</text></text>
+          <text class="form-value" :class="{ link: !workLocationValue }">
+            {{ workLocationValue || "设置干活地点" }}
+            <text style="color: #ff6b35; font-size: 14px; margin-left: 4px"
+              >📍</text
+            >
+          </text>
         </view>
       </view>
 
-      <view style="height:20px;"></view>
+      <view style="height: 20px"></view>
     </scroll-view>
 
     <!-- 浮动客服 -->
     <view class="service-fab" @click="navigateTo('service-chat')">
-      <text style="font-size:18px;color:#FF6B35;margin-bottom:2px;">🎧</text>
-      <text style="font-size:10px;color:#FF6B35;">客服</text>
+      <text style="font-size: 18px; color: #ff6b35; margin-bottom: 2px"
+        >🎧</text
+      >
+      <text style="font-size: 10px; color: #ff6b35">客服</text>
     </view>
 
     <!-- 底部按钮 -->
@@ -103,40 +112,163 @@
 </template>
 
 <script>
+import { getOrder } from "@/api/backend";
+
 export default {
   data() {
     return {
-      jobValue: '普工、焊锡工',
-      workContent: '',
-      genderAgeValue: '性别不限、18岁~不限',
+      statusBarHeight: 0,
+      jobValue: "普工、焊锡工",
+      workContent: "",
+      taskDetail: "",
+      genderAgeValue: "性别不限、18岁~不限",
+      workLocationValue: "",
+      workTimeValue: "",
+      jobName: "普工、焊锡工",
+      publishType: "",
+      orderId: "",
       dates: [
-        { weekday: '本周五', date: '8月21日', selected: true },
-        { weekday: '明周六', date: '8月22日', selected: true },
-        { weekday: '后周日', date: '8月23日', selected: false }
-      ]
+        { weekday: "本周五", date: "8月21日", selected: true },
+        { weekday: "明周六", date: "8月22日", selected: true },
+        { weekday: "后周日", date: "8月23日", selected: false },
+      ],
+    };
+  },
+  onLoad(options) {
+    try {
+      const info =
+        typeof uni.getWindowInfo === "function"
+          ? uni.getWindowInfo()
+          : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
+    } catch (_) {}
+    uni.$on("taskContentSaved", this.applyTaskContent);
+    uni.$on("genderAgeSelected", this.applyGenderAge);
+    uni.$on("workLocationSelected", this.applyWorkLocation);
+    uni.$on("workTimeSelected", this.applyWorkTime);
+    const saved = uni.getStorageSync("taskContent");
+    if (saved) this.applyTaskContent(saved);
+    const savedGenderAge = uni.getStorageSync("genderAgeSelection");
+    if (savedGenderAge) this.applyGenderAge(savedGenderAge);
+    const savedWorkLocation = uni.getStorageSync("workLocationSelection");
+    if (savedWorkLocation) this.applyWorkLocation(savedWorkLocation);
+    const savedWorkTime = uni.getStorageSync("workTimeSelection");
+    if (savedWorkTime) this.applyWorkTime(savedWorkTime);
+    if (options?.job) {
+      this.jobName = decodeURIComponent(options.job);
+      this.jobValue = this.jobName;
     }
+    this.publishType = options?.type || "";
+    this.orderId = options?.id || "";
+    if (this.orderId) this.loadOrder(this.orderId);
+  },
+  onUnload() {
+    uni.$off("taskContentSaved", this.applyTaskContent);
+    uni.$off("genderAgeSelected", this.applyGenderAge);
+    uni.$off("workLocationSelected", this.applyWorkLocation);
+    uni.$off("workTimeSelected", this.applyWorkTime);
+  },
+  onShow() {
+    // 编辑已有订单时，岗位详情接口是唯一数据源，避免旧草稿覆盖接口回显。
+    if (!this.orderId) {
+      const saved = uni.getStorageSync("taskContent");
+      if (saved) this.applyTaskContent(saved);
+    }
+    const savedGenderAge = uni.getStorageSync("genderAgeSelection");
+    if (savedGenderAge) this.applyGenderAge(savedGenderAge);
+    const savedWorkLocation = uni.getStorageSync("workLocationSelection");
+    if (savedWorkLocation) this.applyWorkLocation(savedWorkLocation);
+    const savedWorkTime = uni.getStorageSync("workTimeSelection");
+    if (savedWorkTime) this.applyWorkTime(savedWorkTime);
   },
   methods: {
+    async loadOrder(id) {
+      try {
+        const detail = await getOrder(id);
+        if (!detail || typeof detail !== "object") return;
+        this.jobName = detail.orderTitle || detail.postion || this.jobName;
+        this.jobValue = this.jobName;
+        this.workContent = detail.orderContent || "";
+        this.taskDetail = detail.orderContent || "";
+        this.workLocationValue = detail.address || "";
+        this.workTimeValue = formatWorkTime(detail.startTime, detail.endTime);
+        this.publishType = detail.type || this.publishType;
+        if (detail.orderContent) {
+          uni.setStorageSync("taskContent", {
+            ...(uni.getStorageSync("taskContent") || {}),
+            title: this.workContent,
+            desc: detail.orderContent,
+          });
+        }
+        if (detail.address) {
+          uni.setStorageSync("workLocationSelection", {
+            address: detail.address,
+            display: detail.address,
+          });
+        }
+        if (detail.startTime || detail.endTime) {
+          const time = {
+            startTime: extractTime(detail.startTime) || "08:00",
+            endTime: extractTime(detail.endTime) || "18:00",
+            display: formatWorkTime(detail.startTime, detail.endTime),
+          };
+          uni.setStorageSync("workTimeSelection", time);
+        }
+      } catch (error) {
+        uni.showToast({
+          title: error.message || "岗位信息加载失败",
+          icon: "none",
+        });
+      }
+    },
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     navigateTo(page) {
-      uni.navigateTo({ url: `/pages/boss/${page}` })
+      uni.navigateTo({ url: `/pages/boss/${page}` });
     },
     editJob() {
-      uni.navigateTo({ url: '/pages/boss/all-jobs' })
+      uni.navigateTo({ url: "/pages/boss/all-jobs" });
+    },
+    applyTaskContent(data = {}) {
+      this.workContent = data.title || data.desc || this.workContent;
+      this.taskDetail = data.desc || this.taskDetail;
+    },
+    applyGenderAge(data = {}) {
+      if (data.display) this.genderAgeValue = data.display;
+    },
+    applyWorkLocation(data = {}) {
+      if (data.display) this.workLocationValue = data.display;
+    },
+    applyWorkTime(data = {}) {
+      if (data.display) this.workTimeValue = data.display;
     },
     toggleDate(index) {
-      this.dates[index].selected = !this.dates[index].selected
+      this.dates[index].selected = !this.dates[index].selected;
     },
     nextStep() {
       if (!this.workContent) {
-        uni.showToast({ title: '请先选择干活内容', icon: 'none' })
-        return
+        uni.showToast({ title: "请先选择干活内容", icon: "none" });
+        return;
       }
-      uni.navigateTo({ url: '/pages/boss/recruit-demand' })
-    }
-  }
+      const settings = uni.getStorageSync("recruitSettings") || {};
+      const type = this.publishType || settings.type || "daily";
+      uni.navigateTo({
+        url: `/pages/boss/recruit-demand?job=${encodeURIComponent(this.jobName)}&type=${encodeURIComponent(type)}${this.orderId ? `&id=${encodeURIComponent(this.orderId)}` : ""}`,
+      });
+    },
+  },
+};
+
+function extractTime(value) {
+  const match = String(value || "").match(/(?:T|\s)(\d{1,2}:\d{2})/);
+  return match ? match[1] : "";
+}
+
+function formatWorkTime(start, end) {
+  const left = extractTime(start);
+  const right = extractTime(end);
+  return left && right ? `${left} - ${right}` : left || right || "";
 }
 </script>
 
@@ -150,26 +282,8 @@ export default {
   overflow: hidden;
 }
 
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: #fff;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .nav-bar {
-  height: 50px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -204,7 +318,7 @@ export default {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: #fff;
   display: flex;
   align-items: center;
@@ -215,14 +329,14 @@ export default {
 
 .step-label {
   font-size: 13px;
-  color: #FF6B35;
+  color: #ff6b35;
   font-weight: 500;
 }
 
 .step-line {
   width: 30px;
   height: 2px;
-  background: #FF6B35;
+  background: #ff6b35;
 }
 
 .step-label-pending {
@@ -245,6 +359,8 @@ export default {
 .scroll-area {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
+  padding-bottom: 100px;
 }
 
 .form-section {
@@ -283,7 +399,7 @@ export default {
 }
 
 .form-value.link {
-  color: #FF6B35;
+  color: #ff6b35;
 }
 
 .form-arrow {
@@ -322,8 +438,8 @@ export default {
 }
 
 .date-chip.selected {
-  background: #FFF3ED;
-  color: #FF6B35;
+  background: #fff3ed;
+  color: #ff6b35;
 }
 
 .date-chip .weekday {
@@ -345,7 +461,7 @@ export default {
   height: 48px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -359,18 +475,24 @@ export default {
   left: 0;
   right: 0;
   background: #fff;
-  padding: 12px 16px 30px;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .submit-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #FFD700, #FFA500);
+  background: linear-gradient(135deg, #ffd700, #ffa500);
   color: #fff;
   border: none;
   border-radius: 24px;
   font-size: 16px;
   font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.submit-btn::after {
+  border: none;
 }
 </style>

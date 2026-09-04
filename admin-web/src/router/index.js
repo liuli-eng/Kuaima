@@ -9,8 +9,14 @@ const routes = [
   },
   {
     path: '/',
+    name: 'Home',
+    component: () => import('@/views/home/Home.vue'),
+    meta: { title: '快马日结管理后台', public: true }
+  },
+  {
+    path: '/admin',
     component: () => import('@/layout/AdminLayout.vue'),
-    redirect: '/dashboard',
+    redirect: '/admin/dashboard',
     children: [
       // 数据统计
       {
@@ -118,7 +124,7 @@ const routes = [
         path: 'rules/edit/:id?',
         name: 'RulesEdit',
         component: () => import('@/views/content/RulesEdit.vue'),
-        meta: { title: '新增规则', icon: 'fa-edit', hidden: true }
+        meta: { title: '编辑规则', icon: 'fa-edit', hidden: true }
       },
       // 消息客服
       {
@@ -182,12 +188,18 @@ const routes = [
         name: 'Password',
         component: () => import('@/views/system/Password.vue'),
         meta: { title: '修改密码', icon: 'fa-key', hidden: true }
+      },
+      {
+        path: 'account',
+        name: 'Account',
+        component: () => import('@/views/system/Account.vue'),
+        meta: { title: '账户设置', icon: 'fa-cog', hidden: true }
       }
     ]
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/dashboard'
+    redirect: '/admin/dashboard'
   }
 ]
 
@@ -202,7 +214,7 @@ router.beforeEach((to, from, next) => {
   
   if (to.meta.public) {
     next()
-  } else if (!token && to.path !== '/login') {
+  } else if (!token) {
     next('/login')
   } else {
     next()

@@ -1,0 +1,44 @@
+# ============ 原型文件夹 ============
+# 根原型文件夹
+Prototype/
+# 各子项目内的原型文件夹
+*/prototype/
+# 原型运行时脚本
+kuaima-uniapp/prototype-runtime.js
+
+# ============ 打包生成目录 ============
+# Java 构建产物
+target/
+*.class
+# 前端构建产物
+dist/
+dist-ssr
+# 前端依赖
+node_modules/
+# 前端打包静态资源（uniapp）
+kuaima-uniapp/assets/
+
+# ============ 日志 ============
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ============ IDE / 编辑器 ============
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+Thumbs.db
+
+# ============ 环境变量 / 本地配置 ============
+*.local
+.env.local
+.env.*.local
+
+# ============ Maven wrapper ============
+.mvn/wrapper/maven-wrapper.jar

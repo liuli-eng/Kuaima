@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - 客服管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .type-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .type-consult { background: #EFF6FF; color: var(--secondary); }
+        .type-complaint { background: #FEF2F2; color: var(--danger); }
+        .type-other { background: #F3F4F6; color: var(--text-secondary); }
+
+        .content-grid-3col {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 2fr 1fr;
+        }
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+        .action-btns .btn {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .quick-reply-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .quick-reply-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: #FAFAFA;
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+            transition: all 0.2s;
+        }
+        .quick-reply-item:hover {
+            background: var(--primary-light);
+        }
+        .quick-reply-text {
+            font-size: 13px;
+            color: var(--text-primary);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 10px;
+        }
+        .quick-reply-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .quick-reply-actions .btn {
+            padding: 3px 8px;
+            font-size: 11px;
+        }
+        .faq-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .faq-item {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .faq-question {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            cursor: pointer;
+            background: #fff;
+            transition: background 0.2s;
+        }
+        .faq-question:hover {
+            background: var(--bg-page);
+        }
+        .faq-question-text {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .faq-category-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+        .faq-answer {
+            display: none;
+            padding: 12px 14px;
+            background: #FAFAFA;
+            font-size: 13px;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            line-height: 1.6;
+        }
+        .faq-item.open .faq-answer {
+            display: block;
+        }
+        .faq-item.open .faq-chevron {
+            transform: rotate(180deg);
+        }
+        .faq-chevron {
+            transition: transform 0.2s;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .waiting-warn {
+            color: var(--warning);
+            font-weight: 500;
+        }
+        .waiting-danger {
+            color: var(--danger);
+            font-weight: 500;
+        }
+        .add-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .filter-panel {
+            display: none;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .filter-panel.active {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+        .filter-input {
+            width: 160px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .filter-input:focus {
+            border-color: var(--primary);
+        }
+        .filter-select {
+            width: 140px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+            cursor: pointer;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">客服管理</h1>
+                <p class="page-desc">在线客服、会话记录、常见问题</p>
+            </div>
+
+            <div class="content-grid-3col">
+                <div class="card">
+                    <div class="section-title">
+                        <span><i class="fas fa-headset" style="color:var(--primary); margin-right:8px;"></i>当前活跃会话</span>
+                        <div>
+                            <button class="btn btn-outline btn-sm" id="filterBtn" onclick="toggleFilter()"><i class="fas fa-filter"></i> 筛选</button>
+                        </div>
+                    </div>
+                    <div class="filter-panel" id="filterPanel">
+                        <div class="filter-row">
+                            <label class="filter-label">用户：</label>
+                            <input type="text" class="filter-input" id="filterUser" placeholder="输入用户名或手机号">
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">类型：</label>
+                            <select class="filter-select" id="filterType">
+                                <option value="">全部类型</option>
+                                <option value="consult">咨询</option>
+                                <option value="complaint">投诉</option>
+                                <option value="other">其他</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">状态：</label>
+                            <select class="filter-select" id="filterStatus">
+                                <option value="">全部状态</option>
+                                <option value="waiting">等待中</option>
+                                <option value="processing">处理中</option>
+                                <option value="resolved">已解决</option>
+                            </select>
+                        </div>
+                        <div class="filter-actions">
+                            <button class="btn btn-outline btn-sm" onclick="resetFilter()">重置</button>
+                            <button class="btn btn-primary btn-sm" onclick="applyFilter()"><i class="fas fa-search"></i> 应用筛选</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>会话ID</th>
+                                    <th>用户</th>
+                                    <th>类型</th>
+                                    <th>等待时间</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sessionTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <div class="card">
+                        <div class="section-title">
+                            <span><i class="fas fa-bolt" style="color:var(--primary); margin-right:8px;"></i>快捷回复</span>
+                            <a class="add-btn" onclick="openReplyModal()"><i class="fas fa-plus"></i> 新增</a>
+                        </div>
+                        <div class="quick-reply-list" id="quickReplyList"></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="section-title">
+                            <span><i class="fas fa-question-circle" style="color:var(--primary); margin-right:8px;"></i>常见问题</span>
+                            <a class="add-btn" onclick="openFaqModal()"><i class="fas fa-plus"></i> 新增</a>
+                        </div>
+                        <div class="faq-list" id="faqList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="replyModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:500px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:18px; font-weight:600;" id="replyModalTitle">新增快捷回复</span>
+                <div class="modal-close" onclick="closeReplyModal()" style="cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted);">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div style="padding:24px; overflow-y:auto; flex:1;">
+                <div class="form-group">
+                    <label class="form-label">回复内容</label>
+                    <textarea class="form-input form-textarea" id="r_content" placeholder="请输入快捷回复内容..." style="min-height:80px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">分类标签</label>
+                    <select class="form-input form-select" id="r_tag">
+                        <option>通用</option>
+                        <option>订单咨询</option>
+                        <option>投诉处理</option>
+                        <option>结算问题</option>
+                        <option>系统使用</option>
+                    </select>
+                </div>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+                <button class="btn btn-outline" onclick="closeReplyModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveReply()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="faqModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:560px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:18px; font-weight:600;" id="faqModalTitle">新增常见问题</span>
+                <div class="modal-close" onclick="closeFaqModal()" style="cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted);">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div style="padding:24px; overflow-y:auto; flex:1;">
+                <div class="form-group">
+                    <label class="form-label">问题分类</label>
+                    <select class="form-input form-select" id="f_category">
+                        <option>账号问题</option>
+                        <option>订单问题</option>
+                        <option>结算问题</option>
+                        <option>功能使用</option>
+                        <option>投诉建议</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">问题标题</label>
+                    <input type="text" class="form-input" id="f_question" placeholder="请输入问题标题">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">解答内容</label>
+                    <textarea class="form-input form-textarea" id="f_answer" placeholder="请输入详细解答内容..." style="min-height:120px;"></textarea>
+                </div>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+                <button class="btn btn-outline" onclick="closeFaqModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveFaq()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const sessions = [
+            { id: 'S20240620001', user: '张建国', type: 'consult', waitTime: '2分钟', status: 'waiting', avatar: '张', avatarColor: '#FF6B35' },
+            { id: 'S20240620002', user: '李美丽', type: 'complaint', waitTime: '5分钟', status: 'waiting', avatar: '李', avatarColor: '#2563EB' },
+            { id: 'S20240620003', user: '王小刚', type: 'consult', waitTime: '1分钟', status: 'processing', avatar: '王', avatarColor: '#10B981' },
+            { id: 'S20240620004', user: '陈大海', type: 'other', waitTime: '12分钟', status: 'waiting', avatar: '陈', avatarColor: '#8B5CF6' },
+            { id: 'S20240620005', user: '刘芳', type: 'consult', waitTime: '3分钟', status: 'processing', avatar: '刘', avatarColor: '#F59E0B' },
+            { id: 'S20240620006', user: '赵小红', type: 'complaint', waitTime: '8分钟', status: 'waiting', avatar: '赵', avatarColor: '#EC4899' },
+            { id: 'S20240620007', user: '周志华', type: 'consult', waitTime: '-', status: 'resolved', avatar: '周', avatarColor: '#06B6D4' },
+            { id: 'S20240620008', user: '吴志强', type: 'other', waitTime: '-', status: 'resolved', avatar: '吴', avatarColor: '#64748B' }
+        ];
+
+        const quickReplies = [
+            { id: 1, content: '您好，很高兴为您服务！请问有什么可以帮您的？', tag: '通用' },
+            { id: 2, content: '关于您咨询的订单问题，需要提供订单号以便我们查询处理。', tag: '订单咨询' },
+            { id: 3, content: '非常抱歉给您带来不便，我们已记录您的投诉，将在24小时内回复处理结果。', tag: '投诉处理' },
+            { id: 4, content: '结算金额将在订单完成后T+3工作日内到账，请耐心等待。', tag: '结算问题' },
+            { id: 5, content: '请您在"我的-帮助中心"中查看详细的操作指引，或联系在线客服协助。', tag: '系统使用' }
+        ];
+
+        const faqs = [
+            { id: 1, category: '账号问题', question: '如何修改登录密码？', answer: '请进入"我的-设置-账号安全"页面，选择"修改密码"功能，按照提示操作即可。建议密码包含字母和数字，长度在8-20位之间。', open: false },
+            { id: 2, category: '订单问题', question: '订单完成后多久可以结算？', answer: '订单完成并经老板确认后，工资将在T+3个工作日内结算到您的绑定银行卡。如遇节假日可能顺延。', open: false },
+            { id: 3, category: '结算问题', question: '结算金额与实际不符怎么办？', answer: '请提供订单编号和实际工作时长的相关凭证（如打卡记录、现场照片等），联系客服核实处理。我们将在24小时内给予答复。', open: false },
+            { id: 4, category: '功能使用', question: '如何报名参加招工？', answer: '在首页浏览或通过分类筛选找到合适的招工岗位，点击"立即报名"按钮即可。报名前请确保已完成实名认证。', open: false },
+            { id: 5, category: '投诉建议', question: '如何投诉不良商家？', answer: '在订单详情页点击"投诉"按钮，选择投诉原因并上传相关凭证（聊天记录、工作照片等），我们将在核实后对违规商家进行处罚。', open: false }
+        ];
+
+        const typeMap = {
+            consult: { text: '咨询', class: 'type-consult' },
+            complaint: { text: '投诉', class: 'type-complaint' },
+            other: { text: '其他', class: 'type-other' }
+        };
+
+        const statusMap = {
+            waiting: { text: '等待中', class: 'warning' },
+            processing: { text: '处理中', class: 'info' },
+            resolved: { text: '已解决', class: 'success' }
+        };
+
+        function renderSessions() {
+            const tbody = document.getElementById('sessionTableBody');
+            tbody.innerHTML = sessions.map(s => {
+                const tp = typeMap[s.type];
+                const st = statusMap[s.status];
+                const waitClass = s.waitTime && parseInt(s.waitTime) > 5 ? 'waiting-danger' : s.waitTime && parseInt(s.waitTime) > 2 ? 'waiting-warn' : '';
+                return `
+                    <tr>
+                        <td style="font-family:monospace; color:var(--primary); font-size:12px;">${s.id}</td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="avatar-sm" style="background:linear-gradient(135deg, ${s.avatarColor}, ${s.avatarColor}cc); width:28px; height:28px; font-size:12px;">${s.avatar}</span>
+                                <span style="font-weight:500;">${s.user}</span>
+                            </div>
+                        </td>
+                        <td><span class="type-tag ${tp.class}">${tp.text}</span></td>
+                        <td class="${waitClass}">${s.waitTime}</td>
+                        <td><span class="status-badge ${st.class}">${st.text}</span></td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-outline btn-sm" onclick="handleSession('${s.id}')">${s.status === 'resolved' ? '查看' : '处理'}</button>
+                                ${s.status !== 'resolved' ? '<button class="btn btn-danger btn-sm" onclick="closeSession(\'' + s.id + '\')">关闭</button>' : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderReplies() {
+            const list = document.getElementById('quickReplyList');
+            list.innerHTML = quickReplies.map(r => `
+                <div class="quick-reply-item">
+                    <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                        <span class="tag" style="font-size:10px; flex-shrink:0;">${r.tag}</span>
+                        <span class="quick-reply-text">${r.content}</span>
+                    </div>
+                    <div class="quick-reply-actions">
+                        <button class="btn btn-outline btn-sm" onclick="copyReply(${r.id})" title="复制"><i class="fas fa-copy"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="editReply(${r.id})" title="编辑"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteReply(${r.id})" title="删除"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderFaqs() {
+            const list = document.getElementById('faqList');
+            list.innerHTML = faqs.map(f => `
+                <div class="faq-item${f.open ? ' open' : ''}">
+                    <div class="faq-question" onclick="toggleFaq(${f.id})">
+                        <div class="faq-question-text">
+                            <span class="faq-category-tag">${f.category}</span>
+                            <span>${f.question}</span>
+                        </div>
+                        <i class="fas fa-chevron-down faq-chevron"></i>
+                    </div>
+                    <div class="faq-answer">
+                        <div style="margin-bottom:10px;">${f.answer}</div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-outline btn-sm" onclick="editFaq(${f.id})"><i class="fas fa-edit"></i> 编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteFaq(${f.id})"><i class="fas fa-trash"></i> 删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleFaq(id) {
+            const f = faqs.find(x => x.id === id);
+            if (f) {
+                f.open = !f.open;
+                renderFaqs();
+            }
+        }
+
+        let editingReplyId = null;
+
+        function openReplyModal() {
+            editingReplyId = null;
+            document.getElementById('replyModalTitle').textContent = '新增快捷回复';
+            document.getElementById('r_content').value = '';
+            document.getElementById('r_tag').value = '通用';
+            document.getElementById('replyModal').style.display = 'flex';
+        }
+
+        function editReply(id) {
+            const r = quickReplies.find(x => x.id === id);
+            if (!r) return;
+            editingReplyId = id;
+            document.getElementById('replyModalTitle').textContent = '编辑快捷回复';
+            document.getElementById('r_content').value = r.content;
+            document.getElementById('r_tag').value = r.tag;
+            document.getElementById('replyModal').style.display = 'flex';
+        }
+
+        function closeReplyModal() {
+            document.getElementById('replyModal').style.display = 'none';
+        }
+
+        function saveReply() {
+            const content = document.getElementById('r_content').value;
+            if (!content) { alert('请输入回复内容'); return; }
+            const data = { content: content, tag: document.getElementById('r_tag').value };
+            if (editingReplyId) {
+                const idx = quickReplies.findIndex(x => x.id === editingReplyId);
+                quickReplies[idx] = { ...quickReplies[idx], ...data };
+            } else {
+                const newId = Math.max(...quickReplies.map(r => r.id)) + 1;
+                quickReplies.push({ id: newId, ...data });
+            }
+            closeReplyModal();
+            renderReplies();
+        }
+
+        function copyReply(id) {
+            const r = quickReplies.find(x => x.id === id);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(r.content).then(() => {
+                    alert('已复制到剪贴板');
+                });
+            } else {
+                alert('已复制：' + r.content);
+            }
+        }
+
+        function deleteReply(id) {
+            if (!confirm('确定要删除此快捷回复吗？')) return;
+            const idx = quickReplies.findIndex(x => x.id === id);
+            if (idx > -1) quickReplies.splice(idx, 1);
+            renderReplies();
+        }
+
+        let editingFaqId = null;
+
+        function openFaqModal() {
+            editingFaqId = null;
+            document.getElementById('faqModalTitle').textContent = '新增常见问题';
+            document.getElementById('f_category').value = '账号问题';
+            document.getElementById('f_question').value = '';
+            document.getElementById('f_answer').value = '';
+            document.getElementById('faqModal').style.display = 'flex';
+        }
+
+        function editFaq(id) {
+            const f = faqs.find(x => x.id === id);
+            if (!f) return;
+            editingFaqId = id;
+            document.getElementById('faqModalTitle').textContent = '编辑常见问题';
+            document.getElementById('f_category').value = f.category;
+            document.getElementById('f_question').value = f.question;
+            document.getElementById('f_answer').value = f.answer;
+            document.getElementById('faqModal').style.display = 'flex';
+        }
+
+        function closeFaqModal() {
+            document.getElementById('faqModal').style.display = 'none';
+        }
+
+        function saveFaq() {
+            const question = document.getElementById('f_question').value;
+            if (!question) { alert('请输入问题标题'); return; }
+            const data = {
+                category: document.getElementById('f_category').value,
+                question: question,
+                answer: document.getElementById('f_answer').value || '暂无详细解答',
+                open: false
+            };
+            if (editingFaqId) {
+                const idx = faqs.findIndex(x => x.id === editingFaqId);
+                faqs[idx] = { ...faqs[idx], ...data };
+            } else {
+                const newId = Math.max(...faqs.map(f => f.id)) + 1;
+                faqs.push({ id: newId, ...data });
+            }
+            closeFaqModal();
+            renderFaqs();
+        }
+
+        function deleteFaq(id) {
+            if (!confirm('确定要删除此常见问题吗？')) return;
+            const idx = faqs.findIndex(x => x.id === id);
+            if (idx > -1) faqs.splice(idx, 1);
+            renderFaqs();
+        }
+
+        let originalSessions = JSON.parse(JSON.stringify(sessions));
+        let currentFilter = { user: '', type: '', status: '' };
+
+        function toggleFilter() {
+            const panel = document.getElementById('filterPanel');
+            panel.classList.toggle('active');
+        }
+
+        function applyFilter() {
+            const user = document.getElementById('filterUser').value.trim().toLowerCase();
+            const type = document.getElementById('filterType').value;
+            const status = document.getElementById('filterStatus').value;
+            
+            currentFilter = { user, type, status };
+            
+            let filtered = [...originalSessions];
+            
+            if (user) {
+                filtered = filtered.filter(s => s.user.toLowerCase().includes(user));
+            }
+            if (type) {
+                filtered = filtered.filter(s => s.type === type);
+            }
+            if (status) {
+                filtered = filtered.filter(s => s.status === status);
+            }
+            
+            sessions.length = 0;
+            sessions.push(...filtered);
+            renderSessions();
+            
+            const btn = document.getElementById('filterBtn');
+            const hasFilter = user || type || status;
+            if (hasFilter) {
+                btn.classList.add('btn-primary');
+                btn.classList.remove('btn-outline');
+            } else {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline');
+            }
+        }
+
+        function resetFilter() {
+            document.getElementById('filterUser').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterStatus').value = '';
+            
+            currentFilter = { user: '', type: '', status: '' };
+            sessions.length = 0;
+            sessions.push(...originalSessions);
+            renderSessions();
+            
+            const btn = document.getElementById('filterBtn');
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline');
+        }
+
+        function handleSession(id) {
+            window.location.href = 'service-chat.html?id=' + id;
+        }
+
+        function closeSession(id) {
+            if (!confirm('确定要关闭此会话吗？')) return;
+            const s = sessions.find(x => x.id === id);
+            if (s) {
+                s.status = 'resolved';
+                s.waitTime = '-';
+            }
+            renderSessions();
+        }
+
+        renderSessions();
+        renderReplies();
+        renderFaqs();
+    </script>
+</body>
+</html>

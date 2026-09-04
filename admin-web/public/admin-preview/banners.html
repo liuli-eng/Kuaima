@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快马日结 - Banner管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <style>
+        .stat-card-icon {
+            background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+            color: var(--primary);
+        }
+        .stat-card-icon.blue {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            color: var(--secondary);
+        }
+        .stat-card-icon.green {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            color: var(--success);
+        }
+        .stat-card-icon.yellow {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            color: var(--warning);
+        }
+        .stat-card-icon.red {
+            background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+            color: var(--danger);
+        }
+        .banner-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+        .banner-card {
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: box-shadow 0.2s;
+        }
+        .banner-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        .banner-thumb {
+            width: 100%;
+            height: 160px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            overflow: hidden;
+        }
+        .banner-thumb-1 { background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%); }
+        .banner-thumb-2 { background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%); }
+        .banner-thumb-3 { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+        .banner-thumb-4 { background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); }
+        .banner-thumb-5 { background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); }
+        .banner-thumb-6 { background: linear-gradient(135deg, #EC4899 0%, #BE185D 100%); }
+        .banner-thumb-7 { background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%); }
+        .banner-thumb-8 { background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); }
+        .banner-thumb-9 { background: linear-gradient(135deg, #64748B 0%, #475569 100%); }
+        .banner-thumb-10 { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); }
+        .banner-thumb-11 { background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%); }
+        .banner-thumb-12 { background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); }
+        .banner-status-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .banner-body {
+            padding: 16px;
+        }
+        .banner-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .banner-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        .banner-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .banner-meta-item i {
+            width: 14px;
+            color: var(--text-muted);
+        }
+        .banner-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            background: #FAFAFA;
+        }
+        .banner-actions .btn {
+            flex: 1;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        .add-banner-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .filter-tabs {
+            display: flex;
+            gap: 0;
+            background: #fff;
+            border-radius: 8px;
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+        .filter-tab {
+            padding: 6px 16px;
+            font-size: 13px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+        .filter-tab:hover {
+            color: var(--primary);
+        }
+        .filter-tab.active {
+            background: var(--primary);
+            color: #fff;
+        }
+        .banner-position-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body class="admin-layout">
+    <div class="admin-sidebar"></div>
+    <div class="admin-main">
+        <div class="admin-topbar"></div>
+        <div class="admin-content">
+            <div class="page-header">
+                <h1 class="page-title">Banner管理</h1>
+                <p class="page-desc">首页轮播图、活动推广位管理</p>
+            </div>
+
+            <div class="add-banner-bar">
+                <div class="filter-tabs">
+                    <button class="filter-tab active" onclick="filterBanners('all', this)">全部</button>
+                    <button class="filter-tab" onclick="filterBanners('active', this)">展示中</button>
+                    <button class="filter-tab" onclick="filterBanners('draft', this)">草稿</button>
+                    <button class="filter-tab" onclick="filterBanners('offline', this)">已下架</button>
+                </div>
+                <button class="btn btn-primary" onclick="openBannerModal()">
+                    <i class="fas fa-plus"></i> 新增Banner
+                </button>
+            </div>
+
+            <div class="banner-grid" id="bannerGrid"></div>
+        </div>
+    </div>
+
+    <div id="bannerModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:16px; width:90%; max-width:560px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:18px; font-weight:600;" id="modalTitle">新增Banner</span>
+                <div class="modal-close" onclick="closeBannerModal()" style="cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--text-muted);">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+            <div style="padding:24px; overflow-y:auto; flex:1;">
+                <div class="form-group">
+                    <label class="form-label">Banner标题</label>
+                    <input type="text" class="form-input" id="f_title" placeholder="请输入Banner标题">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">展示位置</label>
+                    <select class="form-input form-select" id="f_position">
+                        <option>首页轮播</option>
+                        <option>首页弹窗</option>
+                        <option>分类页顶部</option>
+                        <option>活动推广页</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">状态</label>
+                    <select class="form-input form-select" id="f_status">
+                        <option value="active">展示中</option>
+                        <option value="draft">草稿</option>
+                        <option value="offline">已下架</option>
+                    </select>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                        <label class="form-label">开始时间</label>
+                        <input type="date" class="form-input" id="f_start">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">结束时间</label>
+                        <input type="date" class="form-input" id="f_end">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">跳转链接</label>
+                    <input type="text" class="form-input" id="f_link" placeholder="点击Banner跳转的链接地址">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Banner图片</label>
+                    <div style="border:2px dashed var(--border); border-radius:8px; padding:40px; text-align:center; color:var(--text-muted); cursor:pointer; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:32px; margin-bottom:8px; display:block;"></i>
+                        <span>点击上传图片 或 拖拽到此处</span>
+                        <div style="font-size:12px; margin-top:4px;">建议尺寸 750 × 400，支持 JPG/PNG</div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:12px;">
+                <button class="btn btn-outline" onclick="closeBannerModal()">取消</button>
+                <button class="btn btn-secondary" onclick="saveBanner('draft')">保存草稿</button>
+                <button class="btn btn-primary" onclick="saveBanner('active')">保存并发布</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        initPageLayout();
+
+        const banners = [
+            { id: 1, title: '春节招工狂欢节', position: '首页轮播', status: 'active', start: '2024-01-15', end: '2024-02-15', thumb: 1, link: '/activity/spring' },
+            { id: 2, title: '新用户注册送积分', position: '首页弹窗', status: 'active', start: '2024-03-01', end: '2024-12-31', thumb: 2, link: '/register' },
+            { id: 3, title: '蓝领技能大赛报名', position: '首页轮播', status: 'active', start: '2024-06-01', end: '2024-08-31', thumb: 3, link: '/contest' },
+            { id: 4, title: '企业专场招聘会', position: '分类页顶部', status: 'active', start: '2024-07-01', end: '2024-09-30', thumb: 4, link: '/job-fair' },
+            { id: 5, title: '会员权益升级通知', position: '首页弹窗', status: 'active', start: '2024-05-01', end: '2024-11-30', thumb: 5, link: '/vip' },
+            { id: 6, title: '夏季高温补贴活动', position: '首页轮播', status: 'draft', start: '2024-07-01', end: '2024-08-31', thumb: 6, link: '/subsidy' },
+            { id: 7, title: '推荐好友得现金', position: '活动推广页', status: 'draft', start: '2024-08-01', end: '2024-10-31', thumb: 7, link: '/refer' },
+            { id: 8, title: '每日签到领红包', position: '首页弹窗', status: 'draft', start: '2024-09-01', end: '2024-12-31', thumb: 8, link: '/signin' },
+            { id: 9, title: '五一劳动节专题', position: '首页轮播', status: 'offline', start: '2024-04-20', end: '2024-05-10', thumb: 9, link: '/activity/mayday' },
+            { id: 10, title: '清明节放假通知', position: '分类页顶部', status: 'offline', start: '2024-04-01', end: '2024-04-07', thumb: 10, link: '/notice' },
+            { id: 11, title: '元宵佳节活动', position: '首页轮播', status: 'offline', start: '2024-02-10', end: '2024-02-25', thumb: 11, link: '/activity/yuanxiao' },
+            { id: 12, title: '年货节推广', position: '活动推广页', status: 'offline', start: '2024-01-05', end: '2024-01-20', thumb: 12, link: '/activity/nianhuo' }
+        ];
+
+        let currentFilter = 'all';
+        let editingId = null;
+
+        function renderBanners() {
+            const grid = document.getElementById('bannerGrid');
+            let filtered = banners;
+            if (currentFilter === 'active') filtered = banners.filter(b => b.status === 'active');
+            else if (currentFilter === 'draft') filtered = banners.filter(b => b.status === 'draft');
+            else if (currentFilter === 'offline') filtered = banners.filter(b => b.status === 'offline');
+
+            grid.innerHTML = filtered.map(b => {
+                const statusMap = {
+                    active: { text: '展示中', class: 'success' },
+                    draft: { text: '草稿', class: 'warning' },
+                    offline: { text: '已下架', class: 'default' }
+                };
+                const s = statusMap[b.status];
+                return `
+                    <div class="banner-card">
+                        <div class="banner-thumb banner-thumb-${b.thumb}">
+                            <div class="banner-status-overlay">
+                                <span class="status-badge ${s.class}">${s.text}</span>
+                            </div>
+                            <i class="fas fa-image" style="font-size:48px; opacity:0.3;"></i>
+                        </div>
+                        <div class="banner-body">
+                            <div class="banner-title">
+                                <span class="banner-position-tag"><i class="fas fa-map-marker-alt"></i> ${b.position}</span>
+                            </div>
+                            <div style="font-size:15px; font-weight:500; margin-bottom:8px;">${b.title}</div>
+                            <div class="banner-meta">
+                                <div class="banner-meta-item">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span>${b.start} 至 ${b.end}</span>
+                                </div>
+                                <div class="banner-meta-item">
+                                    <i class="fas fa-link"></i>
+                                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.link}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="banner-actions">
+                            <button class="btn btn-outline btn-sm" onclick="previewBanner(${b.id})"><i class="fas fa-eye"></i> 预览</button>
+                            <button class="btn btn-secondary btn-sm" onclick="editBanner(${b.id})"><i class="fas fa-edit"></i> 编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteBanner(${b.id})"><i class="fas fa-trash"></i> 删除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterBanners(type, el) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            renderBanners();
+        }
+
+        function openBannerModal() {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = '新增Banner';
+            document.getElementById('f_title').value = '';
+            document.getElementById('f_position').value = '首页轮播';
+            document.getElementById('f_status').value = 'draft';
+            document.getElementById('f_start').value = '';
+            document.getElementById('f_end').value = '';
+            document.getElementById('f_link').value = '';
+            document.getElementById('bannerModal').style.display = 'flex';
+        }
+
+        function editBanner(id) {
+            const b = banners.find(x => x.id === id);
+            if (!b) return;
+            editingId = id;
+            document.getElementById('modalTitle').textContent = '编辑Banner';
+            document.getElementById('f_title').value = b.title;
+            document.getElementById('f_position').value = b.position;
+            document.getElementById('f_status').value = b.status;
+            document.getElementById('f_start').value = b.start;
+            document.getElementById('f_end').value = b.end;
+            document.getElementById('f_link').value = b.link;
+            document.getElementById('bannerModal').style.display = 'flex';
+        }
+
+        function closeBannerModal() {
+            document.getElementById('bannerModal').style.display = 'none';
+        }
+
+        function saveBanner(defaultStatus) {
+            const title = document.getElementById('f_title').value;
+            if (!title) { alert('请输入Banner标题'); return; }
+            const data = {
+                title: title,
+                position: document.getElementById('f_position').value,
+                status: document.getElementById('f_status').value || defaultStatus,
+                start: document.getElementById('f_start').value || new Date().toISOString().slice(0,10),
+                end: document.getElementById('f_end').value || '2024-12-31',
+                link: document.getElementById('f_link').value || '#'
+            };
+            if (editingId) {
+                const idx = banners.findIndex(x => x.id === editingId);
+                banners[idx] = { ...banners[idx], ...data };
+            } else {
+                const newId = Math.max(...banners.map(b => b.id)) + 1;
+                const thumb = (newId % 12) + 1;
+                banners.push({ id: newId, thumb: thumb, ...data });
+            }
+            closeBannerModal();
+            renderBanners();
+        }
+
+        function previewBanner(id) {
+            const b = banners.find(x => x.id === id);
+            alert('预览Banner: ' + b.title + '\n位置: ' + b.position + '\n链接: ' + b.link);
+        }
+
+        function deleteBanner(id) {
+            if (!confirm('确定要删除此Banner吗？')) return;
+            const idx = banners.findIndex(x => x.id === id);
+            if (idx > -1) banners.splice(idx, 1);
+            renderBanners();
+        }
+
+        renderBanners();
+    </script>
+</body>
+</html>

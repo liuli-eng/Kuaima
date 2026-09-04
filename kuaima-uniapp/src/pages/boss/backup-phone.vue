@@ -25,10 +25,12 @@
           <text class="section-title">主要联系电话</text>
           <view class="phone-item">
             <view class="phone-icon primary">
-              <text style="font-size:32rpx;">📞</text>
+              <text style="font-size: 32rpx">📞</text>
             </view>
             <view class="phone-info">
-              <text class="phone-number">13698756321 <text class="phone-tag">主</text></text>
+              <text class="phone-number"
+                >13698756321 <text class="phone-tag">主</text></text
+              >
               <text class="phone-desc">零工电话报名、问路等</text>
             </view>
           </view>
@@ -36,10 +38,17 @@
 
         <!-- 备用联系电话 -->
         <view class="section-card">
-          <text class="section-title">备用联系电话 <text style="color:#FF4D4F;">*</text>（最多添加3个）</text>
-          <view class="phone-item" v-for="(item, index) in phoneList" :key="index">
+          <text class="section-title"
+            >备用联系电话
+            <text style="color: #ff4d4f">*</text>（最多添加3个）</text
+          >
+          <view
+            class="phone-item"
+            v-for="(item, index) in phoneList"
+            :key="index"
+          >
             <view class="phone-icon">
-              <text style="font-size:32rpx;">📞</text>
+              <text style="font-size: 32rpx">📞</text>
             </view>
             <view class="phone-info">
               <text class="phone-number">{{ item.phone }}</text>
@@ -51,7 +60,11 @@
               <button class="danger" @click="deletePhone(index)">删除</button>
             </view>
           </view>
-          <view class="add-btn" v-if="phoneList.length < 3" @click="openAddModal">
+          <view
+            class="add-btn"
+            v-if="phoneList.length < 3"
+            @click="openAddModal"
+          >
             <text>+</text>
             <text>添加备用联系电话</text>
           </view>
@@ -59,8 +72,10 @@
 
         <!-- 提示信息 -->
         <view class="tip-box">
-          <text style="color:#FF6B35;margin-top:4rpx;">ℹ</text>
-          <text>备用电话用于零工无法联系时的补充沟通，确保招工信息传达顺畅。</text>
+          <text style="color: #ff6b35; margin-top: 4rpx">ℹ</text>
+          <text
+            >备用电话用于零工无法联系时的补充沟通，确保招工信息传达顺畅。</text
+          >
         </view>
       </scroll-view>
 
@@ -73,14 +88,21 @@
     <!-- 添加/编辑弹窗 -->
     <view class="modal" v-if="showPhoneModal">
       <view class="modal-content">
-        <text class="modal-title">{{ editingIndex >= 0 ? '编辑联系电话' : '添加备用联系电话' }}</text>
+        <text class="modal-title">{{
+          editingIndex >= 0 ? "编辑联系电话" : "添加备用联系电话"
+        }}</text>
         <view class="form-group">
           <text>联系人姓名</text>
           <input type="text" placeholder="请输入姓名" v-model="formData.name" />
         </view>
         <view class="form-group">
           <text>手机号码</text>
-          <input type="tel" placeholder="请输入11位手机号" maxlength="11" v-model="formData.phone" />
+          <input
+            type="tel"
+            placeholder="请输入11位手机号"
+            maxlength="11"
+            v-model="formData.phone"
+          />
         </view>
         <view class="modal-actions">
           <button class="btn-cancel" @click="closeModal">取消</button>
@@ -93,12 +115,26 @@
     <view class="modal" v-if="showDeleteModal">
       <view class="modal-content">
         <text class="modal-title">确认删除</text>
-        <text style="text-align:center;font-size:28rpx;color:#666;margin-bottom:32rpx;display:block;">
+        <text
+          style="
+            text-align: center;
+            font-size: 28rpx;
+            color: #666;
+            margin-bottom: 32rpx;
+            display: block;
+          "
+        >
           删除后该备用联系人将无法接收零工相关通知
         </text>
         <view class="modal-actions">
           <button class="btn-cancel" @click="closeDeleteModal">取消</button>
-          <button class="btn-confirm" style="background:linear-gradient(135deg,#FF6B35,#FF4D4F);" @click="confirmDelete">确认删除</button>
+          <button
+            class="btn-confirm"
+            style="background: linear-gradient(135deg, #ff6b35, #ff4d4f)"
+            @click="confirmDelete"
+          >
+            确认删除
+          </button>
         </view>
       </view>
     </view>
@@ -110,87 +146,87 @@ export default {
   data() {
     return {
       phoneList: [
-        { name: '张先生', phone: '13888888888' },
-        { name: '李女士', phone: '13666666666' }
+        { name: "张先生", phone: "13888888888" },
+        { name: "李女士", phone: "13666666666" },
       ],
       editingIndex: -1,
       deletingIndex: -1,
       showPhoneModal: false,
       showDeleteModal: false,
       formData: {
-        name: '',
-        phone: ''
-      }
-    }
+        name: "",
+        phone: "",
+      },
+    };
   },
   methods: {
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     openAddModal() {
-      this.editingIndex = -1
-      this.formData = { name: '', phone: '' }
-      this.showPhoneModal = true
+      this.editingIndex = -1;
+      this.formData = { name: "", phone: "" };
+      this.showPhoneModal = true;
     },
     editPhone(index) {
-      this.editingIndex = index
-      const p = this.phoneList[index]
-      this.formData = { name: p.name, phone: p.phone }
-      this.showPhoneModal = true
+      this.editingIndex = index;
+      const p = this.phoneList[index];
+      this.formData = { name: p.name, phone: p.phone };
+      this.showPhoneModal = true;
     },
     closeModal() {
-      this.showPhoneModal = false
+      this.showPhoneModal = false;
     },
     savePhone() {
       if (!this.formData.name.trim()) {
-        uni.showToast({ title: '请输入联系人姓名', icon: 'none' })
-        return
+        uni.showToast({ title: "请输入联系人姓名", icon: "none" });
+        return;
       }
       if (!/^1\d{10}$/.test(this.formData.phone.trim())) {
-        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
-        return
+        uni.showToast({ title: "请输入正确的手机号", icon: "none" });
+        return;
       }
 
       if (this.editingIndex >= 0) {
-        this.phoneList[this.editingIndex] = { ...this.formData }
+        this.phoneList[this.editingIndex] = { ...this.formData };
       } else {
         if (this.phoneList.length >= 3) {
-          uni.showToast({ title: '最多添加3个备用联系人', icon: 'none' })
-          return
+          uni.showToast({ title: "最多添加3个备用联系人", icon: "none" });
+          return;
         }
-        this.phoneList.push({ ...this.formData })
+        this.phoneList.push({ ...this.formData });
       }
 
-      this.closeModal()
+      this.closeModal();
     },
     deletePhone(index) {
-      this.deletingIndex = index
-      this.showDeleteModal = true
+      this.deletingIndex = index;
+      this.showDeleteModal = true;
     },
     closeDeleteModal() {
-      this.showDeleteModal = false
+      this.showDeleteModal = false;
     },
     confirmDelete() {
       if (this.deletingIndex >= 0) {
-        this.phoneList.splice(this.deletingIndex, 1)
+        this.phoneList.splice(this.deletingIndex, 1);
       }
-      this.closeDeleteModal()
+      this.closeDeleteModal();
     },
     saveAndReturn() {
-      uni.showToast({ title: '保存成功', icon: 'success' })
+      uni.showToast({ title: "保存成功", icon: "success" });
       setTimeout(() => {
-        uni.navigateBack()
-      }, 500)
-    }
-  }
-}
+        uni.navigateBack();
+      }, 500);
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #fff8e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -254,7 +290,7 @@ export default {
 .scroll-area {
   flex: 1;
   overflow-y: auto;
-  background: #F7F8FA;
+  background: #f7f8fa;
 }
 
 .section-card {
@@ -270,6 +306,8 @@ export default {
   margin-bottom: 20rpx;
   font-weight: 500;
   display: block;
+  line-height: 1.5;
+  word-break: break-all;
 }
 
 .phone-item {
@@ -288,8 +326,8 @@ export default {
   width: 80rpx;
   height: 80rpx;
   border-radius: 20rpx;
-  background: #EBF5FF;
-  color: #1E88E5;
+  background: #ebf5ff;
+  color: #1e88e5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -297,26 +335,29 @@ export default {
 }
 
 .phone-icon.primary {
-  background: #FFF3ED;
-  color: #FF6B35;
+  background: #fff3ed;
+  color: #ff6b35;
 }
 
 .phone-info {
   flex: 1;
+  min-width: 0;
 }
 
 .phone-number {
   font-size: 32rpx;
   font-weight: 600;
   color: #333;
+  line-height: 1.4;
+  word-break: break-all;
 }
 
 .phone-tag {
   display: inline-block;
   font-size: 22rpx;
   padding: 2rpx 12rpx;
-  background: #FFF3ED;
-  color: #FF6B35;
+  background: #fff3ed;
+  color: #ff6b35;
   border-radius: 6rpx;
   margin-left: 12rpx;
 }
@@ -325,24 +366,37 @@ export default {
   font-size: 24rpx;
   color: #999;
   margin-top: 4rpx;
+  line-height: 1.5;
+  word-break: break-all;
 }
 
 .phone-actions {
   display: flex;
   align-items: center;
   gap: 16rpx;
+  flex-shrink: 0;
 }
 
 .phone-actions button {
+  min-width: 0;
+  margin: 0;
   font-size: 24rpx;
-  color: #1E88E5;
+  color: #1e88e5;
   background: none;
   border: none;
   padding: 0;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.phone-actions button::after,
+.btn-save::after,
+.modal-actions button::after {
+  border: none;
 }
 
 .phone-actions button.danger {
-  color: #FF4D4F;
+  color: #ff4d4f;
 }
 
 .phone-actions .divider {
@@ -361,13 +415,15 @@ export default {
   margin: 24rpx;
   border-radius: 24rpx;
   border: 2rpx dashed #ccc;
-  color: #1E88E5;
+  color: #1e88e5;
   font-size: 30rpx;
   font-weight: 500;
+  box-sizing: border-box;
+  line-height: 1.4;
 }
 
 .tip-box {
-  background: #FFF8E6;
+  background: #fff8e6;
   margin: 0 24rpx 24rpx;
   border-radius: 24rpx;
   padding: 24rpx 28rpx;
@@ -383,26 +439,28 @@ export default {
 
 .bottom-btn {
   flex-shrink: 0;
-  padding: 24rpx 32rpx 68rpx;
+  padding: 24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
   background: #fff;
 }
 
 .btn-save {
   width: 100%;
   height: 96rpx;
-  background: linear-gradient(135deg, #FFD700, #FFA500);
+  background: linear-gradient(135deg, #ffd700, #ffa500);
   color: #fff;
   border: none;
   border-radius: 48rpx;
   font-size: 32rpx;
   font-weight: 600;
   box-shadow: 0 8rpx 24rpx rgba(255, 165, 0, 0.3);
+  margin: 0;
+  line-height: 1.4;
 }
 
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -446,7 +504,7 @@ export default {
 }
 
 .form-group input:focus {
-  border-color: #1E88E5;
+  border-color: #1e88e5;
 }
 
 .modal-actions {
@@ -458,6 +516,8 @@ export default {
 .modal-actions button {
   flex: 1;
   height: 84rpx;
+  min-width: 0;
+  margin: 0;
   border-radius: 42rpx;
   font-size: 30rpx;
   font-weight: 500;
@@ -470,7 +530,7 @@ export default {
 }
 
 .btn-confirm {
-  background: linear-gradient(135deg, #FFD700, #FFA500);
+  background: linear-gradient(135deg, #ffd700, #ffa500);
   color: #fff;
 }
 </style>
