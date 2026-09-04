@@ -67,6 +67,7 @@ public class AdminUserCrudController {
         if (patch.getDept() != null) existing.setDept(patch.getDept());
         if (patch.getPhone() != null) existing.setPhone(patch.getPhone());
         if (patch.getEmail() != null) existing.setEmail(patch.getEmail());
+        if (patch.getRemark() != null) existing.setRemark(patch.getRemark());
         if (patch.getStatus() != null) existing.setStatus(patch.getStatus());
         if (patch.getPassword() != null && !patch.getPassword().isBlank()) {
             existing.setPassword(passwordEncoder.encode(patch.getPassword()));

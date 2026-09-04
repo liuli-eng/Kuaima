@@ -696,11 +696,11 @@ const resetRules = () => {
 
 // ====== Actions ======
 const goAddAdmin = () => {
-  router.push('/admin/admin-users')
+  router.push('/admin/admin-user/form')
 }
 
 const goEditAdmin = (row) => {
-  router.push('/admin/admin-users')
+  router.push(`/admin/admin-user/form?mode=edit&id=${row.id}`)
 }
 
 const onEditAccount = (name) => {

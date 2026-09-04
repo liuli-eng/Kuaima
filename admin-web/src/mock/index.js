@@ -146,22 +146,6 @@ export const rulesData = [
   { id: 5, title: '提现规则说明', category: '收费标准', version: 'v1.1', status: '草稿', statusClass: 'default', effectiveTime: '-' }
 ]
 
-// 举报处理数据
-export const reportsData = [
-  { id: 'JB001', type: '违规', typeClass: 'danger', reporter: '赵小红', target: '麦当劳食品有限公司', orderId: 'KM20240315006', time: '2024-03-15 12:30', status: '待处理', statusClass: 'warning' },
-  { id: 'JB002', type: '纠纷', typeClass: 'info', reporter: '陈大海', target: '京东物流仓储', orderId: 'KM20240314003', time: '2024-03-14 18:00', status: '处理中', statusClass: 'info' },
-  { id: 'JB003', type: '虚假信息', typeClass: 'warning', reporter: '孙美玲', target: '某个体雇主', orderId: '-', time: '2024-03-13 15:20', status: '已处理', statusClass: 'success' },
-  { id: 'JB004', type: '违规', typeClass: 'danger', reporter: '匿名', target: 'WK008 吴志强', orderId: 'KM20240312008', time: '2024-03-12 10:00', status: '已处理', statusClass: 'success' }
-]
-
-// 黑名单数据
-export const blacklistData = [
-  { id: 'BL001', user: '吴志强', type: '零工', reason: '飞单行为', time: '2024-03-10', expireTime: '2025-03-10', status: '封禁中', statusClass: 'danger' },
-  { id: 'BL002', user: '张三', type: '雇主', reason: '虚假招工', time: '2024-02-20', expireTime: '2025-02-20', status: '封禁中', statusClass: 'danger' },
-  { id: 'BL003', user: '李四', type: '零工', reason: '恶意投诉', time: '2024-01-15', expireTime: '-', status: '已解封', statusClass: 'default' },
-  { id: 'BL004', user: '王五', type: '雇主', reason: '拖欠工资', time: '2023-12-01', expireTime: '2024-12-01', status: '封禁中', statusClass: 'danger' }
-]
-
 // 管理员数据
 export const adminUserData = [
   { id: 1, name: '管理员', account: 'admin', role: '超级管理员', dept: '技术部', lastLogin: '2024-03-15 09:00', status: '启用', statusClass: 'success' },

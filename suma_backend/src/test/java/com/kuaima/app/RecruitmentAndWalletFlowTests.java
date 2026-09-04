@@ -91,8 +91,11 @@ class RecruitmentAndWalletFlowTests {
         User boss = createUser(UserRole.BOSS);
         User worker = createUser(UserRole.USER);
 
-        // 1. 老板发布订单（初始：招工中）；招聘广播应推送至员工收件箱
+        // 1. 老板发布订单（初始：待审核）；admin 审核通过后变为招工中，
+        //    招聘广播应在审核通过时推送至员工收件箱
         BossOrder order = createDailyOrder(boss);
+        assertEquals(BossStatus.ORDER_PENDING_AUDIT, order.getOrderStatus());
+        order = bossOrderService.auditPass(order.getId());
         assertEquals(BossStatus.ORDER_RECRUITING, order.getOrderStatus());
         assertTrue(hasMessage(worker.getId(), MessageType.ORDER_PUBLISH));
 

@@ -3,7 +3,7 @@ spring:
     name: kuaima
   profiles:
     # 切换环境：dev | test
-    active: test
+    active: dev
 
 jwt:
   secret: suma-backend-jwt-secret-key-0123456789abcdef0123456789

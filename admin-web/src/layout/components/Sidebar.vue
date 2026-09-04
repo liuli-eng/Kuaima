@@ -46,7 +46,6 @@ import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { listJobs } from '@/api/job'
 import { listCertifications } from '@/api/content'
-import { listReports } from '@/api/risk'
 
 const appStore = useAppStore()
 const route = useRoute()
@@ -54,8 +53,7 @@ const route = useRoute()
 // 红点数量（0 时不显示）
 const badges = ref({
   jobAudit: 0,
-  certAudit: 0,
-  reportPending: 0
+  certAudit: 0
 })
 
 const menuGroups = [
@@ -117,14 +115,6 @@ const menuGroups = [
     ]
   },
   {
-    id: 'risk',
-    name: '风控管理',
-    items: [
-      { path: '/admin/reports', name: '举报处理', icon: 'fa-ban', badgeKey: 'reportPending' },
-      { path: '/admin/blacklist', name: '黑名单管理', icon: 'fa-user-times' }
-    ]
-  },
-  {
     id: 'system',
     name: '系统管理',
     items: [
@@ -147,13 +137,6 @@ const loadBadges = async () => {
     const list = Array.isArray(res.data) ? res.data : (res.data?.content || [])
     badges.value.certAudit = list.filter(c => c.status === '待审核').length
   } catch { badges.value.certAudit = 0 }
-
-  // 举报处理：待处理数量
-  try {
-    const res = await listReports()
-    const list = Array.isArray(res.data) ? res.data : (res.data?.content || [])
-    badges.value.reportPending = list.filter(r => r.status === '待处理').length
-  } catch { badges.value.reportPending = 0 }
 }
 
 onMounted(loadBadges)

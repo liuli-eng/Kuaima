@@ -145,19 +145,6 @@ const routes = [
         component: () => import('@/views/message/ServiceChat.vue'),
         meta: { title: '会话处理', icon: 'fa-comments', hidden: true }
       },
-      // 风控管理
-      {
-        path: 'reports',
-        name: 'Reports',
-        component: () => import('@/views/risk/Reports.vue'),
-        meta: { title: '举报处理', icon: 'fa-ban' }
-      },
-      {
-        path: 'blacklist',
-        name: 'Blacklist',
-        component: () => import('@/views/risk/Blacklist.vue'),
-        meta: { title: '黑名单管理', icon: 'fa-user-times' }
-      },
       // 系统管理
       {
         path: 'settings',
@@ -170,6 +157,12 @@ const routes = [
         name: 'AdminUser',
         component: () => import('@/views/system/AdminUser.vue'),
         meta: { title: '管理员管理', icon: 'fa-user-cog' }
+      },
+      {
+        path: 'admin-user/form',
+        name: 'AdminUserForm',
+        component: () => import('@/views/system/AdminUserForm.vue'),
+        meta: { title: '添加管理员', icon: 'fa-user-plus', hidden: true }
       },
       {
         path: 'logs',

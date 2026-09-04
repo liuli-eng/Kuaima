@@ -11,6 +11,7 @@ export function saveSetting(key, value, description) {
 export function listAdminUsers({ page = 0, size = 10 } = {}) {
   return request.get('/admin/admin-users', { params: { page, size } })
 }
+export function getAdminUser(id) { return request.get(`/admin/admin-users/${id}`) }
 export function createAdminUser(data) { return request.post('/admin/admin-users', data) }
 export function updateAdminUser(id, data) { return request.put(`/admin/admin-users/${id}`, data) }
 export function resetAdminPassword(id, newPassword = 'admin123') {

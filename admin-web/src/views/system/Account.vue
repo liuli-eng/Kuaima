@@ -111,13 +111,6 @@
         </div>
         <div class="notify-item">
           <div class="notify-info">
-            <div class="notify-name">举报通知</div>
-            <div class="notify-desc">新的举报、投诉需要处理时提醒</div>
-          </div>
-          <el-switch v-model="notify.reportNotice" />
-        </div>
-        <div class="notify-item">
-          <div class="notify-info">
             <div class="notify-name">客服消息</div>
             <div class="notify-desc">用户反馈、客服会话需要回复时提醒</div>
           </div>

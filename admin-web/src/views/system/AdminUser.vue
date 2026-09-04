@@ -11,31 +11,47 @@
         <el-select v-model="roleFilter" placeholder="角色" clearable style="width: 140px;">
           <el-option label="超级管理员" value="超级管理员" />
           <el-option label="管理员" value="管理员" />
-          <el-option label="编辑员" value="编辑员" />
+          <el-option label="审核员" value="审核员" />
           <el-option label="查看员" value="查看员" />
         </el-select>
         <el-button type="primary" @click="loadData">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>
+        <el-button type="primary" style="margin-left: auto;" @click="goCreate">
+          <i class="fas fa-plus"></i> 添加管理员
+        </el-button>
       </div>
 
       <el-table :data="filteredAdmins" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column prop="account" label="账号" width="120" />
-        <el-table-column prop="name" label="姓名" width="120" />
-        <el-table-column prop="role" label="角色" width="140">
+        <el-table-column label="ID" width="70">
+          <template #default="{ row }">{{ row.id }}</template>
+        </el-table-column>
+        <el-table-column label="姓名" width="140">
           <template #default="{ row }">
-            <el-tag :type="getRoleType(row.role)" effect="light">{{ row.role }}</el-tag>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="avatar-badge" :style="{ background: avatarBg(row.role) }">{{ (row.name || 'A').charAt(0) }}</span>
+              {{ row.name || '-' }}
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="dept" label="部门" width="120" />
-        <el-table-column prop="lastLogin" label="最后登录" width="160" />
-        <el-table-column label="状态" width="100">
+        <el-table-column prop="username" label="登录账号" width="130" />
+        <el-table-column prop="role" label="角色" width="130">
           <template #default="{ row }">
-            <span :class="['status-badge', row.statusClass]">{{ row.status }}</span>
+            <el-tag :type="getRoleType(row.role)" effect="light">{{ roleLabel(row.role) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column prop="dept" label="部门" width="110" />
+        <el-table-column prop="phone" label="手机号" width="130" />
+        <el-table-column label="最后登录" width="150">
+          <template #default="{ row }">{{ fmtTime(row.lastLoginTime) || '从未登录' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="90">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+            <span :class="['status-badge', getStatusClass(row.status)]">{{ row.status }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="230" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="goEdit(row)">编辑</el-button>
             <el-button link type="warning" size="small" @click="handleResetPwd(row)">重置密码</el-button>
             <el-button v-if="row.status === '启用'" link type="danger" size="small" @click="handleToggleStatus(row)">禁用</el-button>
             <el-button v-else link type="success" size="small" @click="handleToggleStatus(row)">启用</el-button>
@@ -49,29 +65,60 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listAdminUsers, updateAdminUser, resetAdminPassword, deleteAdminUser } from '@/api/system'
+
+const router = useRouter()
 
 const admins = ref([])
 const searchKeyword = ref('')
 const roleFilter = ref('')
 
+// 角色中英文映射（后端存储英文枚举值）
+const roleLabelMap = {
+  SUPER_ADMIN: '超级管理员',
+  ADMIN: '管理员',
+  EDITOR: '审核员',
+  VIEWER: '查看员'
+}
+const roleLabel = (role) => roleLabelMap[role] || role || '查看员'
+
 const filteredAdmins = computed(() => {
   return admins.value.filter(a => {
-    if (searchKeyword.value && !a.account.includes(searchKeyword.value) && !a.name.includes(searchKeyword.value)) return false
-    if (roleFilter.value && a.role !== roleFilter.value) return false
+    const kw = searchKeyword.value.trim()
+    const account = a.username || a.account || ''
+    if (kw && !account.includes(kw) && !(a.name || '').includes(kw)) return false
+    if (roleFilter.value && roleLabel(a.role) !== roleFilter.value) return false
     return true
   })
 })
 
 const getRoleType = (role) => {
   const map = {
-    '超级管理员': 'danger',
-    '管理员': 'warning',
-    '编辑员': 'primary',
-    '查看员': 'info'
+    SUPER_ADMIN: 'danger',
+    ADMIN: 'warning',
+    EDITOR: 'primary',
+    VIEWER: 'info'
   }
   return map[role] || 'info'
+}
+
+const getStatusClass = (status) => (status === '启用' ? 'success' : 'danger')
+
+const avatarBg = (role) => {
+  const map = {
+    SUPER_ADMIN: 'linear-gradient(135deg,#EF4444,#DC2626)',
+    ADMIN: 'linear-gradient(135deg,#3B82F6,#2563EB)',
+    EDITOR: 'linear-gradient(135deg,#10B981,#059669)',
+    VIEWER: 'linear-gradient(135deg,#6B7280,#4B5563)'
+  }
+  return map[role] || 'linear-gradient(135deg,#FF6B35,#FF8C42)'
+}
+
+const fmtTime = (v) => {
+  if (!v) return ''
+  return String(v).replace('T', ' ').slice(0, 16)
 }
 
 const loadData = async () => {
@@ -90,21 +137,13 @@ const resetFilters = () => {
   roleFilter.value = ''
 }
 
-const handleEdit = (row) => {
-  ElMessageBox.prompt('修改姓名', '编辑管理员', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    inputValue: row.name
-  }).then(async ({ value }) => {
-    try {
-      await updateAdminUser(row.id, { ...row, name: value })
-      ElMessage.success('修改成功')
-      loadData()
-    } catch (e) {
-      console.warn('[AdminUser] 修改失败:', e)
-      ElMessage.error('修改失败')
-    }
-  }).catch(() => {})
+// 跳转到原型风格的添加/编辑管理员页
+const goCreate = () => {
+  router.push('/admin/admin-user/form')
+}
+
+const goEdit = (row) => {
+  router.push(`/admin/admin-user/form?mode=edit&id=${row.id}`)
 }
 
 const handleResetPwd = async (row) => {
@@ -124,9 +163,8 @@ const handleResetPwd = async (row) => {
 
 const handleToggleStatus = async (row) => {
   const newStatus = row.status === '启用' ? '禁用' : '启用'
-  const newClass = newStatus === '启用' ? 'success' : 'danger'
   try {
-    await updateAdminUser(row.id, { ...row, status: newStatus, statusClass: newClass })
+    await updateAdminUser(row.id, { ...row, status: newStatus })
     ElMessage.success('状态更新成功')
     loadData()
   } catch (e) {
@@ -161,5 +199,17 @@ onMounted(loadData)
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+.avatar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 </style>

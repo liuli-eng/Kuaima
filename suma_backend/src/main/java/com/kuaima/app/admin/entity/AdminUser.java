@@ -49,6 +49,10 @@ public class AdminUser {
     @Column(length = 100)
     private String email;
 
+    /** 备注说明 */
+    @Column(length = 255)
+    private String remark;
+
     /** 状态: 启用 / 禁用 */
     @Column(nullable = false, length = 20)
     private String status = "启用";

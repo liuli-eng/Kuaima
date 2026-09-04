@@ -19,11 +19,11 @@ import com.kuaima.app.common.Result;
 /** 公告管理 CRUD */
 @RestController
 @RequestMapping("/admin/notices")
-public class NoticeController {
+public class AdminNoticeController {
 
     private final NoticeRepository repo;
 
-    public NoticeController(NoticeRepository repo) { this.repo = repo; }
+    public AdminNoticeController(NoticeRepository repo) { this.repo = repo; }
 
     @GetMapping
     public Result<List<Notice>> list() { return Result.success(repo.findAll()); }

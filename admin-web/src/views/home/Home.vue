@@ -15,7 +15,7 @@
         </div>
         <h1 class="hero-title">快马日结<br>企业级管理后台</h1>
         <p class="hero-desc">
-          一站式日结平台管理解决方案，覆盖用户管理、招工审核、订单结算、财务运营、内容管理、风控体系等全模块功能，助力平台高效运营。
+          一站式日结平台管理解决方案，覆盖用户管理、招工审核、订单结算、财务运营、内容管理、消息客服等全模块功能，助力平台高效运营。
         </p>
         <div class="hero-stats">
           <div class="hero-stat" v-for="s in stats" :key="s.label">
@@ -40,7 +40,7 @@
     </nav>
 
     <!-- 登录入口横幅 -->
-    <div class="login-banner-wrap">
+    <!-- <div class="login-banner-wrap">
       <div class="login-banner">
         <div class="login-banner-glow"></div>
         <div class="login-banner-left">
@@ -58,7 +58,7 @@
           <iframe src="/admin-preview/admin-login.html" class="login-banner-iframe" scrolling="no"></iframe>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <!-- 页面预览 -->
     <h2 class="section-title">页面预览</h2>
@@ -115,8 +115,8 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const stats = [
-  { value: '18', label: '核心功能页面' },
-  { value: '9', label: '功能模块' },
+  { value: '17', label: '核心功能页面' },
+  { value: '8', label: '功能模块' },
   { value: '100%', label: '高保真还原' },
   { value: '10+', label: '数据可视化图表' }
 ]
@@ -130,7 +130,6 @@ const tabs = [
   { group: 'finance', label: '财务运营' },
   { group: 'content', label: '内容管理' },
   { group: 'message', label: '消息客服' },
-  { group: 'risk', label: '风控系统' },
   { group: 'system', label: '系统设置' }
 ]
 
@@ -150,8 +149,6 @@ const cards = [
   { id: 'rules', group: 'content', title: '规则管理', desc: '公示/信用/收费/交易/飞单', icon: 'fas fa-book', path: '/rules' },
   { id: 'messages', group: 'message', title: '消息管理', desc: '消息模板、推送记录', icon: 'fas fa-envelope', path: '/messages' },
   { id: 'service', group: 'message', title: '客服管理', desc: '在线客服、会话记录', icon: 'fas fa-headset', path: '/service' },
-  { id: 'reports', group: 'risk', title: '举报处理', desc: '违规举报、处理记录', icon: 'fas fa-ban', path: '/reports' },
-  { id: 'blacklist', group: 'risk', title: '黑名单管理', desc: '黑名单、禁言解封', icon: 'fas fa-user-times', path: '/blacklist' },
   { id: 'settings', group: 'system', title: '系统设置', desc: '账号权限、平台规则', icon: 'fas fa-cog', path: '/settings' },
   { id: 'logs', group: 'system', title: '操作日志', desc: '操作记录、日志查询', icon: 'fas fa-file-alt', path: '/logs' }
 ]
@@ -164,9 +161,9 @@ const features = [
     iconStyle: 'background:linear-gradient(135deg,#FFF0EB,#FFE8DC); color:#FF6B35;'
   },
   {
-    title: '智能风控体系',
-    desc: '举报处理、黑名单管理，构建安全可信的交易环境。',
-    icon: 'fas fa-shield-alt',
+    title: '高效客服中心',
+    desc: '在线客服、会话记录、消息触达，及时响应用户各类诉求。',
+    icon: 'fas fa-headset',
     iconStyle: 'background:linear-gradient(135deg,#EFF6FF,#DBEAFE); color:#2563EB;'
   },
   {

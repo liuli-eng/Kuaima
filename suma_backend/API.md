@@ -884,7 +884,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 
 `GET /boss/profile/{userId}/stats`
 
-返回：`{ "totalOrders": 10, "recruitingCount": 3, "applicantCount": 25, "totalSpent": 5000 }`
+返回：`{ "totalOrders": 10, "recruitingCount": 3, "applicantCount": 25, "settledAmount": 5000 }`
 
 ---
 
@@ -918,7 +918,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 
 `GET /boss/job-categories`
 
-返回工种列表（`postion` distinct 值 + 静态分类）。
+返回工种列表（`BossOrder.postion` distinct 值）：`[{ "name": "普工" }, { "name": "焊工" }]`
 
 ### 6. 招工地址列表
 
@@ -964,13 +964,15 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 
 `GET /talent/search?keyword=&skill=&city=&page=0&size=20`
 
-返回 `User`（role=USER）分页列表。
+返回 `User`（role=USER）分页列表。`keyword` 模糊匹配昵称/手机号/用户名；`skill` 匹配技能标签；`city` 匹配城市。
+
+> 注意：`skill`/`city` 过滤在内存中执行，返回的 `total` 为当前页过滤后的实际数量，非全局总数。
 
 ### 15. 收藏人才列表
 
 `GET /talent/favorites?bossId={id}`
 
-返回老板收藏的零工列表（含 User 详情）。
+返回收藏记录列表，每项含收藏 ID 与零工详情：`[{ "favoriteId": 1, "worker": { "id": 2, "nickname": "...", "phone": "...", "skills": "..." } }]`
 
 ### 16. 收藏零工
 
@@ -1108,17 +1110,29 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/invite/code?userId=` | 邀请码（自动生成） |
-| `GET` | `/invite/poster?userId=` | 海报数据（码+二维码+统计） |
-| `GET` | `/invite/relations?userId=` | 邀请记录 |
+| `GET` | `/invite/poster?userId=` | 海报数据（码+邀请人数+海报 URL） |
+| `GET` | `/invite/relations?userId=` | 邀请记录（`InviteRelation` 列表） |
+
+**返回示例**：
+
+- `/invite/code` → `{ "code": "ABC12345" }`
+- `/invite/poster` → `{ "code": "ABC12345", "invitedCount": 3, "posterUrl": "" }`
 
 ### 子账号 `/boss/sub-accounts`
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/boss/sub-accounts?parentId=` | 子账号列表 |
-| `POST` | `/boss/sub-accounts` | 创建子账号 |
-| `DELETE` | `/boss/sub-accounts/{id}` | 删除子账号 |
-| `PUT` | `/boss/sub-accounts/{id}/role?role=` | 修改角色 |
+| `POST` | `/boss/sub-accounts` | 创建子账号（同步创建 sys_user） |
+| `DELETE` | `/boss/sub-accounts/{id}` | 删除子账号（同步冻结底层用户） |
+| `PUT` | `/boss/sub-accounts/{id}/role?role=` | 修改角色（同步更新底层用户 subRole） |
+
+**创建子账号请求体**：
+
+- 方式一：绑定已有用户 `{ "parentId": 1, "userId": 5, "role": "FINANCE" }`
+- 方式二：自动新建用户 `{ "parentId": 1, "username": "sub001", "nickname": "财务小王", "phone": "138...", "role": "FINANCE" }`
+
+未传 `userId` 时自动创建 `sys_user`（role=BOSS，parentUserId=parentId，subRole=role，状态正常），并生成随机密码。
 
 ### 勋章 `/badges`
 
@@ -1221,7 +1235,7 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 
 `GET /courses/{id}`
 
-返回 `Course` + 关联 `CourseVideo` 列表。
+返回课程信息与视频列表：`{ "course": { "id": 1, "title": "...", "category": "...", "coverUrl": "...", "intro": "..." }, "videos": [{ "id": 1, "title": "...", "videoUrl": "...", "duration": 600, "sortOrder": 1 }] }`
 
 ### 3. 课程视频列表
 

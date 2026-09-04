@@ -67,12 +67,12 @@
               </div>
             </div>
             <div class="notification-item">
-              <div class="notification-icon" style="background: #FEF2F2; color: #EF4444;">
-                <i class="fas fa-ban"></i>
+              <div class="notification-icon" style="background: #ECFDF5; color: #10B981;">
+                <i class="fas fa-coins"></i>
               </div>
               <div class="notification-content">
-                <div class="notification-title">新的举报处理</div>
-                <div class="notification-desc">有 3 条待处理的举报记录</div>
+                <div class="notification-title">新的结算申请</div>
+                <div class="notification-desc">有 6 笔日结订单待确认结算</div>
                 <div class="notification-time">15分钟前</div>
               </div>
             </div>
@@ -101,22 +101,22 @@
       </div>
       
       <!-- 用户信息 -->
-      <el-dropdown trigger="click" @command="handleCommand">
+      <el-dropdown trigger="click" @command="handleCommand" popper-class="user-dropdown-menu">
         <div class="user-info">
           <div class="user-avatar">{{ userStore.userInfo.avatar }}</div>
           <div>
             <div class="user-name">{{ userStore.userInfo.name }}</div>
-            <div class="user-role">{{ userStore.userInfo.role }}</div>
+            <div class="user-role">{{ roleText }}</div>
           </div>
           <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
         </div>
         <template #dropdown>
-          <el-dropdown-menu class="user-dropdown-menu">
+          <el-dropdown-menu>
             <div class="dropdown-header">
               <div class="dropdown-avatar">{{ userStore.userInfo.avatar }}</div>
               <div>
                 <div class="dropdown-name">{{ userStore.userInfo.name }}</div>
-                <div class="dropdown-role">{{ userStore.userInfo.role }}</div>
+                <div class="dropdown-role">{{ roleText }}</div>
               </div>
             </div>
             <el-dropdown-item command="profile">
@@ -174,6 +174,15 @@ const router = useRouter()
 
 const searchKeyword = ref('')
 const logoutVisible = ref(false)
+
+// 角色中文显示（后端存英文枚举）
+const roleTextMap = {
+  SUPER_ADMIN: '超级管理员',
+  ADMIN: '管理员',
+  EDITOR: '审核员',
+  VIEWER: '查看员'
+}
+const roleText = computed(() => roleTextMap[userStore.userInfo.role] || userStore.userInfo.role || '超级管理员')
 
 // 面包屑
 const matchedBreadcrumbs = computed(() => {
@@ -517,5 +526,91 @@ const doLogout = () => {
 .logout-desc {
   font-size: 13px;
   color: var(--text-secondary);
+}
+</style>
+
+<!-- 用户下拉面板由 element-plus 渲染并 teleport 到 body，scoped 样式无法命中，必须使用全局样式（对齐原型 admin.css .user-dropdown） -->
+<style>
+.user-dropdown-menu.el-popper {
+  min-width: 200px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+.user-dropdown-menu.el-popper .el-dropdown-menu {
+  padding: 6px;
+}
+.user-dropdown-menu .dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.user-dropdown-menu .dropdown-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.user-dropdown-menu .dropdown-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.user-dropdown-menu .dropdown-role {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.user-dropdown-menu .el-dropdown-menu__item {
+  padding: 9px 14px;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+}
+.user-dropdown-menu .el-dropdown-menu__item i {
+  width: 18px;
+  margin-right: 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+}
+.user-dropdown-menu .el-dropdown-menu__item:hover {
+  background: var(--bg-page);
+  color: var(--primary);
+}
+.user-dropdown-menu .el-dropdown-menu__item:hover i {
+  color: var(--primary);
+}
+.user-dropdown-menu .el-dropdown-menu__item.logout-item {
+  color: var(--danger);
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 11px;
+  border-radius: 0;
+}
+.user-dropdown-menu .el-dropdown-menu__item.logout-item i {
+  color: var(--danger);
+}
+.user-dropdown-menu .el-dropdown-menu__item.logout-item:hover {
+  background: #fef2f2;
+  color: var(--danger);
+}
+.user-dropdown-menu .el-dropdown-menu__item.logout-item:hover i {
+  color: var(--danger);
 }
 </style>
