@@ -21,34 +21,24 @@ import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { request } from "@/api/http";
 
-const records = ref([
-  {
-    id: 1,
-    title: "餐饮服务员订单结算",
-    time: "08月30日 18:20",
-    amount: "180.00",
-    type: "income",
-  },
-  {
-    id: 2,
-    title: "提现到微信零钱",
-    time: "08月29日 11:06",
-    amount: "100.00",
-    type: "withdraw",
-  },
-]);
+const records = ref([]);
 
 onMounted(async () => {
   try {
     const result = await request({ url: "/worker/wallet/records" });
-    if (Array.isArray(result)) records.value = result.map((item) => ({
-      ...item,
-      title: item.remark || (item.bizType === "WAGE" ? "订单收入" : "钱包变动"),
-      time: item.createTime || item.updateTime || "",
-      amount: (Number(item.amount || 0) / 100).toFixed(2),
-      type: item.direction === "income" ? "income" : "withdraw",
-    }));
-  } catch (_) {}
+    if (Array.isArray(result))
+      records.value = result.map((item) => ({
+        ...item,
+        title:
+          item.remark || (item.bizType === "WAGE" ? "订单收入" : "钱包变动"),
+        time: item.createTime || item.updateTime || "",
+        amount: (Number(item.amount || 0) / 100).toFixed(2),
+        type: item.direction === "income" ? "income" : "withdraw",
+      }));
+  } catch (error) {
+    records.value = [];
+    uni.showToast({ title: error.message || "收入明细加载失败", icon: "none" });
+  }
 });
 </script>
 

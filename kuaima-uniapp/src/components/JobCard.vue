@@ -64,7 +64,7 @@
           :disabled="job.applied"
           @click.stop="$emit('apply', job)"
         >
-          {{ job.applied ? "已报名" : actionText }}
+          {{ job.applied ? job.appliedStatus || "已报名" : actionText }}
         </button>
       </view>
     </view>

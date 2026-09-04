@@ -2,111 +2,161 @@
   <view class="page">
     <AppNavBar title="结算详情" :show-back="true" />
     <scroll-view scroll-y class="content">
-      <view class="settle-card">
-        <view class="settle-header">
-          <view class="settle-title">
-            <text class="title-icon">¥</text>{{ detail.title }}
-          </view>
-          <text class="settle-status">{{ detail.statusText }}</text>
-        </view>
-        <text class="settle-amount">¥{{ detail.amount }}</text>
-        <text class="settle-info">
-          结算时间：{{ detail.settleTime || "待雇主确认" }}
-        </text>
-        <text class="settle-info">工作日期：{{ detail.date }}</text>
-      </view>
-
-      <view class="info-card">
-        <text class="card-title">费用明细</text>
-        <view class="detail-row">
-          <text class="label">工作时长</text>
-          <text class="value">{{ detail.hours || "10小时" }}</text>
-        </view>
-        <view class="detail-row">
-          <text class="label">约定工资</text>
-          <text class="value">¥{{ detail.gross }}</text>
-        </view>
-        <view class="detail-row">
-          <text class="label">包餐补贴</text>
-          <text class="value">¥{{ detail.meal || "0.00" }}</text>
-        </view>
-        <view class="detail-row">
-          <text class="label">全勤奖励</text>
-          <text class="value">¥{{ detail.bonus || "0.00" }}</text>
-        </view>
-        <view class="detail-row total">
-          <text class="label">应得工资</text>
-          <text class="value">¥{{ detail.gross }}</text>
-        </view>
-      </view>
-
-      <view class="info-card">
-        <text class="card-title">结算说明</text>
-        <view class="detail-row">
-          <text class="label">结算状态</text>
-          <text class="value green">{{ detail.statusText }}</text>
-        </view>
-        <view class="detail-row">
-          <text class="label">结算周期</text><text class="value">当日结算</text>
-        </view>
-        <view class="detail-row">
-          <text class="label">雇主名称</text>
-          <text class="value">{{
-            detail.employer || "麦当劳食品有限公司"
-          }}</text>
-        </view>
-        <view class="detail-row">
-          <text class="label">工作地点</text>
-          <text class="value">{{ detail.location || "松江区泗泾镇" }}</text>
-        </view>
-      </view>
-
-      <view class="account-card">
-        <text class="card-title">到账账户</text>
-        <view class="account-info">
-          <text class="account-icon">微</text>
-          <view class="account-details">
-            <text class="account-name">微信钱包</text>
-            <text class="account-desc">138****8888</text>
-          </view>
-          <text class="account-amount">¥{{ detail.amount }}</text>
-        </view>
-      </view>
-      <button
-        class="wallet-btn"
-        @click="uni.navigateTo({ url: '/pages/worker/wallet' })"
+      <view v-if="loading" class="page-state">结算详情加载中…</view>
+      <view v-else-if="loadError" class="page-state error"
+        >结算详情加载失败</view
       >
-        查看我的钱包
-      </button>
+      <template v-else>
+        <view class="settle-card">
+          <view class="settle-header">
+            <view class="settle-title">
+              <text class="title-icon">¥</text>{{ detail.title }}
+            </view>
+            <text class="settle-status">{{ detail.statusText }}</text>
+          </view>
+          <text class="settle-amount">¥{{ detail.amount }}</text>
+          <text class="settle-info">
+            结算时间：{{ detail.settleTime || "待雇主确认" }}
+          </text>
+          <text class="settle-info">工作日期：{{ detail.date }}</text>
+        </view>
+
+        <view class="info-card">
+          <text class="card-title">费用明细</text>
+          <view class="detail-row">
+            <text class="label">工作时长</text>
+            <text class="value">{{ detail.hours || "--" }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">约定工资</text>
+            <text class="value">¥{{ detail.gross }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">包餐补贴</text>
+            <text class="value">¥{{ detail.meal || "0.00" }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">全勤奖励</text>
+            <text class="value">¥{{ detail.bonus || "0.00" }}</text>
+          </view>
+          <view class="detail-row total">
+            <text class="label">应得工资</text>
+            <text class="value">¥{{ detail.gross }}</text>
+          </view>
+        </view>
+
+        <view class="info-card">
+          <text class="card-title">结算说明</text>
+          <view class="detail-row">
+            <text class="label">结算状态</text>
+            <text class="value green">{{ detail.statusText }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">结算周期</text
+            ><text class="value">当日结算</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">雇主名称</text>
+            <text class="value">{{ detail.employer || "--" }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="label">工作地点</text>
+            <text class="value">{{ detail.location || "--" }}</text>
+          </view>
+        </view>
+
+        <view v-if="detail.account" class="account-card">
+          <text class="card-title">到账账户</text>
+          <view class="account-info">
+            <text class="account-icon">微</text>
+            <view class="account-details">
+              <text class="account-name">{{
+                detail.accountName || "到账账户"
+              }}</text>
+              <text class="account-desc">{{ detail.account }}</text>
+            </view>
+            <text class="account-amount">¥{{ detail.amount }}</text>
+          </view>
+        </view>
+        <button
+          class="wallet-btn"
+          @click="uni.navigateTo({ url: '/pages/worker/wallet' })"
+        >
+          查看我的钱包
+        </button>
+      </template>
     </scroll-view>
   </view>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { request } from "@/api/http";
+import { getOrder, listSettlements } from "@/api/backend";
 
-const pages = getCurrentPages();
-const id = pages[pages.length - 1]?.options?.id;
+const loading = ref(false);
+const loadError = ref(false);
 const detail = ref({
-  title: "餐饮服务员",
-  date: "2026-08-23",
-  gross: "180.00",
-  amount: "180.00",
-  statusText: "已结算",
+  title: "",
+  date: "",
+  gross: "0.00",
+  amount: "0.00",
+  statusText: "",
 });
-onMounted(async () => {
-  if (!id || String(id).startsWith("s")) return;
+onLoad(async (options = {}) => {
+  const id = options.id;
+  if (!id) {
+    loadError.value = true;
+    return;
+  }
+  loading.value = true;
   try {
-    const result = await request({ url: `/settle/worker/${encodeURIComponent(uni.getStorageSync("userId") || "2001")}` });
-    const item = Array.isArray(result) ? result.find((entry) => String(entry.id) === String(id)) : null;
-    if (item) detail.value = normalizeSettlement(item);
-  } catch (_) {}
+    const userId = uni.getStorageSync("userId") || "2001";
+    const result = await listSettlements(userId);
+    const item = (Array.isArray(result) ? result : []).find(
+      (entry) => String(entry.id) === String(id),
+    );
+    if (!item) throw new Error("结算单不存在或暂无权限查看");
+    let order = {};
+    if (item.orderId) {
+      try {
+        order = await getOrder(item.orderId);
+      } catch (_) {}
+    }
+    detail.value = normalizeSettlement(item, order);
+  } catch (error) {
+    loadError.value = true;
+    uni.showToast({ title: error.message || "结算详情加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
+  }
 });
-function normalizeSettlement(item) {
+function normalizeSettlement(item, order = {}) {
   const amount = (Number(item.wage ?? item.totalAmount ?? 0) / 100).toFixed(2);
-  return { ...item, title: item.orderTitle || `结算单 #${item.id}`, amount, gross: amount, date: item.createTime || item.payTime || "", statusText: item.status || "待支付", settleTime: item.payTime || "待支付" };
+  return {
+    ...detail.value,
+    ...item,
+    title: order.orderTitle || order.postion || `结算单 #${item.id}`,
+    amount,
+    gross: amount,
+    date: order.date || item.createTime || item.payTime || "",
+    statusText: item.status || "待支付",
+    settleTime: item.payTime || "待支付",
+    hours: order.duration ? `${order.duration}小时` : "--",
+    employer:
+      order.companyName ||
+      (order.createBy ? `雇主 #${order.createBy}` : "平台认证雇主"),
+    location: order.address || "地点待定",
+    account: item.account || item.payAccount || "",
+    accountName: item.accountName || item.payChannel || "",
+    unit:
+      order.type === "month"
+        ? "月结"
+        : order.type === "heldBack"
+          ? "压薪日结"
+          : "日结",
+  };
 }
 </script>
 
@@ -119,6 +169,15 @@ function normalizeSettlement(item) {
   height: calc(100vh - 176rpx);
   padding: 24rpx;
   box-sizing: border-box;
+}
+.page-state {
+  padding: 180rpx 32rpx;
+  color: #999;
+  font-size: 26rpx;
+  text-align: center;
+}
+.page-state.error {
+  color: #e34d59;
 }
 .settle-card,
 .info-card,

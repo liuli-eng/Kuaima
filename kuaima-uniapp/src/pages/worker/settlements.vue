@@ -40,17 +40,9 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { request } from "@/api/http";
+import { listSettlements } from "@/api/backend";
 
-const records = ref([
-  {
-    id: "s1",
-    title: "餐饮服务员",
-    time: "2026-08-31",
-    date: "完成确认后",
-    amount: "162.00",
-  },
-]);
+const records = ref([]);
 const totalAmount = computed(() =>
   records.value
     .reduce((sum, item) => sum + Number(item.amount || 0), 0)
@@ -59,13 +51,31 @@ const totalAmount = computed(() =>
 
 onMounted(async () => {
   try {
-    const result = await request({ url: `/settle/worker/${encodeURIComponent(uni.getStorageSync("userId") || "2001")}` });
-    if (Array.isArray(result)) records.value = result.map(normalizeSettlement).filter((item) => item.status !== "已支付");
-  } catch (_) {}
+    const result = await listSettlements(
+      uni.getStorageSync("userId") || "2001",
+    );
+    if (Array.isArray(result))
+      records.value = result
+        .map(normalizeSettlement)
+        .filter((item) => item.status !== "已支付");
+  } catch (error) {
+    records.value = [];
+    uni.showToast({
+      title: error.message || "结算列表加载失败",
+      icon: "none",
+    });
+  }
 });
 
 function normalizeSettlement(item) {
-  return { ...item, title: item.orderTitle || `结算单 #${item.id}`, time: item.workDate || item.createTime || "", date: item.payTime || "待支付", amount: (Number(item.wage ?? item.totalAmount ?? 0) / 100).toFixed(2), statusText: item.status || "待支付" };
+  return {
+    ...item,
+    title: item.orderTitle || `结算单 #${item.id}`,
+    time: item.workDate || item.createTime || "",
+    date: item.payTime || "待支付",
+    amount: (Number(item.wage ?? item.totalAmount ?? 0) / 100).toFixed(2),
+    statusText: item.status || "待支付",
+  };
 }
 
 function open(item) {

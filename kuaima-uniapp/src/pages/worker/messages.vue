@@ -74,7 +74,9 @@ function go(url) {
 }
 
 async function read(item) {
-  try { await readMessage(item.id, uni.getStorageSync("userId") || "2001"); } catch (_) {}
+  try {
+    await readMessage(item.id, uni.getStorageSync("userId") || "2001");
+  } catch (_) {}
   item.read = true;
   if (item.title === "系统通知") {
     uni.navigateTo({ url: "/pages/worker/notification" });
@@ -88,7 +90,20 @@ async function read(item) {
 }
 
 function normalizeMessage(item) {
-  return { ...item, icon: item.bizType === "settle" ? "¥" : item.bizType === "order" ? "🔔" : "📣", content: item.content || "", time: item.createTime || "", read: item.readFlag === true };
+  return {
+    ...item,
+    icon:
+      item.bizType === "settle" ? "¥" : item.bizType === "order" ? "🔔" : "📣",
+    content: item.content || "",
+    time: formatMessageTime(item.createTime),
+    read: item.readFlag === true,
+  };
+}
+
+function formatMessageTime(value) {
+  if (!value) return "";
+  const match = String(value).match(/(?:T|\s)(\d{1,2}):(\d{2})/);
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : String(value);
 }
 </script>
 

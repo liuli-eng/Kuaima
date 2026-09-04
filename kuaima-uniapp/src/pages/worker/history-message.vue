@@ -60,10 +60,31 @@ const filtered = computed(() =>
 );
 onMounted(async () => {
   try {
-    const result = await listMessages(uni.getStorageSync("userId") || "2001", { page: 0, size: 100, read: true });
-    if (Array.isArray(result)) list.value = result.map((item) => ({ id: item.id, type: item.bizType === "order" ? "order" : item.bizType === "withdraw" || item.bizType === "settle" ? "wallet" : "system", title: item.title, content: item.content, time: item.createTime || "" }));
+    const result = await listMessages(uni.getStorageSync("userId") || "2001", {
+      page: 0,
+      size: 100,
+      read: true,
+    });
+    if (Array.isArray(result))
+      list.value = result.map((item) => ({
+        id: item.id,
+        type:
+          item.bizType === "order"
+            ? "order"
+            : item.bizType === "withdraw" || item.bizType === "settle"
+              ? "wallet"
+              : "system",
+        title: item.title,
+        content: item.content,
+        time: formatMessageTime(item.createTime),
+      }));
   } catch (_) {}
 });
+function formatMessageTime(value) {
+  if (!value) return "";
+  const match = String(value).match(/(?:T|\s)(\d{1,2}):(\d{2})/);
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : String(value);
+}
 </script>
 <style scoped>
 .page {

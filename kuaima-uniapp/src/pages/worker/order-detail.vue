@@ -3,35 +3,40 @@
     ><AppNavBar title="订单详情" :show-back="true" /><scroll-view
       scroll-y
       class="content"
-      ><view class="status-box"
-        ><text class="status-title">{{ order.statusText }}</text
-        ><text class="status-desc">{{ statusDesc }}</text></view
-      ><view class="card"
-        ><text class="section">岗位信息</text
-        ><view class="job"
-          ><text class="job-title">{{ order.title }}</text
-          ><text class="employer">{{ order.employer }}</text></view
-        ><view class="row"
-          ><text>工作时间</text><text>{{ order.time }}</text></view
-        ><view class="row"
-          ><text>工作地点</text><text>{{ order.address }}</text></view
-        ><view class="row"
-          ><text>结算方式</text><text>{{ order.unit }}</text></view
-        ><view class="row"
-          ><text>订单金额</text
-          ><text class="amount">¥{{ order.amount }}</text></view
-        ></view
-      ><view class="card"
-        ><text class="section">流程进度</text
-        ><view v-for="step in steps" :key="step.key" class="step"
-          ><text :class="['dot', { done: step.done }]">{{
-            step.done ? "✓" : ""
-          }}</text
-          ><view
-            ><text :class="['step-title', { doneText: step.done }]">{{
-              step.label
+      ><view v-if="loading" class="page-state">订单详情加载中…</view
+      ><view v-else-if="loadError" class="page-state error"
+        >订单详情加载失败</view
+      ><view v-else
+        ><view class="status-box"
+          ><text class="status-title">{{ order.statusText }}</text
+          ><text class="status-desc">{{ statusDesc }}</text></view
+        ><view class="card"
+          ><text class="section">岗位信息</text
+          ><view class="job"
+            ><text class="job-title">{{ order.title }}</text
+            ><text class="employer">{{ order.employer }}</text></view
+          ><view class="row"
+            ><text>工作时间</text><text>{{ order.time }}</text></view
+          ><view class="row"
+            ><text>工作地点</text><text>{{ order.address }}</text></view
+          ><view class="row"
+            ><text>结算方式</text><text>{{ order.unit }}</text></view
+          ><view class="row"
+            ><text>订单金额</text
+            ><text class="amount">¥{{ order.amount }}</text></view
+          ></view
+        ><view class="card"
+          ><text class="section">流程进度</text
+          ><view v-for="step in steps" :key="step.key" class="step"
+            ><text :class="['dot', { done: step.done }]">{{
+              step.done ? "✓" : ""
             }}</text
-            ><text class="step-desc">{{ step.desc }}</text></view
+            ><view
+              ><text :class="['step-title', { doneText: step.done }]">{{
+                step.label
+              }}</text
+              ><text class="step-desc">{{ step.desc }}</text></view
+            ></view
           ></view
         ></view
       ><view class="card safety"
@@ -51,37 +56,64 @@
   >
 </template>
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
-import { request } from "@/api/http";
-const pages = getCurrentPages();
-const options = pages[pages.length - 1]?.options || {};
+import {
+  cancelOrderItem,
+  getOrder,
+  listSettlements,
+  listWorkerItems,
+} from "@/api/backend";
 const order = ref({
-  id: options.id,
-  title: "餐饮清洁工",
-  employer: "松江餐饮店",
-  time: "今天 08:00-18:00",
-  address: "松江区泗泾镇",
-  amount: 162,
-  unit: "日结",
-  status: "applied",
-  statusText: "已报名",
+  id: "",
+  title: "",
+  employer: "",
+  time: "",
+  address: "",
+  amount: 0,
+  unit: "",
+  status: "",
+  statusText: "",
 });
 const operating = ref(false);
-onMounted(async () => {
-  if (!options.id || String(options.id).startsWith("o")) return;
+const loading = ref(false);
+const loadError = ref(false);
+onLoad(async (options = {}) => {
+  order.value.id = options.id || "";
+  if (!options.id) {
+    loadError.value = true;
+    return;
+  }
+  loading.value = true;
   try {
-    const result = await request({ url: `/worker/orders/${options.id}` });
-    if (result)
-      order.value = {
-        ...order.value,
-        ...result,
-        statusText:
-          result.statusText || result.status || order.value.statusText,
-      };
-  } catch (_) {
-    /* 使用兜底订单 */
+    let item = {
+      id: options.id,
+      orderId: options.orderId,
+      status: options.status,
+    };
+    let orderId = options.orderId;
+    const userId = uni.getStorageSync("userId");
+    if (userId) {
+      const items = await listWorkerItems(userId);
+      const matched = (Array.isArray(items) ? items : []).find(
+        (row) => String(row.id) === String(options.id),
+      );
+      if (matched) item = matched;
+      orderId = matched?.orderId || orderId;
+    }
+    if (!orderId) throw new Error("订单关联岗位不存在");
+    const detail = await getOrder(orderId);
+    order.value = normalizeOrderDetail(
+      item || { id: options.id, orderId },
+      detail || {},
+    );
+  } catch (error) {
+    loadError.value = true;
+    uni.showToast({ title: error.message || "订单详情加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
   }
 });
 const statusDesc = computed(
@@ -137,10 +169,7 @@ function contact() {
 }
 function primaryAction() {
   if (order.value.status === "applied") return cancel();
-  if (order.value.status === "done")
-    return uni.navigateTo({
-      url: `/pages/worker/settlement-detail?id=${order.value.settlementId || "s1"}`,
-    });
+  if (order.value.status === "done") return openSettlement();
   if (order.value.status === "hired")
     return uni.showModal({
       title: "到岗须知",
@@ -156,6 +185,23 @@ function primaryAction() {
     });
   uni.navigateTo({ url: "/pages/worker/wallet" });
 }
+async function openSettlement() {
+  try {
+    const rows = await listSettlements(uni.getStorageSync("userId") || "2001");
+    const settlement = (Array.isArray(rows) ? rows : []).find(
+      (item) =>
+        String(item.itemId) === String(order.value.id) ||
+        String(item.orderId) === String(order.value.orderId),
+    );
+    if (!settlement)
+      return uni.showToast({ title: "暂无对应结算单", icon: "none" });
+    uni.navigateTo({
+      url: `/pages/worker/settlement-detail?id=${settlement.id}`,
+    });
+  } catch (error) {
+    uni.showToast({ title: error.message || "结算单加载失败", icon: "none" });
+  }
+}
 function cancel() {
   uni.showModal({
     title: "取消报名",
@@ -164,10 +210,7 @@ function cancel() {
       if (!confirm) return;
       operating.value = true;
       try {
-        await request({
-          url: `/boss/item/${order.value.id}/cancel`,
-          method: "PUT",
-        });
+        await cancelOrderItem(order.value.id);
         order.value.status = "cancelled";
         order.value.statusText = "已取消";
         uni.showToast({ title: "已取消报名", icon: "success" });
@@ -178,6 +221,37 @@ function cancel() {
       }
     },
   });
+}
+function normalizeOrderDetail(item, detail) {
+  const statusMap = {
+    已报名: "applied",
+    已录用: "hired",
+    已到岗: "arrived",
+    已完成: "done",
+    取消报名: "cancelled",
+    取消招工: "cancelled",
+  };
+  const typeMap = { daily: "日结", heldBack: "压薪日结", month: "月结" };
+  return {
+    ...order.value,
+    ...detail,
+    id: item.id,
+    orderId: item.orderId || detail.id,
+    title: detail.orderTitle || detail.postion || order.value.title,
+    employer:
+      detail.companyName ||
+      detail.bossName ||
+      (detail.createBy ? `雇主 #${detail.createBy}` : "平台认证雇主"),
+    time:
+      [detail.startTime, detail.endTime].filter(Boolean).join(" - ") ||
+      detail.date ||
+      "时间待定",
+    address: detail.address || "地点待定",
+    amount: detail.salary || 0,
+    unit: typeMap[detail.type] || "日结",
+    status: statusMap[item.status] || "applied",
+    statusText: item.status || "已报名",
+  };
 }
 </script>
 <style scoped>

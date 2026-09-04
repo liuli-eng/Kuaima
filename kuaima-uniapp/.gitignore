@@ -1,23 +1,4 @@
-# 原型文件夹
-prototype/
-prototype-runtime.js
-
-# 打包静态资源
-assets/
-
-# 前端构建
 node_modules/
 dist/
-unpackage/
-
-# 日志
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
-
-# IDE
-.vscode/
-.idea/
 .DS_Store
+*.log

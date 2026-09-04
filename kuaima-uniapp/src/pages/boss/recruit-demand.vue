@@ -389,7 +389,7 @@ export default {
           startTime: `${dateText} ${workTime.startTime || "08:00"}:00`,
           endTime: `${dateText} ${workTime.endTime || "18:00"}:00`,
           salary,
-          orderContent: taskContent.desc || taskContent.title || "",
+          orderContent: composeTaskContent(taskContent),
           orderRemark: [
             taskContent.benefits,
             taskContent.exp,
@@ -417,6 +417,13 @@ export default {
     },
   },
 };
+
+function composeTaskContent(data = {}) {
+  const title = String(data.title || "").trim();
+  const desc = String(data.desc || "").trim();
+  if (title && desc && title !== desc) return `${title} - ${desc}`;
+  return title || desc;
+}
 </script>
 
 <style lang="scss" scoped>

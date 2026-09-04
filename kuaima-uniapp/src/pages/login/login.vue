@@ -100,7 +100,7 @@
 <script setup>
 import { ref } from "vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
-import { wechatLogin } from "@/api/backend";
+import { wechatLogin, getCurrentUser } from "@/api/auth";
 import { USE_MOCK } from "@/api/http";
 
 const pages = getCurrentPages();
@@ -144,17 +144,33 @@ async function doLogin() {
           uni.setStorageSync("token", result.accessToken);
           uni.setStorageSync("userId", String(result.userId));
           uni.setStorageSync("role", result.role);
-          uni.reLaunch({ url: result.role === "BOSS" ? "/pages/boss/home" : "/pages/worker/home" });
+          try {
+            const user = await getCurrentUser();
+            if (user && typeof user === "object") {
+              uni.setStorageSync("userInfo", user);
+              if (user.certStatus)
+                uni.setStorageSync("workerCertStatus", user.certStatus);
+            }
+          } catch (_) {}
+          uni.reLaunch({
+            url:
+              result.role === "BOSS"
+                ? "/pages/boss/home"
+                : "/pages/worker/home",
+          });
         } catch (e) {
           errorMessage.value = e.message || "微信登录失败";
         }
       },
-      fail: () => { errorMessage.value = "无法获取微信登录凭证"; },
+      fail: () => {
+        errorMessage.value = "无法获取微信登录凭证";
+      },
     });
     return;
     // #endif
     // #ifdef H5
-    errorMessage.value = "真实接口暂仅支持微信小程序登录，请在微信开发者工具中运行";
+    errorMessage.value =
+      "真实接口暂仅支持微信小程序登录，请在微信开发者工具中运行";
     return;
     // #endif
   }

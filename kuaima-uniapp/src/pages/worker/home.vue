@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <scroll-view scroll-y class="scroll">
-      <view class="header">
+      <view class="header" :style="{ paddingTop: `${statusBarHeight + 8}px` }">
         <view class="brand">
           <text class="brand-title">快马日结</text>
           <text class="slogan">真老板·真工价·真日结</text>
@@ -96,6 +96,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import JobCard from "@/components/JobCard.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { request, USE_MOCK } from "@/api/http";
+import { getCertificationStatus, listOrderItems } from "@/api/backend";
 
 const tabs = [
   { key: "DAY", label: "每天日结" },
@@ -104,6 +105,7 @@ const tabs = [
 ];
 
 const activeTab = ref("DAY");
+const statusBarHeight = ref(0);
 const location = ref("松江洞照路");
 const loading = ref(false);
 const error = ref(false);
@@ -279,10 +281,40 @@ async function loadJobs() {
   loading.value = true;
   error.value = false;
   try {
-    const result = await request({ url: "/worker/jobs?page=0&size=20&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD" });
+    const result = await request({
+      url: "/worker/jobs?page=0&size=20&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD",
+    });
     const records = result?.records || result;
     if (Array.isArray(records) && records.length > 0) {
-      const apiJobs = records.map(normalizeJob);
+      const apiJobs = await Promise.all(
+        records.map(async (item) => {
+          const job = normalizeJob(item);
+          try {
+            const result = await listOrderItems(item.id);
+            const items = Array.isArray(result)
+              ? result
+              : result?.records || [];
+            const activeItems = items.filter(
+              (row) => !["取消报名", "取消招工"].includes(row.status),
+            );
+            const userId = String(uni.getStorageSync("userId") || "");
+            const mine = activeItems.find(
+              (row) =>
+                String(row.userId || row.user?.id || row.workerId || "") ===
+                userId,
+            );
+            job.hiredCount =
+              item.applyCount ?? item.currentApplyCount ?? activeItems.length;
+            if (mine) {
+              job.applied = true;
+              job.appliedStatus = mine.status || "已报名";
+            }
+          } catch (_) {
+            // 岗位列表仍可正常展示，报名状态由接口返回时再补齐。
+          }
+          return job;
+        }),
+      );
       const categoryJobs = USE_MOCK
         ? mockJobs.filter((item) => item.salaryType !== "DAY").map(normalizeJob)
         : [];
@@ -300,15 +332,32 @@ async function loadJobs() {
 
 function normalizeJob(item) {
   const typeMap = { daily: "DAY", heldBack: "PRESS", month: "MONTHLY" };
+  const hourlyMatch = String(item.tags || "").match(/时薪:([\d.]+)/);
+  const pieceMatch = String(item.tags || "").match(/计件单价:([\d.]+)/);
+  const pieceUnitMatch = String(item.tags || "").match(/计件单位:([^,]+)/);
   return {
     ...item,
     id: item.id,
     title: item.title || item.orderTitle || item.postion || "岗位",
-    displayTitle: item.displayTitle || item.postion || item.title || item.orderTitle,
-    unitPrice: item.unitPrice ?? item.wage ?? item.salary,
-    settlementType: item.settlementType || item.salaryType || typeMap[item.type] || "DAY",
-    salaryType: item.salaryType || item.settlementType || typeMap[item.type] || "DAY",
-    headcount: item.headcount ?? item.recruitCount ?? item.needCount ?? item.orderNum,
+    displayTitle:
+      item.displayTitle || item.postion || item.title || item.orderTitle,
+    unitPrice:
+      hourlyMatch?.[1] ??
+      pieceMatch?.[1] ??
+      item.unitPrice ??
+      item.wage ??
+      item.salary,
+    wageUnit: hourlyMatch
+      ? "元/小时"
+      : pieceMatch
+        ? `元/${pieceUnitMatch?.[1] || "件"}`
+        : item.wageUnit,
+    settlementType:
+      item.settlementType || item.salaryType || typeMap[item.type] || "DAY",
+    salaryType:
+      item.salaryType || item.settlementType || typeMap[item.type] || "DAY",
+    headcount:
+      item.headcount ?? item.recruitCount ?? item.needCount ?? item.orderNum,
     hiredCount:
       item.hiredCount ?? item.applyCount ?? item.currentApplyCount ?? 0,
   };
@@ -344,24 +393,43 @@ function openDetail(job) {
 }
 
 async function applyJob(job) {
-  if (uni.getStorageSync("workerRealname") !== true) {
-    return uni.navigateTo({ url: "/pages/worker/realname" });
+  let certStatus = uni.getStorageSync("workerCertStatus") || "未认证";
+  try {
+    const result = await getCertificationStatus();
+    certStatus = result?.status || result?.certStatus || certStatus;
+    uni.setStorageSync("workerCertStatus", certStatus);
+    if (certStatus === "已通过") uni.setStorageSync("workerRealname", true);
+  } catch (_) {
+    // 接口不可用时沿用本地状态，避免无后端环境无法预览。
   }
-
-  if (uni.getStorageSync("workerQualified") !== true) {
-    return uni.navigateTo({ url: "/pages/worker/classroom" });
+  if (
+    certStatus !== "已通过" &&
+    uni.getStorageSync("workerRealname") !== true
+  ) {
+    return uni.navigateTo({ url: "/pages/worker/realname" });
   }
 
   try {
     await request({ url: `/worker/orders/apply/${job.id}`, method: "POST" });
     job.applied = true;
+    job.appliedStatus = "已报名";
+    job.hiredCount = Number(job.hiredCount || 0) + 1;
     uni.showToast({ title: "报名成功", icon: "success" });
   } catch (e) {
     uni.showToast({ title: e.message || "报名失败", icon: "none" });
   }
 }
 
-onMounted(loadJobs);
+onMounted(() => {
+  try {
+    const info =
+      typeof uni.getWindowInfo === "function"
+        ? uni.getWindowInfo()
+        : uni.getSystemInfoSync();
+    statusBarHeight.value = Number(info.statusBarHeight || 0);
+  } catch (_) {}
+  loadJobs();
+});
 </script>
 
 <style scoped>
@@ -378,7 +446,7 @@ onMounted(loadJobs);
   position: relative;
   min-height: 140rpx;
   box-sizing: border-box;
-  padding: calc(16rpx + env(safe-area-inset-top)) 32rpx 40rpx;
+  padding: 8px 32rpx 40rpx;
   background: linear-gradient(180deg, #ffd59e 0%, #ffe4b5 50%, #fffbf5 100%);
 }
 

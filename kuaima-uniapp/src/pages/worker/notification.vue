@@ -141,7 +141,9 @@ const yesterdayList = computed(() =>
   visible.value.filter((item) => item.day === "yesterday"),
 );
 async function open(item) {
-  try { await readMessage(item.id, uni.getStorageSync("userId") || "2001"); } catch (_) {}
+  try {
+    await readMessage(item.id, uni.getStorageSync("userId") || "2001");
+  } catch (_) {}
   item.read = true;
   if (item.action === "查看订单详情") {
     uni.navigateTo({ url: "/pages/worker/order-detail?id=o1" });
@@ -160,9 +162,31 @@ async function open(item) {
   });
 }
 function normalizeNotice(item) {
-  const type = item.bizType === "order" || item.bizType === "item" ? "order" : item.bizType === "settle" ? "activity" : "notice";
-  const today = new Date().toDateString() === new Date(item.createTime).toDateString();
-  return { ...item, day: today ? "today" : "yesterday", type, icon: type === "order" ? "🔔" : type === "activity" ? "¥" : "!", desc: item.content || "", time: item.createTime || "", read: item.readFlag === true, action: item.bizType === "order" || item.bizType === "item" ? "查看订单详情" : "" };
+  const type =
+    item.bizType === "order" || item.bizType === "item"
+      ? "order"
+      : item.bizType === "settle"
+        ? "activity"
+        : "notice";
+  const today =
+    new Date().toDateString() === new Date(item.createTime).toDateString();
+  return {
+    ...item,
+    day: today ? "today" : "yesterday",
+    type,
+    icon: type === "order" ? "🔔" : type === "activity" ? "¥" : "!",
+    desc: item.content || "",
+    time: formatMessageTime(item.createTime),
+    read: item.readFlag === true,
+    action:
+      item.bizType === "order" || item.bizType === "item" ? "查看订单详情" : "",
+  };
+}
+
+function formatMessageTime(value) {
+  if (!value) return "";
+  const match = String(value).match(/(?:T|\s)(\d{1,2}):(\d{2})/);
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : String(value);
 }
 </script>
 

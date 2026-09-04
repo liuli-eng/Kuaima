@@ -2,74 +2,84 @@
   <view class="page">
     <AppNavBar title="岗位详情" :show-back="true" />
     <scroll-view scroll-y class="content">
-      <view class="salary-header"
-        ><view class="title-row"
-          ><text class="title">{{ job.title }}</text
-          ><text class="favorite" @click="toggleFavorite">{{
-            favorite ? "♥" : "♡"
-          }}</text></view
-        ><view class="tags"
-          ><text class="tag">{{ wageUnit }}</text
-          ><text class="tag">审核上岗</text><text class="tag">保障</text></view
-        ><view class="salary-info"
-          ><view
-            ><text>预计时长</text
-            ><text class="value">{{ job.duration }}小时</text></view
-          ><view
-            ><text>预计收入</text
-            ><text class="value dark">{{ job.unitPrice }}元/天</text></view
-          ></view
-        ></view
+      <view v-if="loading" class="page-state">岗位详情加载中…</view>
+      <view v-else-if="loadError" class="page-state error" @click="loadDetail"
+        >加载失败，点击重试</view
       >
-      <view class="info-card"
-        ><view class="info-row"
-          ><text class="icon orange">◷</text
-          ><view class="info-main"
-            ><text class="label">任务时间</text
-            ><text class="info-value"
-              >{{ job.startTime }} - {{ job.endTime }}</text
+      <template v-else>
+        <view class="salary-header"
+          ><view class="title-row"
+            ><text class="title">{{ job.title }}</text
+            ><text class="favorite" @click="toggleFavorite">{{
+              favorite ? "♥" : "♡"
+            }}</text></view
+          ><view class="tags"
+            ><text class="tag">{{ settlementLabel }}</text
+            ><text v-for="tag in jobTags" :key="tag" class="tag">{{
+              tag
+            }}</text></view
+          ><view class="salary-info"
+            ><view
+              ><text>预计时长</text
+              ><text class="value">{{ job.duration }}小时</text></view
+            ><view
+              ><text>预计收入</text
+              ><text class="value dark"
+                >{{ job.unitPrice }}{{ wageUnit }}</text
+              ></view
             ></view
           ></view
-        ><view class="info-row"
-          ><text class="icon blue">⌖</text
-          ><view class="info-main"
-            ><text class="label">任务地点</text
-            ><text class="info-value">{{ job.address }}</text
-            ><text class="muted">距当前位置直线8.7公里</text
-            ><text class="muted">*接单后可查看详细门牌号</text></view
-          ><text class="route" @click="viewRoute">查看路线 ›</text></view
-        ></view
-      >
-      <view class="tabs"
-        ><text
-          v-for="tab in tabs"
-          :key="tab.key"
-          :class="['tab', { active: activeTab === tab.key }]"
-          @click="activeTab = tab.key"
-          >{{ tab.label }}</text
-        ></view
-      >
-      <view class="desc-card"
-        ><view class="desc-title"
-          ><text class="desc-icon">▤</text
-          >{{ tabs.find((i) => i.key === activeTab)?.label }}</view
-        ><text v-if="activeTab === 'desc'" class="desc"
-          >本次招聘为餐饮行业短期清洁工作，工作内容包括：\n\n·
-          负责餐厅大堂及包间的卫生清洁\n· 协助整理餐桌、餐具清洗\n·
-          保持工作区域整洁卫生\n· 服从店长安排，配合团队工作</text
-        ><view v-else-if="activeTab === 'notice'" class="list"
-          ><text>· 需年满18周岁，身体健康</text><text>· 需实名认证通过</text
-          ><text>· 请按约定时间准时到岗</text
-          ><text>· 报名成功后请关注雇主审核结果</text></view
-        ><view v-else class="list"
-          ><text>雇主名称：松江区新桥餐饮服务有限公司</text
-          ><text>完成订单：156单</text><text>平台认证雇主，信用良好</text></view
-        ></view
-      >
-      <view v-if="!isRealname" class="realname"
-        ><text>完成实名认证后才能报名</text
-        ><text @click="goRealname">去认证 ›</text></view
-      >
+        >
+        <view class="info-card"
+          ><view class="info-row"
+            ><text class="icon orange">◷</text
+            ><view class="info-main"
+              ><text class="label">任务时间</text
+              ><text class="info-value"
+                >{{ formatDateTime(job.startTime) }} -
+                {{ formatDateTime(job.endTime) }}</text
+              ></view
+            ></view
+          ><view class="info-row"
+            ><text class="icon blue">⌖</text
+            ><view class="info-main"
+              ><text class="label">任务地点</text
+              ><text class="info-value">{{ job.address || "地点待定" }}</text
+              ><text class="muted">详细地址以岗位发布信息为准</text></view
+            ><text class="route" @click="viewRoute">查看路线 ›</text></view
+          ></view
+        >
+        <view class="tabs"
+          ><text
+            v-for="tab in tabs"
+            :key="tab.key"
+            :class="['tab', { active: activeTab === tab.key }]"
+            @click="activeTab = tab.key"
+            >{{ tab.label }}</text
+          ></view
+        >
+        <view class="desc-card"
+          ><view class="desc-title"
+            ><text class="desc-icon">▤</text
+            >{{ tabs.find((i) => i.key === activeTab)?.label }}</view
+          ><text v-if="activeTab === 'desc'" class="desc">{{
+            job.orderContent || "雇主暂未填写岗位描述"
+          }}</text
+          ><view v-else-if="activeTab === 'notice'" class="list"
+            ><text v-if="job.orderRemark">{{ job.orderRemark }}</text
+            ><text v-if="job.tags">岗位标签：{{ job.tags }}</text
+            ><text>报名成功后请关注雇主审核结果</text></view
+          ><view v-else class="list"
+            ><text>发布者编号：{{ job.createBy || "--" }}</text
+            ><text>岗位状态：{{ job.orderStatus || "--" }}</text
+            ><text>发布时间：{{ job.date || "--" }}</text></view
+          ></view
+        >
+        <view v-if="!isRealname" class="realname"
+          ><text>完成实名认证后才能报名</text
+          ><text @click="goRealname">去认证 ›</text></view
+        >
+      </template>
     </scroll-view>
     <SafeBottomAction
       ><view class="bottom-bar"
@@ -81,20 +91,23 @@
           <text>{{
             applied ? "已报名" : applying ? "报名中…" : "电话报名"
           }}</text
-          ><text>剩2个名额</text>
+          ><text>剩{{ remainingCount }}个名额</text>
         </button></view
       ></SafeBottomAction
     >
   </view>
 </template>
 <script setup>
-import { computed, onMounted, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { computed, ref } from "vue";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
 import { request } from "@/api/http";
-const pages = getCurrentPages();
-const options = pages[pages.length - 1]?.options || {};
+import {
+  getCertificationStatus,
+  getOrder,
+  listOrderItems,
+} from "@/api/backend";
 const tabs = [
   { key: "desc", label: "岗位描述" },
   { key: "notice", label: "报名须知" },
@@ -104,37 +117,82 @@ const activeTab = ref("desc");
 const applying = ref(false);
 const applied = ref(false);
 const favorite = ref(false);
+const loading = ref(false);
+const loadError = ref(false);
+const appliedCount = ref(0);
 const isRealname = ref(uni.getStorageSync("workerRealname") === true);
-const fallback = {
-  id: options.id || "demo-1",
-  title: "餐饮清洁工",
-  unitPrice: 162,
-  salaryType: "DAY",
-  startTime: "08:00",
-  endTime: "18:00",
-  address: "松江区泗泾镇",
-  duration: 9,
-  insurance: true,
-};
-const job = ref(fallback);
+const job = ref({});
 const wageUnit = computed(() =>
-  job.value.salaryType === "HOURLY"
-    ? "元/小时"
-    : job.value.salaryType === "MONTHLY"
-      ? "元/月"
-      : "元/天",
+  job.value.wageUnit
+    ? job.value.wageUnit
+    : job.value.salaryType === "HOURLY"
+      ? "元/小时"
+      : job.value.salaryType === "MONTHLY"
+        ? "元/月"
+        : "元/天",
 );
-onShow(() => {
-  isRealname.value = uni.getStorageSync("workerRealname") === true;
+const settlementLabel = computed(
+  () =>
+    ({ DAY: "每天日结", PRESS: "压薪日结", MONTHLY: "月结" })[
+      job.value.salaryType
+    ] || "日结",
+);
+const jobTags = computed(() =>
+  String(job.value.tags || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean),
+);
+const remainingCount = computed(() =>
+  Math.max(0, Number(job.value.orderNum || 0) - appliedCount.value),
+);
+onShow(async () => {
+  isRealname.value =
+    uni.getStorageSync("workerCertStatus") === "已通过" ||
+    uni.getStorageSync("workerRealname") === true;
+  try {
+    const result = await getCertificationStatus();
+    const status = result?.status || result?.certStatus || "未认证";
+    uni.setStorageSync("workerCertStatus", status);
+    isRealname.value = status === "已通过";
+    if (isRealname.value) uni.setStorageSync("workerRealname", true);
+  } catch (_) {}
 });
-onMounted(async () => {
-  if (options.id && !String(options.id).startsWith("demo-")) {
-    try {
-      const r = await request({ url: `/worker/jobs/${options.id}` });
-      if (r) job.value = normalizeJob(r);
-    } catch (_) {}
+onLoad(async (options = {}) => {
+  const id = options.id;
+  if (!id) {
+    loadError.value = true;
+    return;
   }
+  job.value = { id };
+  await loadDetail();
 });
+async function loadDetail() {
+  const id = job.value.id;
+  if (!id) return;
+  loading.value = true;
+  loadError.value = false;
+  try {
+    const [detail, items] = await Promise.all([
+      getOrder(id),
+      listOrderItems(id).catch(() => []),
+    ]);
+    if (detail) job.value = normalizeJob(detail);
+    appliedCount.value = Array.isArray(items)
+      ? items.filter((item) => !["取消报名", "取消招工"].includes(item.status))
+          .length
+      : 0;
+  } catch (error) {
+    loadError.value = true;
+    uni.showToast({ title: error.message || "岗位详情加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
+  }
+}
+function formatDateTime(value) {
+  if (!value) return "时间待定";
+  return String(value).replace("T", " ").slice(0, 16);
+}
 function goRealname() {
   uni.navigateTo({ url: "/pages/worker/realname" });
 }
@@ -168,15 +226,30 @@ async function apply() {
 }
 function normalizeJob(item) {
   const typeMap = { daily: "DAY", heldBack: "PRESS", month: "MONTHLY" };
-  const salaryType = item.salaryType || item.settlementType || typeMap[item.type] || "DAY";
+  const hourlyMatch = String(item.tags || "").match(/时薪:([\d.]+)/);
+  const pieceMatch = String(item.tags || "").match(/计件单价:([\d.]+)/);
+  const pieceUnitMatch = String(item.tags || "").match(/计件单位:([^,]+)/);
+  const salaryType =
+    item.salaryType || item.settlementType || typeMap[item.type] || "DAY";
   return {
-    ...fallback,
     ...item,
-    title: item.title || item.orderTitle || item.postion || fallback.title,
+    title: item.title || item.orderTitle || item.postion || "未命名岗位",
     salaryType,
-    unitPrice: item.unitPrice ?? item.wage ?? item.salary ?? item.monthSalary ?? fallback.unitPrice,
-    address: item.address || item.workAddress || item.location || fallback.address,
-    duration: item.duration ?? item.workHours ?? fallback.duration,
+    unitPrice:
+      hourlyMatch?.[1] ??
+      pieceMatch?.[1] ??
+      item.unitPrice ??
+      item.wage ??
+      item.salary ??
+      item.monthSalary ??
+      0,
+    wageUnit: hourlyMatch
+      ? "元/小时"
+      : pieceMatch
+        ? `元/${pieceUnitMatch?.[1] || "件"}`
+        : item.wageUnit,
+    address: item.address || item.workAddress || item.location || "地点待定",
+    duration: item.duration ?? item.workHours ?? 0,
   };
 }
 </script>
@@ -189,6 +262,15 @@ function normalizeJob(item) {
   height: calc(100vh - 176rpx);
   padding-bottom: 40rpx;
   box-sizing: border-box;
+}
+.page-state {
+  padding: 160rpx 32rpx;
+  color: #999;
+  font-size: 26rpx;
+  text-align: center;
+}
+.page-state.error {
+  color: #e34d59;
 }
 .salary-header {
   padding: 30rpx 24rpx 24rpx;
