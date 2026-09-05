@@ -27,10 +27,24 @@
             </div>
             <div class="form-group">
               <label class="form-label">平台Logo</label>
-              <div class="logo-upload">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <span>上传Logo</span>
-              </div>
+              <el-upload
+                class="logo-upload"
+                :show-file-list="false"
+                :before-upload="beforeLogoUpload"
+                :http-request="handleLogoUpload"
+                accept="image/png,image/jpeg,image/svg+xml"
+              >
+                <img v-if="platformForm.logo" :src="platformForm.logo" class="logo-preview" alt="logo" />
+                <div v-else class="logo-upload-placeholder">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <span>上传Logo</span>
+                </div>
+                <div v-if="logoUploading" class="logo-upload-mask">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  <span>上传中...</span>
+                </div>
+              </el-upload>
+              <div class="logo-upload-tip">建议尺寸 200x60px，支持 PNG/JPG/SVG，大小不超过 2MB</div>
             </div>
             <div class="form-group">
               <label class="form-label">客服电话</label>
@@ -420,7 +434,7 @@
                 {{ tpl.title }}
                 <span class="tag tag-blue">短信</span>
               </div>
-              <a class="card-action" @click="onEditTemplate(tpl.title)">编辑</a>
+              <a class="card-action" @click="onEditTemplate(tpl.type, tpl.id)">编辑</a>
             </div>
             <div class="template-content">{{ tpl.content }}</div>
             <div class="template-actions">
@@ -448,7 +462,7 @@
                 {{ tpl.title }}
                 <span class="tag tag-green">站内信</span>
               </div>
-              <a class="card-action" @click="onEditTemplate(tpl.title)">编辑</a>
+              <a class="card-action" @click="onEditTemplate(tpl.type, tpl.id)">编辑</a>
             </div>
             <div class="template-content">{{ tpl.content }}</div>
             <div class="template-actions">
@@ -653,7 +667,7 @@
 
       <div class="pd-footer">
         <button class="btn btn-outline" @click="showPreviewDialog = false">关闭</button>
-        <button class="btn btn-outline" @click="showPreviewDialog = false; onEditTemplate(previewTpl?.title)">
+        <button class="btn btn-outline" @click="showPreviewDialog = false; onEditTemplate(previewType, previewTpl?.id)">
           <i class="fas fa-edit"></i> 编辑模板
         </button>
         <button class="btn btn-primary" @click="showPreviewDialog = false; onSendTest(previewTpl)">
@@ -762,13 +776,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, testSendTemplate } from '@/api/system'
+import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, testSendTemplate, uploadFile } from '@/api/system'
+import { listMessageTemplates } from '@/api/content'
 import request from '@/api/request'
 
 const router = useRouter()
+const route = useRoute()
 
 const activeTab = ref('basic')
 const accountTab = ref('bank')
@@ -923,12 +939,47 @@ const saveWalletEdit = async () => {
 
 const platformForm = reactive({
   name: '快马日结',
+  logo: '',
   phone: '400-888-6666',
   workStart: '08:00',
   workEnd: '22:00',
   version: 'v2.0.3',
   intro: '快马日结是一款专注于零工经济的日结平台，为雇主和零工提供高效、便捷、安全的撮合服务。'
 })
+
+const logoUploading = ref(false)
+
+const beforeLogoUpload = (file) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt2M = file.size / 1024 / 1024 < 2
+  if (!isImage) {
+    ElMessage.error('仅支持图片格式上传')
+    return false
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB')
+    return false
+  }
+  return true
+}
+
+const handleLogoUpload = async (options) => {
+  logoUploading.value = true
+  try {
+    const res = await uploadFile(options.file)
+    const url = res.data?.url || res.url
+    if (url) {
+      platformForm.logo = url
+      ElMessage.success('Logo 上传成功，记得点击保存设置')
+    } else {
+      ElMessage.error('上传失败：未获取到图片地址')
+    }
+  } catch (e) {
+    ElMessage.error('Logo 上传失败，请重试')
+  } finally {
+    logoUploading.value = false
+  }
+}
 
 const rulesForm = reactive({
   jobAudit: true,
@@ -943,36 +994,25 @@ const rulesForm = reactive({
 
 const adminUsers = ref([])
 
-const smsTemplates = [
-  {
-    type: 'sms', id: 'T001',
-    title: '订单接单通知',
-    content: '【快马日结】尊敬的{用户名}，您已成功接单{订单编号}，工作时间：{时间}，地点：{地点}，请准时到岗。'
-  },
-  {
-    type: 'sms', id: 'T002',
-    title: '工资到账通知',
-    content: '【快马日结】尊敬的{用户名}，您的工资{金额}元已结算到账，订单号：{订单编号}，感谢您的辛勤劳动！'
-  },
-  {
-    type: 'sms', id: 'T003',
-    title: '审核结果通知',
-    content: '【快马日结】尊敬的{用户名}，您提交的{审核类型}已{审核结果}，详情请登录APP查看。'
-  }
-]
+const smsTemplates = ref([])
+const inSiteTemplates = ref([])
 
-const inSiteTemplates = [
-  {
-    type: 'message', id: 'M001',
-    title: '系统公告推送',
-    content: '尊敬的{用户名}，平台将于{时间}进行系统维护升级，届时服务将暂停使用，敬请谅解。'
-  },
-  {
-    type: 'message', id: 'M002',
-    title: '飞单提醒通知',
-    content: '尊敬的{用户名}，您本次{订单编号}的订单标记为飞单，已扣除{积分}积分，累计{次数}次将面临封禁处理。'
+const loadTemplates = async () => {
+  try {
+    const res = await listMessageTemplates()
+    const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
+    smsTemplates.value = list
+      .filter(t => t.channel === 'sms')
+      .map(t => ({ type: 'sms', id: t.id, title: t.name, content: t.content }))
+    inSiteTemplates.value = list
+      .filter(t => t.channel === 'inapp' || t.channel === 'both')
+      .map(t => ({ type: 'message', id: t.id, title: t.name, content: t.content }))
+  } catch (e) {
+    console.warn('[Settings] 加载模板失败:', e)
+    smsTemplates.value = []
+    inSiteTemplates.value = []
   }
-]
+}
 
 // ====== Helpers ======
 const roleClass = (role) => {
@@ -1030,6 +1070,7 @@ const applyPlatformSettings = (list) => {
     map[item.settingKey] = item.settingValue
   })
   if (map['platform.name']) platformForm.name = map['platform.name']
+  if (map['platform.logo']) platformForm.logo = map['platform.logo']
   if (map['platform.phone']) platformForm.phone = map['platform.phone']
   if (map['platform.workStart']) platformForm.workStart = map['platform.workStart']
   if (map['platform.workEnd']) platformForm.workEnd = map['platform.workEnd']
@@ -1098,6 +1139,7 @@ const loadAdminUsers = async () => {
 const savePlatform = async () => {
   try {
     await saveSetting('platform.name', platformForm.name, '平台名称')
+    await saveSetting('platform.logo', platformForm.logo || '', '平台Logo')
     await saveSetting('platform.phone', platformForm.phone, '客服电话')
     await saveSetting('platform.workStart', platformForm.workStart, '营业开始时间')
     await saveSetting('platform.workEnd', platformForm.workEnd, '营业结束时间')
@@ -1157,11 +1199,17 @@ const goEditAdmin = (row) => {
 }
 
 const onAddTemplate = (type) => {
-  ElMessage.info('功能开发中')
+  const tplType = type === 'sms' || type === '短信' ? 'sms' : 'message'
+  router.push(`/system/template-edit?type=${tplType}`)
 }
 
-const onEditTemplate = (name) => {
-  ElMessage.info('功能开发中')
+const onEditTemplate = (type, id) => {
+  const tplType = type === 'sms' || type === '短信' ? 'sms' : 'message'
+  if (id) {
+    router.push(`/system/template-edit?type=${tplType}&id=${id}`)
+  } else {
+    router.push(`/system/template-edit?type=${tplType}`)
+  }
 }
 
 // ====== 模板预览 & 发送测试 ======
@@ -1257,11 +1305,26 @@ const onPublish = (name) => {
 }
 
 onMounted(() => {
+  if (route.query.tab) {
+    activeTab.value = String(route.query.tab)
+  }
   loadPlatformSettings()
   loadRulesSettings()
   loadBankInfo()
   loadWalletInfo()
   loadAdminUsers()
+  loadTemplates()
+})
+
+// 从模板编辑页或管理员编辑页返回时刷新对应列表
+watch(() => route.query.tab, (newTab) => {
+  if (newTab === 'notice') {
+    activeTab.value = 'notice'
+    loadTemplates()
+  } else if (newTab === 'permission') {
+    activeTab.value = 'permission'
+    loadAdminUsers()
+  }
 })
 </script>
 
@@ -1374,29 +1437,62 @@ onMounted(() => {
 .logo-upload {
   width: 120px;
   height: 120px;
-  border: 2px dashed var(--border);
-  border-radius: 12px;
+  display: inline-block;
+}
+.logo-upload :deep(.el-upload) {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-muted);
   gap: 8px;
+  position: relative;
+  overflow: hidden;
 }
-
-.logo-upload:hover {
+.logo-upload :deep(.el-upload:hover) {
   border-color: var(--primary);
   color: var(--primary);
 }
-
 .logo-upload i {
   font-size: 28px;
 }
-
 .logo-upload span {
   font-size: 13px;
+}
+.logo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+}
+.logo-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.logo-upload-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--primary);
+  font-size: 12px;
+}
+.logo-upload-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* ============ Account description ============ */
@@ -1924,48 +2020,6 @@ onMounted(() => {
 }
 
 /* ============ Button (与原型 admin.css 一致) ============ */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  text-decoration: none;
-  white-space: nowrap;
-  font-family: inherit;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background: var(--primary-dark);
-}
-
-.btn-outline {
-  background: #fff;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-}
-
-.btn-outline:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.btn-sm {
-  padding: 5px 12px;
-  font-size: 12px;
-}
-
 .empty-cell {
   text-align: center;
   color: var(--text-muted);

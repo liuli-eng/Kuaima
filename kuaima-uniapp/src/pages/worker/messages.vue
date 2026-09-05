@@ -3,6 +3,11 @@
     <AppNavBar title="消息" :show-back="true" />
     <scroll-view scroll-y class="content">
       <view class="top-actions">
+        <view class="entry" @click="go('/pages/worker/notification')">
+          <text class="entry-icon">📢</text>
+          <text class="entry-text">平台公告</text>
+          <text class="entry-arrow">›</text>
+        </view>
         <view class="history" @click="go('/pages/worker/history-message')">
           查看历史消息
         </view>
@@ -43,24 +48,7 @@ import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { listMessages, readMessage } from "@/api/backend";
 
-const messages = ref([
-  {
-    id: 1,
-    icon: "📣",
-    title: "系统通知",
-    content: "欢迎使用快马日结，完成实名认证后即可报名岗位。",
-    time: "今天 10:20",
-    read: false,
-  },
-  {
-    id: 2,
-    icon: "✓",
-    title: "报名进度提醒",
-    content: "你报名的餐饮服务员岗位已被雇主查看。",
-    time: "昨天 18:32",
-    read: false,
-  },
-]);
+const messages = ref([]);
 
 onMounted(async () => {
   try {
@@ -78,10 +66,6 @@ async function read(item) {
     await readMessage(item.id, uni.getStorageSync("userId") || "2001");
   } catch (_) {}
   item.read = true;
-  if (item.title === "系统通知") {
-    uni.navigateTo({ url: "/pages/worker/notification" });
-    return;
-  }
   uni.showModal({
     title: item.title,
     content: item.content,
@@ -119,11 +103,38 @@ function formatMessageTime(value) {
 }
 
 .top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 18rpx 22rpx 0;
 }
 
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+  border-radius: 24rpx;
+  background: #fff;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.entry-icon {
+  font-size: 28rpx;
+}
+
+.entry-text {
+  font-size: 24rpx;
+  color: #ff6b35;
+  font-weight: 600;
+}
+
+.entry-arrow {
+  color: #ccc;
+  font-size: 24rpx;
+}
+
 .history {
-  text-align: right;
   color: #1890ff;
   font-size: 23rpx;
 }

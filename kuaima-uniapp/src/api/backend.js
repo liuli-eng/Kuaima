@@ -134,6 +134,13 @@ export function listMessages(userId, params = {}) {
   });
 }
 
+/** 获取已发布公告列表（管理员人工创建） */
+export function listNotices(params = {}) {
+  return request({
+    url: `/notices?${query({ page: 0, size: 20, ...params })}`,
+  });
+}
+
 export function unreadMessages(userId) {
   return request({ url: `/message/unread?userId=${userId}` });
 }

@@ -26,6 +26,14 @@ export function testSendTemplate(data) {
     headers: { 'Content-Type': 'application/json' }
   })
 }
+// 文件上传
+export function uploadFile(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/admin/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
 
 // ============ Admin Users ============
 export function listAdminUsers({ page = 0, size = 10 } = {}) {

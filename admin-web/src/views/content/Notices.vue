@@ -1,25 +1,43 @@
 <template>
   <div>
     <div class="page-header">
-      <h1 class="page-title">公告管理</h1>
-      <p class="page-desc">发布和管理平台系统公告、活动通知</p>
+      <div>
+        <h1 class="page-title">公告管理</h1>
+        <p class="page-desc">管理员主动创建并发布平台公告、活动通知（用户端公告栏展示）</p>
+      </div>
+      <button class="btn btn-primary" @click="openCreateModal">
+        <i class="fas fa-plus"></i> 新建公告
+      </button>
     </div>
 
     <div class="card">
       <div class="filter-bar">
-        <el-input v-model="searchKeyword" placeholder="搜索公告标题" clearable style="width: 240px;" prefix-icon="Search" />
-        <el-select v-model="typeFilter" placeholder="公告类型" clearable style="width: 120px;">
-          <el-option label="系统" value="系统" />
-          <el-option label="活动" value="活动" />
-          <el-option label="政策" value="政策" />
-        </el-select>
-        <el-select v-model="statusFilter" placeholder="状态" clearable style="width: 120px;">
-          <el-option label="已发布" value="已发布" />
-          <el-option label="草稿" value="草稿" />
-          <el-option label="已下架" value="已下架" />
-        </el-select>
-        <el-button type="primary" @click="loadData">查询</el-button>
-        <el-button @click="resetFilters">重置</el-button>
+        <div class="filter-item">
+          <span>状态</span>
+          <el-select v-model="statusFilter" placeholder="全部" clearable style="width: 120px;">
+            <el-option label="已发布" value="已发布" />
+            <el-option label="草稿" value="草稿" />
+            <el-option label="已下架" value="已下架" />
+          </el-select>
+        </div>
+        <div class="filter-item">
+          <span>发布时间</span>
+          <el-date-picker
+            v-model="publishTimeRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 240px;"
+          />
+        </div>
+        <button class="btn btn-primary btn-sm" @click="loadData">
+          <i class="fas fa-search"></i> 查询
+        </button>
+        <button class="btn btn-outline btn-sm" @click="resetFilters">
+          <i class="fas fa-rotate-left"></i> 重置
+        </button>
       </div>
 
       <el-table :data="filteredNotices" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
@@ -35,14 +53,14 @@
             <span :class="['status-badge', row.statusClass]">{{ row.status }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="publishTime" label="发布时间" width="140" />
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column prop="publishTime" label="发布时间" width="160" />
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="primary" size="small">预览</el-button>
-            <el-button v-if="row.status === '草稿'" link type="success" size="small" @click="handlePublish(row)">立即发布</el-button>
-            <el-button v-else-if="row.status === '已发布'" link type="warning" size="small" @click="handleUnpublish(row)">下架</el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <button class="table-action" @click="handleEdit(row)">编辑</button>
+            <button class="table-action">预览</button>
+            <button v-if="row.status === '草稿'" class="table-action table-action-success" @click="handlePublish(row)">立即发布</button>
+            <button v-else-if="row.status === '已发布'" class="table-action table-action-warning" @click="handleUnpublish(row)">下架</button>
+            <button class="table-action table-action-danger" @click="handleDelete(row)">删除</button>
           </template>
         </el-table-column>
       </el-table>
@@ -51,24 +69,83 @@
         <div class="pagination-info">共 {{ filteredNotices.length }} 条记录</div>
       </div>
     </div>
+
+    <!-- 新建/编辑公告弹窗 -->
+    <el-dialog
+      v-model="showModal"
+      :title="editingId ? '编辑公告' : '新建公告'"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="form" label-width="90px">
+        <el-form-item label="公告标题" required>
+          <el-input v-model="form.title" placeholder="请输入公告标题" maxlength="100" show-word-limit />
+        </el-form-item>
+        <el-form-item label="公告类型">
+          <el-select v-model="form.type" style="width: 100%;">
+            <el-option label="系统" value="系统" />
+            <el-option label="活动" value="活动" />
+            <el-option label="政策" value="政策" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="发布范围">
+          <el-select v-model="form.scope" style="width: 100%;">
+            <el-option label="全部用户" value="全部" />
+            <el-option label="仅零工" value="零工" />
+            <el-option label="仅老板" value="雇主" />
+            <el-option label="已实名用户" value="已实名" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="公告内容">
+          <el-input
+            v-model="form.content"
+            type="textarea"
+            :rows="5"
+            placeholder="请输入公告详细内容..."
+            maxlength="2000"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <button class="btn btn-outline" @click="closeModal">取消</button>
+          <button class="btn btn-outline" @click="saveNotice('草稿')">存为草稿</button>
+          <button class="btn btn-primary" @click="saveNotice('已发布')">
+            <i class="fas fa-paper-plane"></i> 立即发布
+          </button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listNotices, updateNotice, deleteNotice } from '@/api/content'
+import { listNotices, createNotice, updateNotice, deleteNotice } from '@/api/content'
 
 const notices = ref([])
-const searchKeyword = ref('')
-const typeFilter = ref('')
 const statusFilter = ref('')
+const publishTimeRange = ref([])
+
+const showModal = ref(false)
+const editingId = ref(null)
+const form = ref({
+  title: '',
+  type: '系统',
+  scope: '全部',
+  content: ''
+})
 
 const filteredNotices = computed(() => {
+  const [start, end] = publishTimeRange.value || []
   return notices.value.filter(n => {
-    if (searchKeyword.value && !n.title.includes(searchKeyword.value)) return false
-    if (typeFilter.value && n.type !== typeFilter.value) return false
     if (statusFilter.value && n.status !== statusFilter.value) return false
+    // 日期范围筛选：publishTime 为空或草稿未发布时跳过日期过滤
+    const pt = n.publishTime ? String(n.publishTime).slice(0, 10) : ''
+    if (start && pt && pt < start) return false
+    if (end && pt && pt > end) return false
     return true
   })
 })
@@ -84,32 +161,57 @@ const loadData = async () => {
 }
 
 const resetFilters = () => {
-  searchKeyword.value = ''
-  typeFilter.value = ''
   statusFilter.value = ''
+  publishTimeRange.value = []
+}
+
+const openCreateModal = () => {
+  editingId.value = null
+  form.value = { title: '', type: '系统', scope: '全部', content: '' }
+  showModal.value = true
+}
+
+const closeModal = () => {
+  showModal.value = false
+  editingId.value = null
+}
+
+const saveNotice = async (status) => {
+  if (!form.value.title.trim()) {
+    ElMessage.warning('请输入公告标题')
+    return
+  }
+  try {
+    if (editingId.value) {
+      await updateNotice(editingId.value, { ...form.value, status })
+      ElMessage.success('修改成功')
+    } else {
+      await createNotice({ ...form.value, status })
+      ElMessage.success(status === '已发布' ? '公告已发布，系统消息已推送' : '已存为草稿')
+    }
+    closeModal()
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
 }
 
 const handleEdit = (notice) => {
-  ElMessageBox.prompt('修改标题', '编辑公告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    inputValue: notice.title
-  }).then(async ({ value }) => {
-    try {
-      await updateNotice(notice.id, { ...notice, title: value })
-      ElMessage.success('修改成功')
-      await loadData()
-    } catch (e) {
-      ElMessage.error('修改失败')
-    }
-  }).catch(() => {})
+  editingId.value = notice.id
+  form.value = {
+    title: notice.title || '',
+    type: notice.type || '系统',
+    scope: notice.scope || '全部',
+    content: notice.content || ''
+  }
+  showModal.value = true
 }
 
 const handlePublish = async (notice) => {
   const now = new Date().toISOString().slice(0, 10)
   try {
     await updateNotice(notice.id, { ...notice, status: '已发布', statusClass: 'success', publishTime: now })
-    ElMessage.success('已发布')
+    ElMessage.success('已发布，系统消息已推送')
     await loadData()
   } catch (e) {
     ElMessage.error('发布失败')
@@ -143,6 +245,13 @@ onMounted(loadData)
 </script>
 
 <style scoped>
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
 .filter-bar {
   display: flex;
   align-items: center;
@@ -151,10 +260,41 @@ onMounted(loadData)
   flex-wrap: wrap;
 }
 
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary, #6B7280);
+}
+
 .pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 16px;
 }
+
+.dialog-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* 表格操作按钮 — 链接风格 */
+.table-action {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  color: var(--primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.table-action:hover { color: var(--primary-dark); }
+.table-action-success { color: #10b981; }
+.table-action-success:hover { color: #059669; }
+.table-action-warning { color: #f59e0b; }
+.table-action-warning:hover { color: #d97706; }
+.table-action-danger { color: #ef4444; }
+.table-action-danger:hover { color: #dc2626; }
 </style>

@@ -140,10 +140,10 @@ const routes = [
         meta: { title: '系统设置', icon: 'fa-cog' }
       },
       {
-        path: 'admin-user',
-        name: 'AdminUser',
-        component: () => import('@/views/system/AdminUser.vue'),
-        meta: { title: '管理员管理', icon: 'fa-user-cog' }
+        path: 'template-edit',
+        name: 'TemplateEdit',
+        component: () => import('@/views/system/TemplateEdit.vue'),
+        meta: { title: '模板编辑', icon: 'fa-edit', hidden: true }
       },
       {
         path: 'admin-user/form',

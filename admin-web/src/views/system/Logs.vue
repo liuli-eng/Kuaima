@@ -16,10 +16,12 @@
           <el-option label="删除" value="删除" />
           <el-option label="系统操作" value="系统操作" />
         </el-select>
-        <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" />
-        <el-button type="primary" @click="loadData">查询</el-button>
-        <el-button @click="resetFilters">重置</el-button>
-        <el-button style="margin-left: auto;"><i class="fas fa-download" style="margin-right:4px;"></i>导出</el-button>
+        <div class="date-picker-wrap" style="width: 240px;">
+          <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 100%;" />
+        </div>
+        <button class="btn btn-primary btn-sm" @click="loadData"><i class="fas fa-search"></i> 查询</button>
+        <button class="btn btn-outline btn-sm" @click="resetFilters"><i class="fas fa-rotate-left"></i> 重置</button>
+        <button class="btn btn-outline btn-sm" style="margin-left: auto;"><i class="fas fa-download"></i> 导出</button>
       </div>
 
       <el-table :data="filteredLogs" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">

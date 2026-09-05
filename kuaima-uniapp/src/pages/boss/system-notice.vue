@@ -15,7 +15,7 @@
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
-      <text class="nav-title">系统通知</text>
+      <text class="nav-title">平台公告</text>
       <view class="nav-right">
         <text>…</text>
       </view>
@@ -29,24 +29,42 @@
           {{ notice.content }}
         </text>
       </view>
+      <view v-if="!notices.length" class="empty-text">暂无公告</view>
     </scroll-view>
   </view>
 </template>
 
 <script>
+import { listNotices } from '@/api/backend'
+
 export default {
   data() {
     return {
-      notices: [
-        { time: '2026-08-21 15:30', tag: '系统', tagClass: 'tag-system', content: '您的企业认证审核已通过，恭喜您获得企业认证标识，将获得更多曝光机会！' },
-        { time: '2026-08-20 10:15', tag: '结算', tagClass: 'tag-success', content: '您发布的「电商分拣打包工」岗位工资已完成结算，共计¥1,800元已到账。' },
-        { time: '2026-08-19 09:00', tag: '提醒', tagClass: 'tag-warning', content: '您发布的「餐饮服务员」岗位已有5位零工报名，请及时处理报名申请。' },
-        { time: '2026-08-18 14:20', tag: '系统', tagClass: 'tag-system', content: '平台升级通知：8月25日凌晨2点将进行系统维护，预计维护1小时，期间无法发布招聘。' },
-        { time: '2026-08-17 11:00', tag: '活动', tagClass: 'tag-success', content: '邀请好友注册可获得50元奖励，多邀多得，上不封顶！' }
-      ]
+      notices: []
     }
   },
+  onLoad() {
+    this.loadNotices()
+  },
   methods: {
+    async loadNotices() {
+      try {
+        const result = await listNotices({ scope: '雇主' })
+        if (Array.isArray(result)) {
+          this.notices = result.map(this.normalizeNotice)
+        }
+      } catch (_) {}
+    },
+    normalizeNotice(item) {
+      const tag = item.type || '系统'
+      const tagClass = tag === '活动' ? 'tag-success' : tag === '政策' ? 'tag-warning' : 'tag-system'
+      return {
+        time: item.publishTime ? String(item.publishTime).slice(0, 16).replace('T', ' ') : '',
+        tag,
+        tagClass,
+        content: item.title ? `${item.title}：${item.content || ''}` : (item.content || '')
+      }
+    },
     goBack() {
       uni.navigateBack()
     }
@@ -148,4 +166,11 @@ export default {
 .tag-system { background: #FFF3ED; color: #FF6B35; }
 .tag-warning { background: #FFF8E6; color: #FA8C16; }
 .tag-success { background: #F6FFED; color: #52C41A; }
+
+.empty-text {
+  text-align: center;
+  padding: 80px 0;
+  color: #999;
+  font-size: 14px;
+}
 </style>

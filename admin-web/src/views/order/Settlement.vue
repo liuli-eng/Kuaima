@@ -19,12 +19,14 @@
           <el-option label="银行卡" value="银行卡" />
           <el-option label="现金" value="现金" />
         </el-select>
-        <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" />
-        <el-button type="primary" @click="handleSearch">查询</el-button>
-        <el-button @click="handleReset">重置</el-button>
+        <div class="date-picker-wrap" style="width: 240px;">
+          <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 100%;" />
+        </div>
+        <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
+        <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
         <div style="margin-left: auto; display: flex; gap: 8px;">
-          <el-button type="primary" :disabled="!selectedRows.length">批量结算 ({{ selectedRows.length }})</el-button>
-          <el-button><i class="fas fa-download" style="margin-right:4px;"></i>导出报表</el-button>
+          <button class="btn btn-primary btn-sm" :disabled="!selectedRows.length" :style="{ opacity: !selectedRows.length ? 0.5 : 1, cursor: !selectedRows.length ? 'not-allowed' : 'pointer' }">批量结算 ({{ selectedRows.length }})</button>
+          <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出报表</button>
         </div>
       </div>
 

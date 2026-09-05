@@ -1,192 +1,66 @@
 <template>
   <view class="page">
-    <AppNavBar title="系统通知" :show-back="true" />
-    <view class="tabs">
-      <text
-        v-for="tab in tabs"
-        :key="tab.key"
-        :class="['tab', { active: activeType === tab.key }]"
-        @click="activeType = tab.key"
-        >{{ tab.label }}</text
-      >
-    </view>
+    <AppNavBar title="平台公告" :show-back="true" />
     <scroll-view scroll-y class="scroll">
-      <text class="date-title">今日</text>
       <view
-        v-for="item in todayList"
+        v-for="item in notices"
         :key="item.id"
         class="notice-card"
         @click="open(item)"
       >
-        <text :class="['notice-icon', item.type]">{{ item.icon }}</text>
+        <text class="notice-icon">{{ typeIcon(item.type) }}</text>
         <view class="notice-main"
           ><view class="notice-head"
             ><text class="notice-title">{{ item.title }}</text
             ><text class="time">{{ item.time }}</text></view
-          ><text class="desc">{{ item.desc }}</text
-          ><text v-if="item.action" class="action"
-            >{{ item.action }} ›</text
-          ></view
+          ><text class="desc">{{ item.content }}</text></view
         >
-        <text v-if="!item.read" class="unread" />
       </view>
-      <text class="date-title">昨天</text>
-      <view
-        v-for="item in yesterdayList"
-        :key="item.id"
-        class="notice-card"
-        @click="open(item)"
-      >
-        <text :class="['notice-icon', item.type]">{{ item.icon }}</text>
-        <view class="notice-main"
-          ><view class="notice-head"
-            ><text class="notice-title">{{ item.title }}</text
-            ><text class="time">{{ item.time }}</text></view
-          ><text class="desc">{{ item.desc }}</text
-          ><text v-if="item.action" class="action"
-            >{{ item.action }} ›</text
-          ></view
-        >
-        <text v-if="!item.read" class="unread" />
-      </view>
-      <view v-if="!todayList.length && !yesterdayList.length" class="empty"
-        >暂无相关通知</view
-      >
+      <view v-if="!notices.length" class="empty">暂无公告</view>
     </scroll-view>
   </view>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { listMessages, readMessage } from "@/api/backend";
+import { listNotices } from "@/api/backend";
 
-const tabs = [
-  { key: "all", label: "全部" },
-  { key: "order", label: "订单" },
-  { key: "activity", label: "活动" },
-  { key: "notice", label: "公告" },
-];
-const activeType = ref("all");
-const notices = ref([
-  {
-    id: 1,
-    day: "today",
-    type: "order",
-    icon: "🔔",
-    title: "订单接单成功",
-    time: "10:30",
-    desc: "您已成功接单【餐饮清洁工】任务，明天08:00-18:00，请准时到达泗泾镇工作地点。",
-    action: "查看订单详情",
-    read: false,
-  },
-  {
-    id: 2,
-    day: "today",
-    type: "activity",
-    icon: "🎁",
-    title: "新用户福利",
-    time: "09:15",
-    desc: "恭喜您成为快马日结新用户！完成首个订单可获得额外奖励金20元，快来接单赚钱吧！",
-    action: "去完成首单",
-    read: false,
-  },
-  {
-    id: 3,
-    day: "today",
-    type: "notice",
-    icon: "✓",
-    title: "实名认证审核通过",
-    time: "08:00",
-    desc: "您的实名认证已审核通过，现在可以正常抢单赚钱啦！",
-    read: true,
-  },
-  {
-    id: 4,
-    day: "yesterday",
-    type: "order",
-    icon: "¥",
-    title: "工资结算通知",
-    time: "18:30",
-    desc: "您昨天完成的【快递分拣员】订单工资96元已到账，可在钱包中查看并提现。",
-    read: true,
-  },
-  {
-    id: 5,
-    day: "yesterday",
-    type: "notice",
-    icon: "!",
-    title: "平台公告",
-    time: "15:00",
-    desc: "关于平台服务规则更新的通知，请前往平台规则查看详情。",
-    action: "查看规则",
-    read: true,
-  },
-]);
+const notices = ref([]);
+
 onMounted(async () => {
   try {
-    const result = await listMessages(uni.getStorageSync("userId") || "2001");
+    const result = await listNotices({ scope: "零工" });
     if (Array.isArray(result)) notices.value = result.map(normalizeNotice);
   } catch (_) {}
 });
-const visible = computed(() =>
-  activeType.value === "all"
-    ? notices.value
-    : notices.value.filter((item) => item.type === activeType.value),
-);
-const todayList = computed(() =>
-  visible.value.filter((item) => item.day === "today"),
-);
-const yesterdayList = computed(() =>
-  visible.value.filter((item) => item.day === "yesterday"),
-);
-async function open(item) {
-  try {
-    await readMessage(item.id, uni.getStorageSync("userId") || "2001");
-  } catch (_) {}
-  item.read = true;
-  if (item.action === "查看订单详情") {
-    uni.navigateTo({ url: "/pages/worker/order-detail?id=o1" });
-    return;
-  }
-  if (item.action === "查看规则") {
-    uni.navigateTo({ url: "/pages/worker/rule" });
-    return;
-  }
-  if (item.action === "去完成首单") {
-    uni.navigateTo({ url: "/pages/worker/home" });
-    return;
-  }
+
+function open(item) {
   uni.navigateTo({
-    url: `/pages/worker/notification-detail?id=${item.id}&title=${encodeURIComponent(item.title)}&desc=${encodeURIComponent(item.desc)}`,
+    url: `/pages/worker/notification-detail?id=${item.id}&title=${encodeURIComponent(item.title)}&desc=${encodeURIComponent(item.content)}`,
   });
 }
+
+function typeIcon(type) {
+  if (type === "活动") return "🎁";
+  if (type === "政策") return "📋";
+  return "📢";
+}
+
 function normalizeNotice(item) {
-  const type =
-    item.bizType === "order" || item.bizType === "item"
-      ? "order"
-      : item.bizType === "settle"
-        ? "activity"
-        : "notice";
-  const today =
-    new Date().toDateString() === new Date(item.createTime).toDateString();
   return {
-    ...item,
-    day: today ? "today" : "yesterday",
-    type,
-    icon: type === "order" ? "🔔" : type === "activity" ? "¥" : "!",
-    desc: item.content || "",
-    time: formatMessageTime(item.createTime),
-    read: item.readFlag === true,
-    action:
-      item.bizType === "order" || item.bizType === "item" ? "查看订单详情" : "",
+    id: item.id,
+    title: item.title || "",
+    content: item.content || "",
+    time: formatNoticeTime(item.publishTime),
+    type: item.type || "系统",
   };
 }
 
-function formatMessageTime(value) {
+function formatNoticeTime(value) {
   if (!value) return "";
-  const match = String(value).match(/(?:T|\s)(\d{1,2}):(\d{2})/);
-  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : String(value);
+  const match = String(value).match(/(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : String(value).slice(0, 10);
 }
 </script>
 

@@ -14,8 +14,8 @@
           <el-option label="已通过" value="已通过" />
           <el-option label="已拒绝" value="已拒绝" />
         </el-select>
-        <el-button type="primary" @click="handleSearch"><i class="fas fa-search" style="margin-right:4px;"></i>查询</el-button>
-        <el-button @click="handleReset">重置</el-button>
+        <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
+        <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
       </div>
 
       <el-table :data="auditData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">

@@ -19,8 +19,8 @@
           <el-option label="草稿" value="草稿" />
           <el-option label="已归档" value="已归档" />
         </el-select>
-        <el-button type="primary" @click="loadData">查询</el-button>
-        <el-button @click="resetFilters">重置</el-button>
+        <button class="btn btn-primary btn-sm" @click="loadData"><i class="fas fa-search"></i> 查询</button>
+        <button class="btn btn-outline btn-sm" @click="resetFilters"><i class="fas fa-rotate-left"></i> 重置</button>
       </div>
 
       <el-table :data="filteredRules" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">

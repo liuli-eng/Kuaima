@@ -26,7 +26,7 @@
     
     <div class="topbar-right">
       <!-- 搜索 -->
-      <div class="search-box">
+      <!-- <div class="search-box">
         <i class="fas fa-search"></i>
         <el-input
           v-model="searchKeyword"
@@ -35,7 +35,7 @@
           class="search-input"
           clearable
         />
-      </div>
+      </div> -->
       
       <!-- 通知 -->
       <el-popover

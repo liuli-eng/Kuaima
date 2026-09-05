@@ -4,6 +4,10 @@ spring:
   profiles:
     # 切换环境：dev | test
     active: dev
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
 
 jwt:
   secret: suma-backend-jwt-secret-key-0123456789abcdef0123456789

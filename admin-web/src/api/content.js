@@ -24,3 +24,11 @@ export function auditCertPass(id) { return request.put(`/admin/certifications/${
 export function auditCertReject(id, reason) {
   return request.put(`/admin/certifications/${id}/reject`, null, { params: { reason } })
 }
+
+// ============ Message Template ============
+export function listMessageTemplates(params) { return request.get('/admin/message-templates', { params }) }
+export function getMessageTemplate(id) { return request.get(`/admin/message-templates/${id}`) }
+export function createMessageTemplate(data) { return request.post('/admin/message-templates', data) }
+export function updateMessageTemplate(id, data) { return request.put(`/admin/message-templates/${id}`, data) }
+export function toggleMessageTemplate(id) { return request.put(`/admin/message-templates/${id}/toggle`) }
+export function deleteMessageTemplate(id) { return request.delete(`/admin/message-templates/${id}`) }

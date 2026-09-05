@@ -26,7 +26,9 @@
           <el-switch v-model="form.active" active-text="生效中" inactive-text="未生效" />
         </el-form-item>
         <el-form-item label="生效时间">
-          <el-date-picker v-model="form.effectiveTime" type="date" placeholder="选择生效日期" />
+          <div class="date-picker-wrap" style="width: 120px;">
+            <el-date-picker v-model="form.effectiveTime" type="date" placeholder="选择生效日期" style="width: 100%;" />
+          </div>
         </el-form-item>
         <el-form-item label="规则内容" required>
           <el-input v-model="form.content" type="textarea" :rows="15" placeholder="请输入规则内容..." />

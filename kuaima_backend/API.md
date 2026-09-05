@@ -586,6 +586,30 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 >
 > 默认账号：`admin / admin123`（`DataInitializer` 初始化，角色 `SUPER_ADMIN`）。
 
+### 0. 文件上传 `/admin/upload`
+
+上传图片文件（如平台 Logo），返回可访问的静态资源 URL。
+
+| 接口 | 说明 |
+| --- | --- |
+| `POST /admin/upload` | 上传图片，form-data: `file`（MultipartFile） |
+
+**约束**：仅支持 image/* 格式，大小 ≤ 2MB。
+
+**响应示例**：
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "url": "/uploads/2026/09/05/a1b2c3d4.png",
+    "fileName": "a1b2c3d4.png"
+  }
+}
+```
+
+静态资源通过 `/uploads/**` 访问（无需鉴权），对应本地存储目录 `./uploads/`。
+
 ### 1. 管理员登录
 
 - **URL**：`POST /admin/auth/login`
@@ -805,6 +829,24 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 | `POST /admin/notices` | 新增 |
 | `PUT /admin/notices/{id}` | 更新（字段非空才更新） |
 | `DELETE /admin/notices/{id}` | 删除 |
+
+### 12A. 消息模板管理 `/admin/message-templates`
+
+`MessageTemplate` 字段：`id`、`name`、`event`（触发事件）、`scene`（触发场景，人类可读）、`channel`（发送渠道）、`content`（TEXT）、`status`（`enabled`/`disabled`）、`sendWay`（发送方式：即时/定时）、`sendTime`（发送时间：全天/工作时间）、`freqLimit`（频率限制：5/10/不限制）、`lastUsed`、`createTime`、`updateTime`。
+
+**event 可选值**：`order_success`（订单完成）、`order_cancel`（订单取消）、`register`（用户注册）、`realname_approved`（实名认证通过）、`realname_rejected`（实名认证拒绝）、`settlement`（结算到账）、`subsidy`（补贴发放）、`system`（系统通知）。
+
+**channel 可选值**：`inapp`（仅站内信）、`sms`（仅短信）、`both`（站内信+短信）。
+
+| 接口 | 说明 |
+| --- | --- |
+| `GET /admin/message-templates?status=&event=` | 列表（支持 status/event 过滤） |
+| `GET /admin/message-templates/{id}` | 详情 |
+| `POST /admin/message-templates` | 新增 |
+| `PUT /admin/message-templates/{id}` | 更新（字段非空才更新） |
+| `PUT /admin/message-templates/{id}/toggle` | 启用/禁用切换 |
+| `PUT /admin/message-templates/{id}/used` | 标记最近使用 |
+| `DELETE /admin/message-templates/{id}` | 删除 |
 
 ### 13. 规则管理 `/admin/rules`
 
@@ -1671,6 +1713,7 @@ WebSocket `MESSAGE` 类型消息会自动持久化到 `chat_message` 表，并�
 | 实体 | 表名 | 关键字段 |
 | --- | --- | --- |
 | `QuickReply` | `quick_reply` | `content`、`category`、`sortOrder`、`enabled` |
+| `MessageTemplate` | `message_template` | `name`、`event`、`scene`、`channel`、`content`、`status`（enabled/disabled）、`sendWay`、`sendTime`、`freqLimit`、`lastUsed` |
 
 > `ChatSession` 扩展：`agentId`（客服ID，默认 1）
 > `ChatMessage` 扩展：`fromType`（USER/AGENT）、`contentType`（TEXT/IMAGE）

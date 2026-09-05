@@ -31,6 +31,186 @@ html {
   --el-color-primary-dark-2: #E55A2B;
 }
 
+// ============ Element Plus 下拉框样式覆盖 — 选中/悬停橘黄主题 ============
+// el-select 下拉面板（Teleport 到 body，需全局样式）
+.el-select-dropdown__item {
+  &.selected {
+    color: var(--primary);
+    font-weight: 600;
+    background-color: var(--primary-light, #FFF8E6);
+
+    &::after {
+      color: var(--primary);
+    }
+  }
+
+  &.hover,
+  &:hover {
+    background-color: #FFF8E6;
+    color: var(--primary);
+  }
+}
+
+// el-select 聚焦边框
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--primary) inset;
+}
+
+// el-input 输入框聚焦/悬停边框
+.el-input__wrapper {
+  box-shadow: 0 0 0 1px var(--border) inset;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 0 0 1px var(--primary) inset;
+  }
+
+  &.is-focus {
+    box-shadow: 0 0 0 1px var(--primary) inset;
+  }
+
+  &.is-disabled {
+    box-shadow: 0 0 0 1px var(--border) inset;
+  }
+
+  &.is-error {
+    box-shadow: 0 0 0 1px var(--danger) inset;
+  }
+}
+
+// el-textarea 文本域聚焦/悬停边框
+.el-textarea__inner {
+  border-color: var(--border);
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: var(--primary);
+  }
+
+  &:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary) inset;
+    outline: none;
+  }
+}
+
+// el-input-number 数字输入框聚焦
+.el-input-number .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--primary) inset;
+}
+
+// el-date-picker 日期选择器触发器聚焦/悬停
+.el-date-editor.el-input,
+.el-date-editor.el-input__wrapper {
+  width: 100%;
+}
+
+.el-date-editor .el-input__wrapper:hover,
+.el-date-editor .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--primary) inset;
+}
+
+// el-date-picker daterange 类型触发器聚焦/悬停（使用 .el-range-editor + .is-active）
+.el-range-editor.el-input__wrapper {
+  box-shadow: 0 0 0 1px var(--border) inset;
+  transition: box-shadow 0.2s;
+
+  &:hover,
+  &.is-active {
+    box-shadow: 0 0 0 1px var(--primary) inset;
+  }
+}
+
+// el-date-picker 面板头部/操作按钮主题色
+.el-picker-panel__icon-btn:hover {
+  color: var(--primary);
+}
+
+.el-date-picker__header-label:hover {
+  color: var(--primary);
+}
+
+// el-date-picker 底部操作按钮
+.el-picker-panel__footer .el-button--text {
+  color: var(--primary);
+
+  &:hover {
+    color: var(--primary-dark);
+  }
+}
+
+// el-time-picker 时间选择器选中色
+.el-time-spinner__item.active:not(.disabled) {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+// el-select 选中值文字颜色
+.el-select__placeholder.is-transparent {
+  color: var(--text-muted);
+}
+
+// el-dropdown 下拉菜单选中/悬停
+.el-dropdown-menu__item:not(.is-disabled):hover {
+  background-color: #FFF8E6;
+  color: var(--primary);
+}
+
+// el-radio / el-checkbox 选中色
+.el-radio__input.is-checked .el-radio__inner,
+.el-checkbox__input.is-checked .el-checkbox__inner {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.el-radio__input.is-checked + .el-radio__label,
+.el-checkbox__input.is-checked + .el-checkbox__label {
+  color: var(--primary);
+}
+
+// el-date-picker 日期选中/悬停
+.el-date-table td.current:not(.disabled) .el-date-table-cell__text {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.el-date-table td.available:hover .el-date-table-cell__text {
+  background-color: #FFE8DC;
+}
+
+.el-date-table td.start-date .el-date-table-cell__text,
+.el-date-table td.end-date .el-date-table-cell__text {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.el-date-table td.in-range .el-date-table-cell {
+  background-color: #FFF0EB;
+}
+
+// el-pagination 分页激活页码
+.el-pagination .el-pager li.is-active {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.el-pagination .el-pager li:hover {
+  color: var(--primary);
+}
+
+// el-tabs 标签页激活态
+.el-tabs__item.is-active {
+  color: var(--primary);
+}
+
+.el-tabs__active-bar {
+  background-color: var(--primary);
+}
+
+.el-tabs__item:hover {
+  color: var(--primary-light);
+}
+
 // 重置样式
 *,
 *::before,
@@ -283,3 +463,65 @@ body {
 .text-muted { color: var(--text-muted); }
 .text-secondary { color: var(--text-secondary); }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+// ============ 按钮样式 — 与原型 admin.css 保持一致 ============
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+
+  &:hover { background: var(--primary-dark); }
+}
+
+.btn-secondary {
+  background: var(--bg-page);
+  color: var(--text-primary);
+
+  &:hover { background: #E5E7EB; }
+}
+
+.btn-outline {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+
+  &:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+
+  &:hover { background: #DC2626; }
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+.btn-lg {
+  padding: 12px 24px;
+  font-size: 15px;
+}
+
+.btn-block { width: 100%; }

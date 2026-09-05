@@ -59,9 +59,12 @@
           </div>
           <div style="margin-bottom:16px;">
             <label class="form-label">选择角色<span class="required">*</span></label>
-            <select class="form-input" v-model="roleValue" @change="onRoleChange(roleValue)">
+            <select class="form-input" v-model="roleValue" @change="onRoleChange(roleValue)" :disabled="isSuperAdminEdit">
               <option v-for="r in roleOptions" :key="r.v" :value="r.v">{{ r.label }}</option>
             </select>
+            <div v-if="isSuperAdminEdit" class="super-admin-notice">
+              <i class="fas fa-shield-alt"></i> 超级管理员角色和权限受系统保护，不可修改
+            </div>
           </div>
 
           <div style="margin-top:20px;">
@@ -70,14 +73,14 @@
               <div class="perm-module" v-for="m in modules" :key="m.key" :class="{ open: m.open }">
                 <div class="perm-module-header">
                   <div class="perm-module-info">
-                    <input type="checkbox" :checked="moduleAllChecked(m)" @change="toggleAllModule(m, $event.target.checked)" @click.stop>
+                    <input type="checkbox" :checked="moduleAllChecked(m)" @change="toggleAllModule(m, $event.target.checked)" @click.stop :disabled="isSuperAdminEdit">
                     <label @click="toggleModule(m)"><i :class="m.icon"></i> {{ m.name }}</label>
                   </div>
                   <i class="fas fa-chevron-right perm-expand" @click="toggleModule(m)"></i>
                 </div>
                 <div class="perm-module-body" v-show="m.open">
                   <label class="perm-item" v-for="item in m.items" :key="item.key">
-                    <input type="checkbox" v-model="item.checked"> {{ item.label }}
+                    <input type="checkbox" v-model="item.checked" :disabled="isSuperAdminEdit"> {{ item.label }}
                   </label>
                 </div>
               </div>
@@ -99,7 +102,7 @@
           <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
             <div class="status-row">
               <span class="status-row-label">账号状态</span>
-              <div class="toggle-switch" :class="{ active: form.status === '启用' }" @click="toggleStatus"></div>
+              <div class="toggle-switch" :class="{ active: form.status === '启用', disabled: isSuperAdminEdit }" @click="toggleStatus"></div>
             </div>
             <div class="status-row">
               <span class="status-row-label">允许登录</span>
@@ -176,6 +179,8 @@ const roleOptions = [
 const BACKEND_ROLE = { super: 'SUPER_ADMIN', admin: 'ADMIN', audit: 'EDITOR', viewer: 'VIEWER' }
 const ROLE_FROM_BACKEND = Object.fromEntries(Object.entries(BACKEND_ROLE).map(([k, v]) => [v, k]))
 const roleValue = ref('admin')
+// 超级管理员保护：编辑超级管理员时角色和权限不可修改
+const isSuperAdminEdit = computed(() => isEdit.value && roleValue.value === 'super')
 
 // ====== 权限树 ======
 const modules = reactive([
@@ -264,10 +269,18 @@ const fmtTime = (v) => {
   if (s.includes('T')) return s.replace('T', ' ').slice(0, 16)
   return s.length > 16 ? s.slice(0, s.lastIndexOf(':')) : s
 }
+// 统一返回策略：始终返回系统设置的权限管理标签页
+const navigateBack = () => {
+  router.push('/admin/settings?tab=permission')
+}
 const goBack = () => {
-  router.push('/admin/admin-user')
+  navigateBack()
 }
 const toggleStatus = () => {
+  if (isSuperAdminEdit.value) {
+    ElMessage.warning('超级管理员账号不可禁用')
+    return
+  }
   form.status = form.status === '启用' ? '禁用' : '启用'
 }
 
@@ -346,9 +359,12 @@ const handleSave = async () => {
       phone: form.phone,
       email: form.email || null,
       remark: form.remark || null,
-      role: BACKEND_ROLE[roleValue.value] || 'ADMIN',
-      status: form.status,
-      permissions: JSON.stringify(collectPermissions())
+      status: form.status
+    }
+    // 超级管理员角色和权限受保护，不提交这两个字段
+    if (!isSuperAdminEdit.value) {
+      payload.role = BACKEND_ROLE[roleValue.value] || 'ADMIN'
+      payload.permissions = JSON.stringify(collectPermissions())
     }
     if (isEdit.value) {
       if (form.password) payload.password = form.password
@@ -360,7 +376,7 @@ const handleSave = async () => {
       await createAdminUser(payload)
       ElMessage.success('管理员创建成功！')
     }
-    router.push('/admin/admin-user')
+    navigateBack()
   } catch (e) {
     console.warn('[AdminUserForm] 保存失败:', e)
     // 具体错误信息已由请求拦截器提示
@@ -374,7 +390,7 @@ const handleDelete = async () => {
     await ElMessageBox.confirm('确定要删除该管理员吗？此操作不可恢复。', '删除确认', { type: 'warning' })
     await deleteAdminUser(route.query.id)
     ElMessage.success('管理员已删除')
-    router.push('/admin/admin-user')
+    navigateBack()
   } catch (e) {
     if (e !== 'cancel') console.warn('[AdminUserForm] 删除失败:', e)
   }
@@ -650,46 +666,22 @@ onMounted(() => {
 .toggle-switch.active::after {
   left: 22px;
 }
+.toggle-switch.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .action-buttons {
   display: flex;
   gap: 10px;
   margin-top: 20px;
 }
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 9px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s;
-  white-space: nowrap;
-  font-family: inherit;
-}
+/* 全局 .btn 样式已在 index.scss 中定义，此处仅保留表单底部按钮布局需求 */
 .btn-primary {
-  background: var(--primary);
-  color: #fff;
   flex: 1;
-}
-.btn-primary:hover {
-  background: var(--primary-dark);
 }
 .btn-primary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
-}
-.btn-outline {
-  background: #fff;
-  color: var(--text-secondary);
-  border-color: var(--border);
-}
-.btn-outline:hover {
-  color: var(--primary);
-  border-color: var(--primary);
 }
 .btn-danger {
   background: #fff;
@@ -708,5 +700,16 @@ onMounted(() => {
   .sidebar-card {
     position: static;
   }
+}
+.super-admin-notice {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #FEF3C7;
+  color: #D97706;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 </style>

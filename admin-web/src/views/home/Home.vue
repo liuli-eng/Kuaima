@@ -142,9 +142,9 @@ const cards = [
   { id: 'settlement', group: 'order', title: '结算管理', desc: '结算记录、明细查看', icon: 'fas fa-coins', path: '/settlement' },
   { id: 'certification', group: 'content', title: '认证审核', desc: '实名认证、企业认证', icon: 'fas fa-id-card', path: '/certification' },
   { id: 'banners', group: 'content', title: 'Banner管理', desc: '首页轮播、活动推广', icon: 'fas fa-image', path: '/banners' },
-  { id: 'notices', group: 'content', title: '公告管理', desc: '系统公告、消息推送', icon: 'fas fa-bullhorn', path: '/notices' },
+  { id: 'notices', group: 'content', title: '公告管理', desc: '人工创建发布的平台公告', icon: 'fas fa-bullhorn', path: '/notices' },
   { id: 'rules', group: 'content', title: '规则管理', desc: '公示/信用/收费/交易/飞单', icon: 'fas fa-book', path: '/rules' },
-  { id: 'messages', group: 'message', title: '消息管理', desc: '消息模板、推送记录', icon: 'fas fa-envelope', path: '/messages' },
+  { id: 'messages', group: 'message', title: '消息管理', desc: '业务触发的系统消息模板', icon: 'fas fa-envelope', path: '/messages' },
   { id: 'service', group: 'message', title: '客服管理', desc: '在线客服、会话记录', icon: 'fas fa-headset', path: '/service' },
   { id: 'settings', group: 'system', title: '系统设置', desc: '账号权限、平台规则', icon: 'fas fa-cog', path: '/settings' },
   { id: 'logs', group: 'system', title: '操作日志', desc: '操作记录、日志查询', icon: 'fas fa-file-alt', path: '/logs' }

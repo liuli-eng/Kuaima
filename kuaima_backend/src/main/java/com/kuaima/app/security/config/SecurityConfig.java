@@ -49,6 +49,7 @@ public class SecurityConfig {
                 .requestMatchers("/auth/wechat/login", "/admin/auth/login").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/service/faqs").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {

@@ -62,13 +62,28 @@ public class AdminUserCrudController {
     @PutMapping("/{id}")
     public Result<AdminUser> update(@PathVariable Long id, @RequestBody AdminUser patch) {
         AdminUser existing = repo.findById(id).orElseThrow();
+        boolean isSuperAdmin = "SUPER_ADMIN".equals(existing.getRole());
+
+        // 超级管理员保护：不允许修改角色、权限、状态
+        if (isSuperAdmin) {
+            if (patch.getRole() != null && !patch.getRole().equals(existing.getRole())) {
+                return Result.error(403, "超级管理员角色不可修改");
+            }
+            if (patch.getPermissions() != null && !patch.getPermissions().equals(existing.getPermissions())) {
+                return Result.error(403, "超级管理员权限不可修改");
+            }
+            if (patch.getStatus() != null && !patch.getStatus().equals(existing.getStatus())) {
+                return Result.error(403, "超级管理员账号不可禁用");
+            }
+        }
+
         if (patch.getName() != null) existing.setName(patch.getName());
-        if (patch.getRole() != null) existing.setRole(patch.getRole());
+        if (patch.getRole() != null && !isSuperAdmin) existing.setRole(patch.getRole());
         if (patch.getDept() != null) existing.setDept(patch.getDept());
         if (patch.getPhone() != null) existing.setPhone(patch.getPhone());
         if (patch.getEmail() != null) existing.setEmail(patch.getEmail());
         if (patch.getRemark() != null) existing.setRemark(patch.getRemark());
-        if (patch.getPermissions() != null) existing.setPermissions(patch.getPermissions());
+        if (patch.getPermissions() != null && !isSuperAdmin) existing.setPermissions(patch.getPermissions());
         if (patch.getStatus() != null) existing.setStatus(patch.getStatus());
         if (patch.getPassword() != null && !patch.getPassword().isBlank()) {
             existing.setPassword(passwordEncoder.encode(patch.getPassword()));
@@ -89,6 +104,10 @@ public class AdminUserCrudController {
 
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
+        AdminUser existing = repo.findById(id).orElseThrow();
+        if ("SUPER_ADMIN".equals(existing.getRole())) {
+            return Result.error(403, "超级管理员账号不可删除");
+        }
         repo.deleteById(id);
         return Result.success();
     }
