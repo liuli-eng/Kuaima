@@ -143,10 +143,10 @@ export default {
   data() {
     return {
       statusBarHeight: 0,
-      jobTitle: "电子厂普工",
+      jobTitle: "",
       jobDesc: "",
-      benefits: ["室内工作"],
-      exp: ["欢迎新手"],
+      benefits: [],
+      exp: [],
       requirements: [],
       benefitTags: [
         "包工作餐",

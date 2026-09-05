@@ -60,7 +60,17 @@ const visibleJobs = computed(() => {
     ? jobs.value.filter((item) => item.name.includes(keyword))
     : jobs.value.filter((item) => item.hot !== false).slice(0, 8);
 });
-onMounted(loadJobs);
+onMounted(() => {
+  // 从“选择工种”进入代表开始新建岗位，不能沿用上次编辑的草稿缓存。
+  [
+    "taskContent",
+    "genderAgeSelection",
+    "workLocationSelection",
+    "workTimeSelection",
+    "recruitSettings",
+  ].forEach((key) => uni.removeStorageSync(key));
+  loadJobs();
+});
 async function loadJobs() {
   loading.value = true;
   loadError.value = false;

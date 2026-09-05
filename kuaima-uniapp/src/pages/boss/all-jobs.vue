@@ -2,8 +2,15 @@
   <view class="container">
     <view class="page-bg">
       <!-- 头部 -->
-      <view class="modal-header" :style="{ paddingTop: `${statusBarHeight + 20}px` }">
-        <view class="modal-close" :style="{ top: `${statusBarHeight + 20}px` }" @click="goBack">
+      <view
+        class="modal-header"
+        :style="{ paddingTop: `${statusBarHeight + 14}px` }"
+      >
+        <view
+          class="modal-close"
+          :style="{ top: `${statusBarHeight + 14}px` }"
+          @click="goBack"
+        >
           <text class="close-icon">×</text>
         </view>
         <text class="modal-title">更多工种</text>
@@ -66,6 +73,7 @@ export default {
     return {
       statusBarHeight: 0,
       safeBottom: 0,
+      orderId: "",
       currentTab: 'industry',
       selectedIndustry: '',
       selectedTypes: [],
@@ -99,12 +107,23 @@ export default {
       ]
     }
   },
-  onLoad() {
+  onLoad(options = {}) {
     try {
       const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
       this.statusBarHeight = Number(info.statusBarHeight || 0)
       this.safeBottom = Number(info.safeAreaInsets?.bottom || 0)
+      this.orderId = options.id || ""
     } catch (_) {}
+    if (!this.orderId) {
+      // 从新建流程进入时清理上次编辑留下的跨页缓存；编辑已有岗位则保留回填数据。
+      [
+        "taskContent",
+        "genderAgeSelection",
+        "workLocationSelection",
+        "workTimeSelection",
+        "recruitSettings",
+      ].forEach((key) => uni.removeStorageSync(key));
+    }
   },
   computed: {
     canNext() {
@@ -175,9 +194,12 @@ export default {
           jobs: selectedJobNames
         }
         uni.$emit('jobsSelected', data)
+        const idQuery = this.orderId
+          ? `&id=${encodeURIComponent(this.orderId)}`
+          : "";
         uni.navigateTo({
-          url: `/pages/boss/publish-info?job=${encodeURIComponent(selectedJobNames.join('、'))}`
-        })
+          url: `/pages/boss/publish-info?job=${encodeURIComponent(selectedJobNames.join('、'))}${idQuery}`,
+        });
       }
     }
   }
@@ -204,14 +226,18 @@ export default {
 }
 
 .modal-header {
-  text-align: center;
-  padding: 40rpx 32rpx 0;
+  display: flex;
+  align-items: baseline;
+  padding: 28rpx 96rpx 0 32rpx;
+  min-height: 72rpx;
+  box-sizing: content-box;
   position: relative;
+  white-space: nowrap;
 }
 
 .modal-close {
   position: absolute;
-  right: 32rpx;
+  right: 24rpx;
   top: 40rpx;
   width: 64rpx;
   height: 64rpx;
@@ -231,12 +257,15 @@ export default {
   font-size: 36rpx;
   font-weight: 700;
   color: #333;
+  flex-shrink: 0;
 }
 
 .modal-desc {
   font-size: 26rpx;
   color: #999;
-  margin-top: 8rpx;
+  margin-left: 12rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tabs {
