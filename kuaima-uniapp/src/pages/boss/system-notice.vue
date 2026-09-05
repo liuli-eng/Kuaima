@@ -22,36 +22,82 @@
     </view>
 
     <scroll-view scroll-y class="scroll-area">
-      <view class="notice-item" v-for="(notice, index) in notices" :key="index">
+      <view class="notice-item" v-for="notice in notices" :key="notice.id">
         <text class="notice-time">{{ notice.time }}</text>
         <text class="notice-content">
-          <text class="notice-tag" :class="notice.tagClass">{{ notice.tag }}</text>
+          <text class="notice-tag" :class="notice.tagClass">{{
+            notice.tag
+          }}</text>
           {{ notice.content }}
         </text>
       </view>
+      <view v-if="loading" class="empty-state">正在加载通知...</view>
+      <view v-else-if="!notices.length" class="empty-state">暂无系统通知</view>
     </scroll-view>
   </view>
 </template>
 
 <script>
+import { listSystemMessages } from "@/api/backend";
+
 export default {
   data() {
     return {
-      notices: [
-        { time: '2026-08-21 15:30', tag: '系统', tagClass: 'tag-system', content: '您的企业认证审核已通过，恭喜您获得企业认证标识，将获得更多曝光机会！' },
-        { time: '2026-08-20 10:15', tag: '结算', tagClass: 'tag-success', content: '您发布的「电商分拣打包工」岗位工资已完成结算，共计¥1,800元已到账。' },
-        { time: '2026-08-19 09:00', tag: '提醒', tagClass: 'tag-warning', content: '您发布的「餐饮服务员」岗位已有5位零工报名，请及时处理报名申请。' },
-        { time: '2026-08-18 14:20', tag: '系统', tagClass: 'tag-system', content: '平台升级通知：8月25日凌晨2点将进行系统维护，预计维护1小时，期间无法发布招聘。' },
-        { time: '2026-08-17 11:00', tag: '活动', tagClass: 'tag-success', content: '邀请好友注册可获得50元奖励，多邀多得，上不封顶！' }
-      ]
-    }
+      loading: false,
+      notices: [],
+    };
+  },
+  onLoad() {
+    this.loadNotices();
   },
   methods: {
+    async loadNotices() {
+      this.loading = true;
+      try {
+        const result = await listSystemMessages(
+          uni.getStorageSync("userId") || "2001",
+        );
+        const rows = Array.isArray(result)
+          ? result
+          : result?.records || result?.content || [];
+        this.notices = rows.map((item) => {
+          const type = item.type || item.category || "SYSTEM_NOTICE";
+          return {
+            ...item,
+            time: item.createTime || item.sendTime || item.time || "",
+            content: item.content || item.description || "",
+            tag: this.tagText(type),
+            tagClass: this.tagClass(type),
+          };
+        });
+      } catch (error) {
+        this.notices = [];
+        uni.showToast({
+          title: error.message || "系统通知加载失败",
+          icon: "none",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+    tagText(type) {
+      if (String(type).includes("SETTLE")) return "结算";
+      if (String(type).includes("APPLY")) return "报名";
+      if (String(type).includes("ACTIVITY")) return "活动";
+      return "系统";
+    },
+    tagClass(type) {
+      if (String(type).includes("SETTLE") || String(type).includes("ACTIVITY"))
+        return "tag-success";
+      if (String(type).includes("APPLY") || String(type).includes("REMIND"))
+        return "tag-warning";
+      return "tag-system";
+    },
     goBack() {
-      uni.navigateBack()
-    }
-  }
-}
+      uni.navigateBack();
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -121,7 +167,7 @@ export default {
   margin: 12px 16px;
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .notice-time {
@@ -145,7 +191,22 @@ export default {
   margin-right: 6px;
 }
 
-.tag-system { background: #FFF3ED; color: #FF6B35; }
-.tag-warning { background: #FFF8E6; color: #FA8C16; }
-.tag-success { background: #F6FFED; color: #52C41A; }
+.tag-system {
+  background: #fff3ed;
+  color: #ff6b35;
+}
+.tag-warning {
+  background: #fff8e6;
+  color: #fa8c16;
+}
+.tag-success {
+  background: #f6ffed;
+  color: #52c41a;
+}
+.empty-state {
+  padding: 200rpx 0;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}
 </style>

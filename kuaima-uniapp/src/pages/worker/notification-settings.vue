@@ -20,8 +20,13 @@
   >
 </template>
 <script setup>
-import { reactive } from "vue";
+import { onMounted, reactive } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
+import {
+  getNotificationSettings,
+  updateNotificationSettings,
+} from "@/api/backend";
+const userId = uni.getStorageSync("userId") || "2001";
 const settings = reactive([
   {
     key: "order",
@@ -42,10 +47,32 @@ const settings = reactive([
     enabled: false,
   },
 ]);
-function save() {
+async function save() {
   uni.setStorageSync("workerNotificationSettings", settings);
+  try {
+    await updateNotificationSettings(userId, {
+      orderNotif: settings[0].enabled,
+      activityNotif: settings[2].enabled,
+      systemNotif: settings[0].enabled,
+      sound: settings[1].enabled,
+      vibrate: settings[1].enabled,
+    });
+  } catch (error) {
+    uni.showToast({ title: error.message || "通知设置保存失败", icon: "none" });
+    return;
+  }
   uni.showToast({ title: "设置已保存", icon: "none" });
 }
+onMounted(async () => {
+  try {
+    const data = await getNotificationSettings(userId);
+    if (data && typeof data === "object") {
+      settings[0].enabled = data.orderNotif !== false;
+      settings[1].enabled = data.sound !== false;
+      settings[2].enabled = data.activityNotif === true;
+    }
+  } catch (_) {}
+});
 </script>
 <style scoped>
 .page {

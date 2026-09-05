@@ -1,25 +1,29 @@
 <template>
-  <view class="page"><view class="mask" @click="close" /><view class="panel"
-    ><view class="header"
-      ><text>筛选</text><text class="close" @click="close">×</text></view
-    ><scroll-view scroll-y class="content"
-      ><view v-for="group in groups" :key="group.key" class="section"
-        ><text class="title">{{ group.title }}</text
-        ><view class="options"
-          ><text
-            v-for="option in group.options"
-            :key="option"
-            class="option"
-            :class="{ active: form[group.key] === option }"
-            @click="form[group.key] = option"
-            >{{ option }}</text
+  <view class="page"
+    ><view class="mask" @click="close" /><view class="panel"
+      ><view class="header"
+        ><text>筛选</text><text class="close" @click="close">×</text></view
+      ><scroll-view scroll-y class="content"
+        ><view v-for="group in groups" :key="group.key" class="section"
+          ><text class="title">{{ group.title }}</text
+          ><view class="options"
+            ><text
+              v-for="option in group.options"
+              :key="option"
+              class="option"
+              :class="{ active: form[group.key] === option }"
+              @click="form[group.key] = option"
+              >{{ option }}</text
+            ></view
           ></view
+        ></scroll-view
+      ><view class="bottom-action"
+        ><view class="actions"
+          ><button class="reset" @click="reset">重置</button
+          ><button class="confirm" @click="confirm">确定</button></view
         ></view
-      ></scroll-view
-    ><view class="bottom-action"><view class="actions"
-        ><button class="reset" @click="reset">重置</button
-        ><button class="confirm" @click="confirm">确定</button></view
-      ></view></view></view
+      ></view
+    ></view
   >
 </template>
 <script setup>

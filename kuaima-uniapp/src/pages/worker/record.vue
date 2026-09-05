@@ -16,9 +16,10 @@
   >
 </template>
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import JobCard from "@/components/JobCard.vue";
+import { listBrowseHistory } from "@/api/backend";
 const records = ref([
   {
     id: "r1",
@@ -31,6 +32,16 @@ const records = ref([
     duration: 8,
   },
 ]);
+onMounted(async () => {
+  try {
+    const result = await listBrowseHistory(
+      uni.getStorageSync("userId") || "2001",
+    );
+    const rows = Array.isArray(result) ? result : result?.records || [];
+    if (rows.length)
+      records.value = rows.map((item) => item.order || item.job || item);
+  } catch (_) {}
+});
 function open(j) {
   uni.navigateTo({ url: `/pages/worker/job-detail?id=${j.id}` });
 }

@@ -15,13 +15,31 @@
   >
 </template>
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
+import { claimCoupon, listCoupons } from "@/api/backend";
 const coupons = ref([
   { id: 1, amount: "10", title: "报名奖励券 · 满100可用" },
   { id: 2, amount: "5", title: "新用户奖励券" },
 ]);
-function use() {
+onMounted(async () => {
+  try {
+    const result = await listCoupons(uni.getStorageSync("userId") || "2001");
+    const rows = Array.isArray(result) ? result : result?.records || [];
+    if (rows.length) coupons.value = rows;
+  } catch (_) {}
+});
+async function use(item) {
+  if (item?.id) {
+    try {
+      await claimCoupon(item.id, uni.getStorageSync("userId") || "2001");
+    } catch (error) {
+      return uni.showToast({
+        title: error.message || "领取失败",
+        icon: "none",
+      });
+    }
+  }
   uni.reLaunch({ url: "/pages/worker/home" });
 }
 </script>

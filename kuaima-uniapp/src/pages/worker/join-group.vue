@@ -9,13 +9,24 @@
   />
 </template>
 <script setup>
+import { onMounted, ref } from "vue";
 import WorkerFeaturePage from "@/components/WorkerFeaturePage.vue";
-const items = [
-  {
-    title: "快马日结找活群",
-    desc: "扫码添加找活管家，邀请你进群",
-    icon: "▦",
-    arrow: false,
-  },
-];
+import { listSocialGroups } from "@/api/backend";
+const items = ref([]);
+onMounted(async () => {
+  try {
+    const result = await listSocialGroups();
+    const rows = Array.isArray(result)
+      ? result
+      : result?.records || result?.content || [];
+    items.value = rows.map((item) => ({
+      title: item.name,
+      desc: `${item.category || "找活交流"}${item.memberCount ? ` · ${item.memberCount}人` : ""}`,
+      icon: item.qrcodeUrl || "▦",
+      arrow: false,
+    }));
+  } catch (error) {
+    uni.showToast({ title: error.message || "社群加载失败", icon: "none" });
+  }
+});
 </script>

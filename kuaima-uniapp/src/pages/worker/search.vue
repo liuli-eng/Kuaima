@@ -52,7 +52,12 @@ async function doSearch() {
       ...item,
       title: item.orderTitle || item.title || item.postion,
       unitPrice: item.unitPrice ?? item.wage ?? item.salary,
-      salaryType: item.type === "month" ? "MONTHLY" : item.type === "heldBack" ? "PRESS" : "DAY",
+      salaryType:
+        item.type === "month"
+          ? "MONTHLY"
+          : item.type === "heldBack"
+            ? "PRESS"
+            : "DAY",
       address: item.address || item.workAddress || "",
     }));
   } catch (_) {

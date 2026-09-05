@@ -4,29 +4,42 @@
     <view class="list">
       <view
         v-for="item in rules"
-        :key="item.title"
+        :key="item.id"
         class="row"
         @click="open(item)"
       >
-        <text :class="['icon', item.color]">{{ item.icon }}</text
+        <text :class="['icon', item.color || 'orange']">{{
+          item.icon || "规"
+        }}</text
         ><text class="title">{{ item.title }}</text
         ><text class="arrow">›</text>
       </view>
     </view>
+    <view v-if="!loading && !rules.length" class="empty">暂无平台规则</view>
   </view>
 </template>
 <script setup>
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-const rules = [
-  { title: "规则公示", icon: "公", color: "orange" },
-  { title: "信用分规则", icon: "信", color: "yellow" },
-  { title: "收费规则", icon: "¥", color: "green" },
-  { title: "交易规则", icon: "易", color: "blue" },
-  { title: "飞单认定与处理规则", icon: "禁", color: "red" },
-];
+import { listRules } from "@/api/backend";
+const rules = ref([]);
+const loading = ref(false);
+onMounted(async () => {
+  loading.value = true;
+  try {
+    const result = await listRules();
+    rules.value = Array.isArray(result)
+      ? result
+      : result?.records || result?.content || [];
+  } catch (error) {
+    uni.showToast({ title: error.message || "规则加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
+  }
+});
 function open(item) {
   uni.navigateTo({
-    url: `/pages/worker/rule-detail?title=${encodeURIComponent(item.title)}`,
+    url: `/pages/worker/rule-detail?id=${item.id}&title=${encodeURIComponent(item.title || "规则详情")}`,
   });
 }
 </script>
@@ -91,5 +104,11 @@ function open(item) {
 .arrow {
   color: #aaa;
   font-size: 34rpx;
+}
+.empty {
+  padding: 220rpx 0;
+  text-align: center;
+  color: #aaa;
+  font-size: 25rpx;
 }
 </style>

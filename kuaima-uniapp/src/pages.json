@@ -237,55 +237,176 @@
       "path": "pages/boss/home",
       "style": { "navigationStyle": "custom" }
     },
-    { "path": "pages/boss/add-address", "style": { "navigationStyle": "custom" } },
+    {
+      "path": "pages/boss/add-address",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/all-jobs", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/applicant-info", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/backup-phone", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/blacklist", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/boss-employer", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/boss-filter", "style": { "navigationStyle": "custom" } },
+    {
+      "path": "pages/boss/applicant-info",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/backup-phone",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/blacklist",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/boss-employer",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/boss-filter",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/contract", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/creditor-score", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/download-app", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/enterprise-cert", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/enterprise-cert-form", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/expense-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/gender-age", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/insurance", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/invite-code", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/invite-friend", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/invite-worker", "style": { "navigationStyle": "custom" } },
+    {
+      "path": "pages/boss/creditor-score",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/download-app",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/enterprise-cert",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/enterprise-cert-form",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/expense-detail",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/gender-age",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/insurance",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/invite-code",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/invite-friend",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/invite-worker",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/location", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/message", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/missed-call", "style": { "navigationStyle": "custom" } },
+    {
+      "path": "pages/boss/missed-call",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/order", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/payment-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/personal-info", "style": { "navigationStyle": "custom" } },
+    {
+      "path": "pages/boss/order-detail",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/payment-detail",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/personal-info",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/points", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/profile", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/publish", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/publish-info", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/publish-success", "style": { "navigationStyle": "custom" } },
+    {
+      "path": "pages/boss/publish-info",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/publish-success",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/realname", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/recruit-address", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/recruit-demand", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/recruit-manager", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/recruit-settings", "style": { "navigationStyle": "custom" } },
+    {
+      "path": "pages/boss/recruit-address",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/recruit-demand",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/recruit-manager",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/recruit-settings",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/reward", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/schedule-stats", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/search-worker", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/select-job", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/select-work-time", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/service-chat", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/settle-confirm", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/settlement", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/signup-notice", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/sub-account", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/suspend-settle", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/switch-account", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/system-notice", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/talent-list", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/task-content", "style": { "navigationStyle": "custom" } },
+    {
+      "path": "pages/boss/schedule-stats",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/search-worker",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/select-job",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/select-work-time",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/service-chat",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/settle-confirm",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/settlement",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/signup-notice",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/sub-account",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/suspend-settle",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/switch-account",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/system-notice",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/talent-list",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/boss/task-content",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/voucher", "style": { "navigationStyle": "custom" } }
   ],
   "globalStyle": {

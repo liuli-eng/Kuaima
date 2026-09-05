@@ -8,14 +8,17 @@
       <view class="questions">
         <view
           v-for="item in questions"
-          :key="item"
+          :key="item.id"
           class="question"
           @click="openFaq(item)"
         >
-          <text>{{ item }}</text
+          <text>{{ item.question }}</text
           ><text class="arrow">›</text>
         </view>
       </view>
+      <view v-if="!loading && !questions.length" class="empty"
+        >暂无常见问题</view
+      >
       <view class="contact">
         <text>以上内容未能解决您的问题？</text>
         <button @click="uni.navigateTo({ url: '/pages/worker/service-chat' })">
@@ -27,17 +30,27 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-const questions = [
-  "老板还没有结算报酬",
-  "这个订单有事去不了/不小心取消",
-  "到达地方联系不上老板",
-  "我申诉了，多久会处理？",
-  "订单有没有固定的刷新时间",
-];
-function openFaq(title) {
+import { listFaq } from "@/api/backend";
+const loading = ref(false);
+const questions = ref([]);
+onMounted(async () => {
+  loading.value = true;
+  try {
+    const result = await listFaq();
+    questions.value = Array.isArray(result)
+      ? result
+      : result?.records || result?.content || [];
+  } catch (error) {
+    uni.showToast({ title: error.message || "常见问题加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
+  }
+});
+function openFaq(item) {
   uni.navigateTo({
-    url: `/pages/worker/faq-detail?title=${encodeURIComponent(title)}`,
+    url: `/pages/worker/faq-detail?question=${encodeURIComponent(item.question || "")}&answer=${encodeURIComponent(item.answer || "")}`,
   });
 }
 </script>
@@ -93,5 +106,11 @@ function openFaq(title) {
   background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: #fff;
   font-size: 28rpx;
+}
+.empty {
+  padding: 100rpx 0;
+  text-align: center;
+  color: #aaa;
+  font-size: 24rpx;
 }
 </style>

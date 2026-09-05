@@ -60,18 +60,18 @@
       <!-- 工作日期 -->
       <view class="date-section">
         <text class="date-section-title">工作日期</text>
-        <view class="date-options">
+        <scroll-view scroll-x class="date-options">
           <view
             class="date-chip"
             :class="{ selected: date.selected }"
             v-for="(date, index) in dates"
-            :key="index"
+            :key="date.value"
             @click="toggleDate(index)"
           >
             <text class="weekday">{{ date.weekday }}</text>
             <text class="date">{{ date.date }}</text>
           </view>
-        </view>
+        </scroll-view>
       </view>
 
       <!-- 工作时间和地点 -->
@@ -114,6 +114,37 @@
 <script>
 import { getOrder } from "@/api/backend";
 
+function buildDateOptions() {
+  const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+  const result = [];
+  const today = new Date();
+  const currentWeek = weekStart(today).getTime();
+  for (let index = 0; index < 7; index += 1) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + index);
+    const weekLabel = `${weekStart(date).getTime() === currentWeek ? "本周" : "下周"}${weekdays[date.getDay()]}`;
+    result.push({
+      value: formatLocalDate(date),
+      weekday: weekLabel,
+      date: `${date.getMonth() + 1}月${date.getDate()}日`,
+      selected: index < 2,
+    });
+  }
+  return result;
+}
+
+function weekStart(value) {
+  const date = new Date(value);
+  const weekday = date.getDay() || 7;
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - weekday + 1);
+  return date;
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export default {
   data() {
     return {
@@ -127,11 +158,7 @@ export default {
       jobName: "普工、焊锡工",
       publishType: "",
       orderId: "",
-      dates: [
-        { weekday: "本周五", date: "8月21日", selected: true },
-        { weekday: "明周六", date: "8月22日", selected: true },
-        { weekday: "后周日", date: "8月23日", selected: false },
-      ],
+      dates: buildDateOptions(),
     };
   },
   onLoad(options) {
@@ -154,6 +181,8 @@ export default {
     if (savedWorkLocation) this.applyWorkLocation(savedWorkLocation);
     const savedWorkTime = uni.getStorageSync("workTimeSelection");
     if (savedWorkTime) this.applyWorkTime(savedWorkTime);
+    if (savedWorkTime?.selectedDates?.length)
+      this.applySelectedDates(savedWorkTime.selectedDates);
     if (options?.job) {
       this.jobName = decodeURIComponent(options.job);
       this.jobValue = this.jobName;
@@ -180,6 +209,8 @@ export default {
     if (savedWorkLocation) this.applyWorkLocation(savedWorkLocation);
     const savedWorkTime = uni.getStorageSync("workTimeSelection");
     if (savedWorkTime) this.applyWorkTime(savedWorkTime);
+    if (savedWorkTime?.selectedDates?.length)
+      this.applySelectedDates(savedWorkTime.selectedDates);
   },
   methods: {
     async loadOrder(id) {
@@ -192,6 +223,8 @@ export default {
         this.taskDetail = detail.orderContent || "";
         this.workLocationValue = detail.address || "";
         this.workTimeValue = formatWorkTime(detail.startTime, detail.endTime);
+        const orderDate = String(detail.startTime || "").slice(0, 10);
+        if (orderDate) this.applySelectedDates([orderDate]);
         this.publishType = detail.type || this.publishType;
         if (detail.orderContent) {
           uni.setStorageSync("taskContent", {
@@ -242,9 +275,25 @@ export default {
     },
     applyWorkTime(data = {}) {
       if (data.display) this.workTimeValue = data.display;
+      if (Array.isArray(data.selectedDates))
+        this.applySelectedDates(data.selectedDates);
+    },
+    applySelectedDates(values = []) {
+      const selected = new Set(values.map(String));
+      this.dates.forEach((item) => {
+        item.selected =
+          selected.has(String(item.value)) || selected.has(String(item.date));
+      });
     },
     toggleDate(index) {
       this.dates[index].selected = !this.dates[index].selected;
+      const workTime = uni.getStorageSync("workTimeSelection") || {};
+      const selectedDates = this.dates
+        .filter((item) => item.selected)
+        .map((item) => item.value);
+      const data = { ...workTime, selectedDates };
+      uni.setStorageSync("workTimeSelection", data);
+      uni.$emit("workTimeSelected", data);
     },
     nextStep() {
       if (!this.workContent) {
@@ -424,10 +473,13 @@ function formatWorkTime(start, end) {
 .date-options {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  width: 100%;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .date-chip {
+  display: inline-block;
   padding: 8px 12px;
   background: #f5f5f5;
   border-radius: 8px;
@@ -435,6 +487,7 @@ function formatWorkTime(start, end) {
   font-size: 12px;
   color: #333;
   min-width: 70px;
+  margin-right: 8px;
 }
 
 .date-chip.selected {

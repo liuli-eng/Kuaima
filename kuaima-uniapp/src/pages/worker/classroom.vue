@@ -11,11 +11,11 @@
           activeColor="#ff6b35"
           backgroundColor="#ffffff66"
           stroke-width="8" /></view
-      ><view class="task-card"
+      ><view v-if="tasks.length" class="task-card"
         ><view class="task-header"
           ><text class="task-badge">新人任务</text
           ><text class="task-title">完成任务，获取接单资格</text></view
-        ><view v-for="task in tasks" :key="task.name" class="task-row"
+        ><view v-for="task in tasks" :key="task.id" class="task-row"
           ><view class="task-name"
             ><text class="task-icon">{{ task.icon }}</text
             ><text>{{ task.name }}</text></view
@@ -26,87 +26,76 @@
       ><view class="section-heading">赚钱接单攻略</view
       ><view
         v-for="item in courses"
-        :key="item.key"
+        :key="item.id"
         class="card"
         @click="open(item)"
-        ><view class="icon">{{ item.icon }}</view
+        ><view class="icon">{{ item.icon || "🎬" }}</view
         ><view class="main"
-          ><text class="name">{{ item.name }}</text
-          ><text class="desc">{{ item.desc }}</text
+          ><text class="name">{{ item.title }}</text
+          ><text class="desc">{{
+            item.intro || item.category || "课程学习"
+          }}</text
           ><text class="state"
             >{{ item.done ? "已完成" : "去学习" }} ›</text
           ></view
         ></view
-      ></scroll-view
+      ><view v-if="!loading && !courses.length" class="empty">暂无学习课程</view
+      ><view v-if="loading" class="empty">加载中...</view></scroll-view
     ></view
   >
 </template>
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-const courses = ref([
-  {
-    key: "course",
-    icon: "🎬",
-    name: "新手接单课程",
-    desc: "系统学习从报名到结算的完整流程",
-    done: false,
-  },
-  {
-    key: "rule",
-    icon: "📖",
-    name: "平台规则",
-    desc: "了解接单、取消和结算规则",
-    done: false,
-  },
-  {
-    key: "safety",
-    icon: "🛡",
-    name: "安全须知",
-    desc: "学习工作现场安全规范",
-    done: false,
-  },
-  {
-    key: "exam",
-    icon: "📝",
-    name: "接单资格考试",
-    desc: "完成考试后解锁接单资格",
-    done: false,
-  },
-]);
-const tasks = ref([
-  {
-    name: "模拟接单-体验全流程",
-    icon: "☷",
-    done: false,
-    path: "/pages/worker/simulate-order",
-  },
-  {
-    name: "学习平台规则",
-    icon: "▤",
-    done: false,
-    path: "/pages/worker/course-detail?type=rule",
-  },
-  { name: "答题测试", icon: "✓", done: false, path: "/pages/worker/exam" },
-]);
-const progress = computed(
-  () =>
-    (courses.value.filter((i) => i.done).length / courses.value.length) * 100,
+import { listCourses, listTrainingTasks } from "@/api/backend";
+const loading = ref(false);
+const courses = ref([]);
+const tasks = ref([]);
+const progress = computed(() =>
+  tasks.value.length
+    ? (tasks.value.filter((i) => i.done).length / tasks.value.length) * 100
+    : 0,
 );
-function open(item) {
-  if (item.key === "course") {
-    uni.navigateTo({ url: "/pages/worker/course-order" });
-    return;
+onMounted(loadData);
+async function loadData() {
+  loading.value = true;
+  try {
+    const userId = uni.getStorageSync("userId") || "2001";
+    const [courseResult, taskResult] = await Promise.all([
+      listCourses(),
+      listTrainingTasks(userId),
+    ]);
+    const courseRows = Array.isArray(courseResult)
+      ? courseResult
+      : courseResult?.records || courseResult?.content || [];
+    courses.value = courseRows.map((item) => ({
+      ...item,
+      done: Boolean(item.completed || item.status === "COMPLETED"),
+    }));
+    const taskRows = Array.isArray(taskResult)
+      ? taskResult
+      : taskResult?.records || taskResult?.content || [];
+    tasks.value = taskRows.map((item) => ({
+      ...item,
+      name: item.title || item.courseTitle || `课程任务 ${item.courseId || ""}`,
+      icon: "▤",
+      done: ["COMPLETED", "DONE", "已完成"].includes(item.status),
+    }));
+  } catch (error) {
+    courses.value = [];
+    tasks.value = [];
+    uni.showToast({ title: error.message || "学习内容加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
   }
-  uni.navigateTo({
-    url:
-      item.key === "exam"
-        ? "/pages/worker/exam"
-        : `/pages/worker/course-detail?type=${item.key}`,
-  });
+}
+function open(item) {
+  uni.navigateTo({ url: `/pages/worker/course-detail?id=${item.id}` });
 }
 function openTask(task) {
-  uni.navigateTo({ url: task.path });
+  uni.navigateTo({
+    url: `/pages/worker/task-training?id=${task.id}&courseId=${task.courseId || ""}`,
+  });
 }
 </script>
 <style scoped>
@@ -234,5 +223,11 @@ function openTask(task) {
   float: right;
   color: #ff6b35;
   font-size: 23rpx;
+}
+.empty {
+  padding: 120rpx 0;
+  text-align: center;
+  color: #aaa;
+  font-size: 24rpx;
 }
 </style>

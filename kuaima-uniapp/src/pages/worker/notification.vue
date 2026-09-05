@@ -59,7 +59,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { listMessages, readMessage } from "@/api/backend";
+import { listMessages, listNotices, readMessage } from "@/api/backend";
 
 const tabs = [
   { key: "all", label: "全部" },
@@ -68,66 +68,28 @@ const tabs = [
   { key: "notice", label: "公告" },
 ];
 const activeType = ref("all");
-const notices = ref([
-  {
-    id: 1,
-    day: "today",
-    type: "order",
-    icon: "🔔",
-    title: "订单接单成功",
-    time: "10:30",
-    desc: "您已成功接单【餐饮清洁工】任务，明天08:00-18:00，请准时到达泗泾镇工作地点。",
-    action: "查看订单详情",
-    read: false,
-  },
-  {
-    id: 2,
-    day: "today",
-    type: "activity",
-    icon: "🎁",
-    title: "新用户福利",
-    time: "09:15",
-    desc: "恭喜您成为快马日结新用户！完成首个订单可获得额外奖励金20元，快来接单赚钱吧！",
-    action: "去完成首单",
-    read: false,
-  },
-  {
-    id: 3,
-    day: "today",
-    type: "notice",
-    icon: "✓",
-    title: "实名认证审核通过",
-    time: "08:00",
-    desc: "您的实名认证已审核通过，现在可以正常抢单赚钱啦！",
-    read: true,
-  },
-  {
-    id: 4,
-    day: "yesterday",
-    type: "order",
-    icon: "¥",
-    title: "工资结算通知",
-    time: "18:30",
-    desc: "您昨天完成的【快递分拣员】订单工资96元已到账，可在钱包中查看并提现。",
-    read: true,
-  },
-  {
-    id: 5,
-    day: "yesterday",
-    type: "notice",
-    icon: "!",
-    title: "平台公告",
-    time: "15:00",
-    desc: "关于平台服务规则更新的通知，请前往平台规则查看详情。",
-    action: "查看规则",
-    read: true,
-  },
-]);
+const notices = ref([]);
 onMounted(async () => {
   try {
-    const result = await listMessages(uni.getStorageSync("userId") || "2001");
-    if (Array.isArray(result)) notices.value = result.map(normalizeNotice);
-  } catch (_) {}
+    const userId = uni.getStorageSync("userId") || "2001";
+    const [messageResult, noticeResult] = await Promise.all([
+      listMessages(userId),
+      listNotices({ scope: "WORKER" }),
+    ]);
+    const messages = Array.isArray(messageResult)
+      ? messageResult
+      : messageResult?.records || messageResult?.content || [];
+    const announcements = Array.isArray(noticeResult)
+      ? noticeResult
+      : noticeResult?.records || noticeResult?.content || [];
+    notices.value = [
+      ...messages.map(normalizeNotice),
+      ...announcements.map(normalizeAnnouncement),
+    ];
+  } catch (error) {
+    notices.value = [];
+    uni.showToast({ title: error.message || "通知加载失败", icon: "none" });
+  }
 });
 const visible = computed(() =>
   activeType.value === "all"
@@ -180,6 +142,24 @@ function normalizeNotice(item) {
     read: item.readFlag === true,
     action:
       item.bizType === "order" || item.bizType === "item" ? "查看订单详情" : "",
+  };
+}
+
+function normalizeAnnouncement(item) {
+  const created = item.publishTime || item.createTime || item.updatedAt;
+  return {
+    ...item,
+    day:
+      new Date().toDateString() === new Date(created).toDateString()
+        ? "today"
+        : "yesterday",
+    type: "notice",
+    icon: "!",
+    title: item.title || "平台公告",
+    desc: item.content || item.summary || item.description || "",
+    time: formatMessageTime(created),
+    read: true,
+    action: "查看公告",
   };
 }
 

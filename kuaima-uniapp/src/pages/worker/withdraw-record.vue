@@ -49,15 +49,16 @@ const records = ref([
 onMounted(async () => {
   try {
     const result = await request({ url: "/worker/wallet/withdraw-records" });
-    if (Array.isArray(result)) records.value = result.map((item) => ({
-      ...item,
-      type: item.account?.includes("支付宝") ? "alipay" : "wechat",
-      typeName: item.account || "提现申请",
-      method: item.account || item.channel || "",
-      time: item.applyTime || item.createTime || "",
-      amount: (Number(item.amount || 0) / 100).toFixed(2),
-      statusText: item.status || "申请中",
-    }));
+    if (Array.isArray(result))
+      records.value = result.map((item) => ({
+        ...item,
+        type: item.account?.includes("支付宝") ? "alipay" : "wechat",
+        typeName: item.account || "提现申请",
+        method: item.account || item.channel || "",
+        time: item.applyTime || item.createTime || "",
+        amount: (Number(item.amount || 0) / 100).toFixed(2),
+        statusText: item.status || "申请中",
+      }));
   } catch (_) {}
 });
 </script>

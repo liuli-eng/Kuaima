@@ -14,10 +14,21 @@
   >
 </template>
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import JobCard from "@/components/JobCard.vue";
+import { listFavoriteJobs } from "@/api/backend";
 const jobs = ref(uni.getStorageSync("workerFavorites") || []);
+onMounted(async () => {
+  try {
+    const result = await listFavoriteJobs(
+      uni.getStorageSync("userId") || "2001",
+    );
+    const rows = Array.isArray(result) ? result : result?.records || [];
+    if (rows.length)
+      jobs.value = rows.map((item) => item.order || item.job || item);
+  } catch (_) {}
+});
 function open(j) {
   uni.navigateTo({ url: `/pages/worker/job-detail?id=${j.id}` });
 }

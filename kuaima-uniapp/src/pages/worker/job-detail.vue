@@ -104,9 +104,13 @@ import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
 import { request } from "@/api/http";
 import {
+  checkFavoriteJob,
+  favoriteJob,
   getCertificationStatus,
   getOrder,
   listOrderItems,
+  recordJobBrowse,
+  unfavoriteJob,
 } from "@/api/backend";
 const tabs = [
   { key: "desc", label: "岗位描述" },
@@ -117,6 +121,7 @@ const activeTab = ref("desc");
 const applying = ref(false);
 const applied = ref(false);
 const favorite = ref(false);
+const favoriteId = ref("");
 const loading = ref(false);
 const loadError = ref(false);
 const appliedCount = ref(0);
@@ -166,6 +171,13 @@ onLoad(async (options = {}) => {
   }
   job.value = { id };
   await loadDetail();
+  const userId = uni.getStorageSync("userId") || "2001";
+  try {
+    const result = await checkFavoriteJob(userId, id);
+    favorite.value = result?.favorited === true;
+    favoriteId.value = result?.favoriteId || result?.id || "";
+  } catch (_) {}
+  recordJobBrowse({ userId, orderId: id }).catch(() => {});
 });
 async function loadDetail() {
   const id = job.value.id;
@@ -202,12 +214,25 @@ function share() {
 function viewRoute() {
   uni.showToast({ title: "路线功能开发中", icon: "none" });
 }
-function toggleFavorite() {
-  favorite.value = !favorite.value;
-  uni.showToast({
-    title: favorite.value ? "已收藏" : "已取消收藏",
-    icon: "none",
-  });
+async function toggleFavorite() {
+  const userId = uni.getStorageSync("userId") || "2001";
+  try {
+    if (favorite.value) {
+      if (favoriteId.value) await unfavoriteJob(favoriteId.value);
+      favorite.value = false;
+      favoriteId.value = "";
+    } else {
+      const result = await favoriteJob({ userId, orderId: job.value.id });
+      favorite.value = true;
+      favoriteId.value = result?.id || result?.favoriteId || "";
+    }
+    uni.showToast({
+      title: favorite.value ? "已收藏" : "已取消收藏",
+      icon: "none",
+    });
+  } catch (error) {
+    uni.showToast({ title: error.message || "收藏操作失败", icon: "none" });
+  }
 }
 async function apply() {
   if (!isRealname.value) return goRealname();

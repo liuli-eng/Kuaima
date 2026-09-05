@@ -21,13 +21,24 @@
   >
 </template>
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
+import { getStarLevel } from "@/api/backend";
 const level = ref(3);
 const points = ref(280);
 const nextPoints = ref(200);
 const progress = computed(() => Math.min(100, (points.value / 500) * 100));
 const benefits = ["优先推荐高薪岗位", "可关注更多优质雇主", "专属客服快速响应"];
+onMounted(async () => {
+  try {
+    const data = await getStarLevel(uni.getStorageSync("userId") || "2001");
+    if (data) {
+      level.value = data.level ?? level.value;
+      points.value = data.points ?? data.current ?? points.value;
+      nextPoints.value = data.nextPoints ?? nextPoints.value;
+    }
+  } catch (_) {}
+});
 </script>
 <style scoped>
 .page {

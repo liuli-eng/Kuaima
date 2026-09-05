@@ -27,9 +27,10 @@
   </view>
 </template>
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import { listInsurance } from "@/api/backend";
 const records = ref([
   {
     id: "i1",
@@ -40,6 +41,20 @@ const records = ref([
     statusText: "处理中",
   },
 ]);
+onMounted(async () => {
+  try {
+    const result = await listInsurance(uni.getStorageSync("userId") || "2001");
+    const rows = Array.isArray(result) ? result : result?.records || [];
+    records.value = rows.map((item) => ({
+      ...item,
+      orderNo: item.orderNo || item.orderId || "",
+      time: item.startTime || item.createTime || "",
+      statusText: item.status || "处理中",
+    }));
+  } catch (_) {
+    records.value = [];
+  }
+});
 function open(item) {
   uni.navigateTo({ url: `/pages/worker/insurance-detail?id=${item.id}` });
 }
