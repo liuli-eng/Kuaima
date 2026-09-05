@@ -1,4 +1,8 @@
 node_modules/
 dist/
 .DS_Store
+<<<<<<< HEAD
 *.log
+=======
+.codex/
+>>>>>>> 56bbe50cd681d429e1128550f0c64403b6dfd2ff
