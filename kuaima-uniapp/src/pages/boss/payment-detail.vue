@@ -16,22 +16,25 @@
         <text>←</text>
       </view>
       <text class="nav-title">报酬支付明细</text>
-      <view style="width:32px;"></view>
+      <view style="width: 32px"></view>
     </view>
 
     <scroll-view scroll-y class="scroll-area">
       <!-- 汇总卡片 -->
       <view class="summary-card">
         <text class="summary-title">累计支付报酬</text>
-        <text class="summary-amount">{{ totalAmount }}</text>
-        <text class="summary-period">2026年5月23日 ~ 2026年8月21日</text>
+        <text class="summary-amount">¥{{ totalAmount }}</text>
+        <text class="summary-period">{{ period }}</text>
       </view>
 
       <!-- 记录列表 -->
-      <view class="record-card" v-for="(record, index) in records" :key="index">
+      <view v-if="!loading && !records.length" class="empty">暂无支付记录</view>
+      <view class="record-card" v-for="record in records" :key="record.id">
         <view class="record-head">
           <text class="record-title">{{ record.title }}</text>
-          <text class="record-status" :class="record.statusClass">{{ record.status }}</text>
+          <text class="record-status" :class="record.statusClass">{{
+            record.status
+          }}</text>
         </view>
         <text class="record-desc">{{ record.desc }}</text>
         <text class="record-amount">¥{{ record.amount }}</text>
@@ -42,23 +45,57 @@
 </template>
 
 <script>
+import { listPayments } from "@/api/backend";
 export default {
   data() {
     return {
-      totalAmount: '12,560.00',
-      records: [
-        { title: '8月工资结算', status: '已支付', statusClass: 'status-success', desc: '结算周期：2026-08-01 至 2026-08-21', amount: '3,600.00', time: '2026-08-21 18:00 已到账' },
-        { title: '7月工资结算', status: '已支付', statusClass: 'status-success', desc: '结算周期：2026-07-01 至 2026-07-31', amount: '8,960.00', time: '2026-07-31 18:00 已到账' },
-        { title: '6月工资结算', status: '已支付', statusClass: 'status-success', desc: '结算周期：2026-06-01 至 2026-06-30', amount: '0.00', time: '无订单' }
-      ]
-    }
+      totalAmount: "0.00",
+      records: [],
+      period: "暂无支付记录",
+      loading: false,
+    };
+  },
+  onLoad() {
+    this.load();
   },
   methods: {
+    async load() {
+      this.loading = true;
+      try {
+        const result = await listPayments(
+          uni.getStorageSync("userId") || "2001",
+        );
+        const rows = Array.isArray(result)
+          ? result
+          : result?.records || result?.content || [];
+        this.records = rows.map((i) => ({
+          ...i,
+          title: i.title || i.name || "报酬支付",
+          status: i.status || "已支付",
+          statusClass: ["PENDING", "待支付"].includes(i.status)
+            ? "status-pending"
+            : "status-success",
+          desc: i.description || i.remark || "",
+          amount: Number(i.amount || 0).toFixed(2),
+          time: i.time || i.createTime || i.payTime || "",
+        }));
+        this.totalAmount = this.records
+          .reduce((s, i) => s + Number(i.amount || 0), 0)
+          .toFixed(2);
+      } catch (error) {
+        uni.showToast({
+          title: error.message || "支付明细加载失败",
+          icon: "none",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
     goBack() {
-      uni.navigateBack()
-    }
-  }
-}
+      uni.navigateBack();
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -118,7 +155,7 @@ export default {
 }
 
 .summary-card {
-  background: linear-gradient(135deg, #722ED1, #9254DE);
+  background: linear-gradient(135deg, #722ed1, #9254de);
   margin: 12px 16px;
   border-radius: 12px;
   padding: 16px;
@@ -172,13 +209,13 @@ export default {
 }
 
 .status-success {
-  color: #52C41A;
-  background: #F6FFED;
+  color: #52c41a;
+  background: #f6ffed;
 }
 
 .status-pending {
-  color: #FA8C16;
-  background: #FFF8E6;
+  color: #fa8c16;
+  background: #fff8e6;
 }
 
 .record-desc {
@@ -201,5 +238,11 @@ export default {
   margin-top: 4px;
   text-align: right;
   display: block;
+}
+.empty {
+  padding: 180rpx 0;
+  text-align: center;
+  color: #aaa;
+  font-size: 14px;
 }
 </style>

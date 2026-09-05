@@ -144,7 +144,12 @@ function openSearch() {
   padding: calc(8rpx + env(safe-area-inset-top)) 32rpx 24rpx;
   background: linear-gradient(180deg, #ffd59e 0%, #ffe4b5 55%, #fffbf5 100%);
 }
-.header-row { height: 72rpx; display: flex; align-items: center; gap: 20rpx; }
+.header-row {
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
 .back {
   width: 64rpx;
   height: 64rpx;

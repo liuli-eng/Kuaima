@@ -3,18 +3,26 @@
     ><AppNavBar title="学习规则" :show-back="true" /><scroll-view
       scroll-y
       class="content"
-      ><view class="card"
-        ><text class="title">{{
-          type === "safety" ? "工作安全须知" : "平台交易规则"
-        }}</text
-        ><text class="para">1. 报名岗位前请确认工作时间、地点和结算方式；</text
-        ><text class="para"
-          >2. 录用后请按时到岗，遇到异常情况及时联系雇主和平台；</text
-        ><text class="para"
-          >3. 完工后由雇主确认，平台根据实际完成情况发起结算；</text
-        ><text class="para"
-          >4. 禁止发布虚假信息、私下收费或冒用他人身份。</text
-        ></view
+      ><view v-if="course" class="card"
+        ><image
+          v-if="course.coverUrl"
+          class="cover"
+          :src="course.coverUrl"
+          mode="aspectFill"
+        />
+        <text class="title">{{ course.title }}</text
+        ><text class="para">{{ course.intro || "暂无课程介绍" }}</text
+        ><view
+          v-for="video in videos"
+          :key="video.id"
+          class="video-row"
+          @click="openVideo(video)"
+        >
+          <text>{{ video.title }}</text
+          ><text>去学习 ›</text>
+        </view></view
+      ><view v-else-if="!loading" class="empty"
+        >课程不存在或已下架</view
       ></scroll-view
     ><SafeBottomAction
       ><button class="done" @click="complete">
@@ -24,12 +32,34 @@
   >
 </template>
 <script setup>
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import { getCourse } from "@/api/backend";
 const pages = getCurrentPages();
-const type = pages[pages.length - 1]?.options?.type || "rule";
+const id = pages[pages.length - 1]?.options?.id;
+const loading = ref(false);
+const course = ref(null);
+const videos = ref([]);
+onMounted(async () => {
+  if (!id) return;
+  loading.value = true;
+  try {
+    const result = await getCourse(id);
+    course.value = result?.course || result;
+    videos.value = result?.videos || course.value?.videos || [];
+  } catch (error) {
+    uni.showToast({ title: error.message || "课程加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
+  }
+});
+function openVideo(video) {
+  uni.navigateTo({
+    url: `/pages/worker/course-video?courseId=${id}&videoId=${video.id}`,
+  });
+}
 function complete() {
-  uni.setStorageSync(`course_${type}`, true);
   uni.showToast({ title: "学习完成", icon: "success" });
   setTimeout(() => uni.navigateBack(), 500);
 }
@@ -60,6 +90,28 @@ function complete() {
   font-size: 26rpx;
   line-height: 2;
   margin-bottom: 12rpx;
+}
+.cover {
+  width: 100%;
+  height: 280rpx;
+  margin-bottom: 24rpx;
+  border-radius: 16rpx;
+}
+.video-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 22rpx 0;
+  border-top: 1rpx solid #eee;
+  color: #555;
+  font-size: 25rpx;
+}
+.video-row text:last-child {
+  color: #ff6b35;
+}
+.empty {
+  padding: 220rpx 0;
+  text-align: center;
+  color: #aaa;
 }
 .done {
   width: 100%;

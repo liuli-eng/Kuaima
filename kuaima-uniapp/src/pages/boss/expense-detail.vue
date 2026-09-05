@@ -25,42 +25,83 @@
       <!-- 汇总卡片 -->
       <view class="summary-card">
         <view class="summary-item">
-          <text class="summary-value">¥0.00</text>
+          <text class="summary-value">¥{{ summary.paid.toFixed(2) }}</text>
           <text class="summary-label">已报销</text>
         </view>
         <view class="summary-item">
-          <text class="summary-value">0</text>
+          <text class="summary-value">{{ summary.pending }}</text>
           <text class="summary-label">待审核</text>
         </view>
         <view class="summary-item">
-          <text class="summary-value">0</text>
+          <text class="summary-value">{{ summary.rejected }}</text>
           <text class="summary-label">已拒绝</text>
         </view>
       </view>
 
       <!-- 空状态 -->
-      <view class="empty-state">
+      <view v-if="!loading && !records.length" class="empty-state">
         <view class="empty-icon">
-          <text style="font-size:48px;color:#ddd;">🧾</text>
+          <text style="font-size: 48px; color: #ddd">🧾</text>
         </view>
         <text class="empty-text">暂无报销记录</text>
-        <text class="empty-text" style="margin-top:4px;">点击右上角申请报销</text>
+        <text class="empty-text" style="margin-top: 4px">暂无费用记录</text>
       </view>
+      <view v-for="item in records" :key="item.id" class="record"
+        ><text>{{ item.description || item.name || "费用明细" }}</text
+        ><text>¥{{ item.amount || 0 }}</text></view
+      >
     </scroll-view>
   </view>
 </template>
 
 <script>
+import { listExpenses } from "@/api/backend";
 export default {
   data() {
-    return {}
+    return {
+      records: [],
+      loading: false,
+      summary: { paid: 0, pending: 0, rejected: 0 },
+    };
+  },
+  onLoad() {
+    this.load();
   },
   methods: {
+    async load() {
+      this.loading = true;
+      try {
+        const result = await listExpenses(
+          uni.getStorageSync("userId") || "2001",
+        );
+        const rows = Array.isArray(result)
+          ? result
+          : result?.records || result?.content || [];
+        this.records = rows;
+        this.summary = {
+          paid: rows
+            .filter((i) => ["PAID", "已报销", "SUCCESS"].includes(i.status))
+            .reduce((s, i) => s + Number(i.amount || 0), 0),
+          pending: rows.filter((i) => ["PENDING", "待审核"].includes(i.status))
+            .length,
+          rejected: rows.filter((i) =>
+            ["REJECTED", "已拒绝"].includes(i.status),
+          ).length,
+        };
+      } catch (error) {
+        uni.showToast({
+          title: error.message || "费用明细加载失败",
+          icon: "none",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
     goBack() {
-      uni.navigateBack()
-    }
-  }
-}
+      uni.navigateBack();
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -126,7 +167,7 @@ export default {
 }
 
 .summary-card {
-  background: linear-gradient(135deg, #1890FF, #40A9FF);
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
   margin: 12px 16px;
   border-radius: 12px;
   padding: 16px;
@@ -159,5 +200,15 @@ export default {
   font-size: 14px;
   color: #999;
   display: block;
+}
+.record {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  color: #555;
+  font-size: 14px;
 }
 </style>

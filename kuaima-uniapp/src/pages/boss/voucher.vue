@@ -18,11 +18,11 @@
       <text class="nav-title">券包</text>
       <view class="nav-right">
         <view class="nav-btn">
-          <text style="font-size:10px;color:#555;">⋯</text>
+          <text style="font-size: 10px; color: #555">⋯</text>
         </view>
         <view class="nav-divider"></view>
         <view class="nav-btn">
-          <text style="font-size:10px;color:#555;">●</text>
+          <text style="font-size: 10px; color: #555">●</text>
         </view>
       </view>
     </view>
@@ -48,36 +48,52 @@
 
       <!-- Tab切换 -->
       <view class="tab-switch">
-        <text 
-          class="tab-switch-item" 
+        <text
+          class="tab-switch-item"
           :class="{ active: currentTab === 'available' }"
           @click="currentTab = 'available'"
-        >待使用</text>
-        <text 
-          class="tab-switch-item" 
+          >待使用</text
+        >
+        <text
+          class="tab-switch-item"
           :class="{ active: currentTab === 'used' }"
           @click="currentTab = 'used'"
-        >已使用</text>
-        <text 
-          class="tab-switch-item" 
+          >已使用</text
+        >
+        <text
+          class="tab-switch-item"
           :class="{ active: currentTab === 'expired' }"
           @click="currentTab = 'expired'"
-        >已过期</text>
+          >已过期</text
+        >
       </view>
 
       <!-- 优惠券列表 -->
       <view class="coupon-list">
-        <view class="coupon-item" v-for="(coupon, index) in filteredCoupons" :key="index" :class="{ disabled: coupon.disabled }">
+        <view
+          class="coupon-item"
+          v-for="coupon in filteredCoupons"
+          :key="coupon.id"
+          :class="{ disabled: coupon.disabled }"
+        >
           <view class="coupon-left">
             <view class="coupon-amount">
-              <text style="font-size:14px;">¥</text>{{ coupon.amount }}
+              <text style="font-size: 14px">¥</text>{{ coupon.amount }}
             </view>
-            <text class="coupon-condition">{{ coupon.condition }}</text>
-            <text class="coupon-name">{{ coupon.name }}</text>
+            <text class="coupon-condition">{{
+              coupon.condition || `满${coupon.minAmount || 0}元可用`
+            }}</text>
+            <text class="coupon-name">{{
+              coupon.name || coupon.title || "优惠券"
+            }}</text>
             <text class="coupon-expire">{{ coupon.expire }}</text>
           </view>
-          <button class="coupon-use" :disabled="coupon.disabled" @click="useCoupon(coupon)">
-            {{ coupon.disabled ? '已过期' : '去使用' }}
+          <button
+            class="coupon-use"
+            :disabled="coupon.disabled"
+            @click="useCoupon(coupon)"
+          >
+            {{ coupon.disabled ? "已过期" : "去使用" }}
           </button>
         </view>
       </view>
@@ -86,41 +102,76 @@
 </template>
 
 <script>
+import { listCoupons } from "@/api/backend";
 export default {
   data() {
     return {
-      currentTab: 'available',
+      currentTab: "available",
       summary: { available: 0, used: 0, expired: 0 },
-      coupons: [
-        { amount: '20', condition: '满100元可用', name: '新人优惠券', expire: '有效期至 2026-12-31', disabled: false },
-        { amount: '50', condition: '满300元可用', name: '满减优惠券', expire: '有效期至 2026-10-31', disabled: false },
-        { amount: '10', condition: '满50元可用', name: '限时优惠', expire: '已过期 2026-08-01', disabled: true }
-      ]
-    }
+      coupons: [],
+    };
   },
   computed: {
     filteredCoupons() {
-      if (this.currentTab === 'available') return this.coupons.filter(c => !c.disabled)
-      if (this.currentTab === 'expired') return this.coupons.filter(c => c.disabled)
-      return []
-    }
+      if (this.currentTab === "available")
+        return this.coupons.filter((c) => !c.disabled);
+      if (this.currentTab === "expired")
+        return this.coupons.filter((c) => c.disabled);
+      return [];
+    },
+  },
+  onLoad() {
+    this.loadCoupons();
   },
   methods: {
+    async loadCoupons() {
+      try {
+        const result = await listCoupons(
+          uni.getStorageSync("userId") || "2001",
+        );
+        const rows = Array.isArray(result)
+          ? result
+          : result?.records || result?.content || [];
+        this.coupons = rows.map((item) => ({
+          ...item,
+          amount: item.amount ?? item.value ?? "0.00",
+          expire:
+            item.expire || `有效期至 ${item.endTime || item.expireTime || "-"}`,
+          disabled:
+            item.disabled ??
+            ["USED", "EXPIRED", "已使用", "已过期"].includes(item.status),
+        }));
+        this.summary = {
+          available: this.coupons.filter((c) => !c.disabled).length,
+          used: this.coupons.filter((c) =>
+            ["USED", "已使用"].includes(c.status),
+          ).length,
+          expired: this.coupons.filter(
+            (c) => c.disabled && !["USED", "已使用"].includes(c.status),
+          ).length,
+        };
+      } catch (error) {
+        uni.showToast({
+          title: error.message || "优惠券加载失败",
+          icon: "none",
+        });
+      }
+    },
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     useCoupon(coupon) {
-      uni.showToast({ title: '跳转发布订单页面使用优惠券', icon: 'none' })
-    }
-  }
-}
+      uni.showToast({ title: "跳转发布订单页面使用优惠券", icon: "none" });
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #fff8e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -150,7 +201,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  background: #FFF8E6;
+  background: #fff8e6;
 }
 
 .nav-back {
@@ -170,7 +221,7 @@ export default {
 .nav-right {
   display: flex;
   align-items: center;
-  background: rgba(255,255,255,0.8);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
   border-radius: 9999px;
   padding: 3px 6px;
@@ -204,7 +255,7 @@ export default {
   display: flex;
   justify-content: space-around;
   margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .summary-item {
@@ -214,7 +265,7 @@ export default {
 .summary-value {
   font-size: 22px;
   font-weight: 700;
-  color: #FF6B35;
+  color: #ff6b35;
   display: block;
 }
 
@@ -248,7 +299,7 @@ export default {
 }
 
 .tab-switch-item.active {
-  background: #FF6B35;
+  background: #ff6b35;
   color: white;
   font-weight: 600;
 }
@@ -265,7 +316,7 @@ export default {
   padding: 16px;
   display: flex;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   position: relative;
   overflow: hidden;
 }
@@ -282,7 +333,7 @@ export default {
 .coupon-amount {
   font-size: 24px;
   font-weight: 700;
-  color: #FF6B35;
+  color: #ff6b35;
 }
 
 .coupon-condition {
@@ -310,7 +361,7 @@ export default {
 .coupon-use {
   width: 64px;
   height: 32px;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: white;
   border: none;
   border-radius: 16px;

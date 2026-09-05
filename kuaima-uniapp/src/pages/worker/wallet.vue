@@ -94,6 +94,7 @@
 import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { request } from "@/api/http";
+import { applyWithdraw } from "@/api/backend";
 const balance = ref("0.00"),
   total = ref("0.00"),
   amount = ref(""),
@@ -118,19 +119,54 @@ onMounted(async () => {
       request({ url: "/worker/wallet/withdraw-records" }),
     ]);
     if (Array.isArray(flows)) details.value = flows.map(normalizeFlow);
-    if (Array.isArray(withdraws)) withdrawRecords.value = withdraws.map(normalizeWithdraw);
+    if (Array.isArray(withdraws))
+      withdrawRecords.value = withdraws.map(normalizeWithdraw);
   } catch (_) {}
 });
-function fromCents(value) { return (Number(value || 0) / 100).toFixed(2); }
+function fromCents(value) {
+  return (Number(value || 0) / 100).toFixed(2);
+}
 function normalizeFlow(item) {
   const income = item.direction === "income";
-  return { ...item, title: item.remark || (item.bizType === "WAGE" ? "订单收入" : "提现"), time: item.createTime || item.updateTime || "", amount: fromCents(item.amount), type: income ? "income" : "out" };
+  return {
+    ...item,
+    title: item.remark || (item.bizType === "WAGE" ? "订单收入" : "提现"),
+    time: item.createTime || item.updateTime || "",
+    amount: fromCents(item.amount),
+    type: income ? "income" : "out",
+  };
 }
 function normalizeWithdraw(item) {
-  return { ...item, name: item.account || "提现申请", time: item.applyTime || item.createTime || "", amount: fromCents(item.amount), status: item.status, statusText: item.status || "申请中" };
+  return {
+    ...item,
+    name: item.account || "提现申请",
+    time: item.applyTime || item.createTime || "",
+    amount: fromCents(item.amount),
+    status: item.status,
+    statusText: item.status || "申请中",
+  };
 }
-function submit() {
-  uni.showToast({ title: "当前无可提现余额", icon: "none" });
+async function submit() {
+  const value = Number(amount.value);
+  if (!value || value <= 0)
+    return uni.showToast({ title: "请输入有效提现金额", icon: "none" });
+  if (value > Number(balance.value))
+    return uni.showToast({ title: "提现金额不能超过可提现余额", icon: "none" });
+  try {
+    await applyWithdraw({
+      userId: uni.getStorageSync("userId") || "2001",
+      amount: value,
+      account: selected.value,
+    });
+    amount.value = "";
+    uni.showToast({ title: "提现申请已提交", icon: "success" });
+    const withdraws = await request({ url: "/worker/wallet/withdraw-records" });
+    if (Array.isArray(withdraws))
+      withdrawRecords.value = withdraws.map(normalizeWithdraw);
+    activeTab.value = "records";
+  } catch (error) {
+    uni.showToast({ title: error.message || "提现失败", icon: "none" });
+  }
 }
 </script>
 <style scoped>

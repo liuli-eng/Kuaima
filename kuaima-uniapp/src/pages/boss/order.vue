@@ -122,7 +122,7 @@
               >
               <text
                 class="job-btn btn-link"
-                @click="navigateTo('publish', { id: job.id, readonly: 1 })"
+                @click="navigateTo('order-detail', { id: job.id })"
                 >详情</text
               >
             </template>
@@ -134,21 +134,21 @@
               >
               <text
                 class="job-btn btn-link"
-                @click="navigateTo('publish', { id: job.id, readonly: 1 })"
+                @click="navigateTo('order-detail', { id: job.id })"
                 >详情</text
               >
             </template>
             <template v-else-if="job.status === 'completed'">
               <text
                 class="job-btn btn-link"
-                @click="navigateTo('publish', { id: job.id, readonly: 1 })"
+                @click="navigateTo('order-detail', { id: job.id })"
                 >详情</text
               >
             </template>
             <template v-else-if="job.status === 'cancelled'">
               <text
                 class="job-btn btn-link"
-                @click="navigateTo('publish', { id: job.id, readonly: 1 })"
+                @click="navigateTo('order-detail', { id: job.id })"
                 >详情</text
               >
             </template>
@@ -536,6 +536,7 @@ export default {
         "insurance",
         "realname",
         "applicant-info",
+        "order-detail",
       ];
 
       let url = `/pages/boss/${pageName}`;

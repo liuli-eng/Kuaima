@@ -17,15 +17,28 @@
   >
 </template>
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
+import { getInviteCode, listInviteRelations } from "@/api/backend";
 const records = ref([
   { id: 1, phone: "138****5678", done: true },
   { id: 2, phone: "139****1234", done: false },
 ]);
+const inviteCode = ref("KM2026");
+onMounted(async () => {
+  const userId = uni.getStorageSync("userId") || "2001";
+  try {
+    const code = await getInviteCode(userId);
+    if (code?.code) inviteCode.value = code.code;
+  } catch (_) {}
+  try {
+    const result = await listInviteRelations(userId);
+    if (Array.isArray(result)) records.value = result;
+  } catch (_) {}
+});
 function copy() {
   uni.setClipboardData({
-    data: "KM2026",
+    data: inviteCode.value,
     success: () => uni.showToast({ title: "邀请码已复制", icon: "success" }),
   });
 }

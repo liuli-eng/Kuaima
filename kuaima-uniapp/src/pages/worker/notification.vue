@@ -16,7 +16,8 @@
           ><text class="desc">{{ item.content }}</text></view
         >
       </view>
-      <view v-if="!notices.length" class="empty">暂无公告</view>
+      <view v-if="loading" class="empty">正在加载公告...</view>
+      <view v-else-if="!notices.length" class="empty">暂无公告</view>
     </scroll-view>
   </view>
 </template>
@@ -27,12 +28,19 @@ import AppNavBar from "@/components/AppNavBar.vue";
 import { listNotices } from "@/api/backend";
 
 const notices = ref([]);
+const loading = ref(false);
 
 onMounted(async () => {
+  loading.value = true;
   try {
     const result = await listNotices({ scope: "零工" });
     if (Array.isArray(result)) notices.value = result.map(normalizeNotice);
-  } catch (_) {}
+  } catch (error) {
+    notices.value = [];
+    uni.showToast({ title: error.message || "公告加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
+  }
 });
 
 function open(item) {
@@ -69,37 +77,11 @@ function formatNoticeTime(value) {
   min-height: 100vh;
   background: #fff8e6;
 }
-.tabs {
-  display: flex;
-  gap: 12rpx;
-  padding: 18rpx 24rpx;
-  background: #ffe4b5;
-}
-.tab {
-  flex: 1;
-  padding: 12rpx 0;
-  border-radius: 24rpx;
-  background: #fff;
-  color: #666;
-  text-align: center;
-  font-size: 23rpx;
-}
-.tab.active {
-  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
-  color: #fff;
-  font-weight: 600;
-}
 .scroll {
   height: calc(100vh - 250rpx);
   background: #fff8e6;
   padding-bottom: 24rpx;
   box-sizing: border-box;
-}
-.date-title {
-  display: block;
-  padding: 20rpx 24rpx 8rpx;
-  color: #999;
-  font-size: 22rpx;
 }
 .notice-card {
   position: relative;
@@ -123,18 +105,6 @@ function formatNoticeTime(value) {
   color: #ff6b35;
   font-size: 24rpx;
   font-weight: 700;
-}
-.activity {
-  background: #e6f7ff;
-  color: #1890ff;
-}
-.system {
-  background: #f6ffed;
-  color: #52c41a;
-}
-.notice {
-  background: #f6ffed;
-  color: #52c41a;
 }
 .notice-main {
   flex: 1;
@@ -160,21 +130,6 @@ function formatNoticeTime(value) {
   color: #666;
   font-size: 22rpx;
   line-height: 1.6;
-}
-.action {
-  display: block;
-  margin-top: 12rpx;
-  color: #ff6b35;
-  font-size: 22rpx;
-}
-.unread {
-  position: absolute;
-  top: 14rpx;
-  right: 14rpx;
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 50%;
-  background: #ff4d4f;
 }
 .empty {
   padding-top: 220rpx;

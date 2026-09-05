@@ -17,6 +17,7 @@
 <script setup>
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import { cancelAccount } from "@/api/backend";
 const checks = [
   "当前没有进行中的订单",
   "钱包余额已经处理",
@@ -27,8 +28,17 @@ function submit() {
     title: "确认注销",
     content: "账号注销属于不可恢复操作，确定继续提交申请吗？",
     confirmColor: "#e34d59",
-    success: ({ confirm }) => {
-      if (confirm) uni.showToast({ title: "注销申请已提交", icon: "success" });
+    success: async ({ confirm }) => {
+      if (!confirm) return;
+      try {
+        await cancelAccount(
+          uni.getStorageSync("userId") || "2001",
+          "用户主动注销",
+        );
+        uni.showToast({ title: "注销申请已提交", icon: "success" });
+      } catch (error) {
+        uni.showToast({ title: error.message || "注销失败", icon: "none" });
+      }
     },
   });
 }

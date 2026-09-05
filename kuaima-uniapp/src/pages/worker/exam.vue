@@ -6,13 +6,13 @@
       ><view class="tip"
         >共 {{ questions.length }} 道题，答对 {{ passScore }} 道即可通过</view
       ><view v-for="(q, index) in questions" :key="q.id" class="card"
-        ><text class="question">{{ index + 1 }}. {{ q.question }}</text
+        ><text class="question">{{ index + 1 }}. {{ q.content }}</text
         ><view
           v-for="option in q.options"
           :key="option"
-          :class="['option', { active: answers[index] === option }]"
-          @click="answers[index] = option"
-          >{{ option }}</view
+          :class="['option', { active: answers[q.id] === option.value }]"
+          @click="answers[q.id] = option.value"
+          >{{ option.label }}</view
         ></view
       ></scroll-view
     ><SafeBottomAction
@@ -23,50 +23,75 @@
   >
 </template>
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
-import { request } from "@/api/http";
-const questions = [
-  {
-    id: 1,
-    question: "报名成功后，应该如何做？",
-    options: ["按时到岗并遵守现场安排", "随意取消订单", "转让给他人"],
-  },
-  {
-    id: 2,
-    question: "完成工作后，结算由谁确认？",
-    options: ["雇主确认后平台结算", "无需确认自动到账", "零工自行填写"],
-  },
-  {
-    id: 3,
-    question: "遇到工作纠纷应联系？",
-    options: ["平台客服和雇主", "私下收费中介", "不处理"],
-  },
-];
-const answers = ref([]);
-const passScore = 2;
+import { getExam, submitExam } from "@/api/backend";
+const pages = getCurrentPages();
+const courseId =
+  pages[pages.length - 1]?.options?.courseId ||
+  pages[pages.length - 1]?.options?.id;
+const questions = ref([]);
+const examId = ref("");
+const answers = ref({});
+const passScore = ref(0);
 const submitting = ref(false);
+onMounted(async () => {
+  if (!courseId) return uni.showToast({ title: "缺少课程信息", icon: "none" });
+  try {
+    const result = await getExam(courseId);
+    const exam = result?.exam || result;
+    examId.value = exam?.id || result?.examId || "";
+    passScore.value = exam?.passScore || exam?.passingScore || 0;
+    const rows = result?.questions || exam?.questions || [];
+    questions.value = rows.map((item) => ({
+      ...item,
+      options: normalizeOptions(item.options),
+    }));
+  } catch (error) {
+    uni.showToast({ title: error.message || "考试加载失败", icon: "none" });
+  }
+});
+function normalizeOptions(options) {
+  let value = options;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch (_) {
+      value = value.split("|");
+    }
+  }
+  if (Array.isArray(value))
+    return value.map((item, index) =>
+      typeof item === "object"
+        ? {
+            value: item.value || item.key || String.fromCharCode(65 + index),
+            label: item.label || item.text || item.value,
+          }
+        : { value: String.fromCharCode(65 + index), label: item },
+    );
+  return Object.entries(value || {}).map(([key, label]) => ({
+    value: key,
+    label,
+  }));
+}
 async function submit() {
-  if (answers.value.filter(Boolean).length < questions.length)
+  if (Object.keys(answers.value).length < questions.value.length)
     return uni.showToast({ title: "请完成所有题目", icon: "none" });
-  const score = answers.value.filter(
-    (a, i) => a === questions[i].options[0],
-  ).length;
   submitting.value = true;
   try {
-    await request({
-      url: "/worker/exam/submit",
-      method: "POST",
-      data: { score },
+    const result = await submitExam(courseId, {
+      userId: uni.getStorageSync("userId") || "2001",
+      answers: answers.value,
     });
-  } catch (_) {
+    uni.redirectTo({
+      url: `/pages/worker/exam-result?score=${result?.score || 0}&passed=${Boolean(result?.passed)}&examId=${result?.examId || examId.value}`,
+    });
+  } catch (error) {
+    uni.showToast({ title: error.message || "考试提交失败", icon: "none" });
   } finally {
     submitting.value = false;
   }
-  uni.navigateTo({
-    url: `/pages/worker/exam-result?score=${score}&passed=${score >= passScore}`,
-  });
 }
 </script>
 <style scoped>

@@ -3,14 +3,16 @@
     ><AppNavBar title="课程视频" :show-back="true" /><scroll-view
       scroll-y
       class="content"
-      ><view class="video" @click="playing = !playing"
-        ><text>{{ playing ? "❚❚" : "▶" }}</text
-        ><text>{{ playing ? "播放中" : "点击播放课程" }}</text></view
+      ><video
+        v-if="video.videoUrl"
+        class="video"
+        :src="video.videoUrl"
+        controls
+      />
+      <view v-else class="video"><text>暂无可播放视频</text></view
       ><view class="card"
-        ><text class="title">新手接单操作流程</text
-        ><text class="desc"
-          >学习岗位筛选、报名、到岗确认、完工结算和异常处理流程。</text
-        ></view
+        ><text class="title">{{ video.title || "课程视频" }}</text
+        ><text class="desc">{{ durationText }}</text></view
       ><view class="card"
         ><text class="section">课程要点</text
         ><text v-for="item in points" :key="item" class="point"
@@ -25,16 +27,40 @@
   >
 </template>
 <script setup>
-import { ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
-const playing = ref(false);
+import { listCourseVideos } from "@/api/backend";
+const pages = getCurrentPages();
+const options = pages[pages.length - 1]?.options || {};
+const video = ref({});
+const durationText = computed(() => {
+  const seconds = Number(video.value.duration || 0);
+  return seconds
+    ? `视频时长 ${Math.ceil(seconds / 60)} 分钟`
+    : "请完成视频学习";
+});
 const points = [
   "报名前确认工作信息",
   "按约定时间到岗",
   "完工后关注结算进度",
   "异常情况及时保留证据",
 ];
+onMounted(async () => {
+  if (!options.courseId) return;
+  try {
+    const result = await listCourseVideos(options.courseId);
+    const rows = Array.isArray(result)
+      ? result
+      : result?.records || result?.content || [];
+    video.value =
+      rows.find((item) => String(item.id) === String(options.videoId)) ||
+      rows[0] ||
+      {};
+  } catch (error) {
+    uni.showToast({ title: error.message || "视频加载失败", icon: "none" });
+  }
+});
 function done() {
   uni.showToast({ title: "课程学习完成", icon: "success" });
   setTimeout(() => uni.navigateBack(), 500);
@@ -57,12 +83,9 @@ function done() {
   background: #222;
   color: #fff;
 }
-.video text:first-child {
-  font-size: 80rpx;
-}
-.video text:last-child {
-  font-size: 24rpx;
-  margin-top: 16rpx;
+.video text {
+  color: #fff;
+  font-size: 25rpx;
 }
 .card {
   margin: 22rpx;

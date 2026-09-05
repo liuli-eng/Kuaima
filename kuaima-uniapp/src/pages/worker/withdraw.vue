@@ -44,7 +44,10 @@ const submitting = ref(false);
 onMounted(async () => {
   try {
     const r = await request({ url: "/worker/wallet" });
-    if (r) available.value = (Number(r.balance ?? r.available ?? 0) / 100).toFixed(2);
+    if (r)
+      available.value = (Number(r.balance ?? r.available ?? 0) / 100).toFixed(
+        2,
+      );
   } catch (_) {}
 });
 async function submit() {

@@ -23,27 +23,42 @@
       <!-- 搜索框 -->
       <view class="search-bar">
         <view class="search-input">
-          <text style="color:#999;font-size:14px;">🔍</text>
-          <input type="text" placeholder="搜索姓名、手机号" v-model="searchText" />
+          <text style="color: #999; font-size: 14px">🔍</text>
+          <input
+            type="text"
+            placeholder="搜索姓名、手机号"
+            v-model="searchText"
+            confirm-type="search"
+            @confirm="onSearch"
+          />
         </view>
       </view>
 
       <!-- Tab切换 -->
       <view class="tabs">
-        <text 
-          class="tab" 
+        <text
+          class="tab"
           :class="{ active: currentTab === tab.value }"
-          v-for="tab in tabs" 
+          v-for="tab in tabs"
           :key="tab.value"
-          @click="currentTab = tab.value"
-        >{{ tab.label }}</text>
+          @click="switchTab(tab.value)"
+          >{{ tab.label }}</text
+        >
       </view>
 
       <!-- 列表区域 -->
       <scroll-view scroll-y class="scroll-area">
-        <view class="list-item" :class="{ selected: selectedWorkers.includes(index) }" v-for="(worker, index) in workers" :key="index" @click="toggleSelect(index)">
+        <view
+          class="list-item"
+          :class="{ selected: selectedWorkers.includes(worker.id) }"
+          v-for="worker in filteredWorkers"
+          :key="worker.id"
+          @click="toggleSelect(worker)"
+        >
           <view class="col-left">
-            <view class="avatar" :class="worker.avatarClass">{{ worker.initial }}</view>
+            <view class="avatar" :class="worker.avatarClass">{{
+              worker.initial
+            }}</view>
           </view>
           <view class="col-middle">
             <view class="info-row">
@@ -52,74 +67,262 @@
             </view>
             <view class="info-row">
               <text class="info-phone">{{ worker.phone }}</text>
-              <text class="info-tag" :class="worker.tagClass">{{ worker.tag }}</text>
+              <text class="info-tag" :class="worker.tagClass">{{
+                worker.tag
+              }}</text>
               <text class="info-orders">{{ worker.orders }}</text>
             </view>
             <view class="info-row">
-              <text class="info-phone" style="color:#FFB800;">
-                <text style="font-size:12px;">⭐</text>
+              <text class="info-phone" style="color: #ffb800">
+                <text style="font-size: 12px">⭐</text>
               </text>
-              <text class="info-phone" style="color:#333;font-weight:500;">{{ worker.rating }}</text>
-              <text class="info-phone" style="color:#999;">· {{ worker.desc }}</text>
+              <text class="info-phone" style="color: #333; font-weight: 500">{{
+                worker.rating
+              }}</text>
+              <text class="info-phone" style="color: #999"
+                >· {{ worker.desc }}</text
+              >
             </view>
           </view>
           <view class="col-right">
-            <view class="checkbox" :class="{ checked: selectedWorkers.includes(index) }"></view>
+            <view
+              class="checkbox"
+              :class="{ checked: selectedWorkers.includes(worker.id) }"
+            ></view>
           </view>
         </view>
       </scroll-view>
 
       <!-- 底部按钮 -->
       <view class="bottom-bar">
-        <text class="count-info">已选 <text class="num">{{ selectedWorkers.length }}</text> 人</text>
-        <button class="confirm-btn" :disabled="selectedWorkers.length === 0" @click="confirmSelect">确认邀请{{ selectedWorkers.length > 0 ? ' ' + selectedWorkers.length + ' 人' : '' }}</button>
+        <text class="count-info"
+          >已选 <text class="num">{{ selectedWorkers.length }}</text> 人</text
+        >
+        <button
+          class="confirm-btn"
+          :disabled="selectedWorkers.length === 0"
+          @click="confirmSelect"
+        >
+          确认邀请{{
+            selectedWorkers.length > 0
+              ? " " + selectedWorkers.length + " 人"
+              : ""
+          }}
+        </button>
       </view>
     </view>
   </view>
 </template>
 
 <script>
+import {
+  inviteTalent,
+  listFavoriteTalents,
+  listTalentHistory,
+  searchTalents,
+} from "@/api/backend";
+import { USE_MOCK } from "@/api/http";
+
 export default {
   data() {
     return {
-      searchText: '',
-      currentTab: 'recent',
+      searchText: "",
+      currentTab: "recent",
       selectedWorkers: [],
+      orderId: "",
+      loading: false,
       tabs: [
-        { label: '最近合作', value: 'recent' },
-        { label: '我的收藏', value: 'favorite' },
-        { label: '全部零工', value: 'all' }
+        { label: "最近合作", value: "recent" },
+        { label: "我的收藏", value: "favorite" },
+        { label: "全部零工", value: "all" },
       ],
-      workers: [
-        { avatarClass: 'a1', initial: '张', name: '张师傅', verified: true, phone: '138****5678', tag: '金牌', tagClass: 'gold', orders: '已完成36单', rating: 4.9, desc: '接活快' },
-        { avatarClass: 'a2', initial: '李', name: '李大姐', verified: true, phone: '139****1234', tag: '电子厂熟手', tagClass: '', orders: '已完成28单', rating: 4.8, desc: '守时可靠' },
-        { avatarClass: 'a3', initial: '王', name: '王大哥', verified: true, phone: '137****9012', tag: '普工', tagClass: 'silver', orders: '已完成15单', rating: 4.7, desc: '干活麻利' },
-        { avatarClass: 'a4', initial: '陈', name: '陈阿姨', verified: true, phone: '136****3456', tag: '金牌', tagClass: 'gold', orders: '已完成42单', rating: 5.0, desc: '老员工推荐' },
-        { avatarClass: 'a5', initial: '刘', name: '刘师傅', verified: true, phone: '135****7890', tag: '焊锡工', tagClass: '', orders: '已完成22单', rating: 4.6, desc: '技术熟练' },
-        { avatarClass: 'a6', initial: '赵', name: '赵小妹', verified: true, phone: '138****2345', tag: '杂工', tagClass: 'silver', orders: '已完成8单', rating: 4.5, desc: '积极主动' }
-      ]
-    }
+      workers: USE_MOCK
+        ? [
+            {
+              avatarClass: "a1",
+              initial: "张",
+              name: "张师傅",
+              verified: true,
+              phone: "138****5678",
+              tag: "金牌",
+              tagClass: "gold",
+              orders: "已完成36单",
+              rating: 4.9,
+              desc: "接活快",
+            },
+            {
+              avatarClass: "a2",
+              initial: "李",
+              name: "李大姐",
+              verified: true,
+              phone: "139****1234",
+              tag: "电子厂熟手",
+              tagClass: "",
+              orders: "已完成28单",
+              rating: 4.8,
+              desc: "守时可靠",
+            },
+            {
+              avatarClass: "a3",
+              initial: "王",
+              name: "王大哥",
+              verified: true,
+              phone: "137****9012",
+              tag: "普工",
+              tagClass: "silver",
+              orders: "已完成15单",
+              rating: 4.7,
+              desc: "干活麻利",
+            },
+            {
+              avatarClass: "a4",
+              initial: "陈",
+              name: "陈阿姨",
+              verified: true,
+              phone: "136****3456",
+              tag: "金牌",
+              tagClass: "gold",
+              orders: "已完成42单",
+              rating: 5.0,
+              desc: "老员工推荐",
+            },
+            {
+              avatarClass: "a5",
+              initial: "刘",
+              name: "刘师傅",
+              verified: true,
+              phone: "135****7890",
+              tag: "焊锡工",
+              tagClass: "",
+              orders: "已完成22单",
+              rating: 4.6,
+              desc: "技术熟练",
+            },
+            {
+              avatarClass: "a6",
+              initial: "赵",
+              name: "赵小妹",
+              verified: true,
+              phone: "138****2345",
+              tag: "杂工",
+              tagClass: "silver",
+              orders: "已完成8单",
+              rating: 4.5,
+              desc: "积极主动",
+            },
+          ]
+        : [],
+    };
+  },
+  computed: {
+    filteredWorkers() {
+      const keyword = this.searchText.trim().toLowerCase();
+      if (!keyword) return this.workers;
+      return this.workers.filter((worker) =>
+        `${worker.name} ${worker.phone} ${worker.desc}`
+          .toLowerCase()
+          .includes(keyword),
+      );
+    },
+  },
+  onLoad(options) {
+    this.orderId = options?.orderId || "";
+    this.loadWorkers();
   },
   methods: {
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
-    toggleSelect(index) {
-      const idx = this.selectedWorkers.indexOf(index)
-      if (idx >= 0) {
-        this.selectedWorkers.splice(idx, 1)
-      } else {
-        this.selectedWorkers.push(index)
+    async loadWorkers() {
+      if (USE_MOCK) return;
+      this.loading = true;
+      try {
+        const bossId = uni.getStorageSync("userId") || "";
+        let result;
+        if (this.currentTab === "favorite")
+          result = await listFavoriteTalents(bossId);
+        else if (this.currentTab === "recent")
+          result = await listTalentHistory(bossId);
+        else
+          result = await searchTalents({
+            keyword: this.searchText,
+            page: 0,
+            size: 50,
+          });
+        const rows = Array.isArray(result)
+          ? result
+          : result?.records || result?.data || [];
+        this.workers = rows.map((row) => normalizeWorker(row.worker || row));
+      } catch (error) {
+        this.workers = [];
+        uni.showToast({
+          title: error.message || "零工列表加载失败",
+          icon: "none",
+        });
+      } finally {
+        this.loading = false;
       }
     },
-    confirmSelect() {
-      if (this.selectedWorkers.length === 0) return
-      uni.showToast({ title: `已邀请 ${this.selectedWorkers.length} 人`, icon: 'success' })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
-    }
-  }
+    onSearch() {
+      this.loadWorkers();
+    },
+    switchTab(tab) {
+      this.currentTab = tab;
+      this.selectedWorkers = [];
+      this.loadWorkers();
+    },
+    toggleSelect(worker) {
+      const idx = this.selectedWorkers.indexOf(worker.id);
+      if (idx >= 0) {
+        this.selectedWorkers.splice(idx, 1);
+      } else {
+        this.selectedWorkers.push(worker.id);
+      }
+    },
+    async confirmSelect() {
+      if (this.selectedWorkers.length === 0) return;
+      if (!this.orderId) {
+        uni.showToast({ title: "请从具体岗位进入邀请", icon: "none" });
+        return;
+      }
+      try {
+        await Promise.all(
+          this.selectedWorkers.map((workerId) =>
+            inviteTalent({
+              bossId: uni.getStorageSync("userId"),
+              workerId,
+              orderId: this.orderId,
+            }),
+          ),
+        );
+        uni.showToast({
+          title: `已邀请 ${this.selectedWorkers.length} 人`,
+          icon: "success",
+        });
+        setTimeout(() => uni.navigateBack(), 800);
+      } catch (error) {
+        uni.showToast({ title: error.message || "邀请失败", icon: "none" });
+      }
+    },
+  },
+};
+
+function normalizeWorker(worker = {}) {
+  const name =
+    worker.nickname || worker.name || worker.username || "未命名零工";
+  return {
+    ...worker,
+    id: worker.id,
+    initial: name.slice(0, 1),
+    name,
+    phone: worker.phone || "暂无手机号",
+    verified: worker.certStatus === "已通过" || worker.certStatus === "通过",
+    tag: worker.skills ? String(worker.skills).split(",")[0] : "零工",
+    tagClass: "",
+    orders: worker.completedOrders ? `已完成${worker.completedOrders}单` : "",
+    rating: worker.rating || "暂无",
+    desc: worker.remark || "暂无评价",
+  };
 }
 </script>
 
@@ -127,7 +330,7 @@ export default {
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #fff8e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -197,7 +400,7 @@ export default {
 .search-input {
   display: flex;
   align-items: center;
-  background: #F5F5F5;
+  background: #f5f5f5;
   border-radius: 20px;
   padding: 10px 14px;
   gap: 8px;
@@ -230,26 +433,26 @@ export default {
 }
 
 .tab.active {
-  color: #FF6B35;
+  color: #ff6b35;
   font-weight: 600;
 }
 
 .tab.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 24px;
   height: 3px;
-  background: #FF6B35;
+  background: #ff6b35;
   border-radius: 2px;
 }
 
 .scroll-area {
   flex: 1;
   overflow-y: auto;
-  background: #F7F8FA;
+  background: #f7f8fa;
   padding-top: 4px;
 }
 
@@ -261,14 +464,14 @@ export default {
   background: #fff;
   margin: 0 12px 10px;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1.5px solid transparent;
   gap: 12px;
 }
 
 .list-item.selected {
-  border-color: #FF6B35;
-  background: #FFFBF7;
+  border-color: #ff6b35;
+  background: #fffbf7;
 }
 
 .col-left {
@@ -299,12 +502,24 @@ export default {
   font-weight: 600;
 }
 
-.avatar.a1 { background: linear-gradient(135deg, #FF6B35, #FF8C5A); }
-.avatar.a2 { background: linear-gradient(135deg, #4A90D9, #6BB5F0); }
-.avatar.a3 { background: linear-gradient(135deg, #52C41A, #73D13D); }
-.avatar.a4 { background: linear-gradient(135deg, #FA8C16, #FFA940); }
-.avatar.a5 { background: linear-gradient(135deg, #722ED1, #9254DE); }
-.avatar.a6 { background: linear-gradient(135deg, #EB2F96, #F759AB); }
+.avatar.a1 {
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+}
+.avatar.a2 {
+  background: linear-gradient(135deg, #4a90d9, #6bb5f0);
+}
+.avatar.a3 {
+  background: linear-gradient(135deg, #52c41a, #73d13d);
+}
+.avatar.a4 {
+  background: linear-gradient(135deg, #fa8c16, #ffa940);
+}
+.avatar.a5 {
+  background: linear-gradient(135deg, #722ed1, #9254de);
+}
+.avatar.a6 {
+  background: linear-gradient(135deg, #eb2f96, #f759ab);
+}
 
 .info-row {
   display: flex;
@@ -329,8 +544,8 @@ export default {
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 3px;
-  background: #FFF3ED;
-  color: #FF6B35;
+  background: #fff3ed;
+  color: #ff6b35;
   font-weight: 400;
   flex-shrink: 0;
 }
@@ -342,8 +557,8 @@ export default {
 }
 
 .info-tag {
-  background: #F0F9FF;
-  color: #3B82F6;
+  background: #f0f9ff;
+  color: #3b82f6;
   padding: 1px 6px;
   border-radius: 3px;
   font-size: 10px;
@@ -352,12 +567,12 @@ export default {
 }
 
 .info-tag.gold {
-  background: #FFFBEB;
-  color: #D97706;
+  background: #fffbeb;
+  color: #d97706;
 }
 
 .info-tag.silver {
-  background: #F5F5F5;
+  background: #f5f5f5;
   color: #666;
 }
 
@@ -370,7 +585,7 @@ export default {
 .checkbox {
   width: 22px;
   height: 22px;
-  border: 2px solid #DDD;
+  border: 2px solid #ddd;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -380,12 +595,12 @@ export default {
 }
 
 .checkbox.checked {
-  border-color: #FF6B35;
-  background: #FF6B35;
+  border-color: #ff6b35;
+  background: #ff6b35;
 }
 
 .checkbox.checked::after {
-  content: '✓';
+  content: "✓";
   color: #fff;
   font-size: 13px;
   font-weight: bold;
@@ -407,7 +622,7 @@ export default {
 }
 
 .count-info .num {
-  color: #FF6B35;
+  color: #ff6b35;
   font-weight: 700;
   font-size: 18px;
 }
@@ -415,7 +630,7 @@ export default {
 .confirm-btn {
   flex: 1;
   height: 46px;
-  background: linear-gradient(135deg, #FFD700, #FFA500);
+  background: linear-gradient(135deg, #ffd700, #ffa500);
   color: #fff;
   border: none;
   border-radius: 23px;

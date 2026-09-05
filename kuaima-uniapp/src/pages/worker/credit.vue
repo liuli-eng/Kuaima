@@ -30,7 +30,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { request } from "@/api/http";
+import { getCredit, listCreditFlows } from "@/api/backend";
 const score = ref(100);
 const details = ref([
   { id: 1, title: "完成订单", time: "08月30日", value: 2 },
@@ -38,10 +38,10 @@ const details = ref([
 ]);
 onMounted(async () => {
   try {
-    const r = await request({ url: "/worker/credit" });
+    const r = await getCredit(uni.getStorageSync("userId") || "2001");
     if (r) {
       score.value = r.score ?? score.value;
-      details.value = r.details || details.value;
+      details.value = r.details || r.flows || details.value;
     }
   } catch (_) {}
 });

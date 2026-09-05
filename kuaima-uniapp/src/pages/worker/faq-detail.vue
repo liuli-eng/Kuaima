@@ -16,10 +16,11 @@
 import AppNavBar from "@/components/AppNavBar.vue";
 const pages = getCurrentPages();
 const question = decodeURIComponent(
-  pages[pages.length - 1]?.options?.question || "提现多久到账？",
+  pages[pages.length - 1]?.options?.question || "问题详情",
 );
-const answer =
-  "平台将在收到申请后进行审核，正常情况下1-3个工作日内到账。具体进度请以提现记录页面展示为准。";
+const answer = decodeURIComponent(
+  pages[pages.length - 1]?.options?.answer || "暂无问题解答",
+);
 function feedback(ok) {
   uni.showToast({
     title: ok ? "感谢反馈" : "已记录，可联系客服",

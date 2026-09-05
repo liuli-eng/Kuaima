@@ -263,7 +263,11 @@ export default {
       uni.navigateBack();
     },
     navigateTo(page) {
-      uni.navigateTo({ url: `/pages/boss/${page}` });
+      const query =
+        page === "invite-worker" && this.orderId
+          ? `?orderId=${encodeURIComponent(this.orderId)}`
+          : "";
+      uni.navigateTo({ url: `/pages/boss/${page}${query}` });
     },
     loadRecruitSettings() {
       if (this.hasExplicitType) return;
@@ -359,8 +363,11 @@ export default {
       }
       this.publishing = true;
       try {
-        const dateText = new Date().toISOString().slice(0, 10);
         const workTime = uni.getStorageSync("workTimeSelection") || {};
+        const dateText =
+          Array.isArray(workTime.selectedDates) && workTime.selectedDates.length
+            ? workTime.selectedDates[0]
+            : formatLocalDate(new Date());
         const workLocation = uni.getStorageSync("workLocationSelection") || {};
         const taskContent = uni.getStorageSync("taskContent") || {};
         const durationMatch = String(workTime.duration || "").match(/[\d.]+/);
@@ -423,6 +430,10 @@ function composeTaskContent(data = {}) {
   const desc = String(data.desc || "").trim();
   if (title && desc && title !== desc) return `${title} - ${desc}`;
   return title || desc;
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 </script>
 

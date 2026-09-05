@@ -22,14 +22,17 @@
     </view>
 
     <scroll-view scroll-y class="scroll-area">
-      <view class="notice-item" v-for="(notice, index) in notices" :key="index">
+      <view class="notice-item" v-for="notice in notices" :key="notice.id">
         <text class="notice-time">{{ notice.time }}</text>
         <text class="notice-content">
-          <text class="notice-tag" :class="notice.tagClass">{{ notice.tag }}</text>
+          <text class="notice-tag" :class="notice.tagClass">{{
+            notice.tag
+          }}</text>
           {{ notice.content }}
         </text>
       </view>
-      <view v-if="!notices.length" class="empty-text">暂无公告</view>
+      <view v-if="loading" class="empty-text">正在加载公告...</view>
+      <view v-else-if="!notices.length" class="empty-text">暂无公告</view>
     </scroll-view>
   </view>
 </template>
@@ -40,6 +43,7 @@ import { listNotices } from '@/api/backend'
 export default {
   data() {
     return {
+      loading: false,
       notices: []
     }
   },
@@ -48,17 +52,27 @@ export default {
   },
   methods: {
     async loadNotices() {
+      this.loading = true
       try {
         const result = await listNotices({ scope: '雇主' })
         if (Array.isArray(result)) {
           this.notices = result.map(this.normalizeNotice)
         }
-      } catch (_) {}
+      } catch (error) {
+        this.notices = []
+        uni.showToast({
+          title: error.message || '公告加载失败',
+          icon: 'none'
+        })
+      } finally {
+        this.loading = false
+      }
     },
     normalizeNotice(item) {
       const tag = item.type || '系统'
       const tagClass = tag === '活动' ? 'tag-success' : tag === '政策' ? 'tag-warning' : 'tag-system'
       return {
+        id: item.id,
         time: item.publishTime ? String(item.publishTime).slice(0, 16).replace('T', ' ') : '',
         tag,
         tagClass,
@@ -139,7 +153,7 @@ export default {
   margin: 12px 16px;
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .notice-time {

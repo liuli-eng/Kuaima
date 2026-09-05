@@ -4,40 +4,82 @@
       scroll-y
       class="content"
       ><view class="hero"
-        ><text class="title">工作安全与纠纷处理</text
-        ><text>完成培训任务可提升接单资格和信用分</text></view
+        ><text class="title">{{
+          task.title || task.courseTitle || "培训任务"
+        }}</text
+        ><text>{{
+          task.dueDate
+            ? `请于 ${task.dueDate} 前完成`
+            : "完成培训任务可提升接单资格"
+        }}</text></view
       ><view class="card"
-        ><text class="section">学习步骤</text
-        ><view v-for="(item, index) in steps" :key="item" class="step"
-          ><text>{{ index + 1 }}</text
-          ><text>{{ item }}</text></view
-        ></view
-      ><view class="card video" @click="play"
-        ><text class="play">▶</text><text>观看培训视频演示</text></view
+        ><text class="section">任务信息</text>
+        <view class="step"
+          ><text>1</text><text>打开对应课程并完成学习</text></view
+        >
+        <view class="step"
+          ><text>2</text><text>学习结束后返回本页提交完成</text></view
+        >
+      </view>
+      <view class="card video" @click="play"
+        ><text class="play">▶</text><text>进入课程学习</text></view
       ></scroll-view
     ><SafeBottomAction
-      ><button class="done" @click="complete">
-        完成培训任务
+      ><button
+        class="done"
+        :disabled="submitting || completed"
+        @click="complete"
+      >
+        {{ completed ? "已完成" : submitting ? "提交中…" : "完成培训任务" }}
       </button></SafeBottomAction
     ></view
   >
 </template>
 <script setup>
+import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
-const steps = [
-  "了解现场安全规范",
-  "学习异常情况处理方式",
-  "保留照片、视频和沟通记录",
-  "遇到纠纷及时联系平台",
-];
+import { completeTrainingTask, listTrainingTasks } from "@/api/backend";
+const pages = getCurrentPages();
+const options = pages[pages.length - 1]?.options || {};
+const task = ref({ id: options.id, courseId: options.courseId });
+const submitting = ref(false);
+const completed = ref(false);
+onMounted(async () => {
+  try {
+    const result = await listTrainingTasks(
+      uni.getStorageSync("userId") || "2001",
+    );
+    const rows = Array.isArray(result)
+      ? result
+      : result?.records || result?.content || [];
+    task.value =
+      rows.find((item) => String(item.id) === String(options.id)) || task.value;
+    completed.value = ["COMPLETED", "DONE", "已完成"].includes(
+      task.value.status,
+    );
+  } catch (_) {}
+});
 function play() {
-  uni.navigateTo({ url: "/pages/worker/course-video?id=safety" });
+  if (!task.value.courseId)
+    return uni.showToast({ title: "任务未关联课程", icon: "none" });
+  uni.navigateTo({
+    url: `/pages/worker/course-detail?id=${task.value.courseId}`,
+  });
 }
-function complete() {
-  uni.setStorageSync("trainingCompleted", true);
-  uni.showToast({ title: "培训已完成", icon: "success" });
-  setTimeout(() => uni.navigateBack(), 500);
+async function complete() {
+  if (!task.value.id || submitting.value || completed.value) return;
+  submitting.value = true;
+  try {
+    await completeTrainingTask(task.value.id);
+    completed.value = true;
+    uni.showToast({ title: "培训已完成", icon: "success" });
+    setTimeout(() => uni.navigateBack(), 500);
+  } catch (error) {
+    uni.showToast({ title: error.message || "提交失败", icon: "none" });
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 <style scoped>
@@ -107,5 +149,8 @@ function complete() {
   background: #722ed1;
   color: #fff;
   font-size: 29rpx;
+}
+.done[disabled] {
+  background: #bbb;
 }
 </style>

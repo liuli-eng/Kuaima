@@ -72,7 +72,10 @@ onMounted(async () => {
     if (result) {
       profile.value = typeof result === "string" ? { name: result } : result;
     }
-    if (walletResult) wallet.value.available = (Number(walletResult.balance || 0) / 100).toFixed(2);
+    if (walletResult)
+      wallet.value.available = (
+        Number(walletResult.balance || 0) / 100
+      ).toFixed(2);
   } catch (_) {}
 });
 
@@ -257,5 +260,4 @@ function handle(item) {
   color: #fff;
   font-size: 18rpx;
 }
-
 </style>

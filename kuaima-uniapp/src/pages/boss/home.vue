@@ -6,7 +6,7 @@
         class="top-bar"
         :style="{
           paddingTop: `${statusBarHeight + 12}px`,
-          paddingRight: `${menuSafeRight}px`
+          paddingRight: `${menuSafeRight}px`,
         }"
       >
         <view class="brand-tag">快马日结</view>
@@ -19,39 +19,21 @@
         <text class="hero-mascot" aria-hidden="true">🐴</text>
       </view>
 
-      <!-- 流程条 -->
-      <view class="flow-bar">
-        <view class="flow-item">
-          <text>发布招工</text>
-        </view>
-        <text class="flow-arrow">›</text>
-        <view class="flow-item">
-          <text>零工接单</text>
-        </view>
-        <text class="flow-arrow">›</text>
-        <view class="flow-item">
-          <text>到岗干活</text>
-        </view>
-        <text class="flow-arrow">›</text>
-        <view class="flow-item">
-          <text>平台结算</text>
-        </view>
-      </view>
-
       <!-- 信息条 -->
       <view class="info-bar">
         <view class="info-item">
-          <text style="color:#FF6B35;">📍</text>
+          <text style="color: #ff6b35">📍</text>
           <text>松江</text>
         </view>
         <view class="info-right" @click="navigateTo('service-chat')">
-          <text style="color:#FF6B35;">🎧</text>
+          <text style="color: #ff6b35">🎧</text>
           <text>在线客服</text>
         </view>
       </view>
       <view class="info-highlight-bar">
-        <text class="text-sm" style="color:#8B4513;">
-          附近有<text class="info-highlight">1390位零工</text> 最快<text class="info-highlight">3分钟内</text>接单
+        <text class="text-sm" style="color: #8b4513">
+          附近有<text class="info-highlight">{{ nearbyWorkers }}位零工</text>
+          最快<text class="info-highlight">{{ fastestMinutes }}分钟内</text>接单
         </text>
       </view>
 
@@ -59,20 +41,11 @@
       <view class="publish-section">
         <text class="section-title">每天日结</text>
         <text class="section-subtitle">每天完工 当面结清报酬</text>
-        <view class="publish-cards">
-          <view class="publish-card" @click="navigateTo('select-job')">
-            <text class="card-days">1天</text>
-            <text class="card-label">工期</text>
-            <view class="card-btn">
-              <text>发布招工</text>
-            </view>
-          </view>
-          <view class="publish-card green" @click="navigateTo('select-job')">
-            <text class="card-days">2~6天</text>
-            <text class="card-label">工期</text>
-            <view class="card-btn">
-              <text>发布招工</text>
-            </view>
+        <view class="publish-entry" @click="navigateTo('select-job')">
+          <view class="publish-entry-deco" />
+          <text class="publish-entry-title">立即发布招工信息</text>
+          <view class="publish-entry-btn">
+            <text>发布招工</text>
           </view>
         </view>
       </view>
@@ -93,7 +66,9 @@
               <text>⚡</text>
               <text>到岗快</text>
             </view>
-            <text class="peer-feature-desc">3000万临时工在线接单，最快3分钟接单，20分钟到岗</text>
+            <text class="peer-feature-desc"
+              >3000万临时工在线接单，最快3分钟接单，20分钟到岗</text
+            >
           </view>
           <view class="peer-feature">
             <text class="peer-feature-icon">🔧</text>
@@ -101,7 +76,9 @@
               <text>🔧</text>
               <text>熟练工</text>
             </view>
-            <text class="peer-feature-desc">工厂、电商、餐饮、酒店、仓储、物流等都在平台招临时工熟手</text>
+            <text class="peer-feature-desc"
+              >工厂、电商、餐饮、酒店、仓储、物流等都在平台招临时工熟手</text
+            >
           </view>
           <view class="peer-feature">
             <text class="peer-feature-icon">👤</text>
@@ -109,7 +86,9 @@
               <text>👤</text>
               <text>人靠谱</text>
             </view>
-            <text class="peer-feature-desc">零工实名接单，信用分机制筛选，零工星级评定帮您招靠谱临时工</text>
+            <text class="peer-feature-desc"
+              >零工实名接单，信用分机制筛选，零工星级评定帮您招靠谱临时工</text
+            >
           </view>
           <view class="peer-feature">
             <text class="peer-feature-icon">💰</text>
@@ -117,7 +96,9 @@
               <text>💰</text>
               <text>更省钱</text>
             </view>
-            <text class="peer-feature-desc">临时工成本比正式工低30%，熟练临时工效率成本更优</text>
+            <text class="peer-feature-desc"
+              >临时工成本比正式工低30%，熟练临时工效率成本更优</text
+            >
           </view>
         </view>
       </view>
@@ -148,69 +129,136 @@
 </template>
 
 <script>
+import { getBossStats } from "@/api/backend";
+
 function getSafeArea() {
   try {
-    const info = typeof uni.getWindowInfo === 'function'
-      ? uni.getWindowInfo()
-      : uni.getSystemInfoSync()
-    let menuSafeRight = 16
+    const info =
+      typeof uni.getWindowInfo === "function"
+        ? uni.getWindowInfo()
+        : uni.getSystemInfoSync();
+    let menuSafeRight = 16;
     // #ifdef MP-WEIXIN
-    const menu = uni.getMenuButtonBoundingClientRect()
-    if (menu?.left) menuSafeRight = Math.max(16, info.windowWidth - menu.left + 12)
+    const menu = uni.getMenuButtonBoundingClientRect();
+    if (menu?.left)
+      menuSafeRight = Math.max(16, info.windowWidth - menu.left + 12);
     // #endif
     return {
       statusBarHeight: Number(info.statusBarHeight || 0),
-      menuSafeRight
-    }
+      menuSafeRight,
+    };
   } catch (_) {
-    return { statusBarHeight: 0, menuSafeRight: 16 }
+    return { statusBarHeight: 0, menuSafeRight: 16 };
   }
 }
 
 export default {
   data() {
-    return getSafeArea()
+    return {
+      ...getSafeArea(),
+      nearbyWorkers: 0,
+      fastestMinutes: 0,
+      statsLoading: false,
+    };
+  },
+  onLoad() {
+    this.loadStats();
   },
   methods: {
+    async loadStats() {
+      this.statsLoading = true;
+      try {
+        const result = await getBossStats(
+          uni.getStorageSync("userId") || "2001",
+        );
+        this.nearbyWorkers = Number(
+          result?.nearbyWorkers ??
+            result?.workerCount ??
+            result?.availableWorkers ??
+            0,
+        );
+        this.fastestMinutes = Number(
+          result?.fastestMinutes ??
+            result?.estimatedMinutes ??
+            result?.expectedMinutes ??
+            0,
+        );
+      } catch (error) {
+        uni.showToast({
+          title: error.message || "首页统计加载失败",
+          icon: "none",
+        });
+      } finally {
+        this.statsLoading = false;
+      }
+    },
     navigateTo(pageName) {
       const bossPages = [
-        'boss-employer', 'boss-home', 'boss-message', 'boss-order', 'boss-profile', 
-        'boss-publish', 'search-worker', 'select-job', 'publish-info', 'schedule-stats', 
-        'enterprise-cert', 'enterprise-cert-form', 'creditor-score', 'talent-list', 
-        'expense-detail', 'payment-detail', 'recruit-manager', 'recruit-address', 
-        'sub-account', 'suspend-settle', 'switch-account', 'invite-code', 'blacklist', 
-        'all-jobs', 'boss-filter', 'settlement', 'contract', 'system-notice', 'missed-call', 
-        'signup-notice', 'invite-friend', 'service-chat', 'insurance', 'realname'
-      ]
-      let url = `/pages/boss/${pageName}`
+        "boss-employer",
+        "boss-home",
+        "boss-message",
+        "boss-order",
+        "boss-profile",
+        "boss-publish",
+        "search-worker",
+        "select-job",
+        "publish-info",
+        "schedule-stats",
+        "enterprise-cert",
+        "enterprise-cert-form",
+        "creditor-score",
+        "talent-list",
+        "expense-detail",
+        "payment-detail",
+        "recruit-manager",
+        "recruit-address",
+        "sub-account",
+        "suspend-settle",
+        "switch-account",
+        "invite-code",
+        "blacklist",
+        "all-jobs",
+        "boss-filter",
+        "settlement",
+        "contract",
+        "system-notice",
+        "missed-call",
+        "signup-notice",
+        "invite-friend",
+        "service-chat",
+        "insurance",
+        "realname",
+      ];
+      let url = `/pages/boss/${pageName}`;
       if (!bossPages.includes(pageName)) {
-        url = `/pages/${pageName}`
+        url = `/pages/${pageName}`;
       }
-      uni.navigateTo({ url })
+      uni.navigateTo({ url });
     },
     switchTab(tab) {
       const tabPages = {
-        'home': '/pages/boss/home',
-        'order': '/pages/boss/order',
-        'message': '/pages/boss/message',
-        'profile': '/pages/boss/profile'
-      }
-      const target = tabPages[tab]
-      const currentRoute = getCurrentPages().slice(-1)[0]?.route
-      if (!target || `/${currentRoute}` === target) return
+        home: "/pages/boss/home",
+        order: "/pages/boss/order",
+        message: "/pages/boss/message",
+        profile: "/pages/boss/profile",
+      };
+      const target = tabPages[tab];
+      const currentRoute = getCurrentPages().slice(-1)[0]?.route;
+      if (!target || `/${currentRoute}` === target) return;
       uni.redirectTo({
         url: target,
         fail: (error) => {
-          console.error('Boss 主导航跳转失败', error)
+          console.error("Boss 主导航跳转失败", error);
           uni.reLaunch({
             url: target,
-            fail: () => uni.showToast({ title: '页面跳转失败，请重试', icon: 'none' })
-          })
-        }
-      })
-    }
-  }
-}
+            fail: () =>
+              uni.showToast({ title: "页面跳转失败，请重试", icon: "none" }),
+          });
+        },
+      });
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -224,7 +272,9 @@ export default {
   flex-direction: column;
   overflow: hidden;
   color: #333;
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial,
+    sans-serif;
 }
 
 .scroll-area {
@@ -248,7 +298,7 @@ export default {
   border-radius: 24px;
   font-weight: 700;
   font-size: 15px;
-  color: #8B4513;
+  color: #8b4513;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
@@ -264,14 +314,14 @@ export default {
   font-size: 38px;
   font-weight: 800;
   line-height: 1.1;
-  color: #8B4513;
+  color: #8b4513;
 }
 
 .hero-subtitle {
   display: block;
   font-size: 24px;
   font-weight: 700;
-  color: #D2691E;
+  color: #d2691e;
   margin-top: 8px;
 }
 
@@ -285,53 +335,26 @@ export default {
   pointer-events: none;
 }
 
-.flow-bar {
-  box-sizing: border-box;
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-  color: #D2691E;
-  box-shadow: 0 2px 8px rgba(139, 69, 19, 0.06);
-}
-
-.flow-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #D2691E;
-  font-weight: 500;
-}
-
-.flow-arrow {
-  color: #FFB380;
-  font-size: 14px;
-}
-
 .info-bar {
   display: flex;
   padding: 16px;
   justify-content: space-between;
   font-size: 14px;
-  color: #8B4513;
+  color: #8b4513;
 }
 
 .info-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #8B4513;
+  color: #8b4513;
 }
 
 .info-right {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #8B4513;
+  color: #8b4513;
 }
 
 .info-highlight-bar {
@@ -341,7 +364,7 @@ export default {
 }
 
 .info-highlight {
-  color: #FF6B35;
+  color: #ff6b35;
   font-weight: 600;
 }
 
@@ -353,7 +376,7 @@ export default {
   display: block;
   font-size: 28px;
   font-weight: 800;
-  color: #8B4513;
+  color: #8b4513;
   margin-bottom: 6px;
   letter-spacing: 1px;
 }
@@ -362,55 +385,64 @@ export default {
   display: block;
   font-size: 15px;
   font-weight: 500;
-  color: #FF6B35;
+  color: #ff6b35;
   margin-bottom: 16px;
   letter-spacing: 0.5px;
 }
 
-.publish-cards {
-  display: flex;
-  gap: 12px;
-}
-
-.publish-card {
+.publish-entry {
   box-sizing: border-box;
-  min-width: 0;
-  flex: 1;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
-  border-radius: 16px;
-  padding: 16px;
-  text-align: center;
-  color: white;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  border-radius: 20px;
+  padding: 26px 24px;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(255, 107, 53, 0.28);
 }
 
-.publish-card.green {
-  background: linear-gradient(135deg, #52C41A, #73D13D);
+.publish-entry:active {
+  transform: scale(0.98);
 }
 
-.card-days {
+.publish-entry-deco {
+  position: absolute;
+  top: -40px;
+  right: -34px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.publish-entry-title {
+  position: relative;
+  z-index: 1;
   display: block;
-  font-size: 36px;
-  font-weight: 800;
-  margin: 12px 0 4px;
-}
-
-.card-label {
-  display: block;
-  font-size: 14px;
-  opacity: 0.9;
-  margin-bottom: 8px;
-}
-
-.card-btn {
-  background: rgba(255, 255, 255, 0.25);
-  padding: 10px;
-  border-radius: 24px;
+  color: #fff;
   text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-  margin-top: 12px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 2px;
+}
+
+.publish-entry-btn {
+  position: relative;
+  z-index: 1;
+  padding: 15px;
+  border-radius: 30px;
+  background: #fff;
+  color: #ff6b35;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .peer-section {
@@ -419,7 +451,7 @@ export default {
 
 .peer-banner {
   box-sizing: border-box;
-  background: linear-gradient(135deg, #FFE4C4 0%, #FFDAB9 100%);
+  background: linear-gradient(135deg, #ffe4c4 0%, #ffdab9 100%);
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 16px;
@@ -429,7 +461,7 @@ export default {
   display: block;
   font-size: 22px;
   font-weight: 700;
-  color: #8B4513;
+  color: #8b4513;
   margin-bottom: 4px;
 }
 
@@ -437,7 +469,7 @@ export default {
   display: block;
   font-size: 22px;
   font-weight: 700;
-  color: #8B4513;
+  color: #8b4513;
 }
 
 .peer-features {
@@ -525,7 +557,7 @@ export default {
 }
 
 .tab-item.active .tab-label {
-  color: #FF6B35;
+  color: #ff6b35;
 }
 
 .tab-item.active .tab-icon-wrap {
@@ -534,7 +566,7 @@ export default {
   margin-bottom: 2px;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
 }
 

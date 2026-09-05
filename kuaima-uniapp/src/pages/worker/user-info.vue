@@ -7,7 +7,7 @@
         ><view class="avatar">👤<text class="edit">⌕</text></view
         ><text>点击更换头像</text></view
       ><view class="card"
-        ><view v-for="item in basic" :key="item.label" class="row"
+      ><view v-for="item in basicView" :key="item.label" class="row"
           ><text class="label">{{ item.label }}</text
           ><input
             v-if="item.edit"
@@ -35,8 +35,10 @@
   >
 </template>
 <script setup>
-import { reactive } from "vue";
+import { computed, onMounted, reactive } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
+import { getUser, updateUser } from "@/api/backend";
+const userId = uni.getStorageSync("userId") || "2001";
 const form = reactive({
   nickname: "晴时见禾",
   gender: "男",
@@ -65,6 +67,40 @@ const work = [
     placeholder: true,
   },
 ];
+const phone = refValue("暂无手机号");
+const basicView = computed(() =>
+  basic.map((item) =>
+    item.key === "phone" ? { ...item, value: phone.value } : item,
+  ),
+);
+onMounted(async () => {
+  try {
+    const user = await getUser(userId);
+    if (!user) return;
+    Object.keys(form).forEach((key) => {
+      if (user[key] !== undefined && user[key] !== null)
+        form[key] = String(user[key]);
+    });
+    phone.value = user.phone || "暂无手机号";
+  } catch (_) {}
+});
+async function saveProfile() {
+  try {
+    await updateUser(userId, {
+      nickname: form.nickname,
+      gender: form.gender,
+      city: form.city,
+      skills: form.skills,
+      remark: form.intro,
+    });
+    uni.showToast({ title: "资料已保存", icon: "success" });
+  } catch (error) {
+    uni.showToast({ title: error.message || "保存失败", icon: "none" });
+  }
+}
+function refValue(value) {
+  return { value };
+}
 function changeAvatar() {
   uni.showToast({ title: "更换头像功能开发中", icon: "none" });
 }
