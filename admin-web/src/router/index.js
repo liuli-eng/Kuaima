@@ -76,19 +76,6 @@ const routes = [
         component: () => import('@/views/order/Settlement.vue'),
         meta: { title: '结算管理', icon: 'fa-coins' }
       },
-      // 财务运营
-      {
-        path: 'finance',
-        name: 'Finance',
-        component: () => import('@/views/finance/Finance.vue'),
-        meta: { title: '财务报表', icon: 'fa-chart-pie' }
-      },
-      {
-        path: 'points',
-        name: 'Points',
-        component: () => import('@/views/finance/Points.vue'),
-        meta: { title: '积分管理', icon: 'fa-star' }
-      },
       // 内容管理
       {
         path: 'certification',
@@ -162,7 +149,7 @@ const routes = [
         path: 'admin-user/form',
         name: 'AdminUserForm',
         component: () => import('@/views/system/AdminUserForm.vue'),
-        meta: { title: '添加管理员', icon: 'fa-user-plus', hidden: true }
+        meta: { title: '新建账号', icon: 'fa-user-plus', hidden: true }
       },
       {
         path: 'logs',

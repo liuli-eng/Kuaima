@@ -6,6 +6,26 @@ export function getSettingsByCategory(cat) { return request.get(`/admin/settings
 export function saveSetting(key, value, description) {
   return request.put(`/admin/settings/${key}`, { settingValue: value, description })
 }
+// 银行账户设置
+export function getBankAccount() { return request.get('/admin/settings/bank-account') }
+export function saveBankAccount(data) {
+  return request.put('/admin/settings/bank-account', JSON.stringify(data), {
+    headers: { 'Content-Type': 'application/json' }
+  })
+}
+// 钱包账户设置
+export function getWalletAccount() { return request.get('/admin/settings/wallet-account') }
+export function saveWalletAccount(data) {
+  return request.put('/admin/settings/wallet-account', JSON.stringify(data), {
+    headers: { 'Content-Type': 'application/json' }
+  })
+}
+// 模板测试发送
+export function testSendTemplate(data) {
+  return request.post('/admin/settings/test-send', JSON.stringify(data), {
+    headers: { 'Content-Type': 'application/json' }
+  })
+}
 
 // ============ Admin Users ============
 export function listAdminUsers({ page = 0, size = 10 } = {}) {

@@ -1,34 +1,33 @@
 <template>
   <view class="page">
     <view class="chat-header" :style="{ paddingTop: `${statusBarHeight}px` }">
-      <text class="back" @click="uni.navigateBack()">‹</text
-      ><text class="avatar">☎</text>
-      <view class="info"
-        ><text class="name">快马日结客服</text
-        ><text class="status"
-          ><text class="dot" />在线 · 平均1分钟回复</text
-        ></view
-      >
-      <text class="more">•••</text>
+      <text class="back" @click="uni.navigateBack()">‹</text>
+      <text class="avatar">快</text>
+      <view class="info">
+        <text class="name">快马日结客服</text>
+        <text class="status">
+          <text class="dot" />在线 · 实时聊天
+        </text>
+      </view>
     </view>
     <view class="security">请勿向任何人透露验证码、银行卡密码等敏感信息。</view>
-    <scroll-view scroll-y class="messages" :scroll-into-view="lastId">
-      <text class="time">今天 19:48</text>
+    <scroll-view scroll-y class="messages" :scroll-into-view="lastId" :scroll-with-animation="true">
       <view
         v-for="(item, index) in messages"
         :id="`msg-${index}`"
-        :key="index"
+        :key="item.id || index"
         :class="['message-row', { self: item.self }]"
       >
-        <text v-if="!item.self" class="small-avatar">快</text
-        ><text class="bubble">{{ item.text }}</text>
+        <text v-if="!item.self" class="small-avatar">快</text>
+        <view class="bubble-wrap">
+          <text class="bubble">{{ item.text }}</text>
+          <text class="msg-time">{{ formatTime(item.timestamp) }}</text>
+        </view>
       </view>
-      <view class="hot"
-        ><text class="hot-title">常见问题</text
-        ><text v-for="item in hotQuestions" :key="item" @click="sendText(item)"
-          >{{ item }} ›</text
-        ></view
-      >
+      <view class="hot">
+        <text class="hot-title">常见问题</text>
+        <text v-for="(item, i) in hotQuestions" :key="i" @click="sendText(item)">{{ item }} ›</text>
+      </view>
     </scroll-view>
     <view class="composer" :style="{ paddingBottom: `${bottomInset + 12}px` }">
       <input
@@ -36,194 +35,284 @@
         confirm-type="send"
         placeholder="请输入您的问题"
         @confirm="send"
-      /><button @click="send">发送</button>
+      />
+      <button @click="send">发送</button>
     </view>
   </view>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
-const system = uni.getSystemInfoSync();
-const statusBarHeight = system.statusBarHeight || 0;
-const bottomInset = system.safeAreaInsets?.bottom || 0;
-const input = ref("");
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { startSession, getMessages, sendMessage } from '@/api/chat'
+import wsClient from '@/api/chat-websocket'
+
+const system = uni.getSystemInfoSync()
+const statusBarHeight = system.statusBarHeight || 0
+const bottomInset = system.safeAreaInsets?.bottom || 0
+const input = ref('')
+const sessionId = ref(null)
 const messages = ref([
-  { text: "您好，我是快马日结在线客服，请问有什么可以帮您？", self: false },
-]);
+  { text: '您好，我是快马日结在线客服，请问有什么可以帮您？', self: false, timestamp: Date.now() }
+])
 const hotQuestions = [
-  "老板还没有结算报酬",
-  "订单临时去不了怎么办？",
-  "提现多久到账？",
-];
-const lastId = computed(() => `msg-${messages.value.length - 1}`);
-function sendText(text) {
-  input.value = text;
-  send();
+  '老板还没有结算报酬',
+  '订单临时去不了怎么办？',
+  '提现多久到账？',
+]
+const lastId = computed(() => `msg-${messages.value.length - 1}`)
+
+const formatTime = (ts) => {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
 }
-function send() {
-  const text = input.value.trim();
-  if (!text) return;
-  messages.value.push({ text, self: true });
-  input.value = "";
-  setTimeout(
-    () =>
+
+const loadHistory = async () => {
+  if (!sessionId.value) return
+  try {
+    const res = await getMessages(sessionId.value)
+    const list = Array.isArray(res) ? res : (res?.data || [])
+    list.forEach(msg => {
       messages.value.push({
-        text: "已收到您的问题，客服正在为您查询，请稍候。",
-        self: false,
-      }),
-    300,
-  );
+        id: msg.id,
+        text: msg.content,
+        self: msg.fromType === 'USER',
+        timestamp: msg.timestamp
+      })
+    })
+  } catch (e) {
+    console.error('[Chat] 加载历史消息失败:', e)
+  }
 }
+
+const sendText = (text) => {
+  input.value = text
+  send()
+}
+
+const send = async () => {
+  const text = input.value.trim()
+  if (!text) return
+
+  // 优先 WebSocket
+  const sent = wsClient.send({
+    type: 'MESSAGE',
+    sessionId: sessionId.value,
+    content: text,
+    contentType: 'TEXT'
+  })
+
+  if (sent) {
+    messages.value.push({ text, self: true, timestamp: Date.now() })
+  } else {
+    // HTTP 降级
+    try {
+      const userId = uni.getStorageSync('userId') || '2001'
+      await sendMessage(sessionId.value, userId, text)
+      messages.value.push({ text, self: true, timestamp: Date.now() })
+    } catch (e) {
+      uni.showToast({ title: '发送失败', icon: 'none' })
+      return
+    }
+  }
+  input.value = ''
+}
+
+// WebSocket 消息监听
+const onWsMessage = (data) => {
+  if (data.sessionId !== sessionId.value) return
+  if (data.type === 'MESSAGE' && data.fromType === 'AGENT') {
+    messages.value.push({
+      id: data.messageId,
+      text: data.content,
+      self: false,
+      timestamp: data.timestamp
+    })
+  }
+}
+
+onMounted(async () => {
+  const userId = uni.getStorageSync('userId') || '2001'
+  // 创建或获取会话
+  try {
+    const res = await startSession(userId)
+    sessionId.value = res?.id || res?.data?.id
+    await loadHistory()
+  } catch (e) {
+    console.error('[Chat] 创建会话失败:', e)
+  }
+
+  // 连接 WebSocket（USER 类型），优先使用 VITE_WS_BASE_URL，其次从 HTTP 地址派生
+  const httpBase = import.meta.env.VITE_MP_API_BASE_URL || 'http://192.168.2.88:8080'
+  const wsBaseUrl = (import.meta.env.VITE_WS_BASE_URL || httpBase).replace('http://', 'ws://').replace('https://', 'wss://')
+  wsClient.connect(wsBaseUrl, userId, 'USER')
+  wsClient.on('MESSAGE', onWsMessage)
+})
+
+onUnmounted(() => {
+  wsClient.off('MESSAGE', onWsMessage)
+  wsClient.close()
+})
 </script>
 
 <style scoped>
 .page {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background: #f5f5f5;
 }
 .chat-header {
   display: flex;
   align-items: center;
-  gap: 14rpx;
-  padding-left: 24rpx;
-  padding-right: 24rpx;
-  padding-bottom: 20rpx;
-  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
-  color: #fff;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
 }
 .back {
-  font-size: 48rpx;
+  font-size: 24px;
+  color: #333;
 }
-.avatar,
-.small-avatar {
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B35, #FF8C42);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: #fff;
-  color: #ff6b35;
-}
-.avatar {
-  width: 72rpx;
-  height: 72rpx;
-  font-size: 30rpx;
+  font-weight: 600;
 }
 .info {
-  flex: 1;
-}
-.name,
-.status {
-  display: block;
+  display: flex;
+  flex-direction: column;
 }
 .name {
-  font-size: 28rpx;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
 }
 .status {
-  margin-top: 5rpx;
-  font-size: 20rpx;
-  opacity: 0.9;
+  font-size: 12px;
+  color: #52c41a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .dot {
-  display: inline-block;
-  width: 10rpx;
-  height: 10rpx;
-  margin-right: 8rpx;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #52c41a;
 }
-.more {
-  letter-spacing: 2rpx;
-}
 .security {
-  padding: 16rpx 24rpx;
-  background: #fff8e6;
-  color: #d48806;
-  font-size: 21rpx;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #999;
+  background: #fffbe6;
+  text-align: center;
 }
 .messages {
-  height: calc(100vh - 300rpx);
-  padding: 20rpx 24rpx;
-  box-sizing: border-box;
-}
-.time {
-  display: block;
-  margin: 12rpx 0 22rpx;
-  text-align: center;
-  color: #aaa;
-  font-size: 20rpx;
+  flex: 1;
+  padding: 16px;
 }
 .message-row {
   display: flex;
   align-items: flex-start;
-  gap: 12rpx;
-  margin-bottom: 22rpx;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 .message-row.self {
   justify-content: flex-end;
 }
 .small-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B35, #FF8C42);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
   flex-shrink: 0;
-  width: 58rpx;
-  height: 58rpx;
-  font-size: 21rpx;
+}
+.bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
 }
 .bubble {
-  max-width: 72%;
-  padding: 18rpx 20rpx;
-  border-radius: 8rpx 20rpx 20rpx;
-  background: #fff;
-  color: #444;
-  font-size: 24rpx;
-  line-height: 1.6;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
 }
-.self .bubble {
-  border-radius: 20rpx 8rpx 20rpx 20rpx;
-  background: #ff8c5a;
+.message-row:not(.self) .bubble {
+  background: #fff;
+  color: #333;
+  border-bottom-left-radius: 4px;
+}
+.message-row.self .bubble {
+  background: #FF6B35;
   color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.msg-time {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+}
+.message-row.self .msg-time {
+  text-align: right;
 }
 .hot {
-  margin: 10rpx 70rpx 30rpx;
-  padding: 22rpx;
-  border-radius: 18rpx;
   background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
 }
 .hot-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
   display: block;
-  margin-bottom: 10rpx;
-  font-size: 25rpx;
-  font-weight: 700;
 }
-.hot > text:not(.hot-title) {
+.hot text {
   display: block;
-  padding: 15rpx 0;
-  border-top: 1rpx solid #f1f1f1;
-  color: #666;
-  font-size: 22rpx;
+  font-size: 13px;
+  color: #FF6B35;
+  padding: 6px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+.hot text:last-child {
+  border-bottom: none;
 }
 .composer {
   display: flex;
-  gap: 14rpx;
-  padding: 14rpx 20rpx;
+  gap: 8px;
+  padding: 10px 16px;
   background: #fff;
+  border-top: 1px solid #f0f0f0;
+  align-items: center;
 }
 .composer input {
   flex: 1;
-  height: 72rpx;
-  padding: 0 20rpx;
-  border-radius: 36rpx;
+  height: 40px;
   background: #f5f5f5;
-  font-size: 24rpx;
+  border-radius: 20px;
+  padding: 0 16px;
+  font-size: 14px;
 }
 .composer button {
-  width: 120rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  margin: 0;
-  padding: 0;
-  border-radius: 36rpx;
-  background: #ff6b35;
+  background: #FF6B35;
   color: #fff;
-  font-size: 24rpx;
+  border: none;
+  border-radius: 20px;
+  padding: 0 16px;
+  font-size: 14px;
 }
 </style>

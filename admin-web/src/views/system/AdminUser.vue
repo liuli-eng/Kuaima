@@ -17,7 +17,7 @@
         <el-button type="primary" @click="loadData">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>
         <el-button type="primary" style="margin-left: auto;" @click="goCreate">
-          <i class="fas fa-plus"></i> 添加管理员
+          新建账号
         </el-button>
       </div>
 

@@ -15,7 +15,7 @@
         </div>
         <h1 class="hero-title">快马日结<br>企业级管理后台</h1>
         <p class="hero-desc">
-          一站式日结平台管理解决方案，覆盖用户管理、招工审核、订单结算、财务运营、内容管理、消息客服等全模块功能，助力平台高效运营。
+          一站式日结平台管理解决方案，覆盖用户管理、招工审核、订单结算、内容管理、消息客服等全模块功能，助力平台高效运营。
         </p>
         <div class="hero-stats">
           <div class="hero-stat" v-for="s in stats" :key="s.label">
@@ -127,7 +127,6 @@ const tabs = [
   { group: 'user', label: '用户管理' },
   { group: 'job', label: '招工管理' },
   { group: 'order', label: '订单结算' },
-  { group: 'finance', label: '财务运营' },
   { group: 'content', label: '内容管理' },
   { group: 'message', label: '消息客服' },
   { group: 'system', label: '系统设置' }
@@ -141,8 +140,6 @@ const cards = [
   { id: 'job-audit', group: 'job', title: '招工审核', desc: '待审核、已通过、已拒绝', icon: 'fas fa-check-circle', path: '/job-audit' },
   { id: 'orders', group: 'order', title: '订单管理', desc: '日结订单、状态追踪', icon: 'fas fa-clipboard-list', path: '/orders' },
   { id: 'settlement', group: 'order', title: '结算管理', desc: '结算记录、明细查看', icon: 'fas fa-coins', path: '/settlement' },
-  { id: 'finance', group: 'finance', title: '财务报表', desc: '营收统计、趋势分析', icon: 'fas fa-chart-pie', path: '/finance' },
-  { id: 'points', group: 'finance', title: '积分管理', desc: '积分充值、消费记录', icon: 'fas fa-star', path: '/points' },
   { id: 'certification', group: 'content', title: '认证审核', desc: '实名认证、企业认证', icon: 'fas fa-id-card', path: '/certification' },
   { id: 'banners', group: 'content', title: 'Banner管理', desc: '首页轮播、活动推广', icon: 'fas fa-image', path: '/banners' },
   { id: 'notices', group: 'content', title: '公告管理', desc: '系统公告、消息推送', icon: 'fas fa-bullhorn', path: '/notices' },
@@ -168,7 +165,7 @@ const features = [
   },
   {
     title: '全链路结算',
-    desc: '订单结算、财务报表、积分管理，资金流向清晰可追溯。',
+    desc: '订单结算、资金流向、明细追溯，全链路清晰可查。',
     icon: 'fas fa-coins',
     iconStyle: 'background:linear-gradient(135deg,#ECFDF5,#D1FAE5); color:#10B981;'
   },

@@ -89,14 +89,6 @@ const menuGroups = [
     ]
   },
   {
-    id: 'finance',
-    name: '财务运营',
-    items: [
-      { path: '/admin/finance', name: '财务报表', icon: 'fa-chart-pie' },
-      { path: '/admin/points', name: '积分管理', icon: 'fa-star' }
-    ]
-  },
-  {
     id: 'content',
     name: '内容管理',
     items: [

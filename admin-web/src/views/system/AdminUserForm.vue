@@ -7,7 +7,7 @@
           <i class="fas fa-arrow-left"></i> 返回
         </button>
         <div>
-          <h1 class="page-title">{{ isEdit ? '编辑管理员' : '添加管理员' }}</h1>
+          <h1 class="page-title">{{ isEdit ? '编辑管理员' : '新建账号' }}</h1>
           <p class="page-desc">{{ isEdit ? '修改管理员信息和权限配置' : '创建新的管理员账号并分配权限' }}</p>
         </div>
       </div>
@@ -59,16 +59,9 @@
           </div>
           <div style="margin-bottom:16px;">
             <label class="form-label">选择角色<span class="required">*</span></label>
-            <div class="role-radio-group">
-              <div class="role-radio" v-for="r in roleRadios" :key="r.v">
-                <input type="radio" name="role" :id="'role-' + r.v" :value="r.v" :checked="roleValue === r.v" @change="onRoleChange(r.v)">
-                <label :for="'role-' + r.v">
-                  <div class="role-icon" :style="{ background: r.grad }">{{ r.icon }}</div>
-                  <div class="role-name">{{ r.label }}</div>
-                  <div class="role-desc">{{ r.desc }}</div>
-                </label>
-              </div>
-            </div>
+            <select class="form-input" v-model="roleValue" @change="onRoleChange(roleValue)">
+              <option v-for="r in roleOptions" :key="r.v" :value="r.v">{{ r.label }}</option>
+            </select>
           </div>
 
           <div style="margin-top:20px;">
@@ -171,14 +164,14 @@ const form = reactive({
 })
 
 // ====== 角色 ======
-// 原型展示 6 种角色，其中“运营/自定义”为原型占位，当前系统仅支持 4 种预设角色
-const roleRadios = [
-  { v: 'super', label: '超级管理员', icon: '超', desc: '全部权限', grad: 'linear-gradient(135deg,#EF4444,#DC2626)' },
-  { v: 'admin', label: '管理员', icon: '管', desc: '核心管理权限', grad: 'linear-gradient(135deg,#3B82F6,#2563EB)' },
-  { v: 'audit', label: '审核员', icon: '审', desc: '审核相关权限', grad: 'linear-gradient(135deg,#10B981,#059669)' },
-  { v: 'oper', label: '运营', icon: '运', desc: '运营内容管理', grad: 'linear-gradient(135deg,#F59E0B,#D97706)' },
-  { v: 'viewer', label: '查看员', icon: '查', desc: '仅查看权限', grad: 'linear-gradient(135deg,#6B7280,#4B5563)' },
-  { v: 'custom', label: '自定义', icon: '自', desc: '手动分配', grad: 'linear-gradient(135deg,#8B5CF6,#6D28D9)' }
+// 原型下拉框 6 种角色
+const roleOptions = [
+  { v: 'super', label: '超级管理员（全部权限）' },
+  { v: 'admin', label: '管理员（核心管理权限）' },
+  { v: 'audit', label: '审核员（审核相关权限）' },
+  { v: 'oper', label: '运营（运营内容管理）' },
+  { v: 'viewer', label: '查看员（仅查看权限）' },
+  { v: 'custom', label: '自定义（手动分配）' }
 ]
 const BACKEND_ROLE = { super: 'SUPER_ADMIN', admin: 'ADMIN', audit: 'EDITOR', viewer: 'VIEWER' }
 const ROLE_FROM_BACKEND = Object.fromEntries(Object.entries(BACKEND_ROLE).map(([k, v]) => [v, k]))
@@ -226,13 +219,15 @@ const modules = reactive([
     key: 'permService', name: '消息客服', icon: 'fas fa-headset', open: false,
     items: [
       { key: 's1', label: '消息管理', checked: false },
-      { key: 's2', label: '客服聊天', checked: false }
+      { key: 's2', label: '客服聊天', checked: false },
+      { key: 's3', label: '举报处理', checked: false }
     ]
   },
   {
     key: 'permSystem', name: '系统管理', icon: 'fas fa-shield-alt', open: false,
     items: [
       { key: 'sys1', label: '积分管理', checked: false },
+      { key: 'sys2', label: '黑名单管理', checked: false },
       { key: 'sys3', label: '系统设置', checked: false },
       { key: 'sys4', label: '操作日志', checked: false }
     ]
@@ -248,7 +243,11 @@ const toggleAllModule = (m, checked) => {
 const onRoleChange = (v) => {
   roleValue.value = v
   if (v === 'super') {
-    modules.forEach(m => { m.items.forEach(i => { i.checked = true }) })
+    // 原型：超级管理员自动全选并展开所有模块
+    modules.forEach(m => {
+      m.items.forEach(i => { i.checked = true })
+      m.open = true
+    })
   }
 }
 
@@ -286,9 +285,34 @@ const loadDetail = async () => {
     form.lastLoginTime = d.lastLoginTime || ''
     form.createTime = d.createTime || ''
     roleValue.value = ROLE_FROM_BACKEND[d.role] || 'viewer'
+    // 回显权限树
+    if (d.permissions) {
+      try {
+        const permData = typeof d.permissions === 'string' ? JSON.parse(d.permissions) : d.permissions
+        modules.forEach(m => {
+          const modPerm = permData[m.key]
+          if (modPerm) {
+            m.items.forEach(i => { i.checked = !!modPerm[i.key] })
+          }
+        })
+      } catch (e) {
+        console.warn('[AdminUserForm] 解析权限数据失败:', e)
+      }
+    }
   } catch (e) {
     console.warn('[AdminUserForm] 加载详情失败:', e)
   }
+}
+
+/** 收集权限树勾选状态为 JSON 对象 */
+const collectPermissions = () => {
+  const result = {}
+  modules.forEach(m => {
+    const modPerm = {}
+    m.items.forEach(i => { modPerm[i.key] = i.checked })
+    result[m.key] = modPerm
+  })
+  return result
 }
 
 // ====== 提交 ======
@@ -299,8 +323,8 @@ const validate = () => {
   if (!form.phone) return '请输入手机号码'
   if (!/^1\d{10}$/.test(form.phone)) return '请输入正确的11位手机号'
   if (form.email && !/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(form.email)) return '请输入正确的邮箱地址'
-  const role = BACKEND_ROLE[roleValue.value]
-  if (!role) return '“运营/自定义”为原型预留角色，当前请选择 超级管理员/管理员/审核员/查看员'
+  // oper/custom 为原型预留角色，后端暂映射为 ADMIN
+  const role = BACKEND_ROLE[roleValue.value] || 'ADMIN'
   if (!isEdit.value) {
     if (!form.password) return '请设置登录密码'
     if (form.password.length < 8) return '密码至少8位'
@@ -322,8 +346,9 @@ const handleSave = async () => {
       phone: form.phone,
       email: form.email || null,
       remark: form.remark || null,
-      role: BACKEND_ROLE[roleValue.value],
-      status: form.status
+      role: BACKEND_ROLE[roleValue.value] || 'ADMIN',
+      status: form.status,
+      permissions: JSON.stringify(collectPermissions())
     }
     if (isEdit.value) {
       if (form.password) payload.password = form.password
@@ -470,61 +495,6 @@ onMounted(() => {
 .form-textarea {
   resize: vertical;
   min-height: 80px;
-}
-.role-radio-group {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-.role-radio {
-  position: relative;
-}
-.role-radio input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.role-radio label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 8px;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-  user-select: none;
-}
-.role-radio label .role-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-  font-size: 16px;
-  color: #fff;
-}
-.role-radio input:checked + label {
-  border-color: var(--primary);
-  background: #FFF8F3;
-}
-.role-radio input:checked + label .role-name {
-  color: var(--primary);
-}
-.role-radio label .role-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.role-radio label .role-desc {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 4px;
 }
 .permission-tree {
   display: flex;

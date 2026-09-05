@@ -14,35 +14,55 @@
       <div class="chat-sidebar">
         <div class="chat-user-info">
           <div class="mini-avatar">{{ userName.charAt(0) }}</div>
-          <div>
-            <div style="font-weight: 600;">{{ userName }}</div>
-            <el-tag size="small" effect="light">零工</el-tag>
+          <div style="min-width:0;">
+            <div style="font-weight: 600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ userName }}</div>
+            <el-tag size="small" effect="light">用户ID: {{ session?.userId }}</el-tag>
           </div>
         </div>
         <div class="chat-shortcuts">
           <div class="card-title" style="font-size: 13px; margin-bottom: 12px;">快捷回复</div>
-          <div v-for="(reply, i) in quickReplies" :key="i" class="reply-item" @click="sendQuickReply(reply)">
-            {{ reply }}
+          <div
+            v-for="reply in quickReplies"
+            :key="reply.id"
+            class="reply-item"
+            @click="sendQuickReply(reply.content)"
+          >
+            {{ reply.content }}
+          </div>
+          <div v-if="quickReplies.length === 0" style="font-size:12px;color:#999;text-align:center;padding:12px;">
+            暂无快捷回复
           </div>
         </div>
       </div>
 
       <div class="chat-main">
-        <div class="chat-messages">
-          <div v-for="(msg, i) in messages" :key="i" :class="['chat-message', msg.isSelf ? 'self' : 'other']">
+        <div class="chat-header-bar">
+          <span>{{ userName }}</span>
+          <el-button v-if="session?.status === 'OPEN'" type="danger" size="small" @click="handleCloseSession">关闭会话</el-button>
+        </div>
+        <div ref="messagesRef" class="chat-messages">
+          <div v-for="msg in messages" :key="msg.id" :class="['chat-message', msg.fromType === 'AGENT' ? 'self' : 'other']">
             <div class="chat-bubble">
               {{ msg.content }}
             </div>
+            <div class="chat-time">{{ formatTime(msg.timestamp) }}</div>
           </div>
+          <div v-if="session?.status === 'CLOSED'" class="chat-closed-tip">会话已关闭</div>
         </div>
 
         <div class="chat-input">
           <div class="input-toolbar">
             <i class="fas fa-smile" title="表情"></i>
-            <i class="fas fa-paperclip" title="附件"></i>
           </div>
-          <el-input v-model="inputMsg" type="textarea" :rows="2" placeholder="输入消息..." @keyup.enter="handleSend" />
-          <el-button type="primary" @click="handleSend">发送</el-button>
+          <el-input
+            v-model="inputMsg"
+            type="textarea"
+            :rows="2"
+            placeholder="输入消息..."
+            :disabled="session?.status === 'CLOSED'"
+            @keyup.enter.exact.prevent="handleSend"
+          />
+          <el-button type="primary" @click="handleSend" :disabled="session?.status === 'CLOSED'">发送</el-button>
         </div>
       </div>
     </div>
@@ -50,150 +70,283 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-
-console.warn('[API] 客服会话消息 API 后端暂未接入，当前使用 mock 数据')
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getServiceSession, getSessionMessages, sendAgentMessage, closeServiceSession, getQuickReplies } from '@/api/service'
+import wsClient from '@/api/websocket'
 
 const route = useRoute()
-const userName = ref('张建国')
+const router = useRouter()
+const sessionId = ref(Number(route.params.id))
+const session = ref(null)
+const messages = ref([])
 const inputMsg = ref('')
+const userName = ref('用户')
+const messagesRef = ref(null)
+const quickReplies = ref([])
 
-const messages = ref([
-  { isSelf: false, content: '您好，我想咨询一下关于实名认证的问题' },
-  { isSelf: true, content: '您好，请问有什么可以帮您的？' },
-  { isSelf: false, content: '我提交了实名认证申请，但是好像一直没有通过，请问是什么原因？' }
-])
-
-const quickReplies = [
-  '您好，请问有什么可以帮助您的？',
-  '请稍等，正在为您查询...',
-  '您的问题已记录，我们会尽快处理',
-  '感谢您的反馈，祝您生活愉快！'
-]
-
-const sendQuickReply = (text) => {
-  messages.value.push({ isSelf: true, content: text })
+const formatTime = (ts) => {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`
 }
 
-const handleSend = () => {
-  if (!inputMsg.value.trim()) return
-  messages.value.push({ isSelf: true, content: inputMsg.value })
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesRef.value) {
+      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+    }
+  })
+}
+
+const loadSession = async () => {
+  try {
+    const res = await getServiceSession(sessionId.value)
+    session.value = res.data
+    userName.value = '用户' + (session.value.userId || '')
+  } catch (e) {
+    console.error('加载会话失败:', e)
+  }
+}
+
+const loadMessages = async () => {
+  try {
+    const res = await getSessionMessages(sessionId.value, { page: 0, size: 100 })
+    messages.value = res.data || []
+    scrollToBottom()
+  } catch (e) {
+    console.error('加载消息失败:', e)
+  }
+}
+
+const loadQuickReplies = async () => {
+  try {
+    const res = await getQuickReplies()
+    quickReplies.value = (res.data || []).filter(r => r.enabled !== false)
+  } catch (e) {
+    console.error('加载快捷回复失败:', e)
+  }
+}
+
+const handleSend = async () => {
+  const content = inputMsg.value.trim()
+  if (!content) return
+
+  // 优先 WebSocket
+  const sent = wsClient.send({
+    type: 'MESSAGE',
+    sessionId: sessionId.value,
+    content,
+    contentType: 'TEXT'
+  })
+
+  if (sent) {
+    // WebSocket 发送成功，乐观添加到列表
+    messages.value.push({
+      id: Date.now(),
+      sessionId: sessionId.value,
+      fromId: 'agent',
+      fromType: 'AGENT',
+      content,
+      contentType: 'TEXT',
+      timestamp: new Date().toISOString()
+    })
+    scrollToBottom()
+  } else {
+    // HTTP 降级
+    try {
+      await sendAgentMessage(sessionId.value, { content })
+      await loadMessages()
+    } catch (e) {
+      ElMessage.error('发送失败')
+      return
+    }
+  }
   inputMsg.value = ''
 }
+
+const sendQuickReply = (content) => {
+  inputMsg.value = content
+  handleSend()
+}
+
+const handleCloseSession = async () => {
+  try {
+    await ElMessageBox.confirm('确定要关闭此会话吗？', '提示', { type: 'warning' })
+    await closeServiceSession(sessionId.value)
+    ElMessage.success('会话已关闭')
+    await loadSession()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('关闭失败')
+  }
+}
+
+// WebSocket 消息监听
+const onWsMessage = (data) => {
+  if (data.sessionId !== sessionId.value) return
+  if (data.type === 'MESSAGE') {
+    messages.value.push({
+      id: data.messageId || Date.now(),
+      sessionId: data.sessionId,
+      fromId: data.fromId,
+      fromType: data.fromType,
+      content: data.content,
+      contentType: data.contentType,
+      timestamp: data.timestamp
+    })
+    scrollToBottom()
+  } else if (data.type === 'SESSION_CLOSED') {
+    session.value.status = 'CLOSED'
+    ElMessage.info('会话已关闭')
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([loadSession(), loadMessages(), loadQuickReplies()])
+  // 连接 WebSocket（AGENT 类型）
+  const agentId = localStorage.getItem('admin_user_id') || '1'
+  wsClient.connect(agentId, 'AGENT')
+  wsClient.on('MESSAGE', onWsMessage)
+  wsClient.on('SESSION_CLOSED', onWsMessage)
+})
+
+onUnmounted(() => {
+  wsClient.off('MESSAGE', onWsMessage)
+  wsClient.off('SESSION_CLOSED', onWsMessage)
+  wsClient.close()
+})
 </script>
 
 <style scoped>
 .chat-container {
-  display: grid;
-  grid-template-columns: 240px 1fr;
+  display: flex;
   gap: 16px;
   height: calc(100vh - 200px);
+  min-height: 500px;
 }
-
 .chat-sidebar {
+  width: 260px;
   background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  flex-shrink: 0;
 }
-
 .chat-user-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #f0f0f0;
 }
-
 .mini-avatar {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #FF8C42, #FF6B35);
-  display: inline-flex;
+  background: #FF6B35;
+  color: #fff;
+  display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
   font-weight: 600;
-  font-size: 18px;
+  flex-shrink: 0;
 }
-
-.chat-shortcuts { flex: 1; overflow-y: auto; }
-
+.chat-shortcuts {
+  flex: 1;
+  overflow-y: auto;
+}
 .reply-item {
-  padding: 10px 14px;
-  background: var(--bg-page);
-  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
   font-size: 13px;
+  color: #333;
   cursor: pointer;
   margin-bottom: 8px;
   transition: all 0.2s;
-  
-  &:hover { background: #FFE8DC; color: var(--primary); }
+  border-left: 3px solid #FF6B35;
 }
-
+.reply-item:hover {
+  background: #fff0eb;
+}
 .chat-main {
+  flex: 1;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-width: 0;
 }
-
+.chat-header-bar {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
 .chat-messages {
   flex: 1;
-  padding: 20px;
   overflow-y: auto;
-  background: var(--bg-page);
-}
-
-.chat-message {
-  margin-bottom: 16px;
-  
-  &.self {
-    text-align: right;
-    
-    .chat-bubble {
-      background: var(--primary);
-      color: #fff;
-      border-radius: 12px 4px 12px 12px;
-    }
-  }
-  
-  &.other {
-    .chat-bubble {
-      background: #fff;
-      border-radius: 4px 12px 12px 12px;
-    }
-  }
-}
-
-.chat-bubble {
-  display: inline-block;
-  padding: 10px 16px;
-  max-width: 70%;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  text-align: left;
-}
-
-.chat-input {
   padding: 16px;
-  border-top: 1px solid var(--border);
   display: flex;
+  flex-direction: column;
   gap: 12px;
+}
+.chat-message {
+  max-width: 70%;
+}
+.chat-message.self {
+  align-self: flex-end;
+}
+.chat-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+.chat-message.other .chat-bubble {
+  background: #f5f5f5;
+  color: #333;
+  border-bottom-left-radius: 4px;
+}
+.chat-message.self .chat-bubble {
+  background: #FF6B35;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-time {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+}
+.chat-message.self .chat-time {
+  text-align: right;
+}
+.chat-closed-tip {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  padding: 12px;
+}
+.chat-input {
+  padding: 12px 16px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  gap: 8px;
   align-items: flex-end;
 }
-
 .input-toolbar {
   display: flex;
-  gap: 12px;
-  padding: 10px 0;
-  color: var(--text-muted);
-  
-  i { cursor: pointer; }
+  gap: 8px;
+  font-size: 18px;
+  color: #999;
+}
+.input-toolbar i {
+  cursor: pointer;
 }
 </style>

@@ -1,366 +1,314 @@
 <template>
-  <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:48</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
+  <view class="page">
+    <view class="chat-header" :style="{ paddingTop: `${statusBarHeight}px` }">
+      <text class="back" @click="uni.navigateBack()">‹</text>
+      <text class="avatar">快</text>
+      <view class="info">
+        <text class="name">快马日结客服</text>
+        <text class="status">
+          <text class="dot" />在线 · 实时聊天
+        </text>
       </view>
     </view>
-
-    <!-- 客服头部 -->
-    <view class="chat-header">
-      <view class="chat-close" @click="goBack">
-        <text style="color:#fff;font-size:18px;">←</text>
-      </view>
-      <view class="chat-avatar">
-        <text style="color:#FF6B35;font-size:20px;">🎧</text>
-      </view>
-      <view class="chat-info">
-        <text class="chat-name">快马日结小助手</text>
-        <view class="chat-status">
-          <view class="status-dot"></view>
-          <text style="margin-left:4px;">在线 · 平均1分钟回复</text>
+    <view class="security">请勿向任何人透露验证码、银行卡密码等敏感信息。</view>
+    <scroll-view scroll-y class="messages" :scroll-into-view="lastId" :scroll-with-animation="true">
+      <view
+        v-for="(item, index) in messages"
+        :id="`msg-${index}`"
+        :key="item.id || index"
+        :class="['message-row', { self: item.self }]"
+      >
+        <text v-if="!item.self" class="small-avatar">快</text>
+        <view class="bubble-wrap">
+          <text class="bubble">{{ item.text }}</text>
+          <text class="msg-time">{{ formatTime(item.timestamp) }}</text>
         </view>
       </view>
-      <view class="chat-close">
-        <text style="color:#fff;font-size:16px;">…</text>
-      </view>
-    </view>
-
-    <!-- 安全提示 -->
-    <view class="security-tip" v-if="showSecurityTip">
-      <text style="color:#FA8C16;">🛡</text>
-      <text style="flex:1;">平台禁止飞单行为，检测到将进行封号处理</text>
-      <text class="✕" style="color:#FA8C16;" @click="showSecurityTip = false"></text>
-    </view>
-
-    <!-- 消息列表 -->
-    <scroll-view scroll-y class="chat-messages">
-      <text class="msg-time">今天 19:48</text>
-
-      <!-- 客服欢迎消息 -->
-      <view class="msg-row">
-        <view class="msg-avatar service">
-          <text style="font-size:14px;">🎧</text>
-        </view>
-        <view class="msg-content">
-          <view class="msg-bubble">您好，请问有什么可以帮助您？</view>
-        </view>
-      </view>
-
-      <!-- 热门问题 -->
-      <view class="msg-row">
-        <view class="msg-avatar service">
-          <text style="font-size:14px;">🎧</text>
-        </view>
-        <view class="msg-content">
-          <view class="msg-bubble" style="background:transparent;padding:0;">
-            <view class="hot-questions">
-              <text class="hot-title">热门问题</text>
-              <view class="hot-list">
-                <view class="hot-item" v-for="(item, index) in hotQuestions" :key="index" @click="selectHotQuestion(item)">
-                  <text style="font-size:6px;">●</text>
-                  <text>{{ item }}</text>
-                </view>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 用户消息 -->
-      <view class="msg-row self" v-for="(msg, index) in messages" :key="index">
-        <view class="msg-avatar user">
-          <text style="font-size:14px;">👤</text>
-        </view>
-        <view class="msg-content">
-          <view class="msg-bubble">{{ msg }}</view>
-        </view>
+      <view class="hot">
+        <text class="hot-title">常见问题</text>
+        <text v-for="(item, i) in hotQuestions" :key="i" @click="sendText(item)">{{ item }} ›</text>
       </view>
     </scroll-view>
-
-    <!-- 输入区域 -->
-    <view class="input-area">
-      <view class="input-btn">
-        <text style="font-size:20px;color:#666;">🖼</text>
-      </view>
-      <view class="input-wrap">
-        <input type="text" class="input-field" v-model="inputText" placeholder="请输入您的问题" @confirm="sendMessage" />
-      </view>
-      <button class="send-btn" @click="sendMessage">发送</button>
+    <view class="composer" :style="{ paddingBottom: `${bottomInset + 12}px` }">
+      <input
+        v-model="input"
+        confirm-type="send"
+        placeholder="请输入您的问题"
+        @confirm="send"
+      />
+      <button @click="send">发送</button>
     </view>
   </view>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      showSecurityTip: true,
-      inputText: '',
-      messages: [],
-      hotQuestions: [
-        '零工中途跑了怎么办？',
-        '临时有变化不需要招工了怎么办？',
-        '工作地址填错了怎么办？',
-        '招工信息需要修改怎么办？',
-        '零工完工后没有点击收工，一直没法结算报酬怎么办？'
-      ]
-    }
-  },
-  methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-    selectHotQuestion(question) {
-      this.inputText = question
-      this.sendMessage()
-    },
-    sendMessage() {
-      if (!this.inputText.trim()) return
-      this.messages.push(this.inputText)
-      this.inputText = ''
-      // 模拟客服回复
-      setTimeout(() => {
-        this.messages.push('收到您的问题了，客服专员正在为您处理，请稍候...')
-      }, 1000)
-    }
+<script setup>
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { startSession, getMessages, sendMessage } from '@/api/chat'
+import wsClient from '@/api/chat-websocket'
+
+const system = uni.getSystemInfoSync()
+const statusBarHeight = system.statusBarHeight || 0
+const bottomInset = system.safeAreaInsets?.bottom || 0
+const input = ref('')
+const sessionId = ref(null)
+const messages = ref([
+  { text: '您好，我是快马日结在线客服，请问有什么可以帮您？', self: false, timestamp: Date.now() }
+])
+const hotQuestions = [
+  '如何发布招聘订单？',
+  '零工爽约怎么办？',
+  '服务费如何收取？',
+]
+const lastId = computed(() => `msg-${messages.value.length - 1}`)
+
+const formatTime = (ts) => {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+}
+
+const loadHistory = async () => {
+  if (!sessionId.value) return
+  try {
+    const res = await getMessages(sessionId.value)
+    const list = Array.isArray(res) ? res : (res?.data || [])
+    list.forEach(msg => {
+      messages.value.push({
+        id: msg.id,
+        text: msg.content,
+        self: msg.fromType === 'USER',
+        timestamp: msg.timestamp
+      })
+    })
+  } catch (e) {
+    console.error('[Chat] 加载历史消息失败:', e)
   }
 }
-</script>
 
-<style lang="scss" scoped>
-.container {
-  width: 100%;
-  height: 100vh;
-  background: #f5f5f5;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+const sendText = (text) => {
+  input.value = text
+  send()
 }
 
-.status-bar {
-  height: 47px;
+const send = async () => {
+  const text = input.value.trim()
+  if (!text) return
+
+  const sent = wsClient.send({
+    type: 'MESSAGE',
+    sessionId: sessionId.value,
+    content: text,
+    contentType: 'TEXT'
+  })
+
+  if (sent) {
+    messages.value.push({ text, self: true, timestamp: Date.now() })
+  } else {
+    try {
+      const userId = uni.getStorageSync('userId') || '1001'
+      await sendMessage(sessionId.value, userId, text)
+      messages.value.push({ text, self: true, timestamp: Date.now() })
+    } catch (e) {
+      uni.showToast({ title: '发送失败', icon: 'none' })
+      return
+    }
+  }
+  input.value = ''
+}
+
+const onWsMessage = (data) => {
+  if (data.sessionId !== sessionId.value) return
+  if (data.type === 'MESSAGE' && data.fromType === 'AGENT') {
+    messages.value.push({
+      id: data.messageId,
+      text: data.content,
+      self: false,
+      timestamp: data.timestamp
+    })
+  }
+}
+
+onMounted(async () => {
+  const userId = uni.getStorageSync('userId') || '1001'
+  try {
+    const res = await startSession(userId)
+    sessionId.value = res?.id || res?.data?.id
+    await loadHistory()
+  } catch (e) {
+    console.error('[Chat] 创建会话失败:', e)
+  }
+
+  // 连接 WebSocket（USER 类型），优先使用 VITE_WS_BASE_URL，其次从 HTTP 地址派生
+  const httpBase = import.meta.env.VITE_MP_API_BASE_URL || 'http://192.168.2.88:8080'
+  const wsBaseUrl = (import.meta.env.VITE_WS_BASE_URL || httpBase).replace('http://', 'ws://').replace('https://', 'wss://')
+  wsClient.connect(wsBaseUrl, userId, 'USER')
+  wsClient.on('MESSAGE', onWsMessage)
+})
+
+onUnmounted(() => {
+  wsClient.off('MESSAGE', onWsMessage)
+  wsClient.close()
+})
+</script>
+
+<style scoped>
+.page {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f5f5;
+}
+.chat-header {
+  display: flex;
   align-items: center;
-  padding: 0 28px;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+.back {
+  font-size: 24px;
+  color: #333;
+}
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B35, #FF8C42);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+.info {
+  display: flex;
+  flex-direction: column;
+}
+.name {
   font-size: 15px;
   font-weight: 600;
   color: #333;
-  background: #fff;
 }
-
-.status-icons {
+.status {
+  font-size: 12px;
+  color: #52c41a;
   display: flex;
   align-items: center;
   gap: 4px;
 }
-
-.chat-header {
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.chat-avatar {
-  width: 40px;
-  height: 40px;
-  background: #fff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chat-info {
-  flex: 1;
-}
-
-.chat-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.chat-status {
-  font-size: 12px;
-  color: rgba(255,255,255,0.8);
-  display: flex;
-  align-items: center;
-}
-
-.status-dot {
+.dot {
   width: 6px;
   height: 6px;
-  background: #52C41A;
   border-radius: 50%;
+  background: #52c41a;
 }
-
-.chat-close {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.security-tip {
-  background: #FFF8E6;
-  padding: 8px 14px;
+.security {
+  padding: 8px 16px;
   font-size: 12px;
-  color: #B8860B;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-bottom: 1px solid #FFE4A0;
-}
-
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  background: #f5f5f5;
-}
-
-.msg-time {
-  text-align: center;
-  font-size: 11px;
   color: #999;
-  margin: 12px 0;
-  display: block;
+  background: #fffbe6;
+  text-align: center;
 }
-
-.msg-row {
+.messages {
+  flex: 1;
+  padding: 16px;
+}
+.message-row {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 16px;
 }
-
-.msg-row.self {
-  flex-direction: row-reverse;
+.message-row.self {
+  justify-content: flex-end;
 }
-
-.msg-avatar {
+.small-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B35, #FF8C42);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   flex-shrink: 0;
 }
-
-.msg-avatar.service {
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
-  color: white;
+.bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
 }
-
-.msg-avatar.user {
-  background: #52C41A;
-  color: white;
-}
-
-.msg-content {
-  max-width: 75%;
-}
-
-.msg-bubble {
-  padding: 12px 14px;
+.bubble {
+  padding: 10px 14px;
   border-radius: 12px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
-
-.msg-row:not(.self) .msg-bubble {
+.message-row:not(.self) .bubble {
   background: #fff;
   color: #333;
-  border-radius: 4px 12px 12px 12px;
+  border-bottom-left-radius: 4px;
 }
-
-.msg-row.self .msg-bubble {
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
-  color: white;
-  border-radius: 12px 4px 12px 12px;
+.message-row.self .bubble {
+  background: #FF6B35;
+  color: #fff;
+  border-bottom-right-radius: 4px;
 }
-
-.hot-questions {
+.msg-time {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+}
+.message-row.self .msg-time {
+  text-align: right;
+}
+.hot {
   background: #fff;
-  border-radius: 12px;
-  padding: 14px;
-  margin-top: 10px;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
 }
-
 .hot-title {
   font-size: 14px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   display: block;
 }
-
-.hot-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hot-item {
-  padding: 10px 12px;
-  background: #FFF8F5;
-  border-radius: 8px;
+.hot text {
+  display: block;
   font-size: 13px;
   color: #FF6B35;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f5f5f5;
 }
-
-.input-area {
+.hot text:last-child {
+  border-bottom: none;
+}
+.composer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
   background: #fff;
-  padding: 12px 14px;
   border-top: 1px solid #f0f0f0;
-  display: flex;
   align-items: center;
-  gap: 10px;
 }
-
-.input-btn {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.input-wrap {
+.composer input {
   flex: 1;
-}
-
-.input-field {
-  width: 100%;
-  padding: 10px 14px;
+  height: 40px;
   background: #f5f5f5;
   border-radius: 20px;
+  padding: 0 16px;
   font-size: 14px;
-  border: none;
-  outline: none;
-  box-sizing: border-box;
 }
-
-.send-btn {
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
-  color: white;
+.composer button {
+  background: #FF6B35;
+  color: #fff;
   border: none;
   border-radius: 20px;
+  padding: 0 16px;
   font-size: 14px;
-  font-weight: 500;
 }
 </style>

@@ -96,20 +96,6 @@ export const settlementData = [
   { id: 'JS20240314002', orderId: 'KM20240314005', employer: '格力电器制造', worker: '郑小龙', amount: 300, platformFee: 30, actualAmount: 270, status: '已结算', statusClass: 'success', method: '银行卡', time: '2024-03-14 18:00' }
 ]
 
-// 财务数据
-export const financeStats = [
-  { title: '累计营收', value: '¥5,286,450', change: '+15.2%', up: true },
-  { title: '平台收入', value: '¥528,645', change: '+12.8%', up: true },
-  { title: '零工收入', value: '¥4,757,805', change: '+18.5%', up: true },
-  { title: '雇主支出', value: '¥5,286,450', change: '+15.2%', up: true }
-]
-
-export const revenueTrendData = {
-  labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-  platform: [35, 42, 48, 52, 65, 72, 78, 85, 92, 98, 105, 120],
-  total: [350, 420, 480, 520, 650, 720, 780, 850, 920, 980, 1050, 1200]
-}
-
 // 认证审核数据
 export const certificationData = [
   { id: 'RZ001', type: '零工认证', applicant: '张建国', applyTime: '2024-03-15 10:30', status: '待审核', statusClass: 'warning' },
@@ -178,12 +164,4 @@ export const messageTemplates = [
   { id: 2, name: '认证审核结果', event: '认证审核', channel: '双渠道', status: '启用', lastUsed: '2024-03-14' },
   { id: 3, name: '招工审核结果', event: '招工审核', channel: '站内信', status: '启用', lastUsed: '2024-03-13' },
   { id: 4, name: '结算成功通知', event: '结算完成', channel: '双渠道', status: '启用', lastUsed: '2024-03-15' }
-]
-
-// 积分管理数据
-export const pointsData = [
-  { id: 'JF001', user: '刘芳', change: '+200', type: '完成订单', orderId: 'KM20240315005', balance: 1850, operator: '系统', time: '2024-03-15 18:00' },
-  { id: 'JF002', user: '比亚迪汽车', change: '+500', type: '充值', orderId: '-', balance: 5500, operator: '管理员', time: '2024-03-15 10:00' },
-  { id: 'JF003', user: '张建国', change: '-50', type: '信用扣分', orderId: '-', balance: 850, operator: '系统', time: '2024-03-14 16:30' },
-  { id: 'JF004', user: '陈大海', change: '+100', type: '奖励赠送', orderId: '-', balance: 1200, operator: '运营小张', time: '2024-03-14 14:00' }
 ]

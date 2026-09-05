@@ -98,15 +98,15 @@
               <div class="bank-card-header">
                 <div>
                   <div class="bank-card-title">收款银行</div>
-                  <div class="bank-card-bank">中国工商银行</div>
+                  <div class="bank-card-bank">{{ bankInfo.bankName }}</div>
                 </div>
                 <div class="bank-card-logo"><i class="fas fa-building"></i></div>
               </div>
-              <div class="bank-card-number">6222 **** **** 8888</div>
+              <div class="bank-card-number">{{ bankInfo.cardNumber }}</div>
               <div class="bank-card-footer">
                 <div class="bank-card-holder">
                   账户名
-                  <span>快马日结科技有限公司</span>
+                  <span>{{ bankInfo.holder }}</span>
                 </div>
                 <div class="bank-card-status">
                   <i class="fas fa-check-circle"></i> 已认证
@@ -120,26 +120,26 @@
                   <div class="account-item-title">
                     <i class="fas fa-info-circle" style="color:var(--primary);"></i> 账户详细信息
                   </div>
-                  <button class="account-edit-btn" @click="onEditAccount('银行账户')">
+                  <button class="account-edit-btn" @click="openBankEdit">
                     <i class="fas fa-edit"></i> 编辑
                   </button>
                 </div>
                 <div class="account-item-body">
                   <div class="account-field">
                     <span class="account-field-label">开户支行</span>
-                    <span class="account-field-value">北京海淀支行</span>
+                    <span class="account-field-value">{{ bankInfo.branch }}</span>
                   </div>
                   <div class="account-field">
                     <span class="account-field-label">SWIFT代码</span>
-                    <span class="account-field-value">ICBKCNBJ</span>
+                    <span class="account-field-value">{{ bankInfo.swiftCode }}</span>
                   </div>
                   <div class="account-field">
                     <span class="account-field-label">联行号</span>
-                    <span class="account-field-value">102100000458</span>
+                    <span class="account-field-value">{{ bankInfo.bankCode }}</span>
                   </div>
                   <div class="account-field">
                     <span class="account-field-label">账户类型</span>
-                    <span class="account-field-value">对公账户</span>
+                    <span class="account-field-value">{{ bankInfo.accountType }}</span>
                   </div>
                 </div>
               </div>
@@ -181,14 +181,21 @@
                 <i class="fab fa-alipay"></i>
               </div>
               <div class="wallet-card-info">
-                <div class="wallet-card-name">支付宝收款账户</div>
-                <div class="wallet-card-account">k****ma@163.com</div>
+                <div class="wallet-card-name">
+                  支付宝收款账户
+                  <span v-if="walletInfo.alipay.isDefault" class="wallet-default-tag">默认</span>
+                </div>
+                <div class="wallet-card-account">{{ maskWalletAccount('alipay', walletInfo.alipay.account) }}</div>
               </div>
               <div class="wallet-card-actions">
-                <button class="account-edit-btn" @click="onEditAccount('支付宝账户')">
+                <button class="account-edit-btn" @click="openWalletEdit('alipay')">
                   <i class="fas fa-edit"></i> 编辑
                 </button>
-                <button class="account-edit-btn account-edit-primary" @click="onEditAccount('默认账户')">
+                <button
+                  v-if="!walletInfo.alipay.isDefault"
+                  class="account-edit-btn account-edit-primary"
+                  @click="setWalletDefault('alipay')"
+                >
                   <i class="fas fa-star"></i> 默认
                 </button>
               </div>
@@ -199,12 +206,22 @@
                 <i class="fab fa-weixin"></i>
               </div>
               <div class="wallet-card-info">
-                <div class="wallet-card-name">微信收款账户</div>
-                <div class="wallet-card-account">k_m_a****001</div>
+                <div class="wallet-card-name">
+                  微信收款账户
+                  <span v-if="walletInfo.wechat.isDefault" class="wallet-default-tag">默认</span>
+                </div>
+                <div class="wallet-card-account">{{ maskWalletAccount('wechat', walletInfo.wechat.account) }}</div>
               </div>
               <div class="wallet-card-actions">
-                <button class="account-edit-btn" @click="onEditAccount('微信账户')">
+                <button class="account-edit-btn" @click="openWalletEdit('wechat')">
                   <i class="fas fa-edit"></i> 编辑
+                </button>
+                <button
+                  v-if="!walletInfo.wechat.isDefault"
+                  class="account-edit-btn account-edit-primary"
+                  @click="setWalletDefault('wechat')"
+                >
+                  <i class="fas fa-star"></i> 默认
                 </button>
               </div>
             </div>
@@ -225,10 +242,10 @@
           </div>
 
           <div class="settings-actions">
-            <el-button type="primary" @click="savePlatform">
+            <button class="btn btn-primary" @click="savePlatform">
               <i class="fas fa-save"></i> 保存设置
-            </el-button>
-            <el-button @click="resetPlatform">重置</el-button>
+            </button>
+            <button class="btn btn-outline" @click="resetPlatform">重置</button>
           </div>
         </el-tab-pane>
 
@@ -242,14 +259,9 @@
 
           <div class="settings-section-title">
             <i class="fas fa-users-cog"></i> 管理员列表
-            <el-button
-              type="primary"
-              size="small"
-              style="margin-left:auto;"
-              @click="goAddAdmin"
-            >
-              <i class="fas fa-plus"></i> 添加管理员
-            </el-button>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="goAddAdmin">
+              新建账号
+            </button>
           </div>
 
           <div class="table-container">
@@ -374,10 +386,10 @@
           </div>
 
           <div class="settings-actions">
-            <el-button type="primary" @click="saveRules">
+            <button class="btn btn-primary" @click="saveRules">
               <i class="fas fa-save"></i> 保存规则配置
-            </el-button>
-            <el-button @click="resetRules">恢复默认</el-button>
+            </button>
+            <button class="btn btn-outline" @click="resetRules">恢复默认</button>
           </div>
         </el-tab-pane>
 
@@ -392,14 +404,9 @@
           <!-- 短信通知模板 -->
           <div class="settings-section-title">
             <i class="fas fa-sms"></i> 短信通知模板
-            <el-button
-              type="primary"
-              size="small"
-              style="margin-left:auto;"
-              @click="onAddTemplate('短信')"
-            >
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="onAddTemplate('短信')">
               <i class="fas fa-plus"></i> 添加模板
-            </el-button>
+            </button>
           </div>
 
           <div
@@ -417,22 +424,17 @@
             </div>
             <div class="template-content">{{ tpl.content }}</div>
             <div class="template-actions">
-              <el-button size="small" @click="onPreviewTemplate(tpl.title)">预览</el-button>
-              <el-button size="small" @click="onSendTest">发送测试</el-button>
+              <button class="btn btn-sm btn-outline" @click="onPreviewTemplate(tpl)">预览</button>
+              <button class="btn btn-sm btn-outline" @click="onSendTest(tpl)">发送测试</button>
             </div>
           </div>
 
           <!-- 站内信模板 -->
           <div class="settings-section-title" style="margin-top:28px;">
             <i class="fas fa-envelope-open"></i> 站内信模板
-            <el-button
-              type="primary"
-              size="small"
-              style="margin-left:auto;"
-              @click="onAddTemplate('站内信')"
-            >
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="onAddTemplate('站内信')">
               <i class="fas fa-plus"></i> 添加模板
-            </el-button>
+            </button>
           </div>
 
           <div
@@ -450,14 +452,312 @@
             </div>
             <div class="template-content">{{ tpl.content }}</div>
             <div class="template-actions">
-              <el-button size="small" @click="onPreviewTemplate(tpl.title)">预览</el-button>
-              <el-button size="small" @click="onPublish(tpl.title)">发布</el-button>
+              <button class="btn btn-sm btn-outline" @click="onPreviewTemplate(tpl)">预览</button>
+              <button class="btn btn-sm btn-outline" @click="onPublish(tpl.title)">发布</button>
             </div>
           </div>
         </el-tab-pane>
 
       </el-tabs>
     </div>
+
+    <!-- 银行账户编辑弹窗 -->
+    <el-dialog
+      v-model="showBankEditDialog"
+      title="编辑银行账户"
+      width="520px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="bankEditForm" label-width="100px">
+        <el-form-item label="收款银行">
+          <el-input v-model="bankEditForm.bankName" placeholder="请输入收款银行" />
+        </el-form-item>
+        <el-form-item label="银行卡号">
+          <el-input v-model="bankEditForm.cardNumber" placeholder="请输入银行卡号" />
+        </el-form-item>
+        <el-form-item label="账户名">
+          <el-input v-model="bankEditForm.holder" placeholder="请输入账户名" />
+        </el-form-item>
+        <el-form-item label="开户支行">
+          <el-input v-model="bankEditForm.branch" placeholder="请输入开户支行" />
+        </el-form-item>
+        <el-form-item label="SWIFT代码">
+          <el-input v-model="bankEditForm.swiftCode" placeholder="请输入SWIFT代码" />
+        </el-form-item>
+        <el-form-item label="联行号">
+          <el-input v-model="bankEditForm.bankCode" placeholder="请输入联行号" />
+        </el-form-item>
+        <el-form-item label="账户类型">
+          <el-select v-model="bankEditForm.accountType" style="width:100%">
+            <el-option label="对公账户" value="对公账户" />
+            <el-option label="个人账户" value="个人账户" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <button class="btn btn-outline" @click="showBankEditDialog = false">取消</button>
+          <button class="btn btn-primary" @click="saveBankEdit">保存</button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 钱包账户编辑弹窗 -->
+    <el-dialog
+      v-model="showWalletEditDialog"
+      :title="walletMeta[walletEditType].title"
+      width="480px"
+      :close-on-click-modal="false"
+    >
+      <!-- 账户预览 -->
+      <div class="wallet-edit-preview">
+        <div :class="['wallet-edit-icon', walletMeta[walletEditType].iconClass]">
+          <i :class="walletMeta[walletEditType].icon"></i>
+        </div>
+        <div style="min-width:0; flex:1;">
+          <div style="font-size:14px; font-weight:600; color:var(--text-primary);">
+            {{ walletMeta[walletEditType].name }}
+          </div>
+          <div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
+            {{ maskWalletAccount(walletEditType, walletEditForm.account) }}
+          </div>
+        </div>
+        <span class="tag tag-green" style="flex-shrink:0;">已认证</span>
+      </div>
+
+      <el-form :model="walletEditForm" label-width="120px" style="margin-top:16px;">
+        <el-form-item :label="walletMeta[walletEditType].accountLabel">
+          <el-input
+            v-model="walletEditForm.account"
+            :placeholder="walletMeta[walletEditType].placeholder"
+          />
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+            {{ walletMeta[walletEditType].hint }}
+          </div>
+        </el-form-item>
+        <el-form-item :label="walletMeta[walletEditType].holderLabel">
+          <el-input v-model="walletEditForm.holder" placeholder="请输入实名认证姓名或企业主体名称" />
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+            须与账户实名认证信息完全一致，否则将导致收款失败。
+          </div>
+        </el-form-item>
+        <el-form-item label="设为默认收款账户">
+          <el-switch v-model="walletEditForm.isDefault" />
+          <span style="font-size:13px; color:var(--text-secondary); margin-left:8px;">
+            默认账户将优先用于服务费扣款
+          </span>
+        </el-form-item>
+      </el-form>
+
+      <!-- 安全提示 -->
+      <div class="wallet-edit-tips">
+        <div class="wallet-edit-tip"><i class="fas fa-check-circle"></i> 修改收款账户后将进入 1 个工作日的审核期。</div>
+        <div class="wallet-edit-tip"><i class="fas fa-check-circle"></i> 审核期间结算款项仍打入原账户，审核通过后自动切换至新账户。</div>
+        <div class="wallet-edit-tip"><i class="fas fa-check-circle"></i> 每次修改账户信息均会记录操作日志，可在「系统设置 - 操作日志」中查看。</div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <button class="btn btn-outline" @click="showWalletEditDialog = false">取消</button>
+          <button class="btn btn-primary" @click="saveWalletEdit">保存</button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 模板预览右侧抽屉 -->
+    <el-drawer
+      v-model="showPreviewDialog"
+      direction="rtl"
+      size="440px"
+      :with-header="false"
+      class="preview-drawer-wrapper"
+    >
+      <div class="pd-header">
+        <div>
+          <div class="pd-title"><i class="fas fa-eye"></i> 模板预览</div>
+          <div class="pd-sub">
+            <span class="tag" :class="previewType === 'sms' ? 'tag-blue' : 'tag-green'">
+              {{ previewType === 'sms' ? '短信' : '站内信' }}
+            </span>
+            <span>{{ previewTpl?.title }}</span>
+          </div>
+        </div>
+        <button class="pd-close" @click="showPreviewDialog = false" title="关闭">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="pd-body">
+        <!-- 手机预览 -->
+        <div class="pd-section pd-section-phone">
+          <div class="pd-section-title">
+            <i class="fas fa-mobile-screen"></i> 用户端效果
+            <span class="pd-hint">变量为示例数据</span>
+          </div>
+          <div class="pd-phone">
+            <div class="pd-phone-screen">
+              <div class="pd-phone-island"></div>
+              <div class="pd-phone-bar">
+                <span>9:41</span>
+                <span><i class="fas fa-signal"></i><i class="fas fa-wifi"></i><i class="fas fa-battery-full"></i></span>
+              </div>
+              <div class="pd-phone-head">{{ previewType === 'sms' ? '信息' : '通知' }}</div>
+              <div class="pd-phone-body">
+                <!-- 短信气泡 -->
+                <div v-if="previewType === 'sms'" class="pd-sms">
+                  <div class="pd-sms-avatar"><i class="fas fa-comment-sms"></i></div>
+                  <div class="pd-sms-main">
+                    <div class="pd-sms-top">
+                      <span class="pd-sms-name">快马日结</span>
+                      <span class="pd-sms-time">刚刚</span>
+                    </div>
+                    <div class="pd-sms-bubble" v-html="previewTpl ? renderContent(previewTpl.content, true) : ''"></div>
+                  </div>
+                </div>
+                <!-- 站内信通知卡片 -->
+                <div v-else class="pd-notice">
+                  <div class="pd-notice-head">
+                    <div class="pd-notice-icon"><i class="fas fa-bell"></i></div>
+                    <div>
+                      <div class="pd-notice-app">快马日结</div>
+                      <div class="pd-notice-now">现在</div>
+                    </div>
+                  </div>
+                  <div class="pd-notice-title">{{ previewTpl?.title }}</div>
+                  <div class="pd-notice-text" v-html="previewTpl ? renderContent(previewTpl.content, true) : ''"></div>
+                  <div class="pd-notice-foot">点击查看详情</div>
+                </div>
+              </div>
+              <div class="pd-phone-home"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 原始模板 -->
+        <div class="pd-section">
+          <div class="pd-section-title"><i class="fas fa-code"></i> 原始模板内容</div>
+          <div class="pd-raw" v-html="previewTpl ? renderContent(previewTpl.content, false) : ''"></div>
+        </div>
+
+        <!-- 变量示例 -->
+        <div class="pd-section">
+          <div class="pd-section-title"><i class="fas fa-list-ul"></i> 变量示例值</div>
+          <div>
+            <div v-for="key in previewTpl ? getTemplateVars(previewTpl.content) : []" :key="key" class="pd-var-row">
+              <code class="pd-var-code">{{ '{' + key + '}' }}</code>
+              <span class="pd-var-val">{{ sampleValues[key] || '--' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pd-footer">
+        <button class="btn btn-outline" @click="showPreviewDialog = false">关闭</button>
+        <button class="btn btn-outline" @click="showPreviewDialog = false; onEditTemplate(previewTpl?.title)">
+          <i class="fas fa-edit"></i> 编辑模板
+        </button>
+        <button class="btn btn-primary" @click="showPreviewDialog = false; onSendTest(previewTpl)">
+          <i class="fas fa-paper-plane"></i> 发送测试
+        </button>
+      </div>
+    </el-drawer>
+
+    <!-- 发送测试右侧抽屉 -->
+    <el-drawer
+      v-model="showTestDialog"
+      direction="rtl"
+      size="440px"
+      :with-header="false"
+      class="preview-drawer-wrapper test-drawer-wrapper"
+    >
+      <div class="pd-header">
+        <div>
+          <div class="pd-title"><i class="fas fa-paper-plane"></i> 发送测试</div>
+          <div class="pd-sub">
+            <span class="tag" :class="testType === 'sms' ? 'tag-blue' : 'tag-green'">
+              {{ testType === 'sms' ? '短信' : '站内信' }}
+            </span>
+            <span>{{ testTpl?.title }}</span>
+          </div>
+        </div>
+        <button class="pd-close" @click="showTestDialog = false" title="关闭">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- 表单视图 -->
+      <div v-if="!testSuccess" class="pd-body">
+        <div class="pd-section">
+          <div class="pd-section-title"><i class="fas fa-mobile-screen-button"></i> 接收设置</div>
+          <div class="td-field">
+            <label class="td-label">
+              {{ testType === 'sms' ? '接收手机号' : '接收账号手机号' }}
+              <span class="required">*</span>
+            </label>
+            <el-input
+              v-model="testReceiver"
+              :placeholder="testType === 'sms' ? '请输入接收测试短信的11位手机号' : '请输入接收测试站内信账号的手机号'"
+              maxlength="11"
+              class="td-el-input"
+            />
+            <div class="td-hint">
+              {{ testType === 'sms'
+                ? '测试短信将通过运营商通道真实下发至该手机号，请注意控制发送频次。'
+                : '站内信将推送至该手机号注册的APP账号，请确认账号已注册快马日结。' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-section-title">
+            <i class="fas fa-comment-dots"></i> 发送内容
+            <span class="pd-hint">变量为示例数据</span>
+          </div>
+          <div class="td-content-preview" v-html="testTpl ? renderContent(testTpl.content, true) : ''"></div>
+          <div class="td-content-meta">
+            <span v-if="testType === 'sms'">短信签名将自动追加：【快马日结】</span>
+            <span>不计入正式发送量</span>
+          </div>
+        </div>
+
+        <div class="pd-section">
+          <div class="pd-section-title"><i class="fas fa-circle-info"></i> 测试说明</div>
+          <div class="td-tip"><i class="fas fa-check-circle"></i><span>测试消息用于验证模板内容与变量替换效果，不触发真实业务流程。</span></div>
+          <div class="td-tip"><i class="fas fa-check-circle"></i><span>同一管理员账号每天最多发送 10 条测试消息，请勿频繁发送。</span></div>
+          <div class="td-tip"><i class="fas fa-check-circle"></i>
+            <span v-if="testType === 'sms'">短信按运营商标准计费，签名【快马日结】将自动追加在内容开头。</span>
+            <span v-else>站内信测试将下发至该手机号注册的 APP 账号，未注册账号无法接收。</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 成功视图 -->
+      <div v-else class="pd-body">
+        <div class="td-success">
+          <div class="td-success-icon"><i class="fas fa-check"></i></div>
+          <div class="td-success-title">测试消息发送成功</div>
+          <div class="td-success-desc">
+            <b>【{{ testType === 'sms' ? '短信' : '站内信' }}】{{ testTpl?.title }}</b> 已发送至 <b>{{ testSentReceiver }}</b><br>
+            请注意查收，如长时间未收到请检查通道状态或联系客服。
+          </div>
+        </div>
+      </div>
+
+      <div class="pd-footer">
+        <template v-if="!testSuccess">
+          <button class="btn btn-outline" @click="showTestDialog = false">取消</button>
+          <button class="btn btn-primary" @click="submitTest">
+            <i class="fas fa-paper-plane"></i> 发送测试
+          </button>
+        </template>
+        <template v-else>
+          <button class="btn btn-outline" @click="showTestDialog = false">关闭</button>
+          <button class="btn btn-primary" @click="resetTest">
+            <i class="fas fa-redo"></i> 再发一条
+          </button>
+        </template>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -465,13 +765,161 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getSettingsByCategory, saveSetting } from '@/api/system'
+import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, testSendTemplate } from '@/api/system'
 import request from '@/api/request'
 
 const router = useRouter()
 
 const activeTab = ref('basic')
 const accountTab = ref('bank')
+
+// 银行账户信息（响应式，可编辑）
+const bankInfo = reactive({
+  bankName: '中国工商银行',
+  cardNumber: '6222 **** **** 8888',
+  holder: '快马日结科技有限公司',
+  branch: '北京海淀支行',
+  swiftCode: 'ICBKCNBJ',
+  bankCode: '102100000458',
+  accountType: '对公账户'
+})
+// 银行账户编辑弹窗
+const showBankEditDialog = ref(false)
+const bankEditForm = reactive({ ...bankInfo })
+const openBankEdit = () => {
+  Object.assign(bankEditForm, bankInfo)
+  showBankEditDialog.value = true
+}
+const loadBankInfo = async () => {
+  try {
+    const res = await getBankAccount()
+    const data = res.data || res
+    if (data) {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data
+      Object.assign(bankInfo, parsed)
+    }
+  } catch (e) {
+    console.warn('[Settings] 加载银行账户信息失败，使用默认值:', e)
+  }
+}
+const saveBankEdit = async () => {
+  try {
+    await saveBankAccount({ ...bankEditForm })
+    Object.assign(bankInfo, bankEditForm)
+    showBankEditDialog.value = false
+    ElMessage.success('银行账户信息已更新')
+  } catch (e) {
+    ElMessage.error('保存失败，请重试')
+    console.error('[Settings] 保存银行账户信息失败:', e)
+  }
+}
+
+// 钱包账户信息（响应式，可编辑）
+const walletInfo = reactive({
+  alipay: { account: 'kuaima@163.com', holder: '快马日结科技有限公司', isDefault: true },
+  wechat: { account: 'k_m_riji001', holder: '快马日结科技有限公司', isDefault: false }
+})
+const showWalletEditDialog = ref(false)
+const walletEditType = ref('alipay')
+const walletEditForm = reactive({ account: '', holder: '', isDefault: false })
+
+// 钱包类型元数据
+const walletMeta = {
+  alipay: {
+    title: '编辑支付宝账户',
+    badge: '支付宝', badgeClass: 'tag-blue',
+    icon: 'fab fa-alipay', iconClass: 'alipay',
+    name: '支付宝收款账户',
+    accountLabel: '收款支付宝账号',
+    holderLabel: '认证姓名 / 企业主体',
+    placeholder: '请输入支付宝账号（邮箱或手机号）',
+    hint: '用于接收平台服务费的支付宝账号，请确保账号准确。'
+  },
+  wechat: {
+    title: '编辑微信账户',
+    badge: '微信', badgeClass: 'tag-green',
+    icon: 'fab fa-weixin', iconClass: 'wechat',
+    name: '微信收款账户',
+    accountLabel: '收款微信号',
+    holderLabel: '认证姓名 / 企业主体',
+    placeholder: '请输入收款微信号或微信商户号',
+    hint: '用于接收平台服务费的微信账户，请确保账号准确。'
+  }
+}
+
+/** 脱敏钱包账号（移植原型 maskWalletAccount） */
+const maskWalletAccount = (type, val) => {
+  val = (val || '').trim()
+  if (!val) return '—'
+  if (type === 'alipay') {
+    if (val.indexOf('@') > -1) {
+      const parts = val.split('@')
+      const u = parts[0], d = parts[1] || ''
+      if (u.length <= 3) return u + '****@' + d
+      return u.slice(0, 1) + '****' + u.slice(-2) + '@' + d
+    }
+    if (/^\d{7,}$/.test(val)) return val.replace(/^(\d{3})\d+(\d{4})$/, '$1****$2')
+    return val.length > 4 ? val.slice(0, 2) + '****' + val.slice(-2) : val
+  }
+  if (val.length <= 6) return val
+  return val.slice(0, 4) + '****' + val.slice(-3)
+}
+
+const openWalletEdit = (type) => {
+  walletEditType.value = type
+  const d = walletInfo[type]
+  walletEditForm.account = d.account
+  walletEditForm.holder = d.holder
+  walletEditForm.isDefault = d.isDefault
+  showWalletEditDialog.value = true
+}
+const setWalletDefault = async (type) => {
+  const other = type === 'alipay' ? 'wechat' : 'alipay'
+  walletInfo[type].isDefault = true
+  walletInfo[other].isDefault = false
+  try {
+    await saveWalletAccount({ alipay: walletInfo.alipay, wechat: walletInfo.wechat })
+    ElMessage.success(`已将${walletMeta[type].name}设为默认`)
+  } catch (e) {
+    ElMessage.error('设置失败，请重试')
+  }
+}
+const loadWalletInfo = async () => {
+  try {
+    const res = await getWalletAccount()
+    const data = res.data || res
+    if (data) {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data
+      if (parsed.alipay) Object.assign(walletInfo.alipay, parsed.alipay)
+      if (parsed.wechat) Object.assign(walletInfo.wechat, parsed.wechat)
+    }
+  } catch (e) {
+    console.warn('[Settings] 加载钱包账户信息失败，使用默认值:', e)
+  }
+}
+const saveWalletEdit = async () => {
+  try {
+    const type = walletEditType.value
+    const other = type === 'alipay' ? 'wechat' : 'alipay'
+    // 若设为默认，取消另一个的默认
+    if (walletEditForm.isDefault) {
+      walletInfo[other].isDefault = false
+    }
+    walletInfo[type].account = walletEditForm.account
+    walletInfo[type].holder = walletEditForm.holder
+    walletInfo[type].isDefault = walletEditForm.isDefault
+    // 确保至少有一个默认账户
+    if (!walletInfo.alipay.isDefault && !walletInfo.wechat.isDefault) {
+      walletInfo[other].isDefault = true
+    }
+    await saveWalletAccount({ alipay: walletInfo.alipay, wechat: walletInfo.wechat })
+    showWalletEditDialog.value = false
+    ElMessage.success(`${walletMeta[type].name}已更新`)
+  } catch (e) {
+    ElMessage.error('保存失败，请重试')
+    console.error('[Settings] 保存钱包账户信息失败:', e)
+  }
+}
 
 const platformForm = reactive({
   name: '快马日结',
@@ -497,14 +945,17 @@ const adminUsers = ref([])
 
 const smsTemplates = [
   {
+    type: 'sms', id: 'T001',
     title: '订单接单通知',
     content: '【快马日结】尊敬的{用户名}，您已成功接单{订单编号}，工作时间：{时间}，地点：{地点}，请准时到岗。'
   },
   {
+    type: 'sms', id: 'T002',
     title: '工资到账通知',
     content: '【快马日结】尊敬的{用户名}，您的工资{金额}元已结算到账，订单号：{订单编号}，感谢您的辛勤劳动！'
   },
   {
+    type: 'sms', id: 'T003',
     title: '审核结果通知',
     content: '【快马日结】尊敬的{用户名}，您提交的{审核类型}已{审核结果}，详情请登录APP查看。'
   }
@@ -512,10 +963,12 @@ const smsTemplates = [
 
 const inSiteTemplates = [
   {
+    type: 'message', id: 'M001',
     title: '系统公告推送',
     content: '尊敬的{用户名}，平台将于{时间}进行系统维护升级，届时服务将暂停使用，敬请谅解。'
   },
   {
+    type: 'message', id: 'M002',
     title: '飞单提醒通知',
     content: '尊敬的{用户名}，您本次{订单编号}的订单标记为飞单，已扣除{积分}积分，累计{次数}次将面临封禁处理。'
   }
@@ -703,10 +1156,6 @@ const goEditAdmin = (row) => {
   router.push(`/admin/admin-user/form?mode=edit&id=${row.id}`)
 }
 
-const onEditAccount = (name) => {
-  ElMessage.info('功能开发中')
-}
-
 const onAddTemplate = (type) => {
   ElMessage.info('功能开发中')
 }
@@ -715,12 +1164,92 @@ const onEditTemplate = (name) => {
   ElMessage.info('功能开发中')
 }
 
-const onPreviewTemplate = (name) => {
-  ElMessage.info('功能开发中')
+// ====== 模板预览 & 发送测试 ======
+const sampleValues = {
+  '用户名': '张师傅',
+  '订单编号': 'DD202609010012',
+  '时间': '2026-09-06 08:00',
+  '地点': '深圳市南山区科技园',
+  '金额': '280.00',
+  '审核类型': '实名认证',
+  '审核结果': '审核通过',
+  '积分': '10',
+  '次数': '3'
 }
 
-const onSendTest = () => {
-  ElMessage.info('功能开发中')
+/** 渲染模板内容，highlight=true 时用示例值替换并高亮 */
+const renderContent = (content, highlight) => {
+  return content.replace(/\{([^}]+)\}/g, (match, key) => {
+    if (highlight) {
+      return `<span class="pd-hl">${sampleValues[key] || match}</span>`
+    }
+    return `<code>${match}</code>`
+  })
+}
+
+/** 提取模板中的所有变量名 */
+const getTemplateVars = (content) => {
+  const vars = []
+  const reg = /\{([^}]+)\}/g
+  let m
+  while ((m = reg.exec(content)) !== null) {
+    if (vars.indexOf(m[1]) < 0) vars.push(m[1])
+  }
+  return vars
+}
+
+// 预览弹窗状态
+const showPreviewDialog = ref(false)
+const previewTpl = ref(null)
+const previewType = ref('sms')
+
+const onPreviewTemplate = (tpl) => {
+  previewTpl.value = tpl
+  previewType.value = tpl.type || 'sms'
+  showPreviewDialog.value = true
+}
+
+// 发送测试弹窗状态
+const showTestDialog = ref(false)
+const testTpl = ref(null)
+const testType = ref('sms')
+const testReceiver = ref('')
+const testSuccess = ref(false)
+const testSentReceiver = ref('')
+
+const onSendTest = (tpl) => {
+  testTpl.value = tpl
+  testType.value = tpl.type || 'sms'
+  testReceiver.value = ''
+  testSuccess.value = false
+  showTestDialog.value = true
+}
+
+const submitTest = async () => {
+  const receiver = testReceiver.value.trim()
+  if (!/^1[3-9]\d{9}$/.test(receiver)) {
+    ElMessage.warning('请输入正确的11位手机号')
+    return
+  }
+  try {
+    const renderedContent = testTpl.value ? testTpl.value.content.replace(/\{([^}]+)\}/g, (m, k) => sampleValues[k] || m) : ''
+    const res = await testSendTemplate({
+      type: testType.value,
+      templateTitle: testTpl.value?.title || '',
+      receiver,
+      content: renderedContent
+    })
+    const data = res.data || res
+    testSentReceiver.value = data.maskedReceiver || (receiver.substring(0, 3) + '****' + receiver.substring(7))
+    testSuccess.value = true
+  } catch (e) {
+    ElMessage.error(e.message || '发送测试失败，请重试')
+  }
+}
+
+const resetTest = () => {
+  testReceiver.value = ''
+  testSuccess.value = false
 }
 
 const onPublish = (name) => {
@@ -730,6 +1259,8 @@ const onPublish = (name) => {
 onMounted(() => {
   loadPlatformSettings()
   loadRulesSettings()
+  loadBankInfo()
+  loadWalletInfo()
   loadAdminUsers()
 })
 </script>
@@ -1216,11 +1747,19 @@ onMounted(() => {
   gap: 12px;
 }
 
-/* ============ Template cards ============ */
+/* ============ Dialog footer ============ */
+.dialog-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ============ Template cards（对齐原型紧凑风格） ============ */
 .template-card {
   border: 1px solid var(--border);
-  border-radius: 12px;
-  margin-bottom: 16px;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
   transition: border-color 0.2s;
 }
 
@@ -1232,8 +1771,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
 }
 
 .template-title {
@@ -1241,20 +1779,21 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .tag {
+  display: inline-block;
   font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
   font-weight: 500;
 }
 
 .tag-blue {
   background: #EFF6FF;
-  color: #3B82F6;
+  color: #2563EB;
 }
 
 .tag-green {
@@ -1263,17 +1802,18 @@ onMounted(() => {
 }
 
 .template-content {
-  padding: 16px 20px;
   font-size: 13px;
   color: var(--text-secondary);
+  background: var(--bg-page);
+  padding: 10px 12px;
+  border-radius: 6px;
   line-height: 1.6;
 }
 
 .template-actions {
-  padding: 12px 20px;
-  border-top: 1px solid var(--border);
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 /* ============ Data table ============ */
@@ -1383,6 +1923,49 @@ onMounted(() => {
   color: #6B7280;
 }
 
+/* ============ Button (与原型 admin.css 一致) ============ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+.btn-outline {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-outline:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
 .empty-cell {
   text-align: center;
   color: var(--text-muted);
@@ -1406,4 +1989,440 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============ Wallet default tag ============ */
+.wallet-default-tag {
+  display: inline-block;
+  background: var(--primary, #FF6B35);
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+/* ============ Wallet edit dialog ============ */
+.wallet-edit-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 8px;
+}
+.wallet-edit-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.wallet-edit-icon.alipay {
+  background: #1677ff;
+  color: #fff;
+}
+.wallet-edit-icon.wechat {
+  background: #07c160;
+  color: #fff;
+}
+.wallet-edit-tips {
+  margin-top: 8px;
+  padding: 12px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 8px;
+}
+.wallet-edit-tip {
+  font-size: 12px;
+  color: #8c6d1f;
+  line-height: 1.8;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.wallet-edit-tip i {
+  color: #52c41a;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+/* ============ 抽屉通用样式（对齐原型 .preview-drawer） ============ */
+.preview-drawer-wrapper :deep(.el-drawer) {
+  background: #F3F4F6;
+}
+.preview-drawer-wrapper :deep(.el-drawer__body) {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* 发送测试抽屉叠加在预览抽屉之上 */
+.test-drawer-wrapper :deep(.el-drawer) {
+  z-index: 2100;
+}
+.test-drawer-wrapper :deep(.el-overlay) {
+  z-index: 2099;
+}
+
+/* 抽屉头部 */
+.pd-header {
+  flex-shrink: 0;
+  background: #fff;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pd-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pd-title i { color: var(--primary); }
+.pd-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.pd-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #F3F4F6;
+  color: var(--text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.pd-close:hover { background: #E5E7EB; color: var(--text-primary); }
+
+/* 抽屉主体 */
+.pd-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+.pd-section {
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.pd-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.pd-section-title i { color: var(--primary); }
+.pd-section-title .pd-hint {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+.pd-section-phone {
+  background: linear-gradient(180deg, #FAFBFC 0%, #F3F4F6 100%);
+}
+
+/* ============ iPhone 模型（对齐原型 .pd-phone） ============ */
+.pd-phone {
+  --phone-w: 300px;
+  width: var(--phone-w);
+  margin: 4px auto 0;
+  position: relative;
+  background: linear-gradient(145deg, #2b313c 0%, #12151b 100%);
+  border-radius: 44px;
+  padding: 11px;
+  box-shadow:
+    0 18px 44px rgba(17, 24, 39, 0.28),
+    0 4px 12px rgba(17, 24, 39, 0.18),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.07);
+}
+/* 侧边按键：电源键（右）+ 音量键（左） */
+.pd-phone::before {
+  content: '';
+  position: absolute;
+  right: -2.5px;
+  top: 116px;
+  width: 3px;
+  height: 64px;
+  background: #1a1e26;
+  border-radius: 0 3px 3px 0;
+}
+.pd-phone::after {
+  content: '';
+  position: absolute;
+  left: -2.5px;
+  top: 96px;
+  width: 3px;
+  height: 48px;
+  background: #1a1e26;
+  border-radius: 3px 0 0 3px;
+  box-shadow: 0 56px 0 #1a1e26;
+}
+.pd-phone-screen {
+  position: relative;
+  background: #fff;
+  border-radius: 34px;
+  overflow: hidden;
+}
+/* 灵动岛 */
+.pd-phone-island {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 84px;
+  height: 22px;
+  background: #0a0a0c;
+  border-radius: 12px;
+  z-index: 20;
+}
+.pd-phone-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 24px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  position: relative;
+  z-index: 10;
+}
+.pd-phone-bar i { margin-left: 4px; font-size: 11px; }
+.pd-phone-head {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+}
+.pd-phone-body {
+  background: #F5F6F8;
+  padding: 16px 12px 20px;
+  min-height: 300px;
+}
+/* Home 指示条 */
+.pd-phone-home {
+  height: 18px;
+  background: #F5F6F8;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+.pd-phone-home::after {
+  content: '';
+  width: 104px;
+  height: 4px;
+  border-radius: 2px;
+  background: #111827;
+  opacity: 0.85;
+}
+
+/* 手机内短信气泡 */
+.pd-sms { display: flex; gap: 9px; }
+.pd-sms-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
+}
+.pd-sms-main { flex: 1; min-width: 0; }
+.pd-sms-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.pd-sms-name { font-size: 12px; font-weight: 600; color: #1f2937; }
+.pd-sms-time { font-size: 10px; color: #9ca3af; }
+.pd-sms-bubble {
+  background: #fff;
+  border-radius: 4px 12px 12px 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  word-break: break-all;
+}
+
+/* 手机内站内信通知卡片 */
+.pd-notice {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.pd-notice-head { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+.pd-notice-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.pd-notice-app { font-size: 12px; font-weight: 600; color: #1f2937; }
+.pd-notice-now { font-size: 10px; color: #9ca3af; margin-top: 2px; }
+.pd-notice-title { font-size: 13px; font-weight: 600; color: #1f2937; margin-bottom: 5px; }
+.pd-notice-text { font-size: 12px; line-height: 1.8; color: #374151; word-break: break-all; }
+.pd-notice-foot {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 11px;
+  color: var(--primary);
+  text-align: center;
+}
+.pd-hl { color: var(--primary); font-weight: 600; }
+
+/* 原始模板 */
+.pd-raw {
+  background: #F9FAFB;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+.pd-raw code {
+  color: var(--primary);
+  background: rgba(255, 107, 53, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* 变量示例 */
+.pd-var-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+  border-bottom: 1px solid #f7f7f7;
+}
+.pd-var-row:last-child { border-bottom: none; }
+.pd-var-code {
+  color: var(--primary);
+  background: rgba(255, 107, 53, 0.08);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pd-var-val { color: var(--text-secondary); margin-left: auto; text-align: right; word-break: break-all; }
+
+/* 抽屉底部 */
+.pd-footer {
+  flex-shrink: 0;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.pd-footer .btn { flex-shrink: 0; }
+
+/* ============ 发送测试抽屉 ============ */
+.td-field { margin-bottom: 16px; }
+.td-field:last-child { margin-bottom: 0; }
+.td-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.td-label .required { color: #ef4444; }
+.td-el-input :deep(.el-input__wrapper) {
+  height: 40px;
+  border-radius: 8px;
+}
+.td-hint { font-size: 12px; color: var(--text-muted); margin-top: 7px; line-height: 1.6; }
+.td-content-preview {
+  background: #FFF7F2;
+  border: 1px solid #FFE2D1;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.td-content-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 9px;
+}
+.td-tip {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+.td-tip:last-child { margin-bottom: 0; }
+.td-tip i { color: var(--primary); margin-top: 4px; font-size: 11px; flex-shrink: 0; }
+
+/* 发送成功态 */
+.td-success {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+}
+.td-success-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 18px;
+}
+.td-success-title { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; }
+.td-success-desc { font-size: 13px; color: var(--text-muted); line-height: 1.9; margin-bottom: 26px; }
+.td-success-desc b { color: var(--text-primary); }
 </style>
