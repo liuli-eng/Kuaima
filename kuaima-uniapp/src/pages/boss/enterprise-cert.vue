@@ -1,293 +1,341 @@
 <template>
-  <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
-    <!-- 导航栏 -->
-    <view class="nav-bar">
-      <view class="nav-back" @click="goBack">
-        <text>←</text>
-      </view>
+  <view class="page">
+    <view
+      class="nav-bar"
+      :style="{
+        paddingTop: `${statusBarHeight}px`,
+        height: `${statusBarHeight + 50}px`,
+      }"
+    >
+      <view class="nav-back" @click="goBack">←</view>
       <text class="nav-title">企业认证</text>
-      <view class="nav-right">
-        <text>⋯</text>
-      </view>
+      <view class="nav-placeholder" />
     </view>
-
     <scroll-view scroll-y class="scroll-area">
-      <!-- Hero区域 -->
       <view class="hero-section">
-        <view class="hero-icon">
-          <text style="font-size:32px;color:#FF6B35;">🛡</text>
-        </view>
-        <text class="hero-title">请尽快完成企业认证</text>
-        <text class="hero-desc">否则会影响后续发布招工</text>
+        <view class="hero-icon"><view class="shield">✓</view></view>
+        <text class="hero-title">{{ heroTitle }}</text>
+        <text class="hero-desc">{{ heroDescription }}</text>
       </view>
-
-      <!-- 认证选项 -->
       <view class="cert-options">
-        <view class="cert-card" @click="chooseCert(1)">
+        <view class="cert-card" @click="openCertification">
           <view class="cert-header">
             <text class="cert-name">企业自招（仅限本公司招工）</text>
-            <view class="cert-btn">
-              <text>认证</text>
-            </view>
+            <view class="cert-btn" :class="`status-${status}`">{{
+              actionLabel
+            }}</view>
           </view>
-          <text class="cert-desc">上传营业执照原件或加盖公章复印件</text>
+          <text class="cert-desc">{{ cardDescription }}</text>
+          <text v-if="rejectReason" class="reject-reason"
+            >驳回原因：{{ rejectReason }}</text
+          >
         </view>
       </view>
-
-      <!-- 联系客服 -->
-      <view class="contact-link" @click="navigateTo('service-chat')">
-        <text>认证遇到问题？联系客服 ›</text>
-      </view>
-
-      <!-- 认证权益 -->
+      <view class="contact-link" @click="openService"
+        >认证遇到问题？联系客服 ›</view
+      >
       <view class="benefits-section">
         <text class="benefits-title">企业认证后，获得以下权益</text>
         <view class="benefits-grid">
-          <view class="benefit-item">
-            <view class="benefit-icon">
-              <text style="font-size:20px;color:#FF6B35;">⚡</text>
-            </view>
-            <text class="benefit-text">快速审核</text>
-          </view>
-          <view class="benefit-item">
-            <view class="benefit-icon">
-              <text style="font-size:20px;color:#FF6B35;">👍</text>
-            </view>
-            <text class="benefit-text">优先推荐</text>
-          </view>
-          <view class="benefit-item">
-            <view class="benefit-icon">
-              <text style="font-size:20px;color:#FF6B35;">🏅</text>
-            </view>
-            <text class="benefit-text">认证标识</text>
+          <view v-for="item in benefits" :key="item.text" class="benefit-item">
+            <view class="benefit-icon">{{ item.icon }}</view
+            ><text class="benefit-text">{{ item.text }}</text>
           </view>
         </view>
       </view>
-
-      <view style="height:30px;"></view>
+      <view class="bottom-space" />
     </scroll-view>
   </view>
 </template>
 
 <script>
+import { getUser, listCertifications } from "@/api/backend";
 export default {
   data() {
-    return {}
+    return {
+      statusBarHeight: 0,
+      status: "unverified",
+      rejectReason: "",
+      loading: false,
+      benefits: [
+        { icon: "⚡", text: "快速审核" },
+        { icon: "●", text: "优先推荐" },
+        { icon: "✓", text: "认证标识" },
+      ],
+    };
+  },
+  computed: {
+    heroTitle() {
+      return {
+        pending: "企业认证审核中",
+        approved: "企业认证已完成",
+        rejected: "企业认证未通过",
+        unverified: "请尽快完成企业认证",
+      }[this.status];
+    },
+    heroDescription() {
+      return {
+        pending: "资料已提交，请耐心等待审核",
+        approved: "您已获得企业认证相关权益",
+        rejected: "请修改认证资料后重新提交",
+        unverified: "否则会影响后续发布招工",
+      }[this.status];
+    },
+    actionLabel() {
+      return this.loading
+        ? "加载中"
+        : {
+            pending: "审核中",
+            approved: "已认证",
+            rejected: "重新认证",
+            unverified: "认证",
+          }[this.status];
+    },
+    cardDescription() {
+      return this.status === "approved"
+        ? "企业认证资料已通过平台审核"
+        : "上传营业执照原件或加盖公章复印件";
+    },
+  },
+  onLoad() {
+    try {
+      const info =
+        typeof uni.getWindowInfo === "function"
+          ? uni.getWindowInfo()
+          : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
+    } catch (_) {}
+  },
+  onShow() {
+    this.loadCertification();
   },
   methods: {
+    async loadCertification() {
+      this.loading = true;
+      try {
+        const userId = uni.getStorageSync("userId") || "2001";
+        const [user, records] = await Promise.all([
+          getUser(userId),
+          listCertifications(userId).catch(() => []),
+        ]);
+        const list = Array.isArray(records) ? records : [];
+        const latest = list.find(
+          (item) =>
+            String(item.type || item.certType || "").includes("企业") ||
+            String(item.type || item.certType || "").toUpperCase() ===
+              "ENTERPRISE",
+        );
+        const raw =
+          latest?.status ||
+          (String(user?.certType || "").toUpperCase() === "ENTERPRISE"
+            ? user?.certStatus
+            : "");
+        const value = String(raw || "");
+        this.status =
+          value.includes("待") || value === "PENDING"
+            ? "pending"
+            : value.includes("通过") || value === "APPROVED"
+              ? "approved"
+              : value.includes("拒") || value === "REJECTED"
+                ? "rejected"
+                : "unverified";
+        this.rejectReason = latest?.rejectReason || "";
+      } catch (error) {
+        uni.showToast({
+          title: error.message || "认证状态加载失败",
+          icon: "none",
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
-    navigateTo(pageName) {
-      const bossPages = [
-        'boss-employer', 'boss-home', 'boss-message', 'boss-order', 'boss-profile', 
-        'boss-publish', 'search-worker', 'select-job', 'publish-info', 'schedule-stats', 
-        'enterprise-cert', 'enterprise-cert-form', 'creditor-score', 'talent-list', 
-        'expense-detail', 'payment-detail', 'recruit-manager', 'recruit-address', 
-        'sub-account', 'suspend-settle', 'switch-account', 'invite-code', 'blacklist', 
-        'all-jobs', 'boss-filter', 'settlement', 'contract', 'system-notice', 'missed-call', 
-        'signup-notice', 'invite-friend', 'service-chat', 'insurance'
-      ]
-      
-      let url = `/pages/boss/${pageName}`
-      if (!bossPages.includes(pageName)) {
-        url = `/pages/${pageName}`
-      }
-      
-      uni.navigateTo({ url })
+    openCertification() {
+      if (this.loading || this.status === "pending") return;
+      if (this.status === "approved")
+        return uni.showToast({ title: "企业已完成认证", icon: "success" });
+      uni.navigateTo({ url: "/pages/boss/enterprise-cert-form" });
     },
-    chooseCert(type) {
-      if (type === 1) {
-        this.navigateTo('enterprise-cert-form')
-      } else {
-        uni.showToast({ title: '即将跳转到劳务中介认证流程', icon: 'none' })
-      }
-    }
-  }
-}
+    openService() {
+      uni.navigateTo({ url: "/pages/boss/service-chat" });
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
-.container {
-  width: 100%;
+.page {
   height: 100vh;
   background: #fff;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: #fff;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .nav-bar {
-  height: 50px;
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
+  align-items: flex-end;
+  padding: 0 32rpx 18rpx;
   background: #fff;
+  flex-shrink: 0;
+  position: relative;
 }
-
-.nav-back {
-  width: 32px;
-  height: 32px;
+.nav-back,
+.nav-placeholder {
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
+.nav-back {
+  font-size: 36rpx;
+  color: #333;
+}
 .nav-title {
-  font-size: 17px;
+  position: absolute;
+  left: 50%;
+  bottom: 24rpx;
+  transform: translateX(-50%);
+  font-size: 34rpx;
   font-weight: 600;
   color: #333;
 }
-
-.nav-right {
-  display: flex;
-  gap: 14px;
-  color: #333;
+.nav-placeholder {
+  margin-left: auto;
 }
-
 .scroll-area {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
 }
-
 .hero-section {
-  padding: 30px 20px 20px;
+  padding: 60rpx 40rpx 40rpx;
   text-align: center;
 }
-
 .hero-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 16px;
-  background: linear-gradient(135deg, #FFE4B5, #FFDAB9);
+  width: 128rpx;
+  height: 128rpx;
+  margin: 0 auto 32rpx;
   border-radius: 50%;
+  background: linear-gradient(135deg, #ffe4b5, #ffdab9);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
+.shield {
+  width: 64rpx;
+  height: 74rpx;
+  border-radius: 18rpx 18rpx 30rpx 30rpx;
+  background: #ff6b35;
+  color: #fff;
+  font-size: 42rpx;
+  line-height: 74rpx;
+}
 .hero-title {
-  font-size: 20px;
+  display: block;
+  font-size: 40rpx;
   font-weight: 700;
   color: #333;
 }
-
 .hero-desc {
-  font-size: 13px;
+  display: block;
+  margin-top: 12rpx;
+  font-size: 26rpx;
   color: #999;
-  margin-top: 6px;
 }
-
 .cert-options {
-  padding: 0 16px;
+  padding: 0 32rpx;
 }
-
 .cert-card {
+  padding: 32rpx;
+  border: 2rpx solid #f0f0f0;
+  border-radius: 24rpx;
   background: #fff;
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
 }
-
 .cert-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
 }
-
 .cert-name {
-  font-size: 15px;
+  min-width: 0;
+  font-size: 30rpx;
   font-weight: 600;
   color: #333;
 }
-
 .cert-btn {
-  background: linear-gradient(135deg, #FFD700, #FFA500);
+  flex-shrink: 0;
+  padding: 12rpx 32rpx;
+  border-radius: 40rpx;
+  background: linear-gradient(135deg, #ffd700, #ffa500);
   color: #fff;
-  border-radius: 20px;
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 26rpx;
 }
-
-.cert-desc {
-  font-size: 12px;
+.status-pending,
+.status-approved {
+  background: #f0f0f0;
   color: #999;
-  margin-top: 6px;
 }
-
+.cert-desc,
+.reject-reason {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #999;
+}
+.reject-reason {
+  padding: 16rpx 20rpx;
+  background: #fff3ed;
+  color: #ff6b35;
+  border-radius: 12rpx;
+}
 .contact-link {
+  padding: 40rpx 32rpx;
   text-align: center;
-  margin: 20px 0;
-  font-size: 13px;
-  color: #FF6B35;
+  font-size: 26rpx;
+  color: #ff6b35;
 }
-
 .benefits-section {
+  margin-top: 40rpx;
+  padding: 40rpx 32rpx;
   background: #fafafa;
-  padding: 20px 16px;
-  margin-top: 20px;
 }
-
 .benefits-title {
+  display: block;
+  margin-bottom: 40rpx;
   text-align: center;
-  font-size: 14px;
+  font-size: 28rpx;
   color: #666;
-  margin-bottom: 20px;
 }
-
 .benefits-grid {
   display: flex;
   justify-content: space-around;
 }
-
 .benefit-item {
+  width: 160rpx;
   text-align: center;
 }
-
 .benefit-icon {
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 8px;
-  background: #FFF3ED;
+  width: 96rpx;
+  height: 96rpx;
+  margin: 0 auto 16rpx;
   border-radius: 50%;
+  background: #fff3ed;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #ff6b35;
+  font-size: 36rpx;
+  font-weight: 700;
 }
-
 .benefit-text {
-  font-size: 12px;
+  font-size: 24rpx;
   color: #666;
+}
+.bottom-space {
+  height: calc(60rpx + env(safe-area-inset-bottom));
 }
 </style>

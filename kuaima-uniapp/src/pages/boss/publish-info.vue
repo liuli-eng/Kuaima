@@ -261,7 +261,10 @@ export default {
       uni.navigateTo({ url: `/pages/boss/${page}` });
     },
     editJob() {
-      uni.navigateTo({ url: "/pages/boss/all-jobs" });
+      const query = this.orderId
+        ? `?id=${encodeURIComponent(this.orderId)}`
+        : "";
+      uni.navigateTo({ url: `/pages/boss/all-jobs${query}` });
     },
     applyTaskContent(data = {}) {
       this.workContent = data.title || data.desc || this.workContent;

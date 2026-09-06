@@ -29,7 +29,7 @@
             </view>
             <view class="phone-info">
               <text class="phone-number"
-                >13698756321 <text class="phone-tag">主</text></text
+                >{{ primaryPhone }} <text class="phone-tag">主</text></text
               >
               <text class="phone-desc">零工电话报名、问路等</text>
             </view>
@@ -42,24 +42,35 @@
             >备用联系电话
             <text style="color: #ff4d4f">*</text>（最多添加3个）</text
           >
-          <view
-            class="phone-item"
-            v-for="(item, index) in phoneList"
-            :key="index"
-          >
-            <view class="phone-icon">
-              <text style="font-size: 32rpx">📞</text>
-            </view>
-            <view class="phone-info">
-              <text class="phone-number">{{ item.phone }}</text>
-              <text class="phone-desc">备用联系人：{{ item.name }}</text>
-            </view>
-            <view class="phone-actions">
-              <button @click="editPhone(index)">编辑</button>
-              <view class="divider"></view>
-              <button class="danger" @click="deletePhone(index)">删除</button>
-            </view>
+          <view v-if="loading" class="empty-state">
+            <text>正在加载联系人...</text>
           </view>
+          <view
+            v-else-if="phoneList.length === 0"
+            class="empty-state"
+          >
+            <text>暂无备用联系人</text>
+          </view>
+          <template v-else>
+            <view
+              v-for="(item, index) in phoneList"
+              :key="item.id || index"
+              class="phone-item"
+            >
+              <view class="phone-icon">
+                <text style="font-size: 32rpx">📞</text>
+              </view>
+              <view class="phone-info">
+                <text class="phone-number">{{ item.phone }}</text>
+                <text class="phone-desc">备用联系人：{{ item.name }}</text>
+              </view>
+              <view class="phone-actions">
+                <button @click="editPhone(index)">编辑</button>
+                <view class="divider"></view>
+                <button class="danger" @click="deletePhone(index)">删除</button>
+              </view>
+            </view>
+          </template>
           <view
             class="add-btn"
             v-if="phoneList.length < 3"
@@ -106,7 +117,9 @@
         </view>
         <view class="modal-actions">
           <button class="btn-cancel" @click="closeModal">取消</button>
-          <button class="btn-confirm" @click="savePhone">保存</button>
+          <button class="btn-confirm" :disabled="saving" @click="savePhone">
+            {{ saving ? "保存中..." : "保存" }}
+          </button>
         </view>
       </view>
     </view>
@@ -130,10 +143,11 @@
           <button class="btn-cancel" @click="closeDeleteModal">取消</button>
           <button
             class="btn-confirm"
+            :disabled="deleting"
             style="background: linear-gradient(135deg, #ff6b35, #ff4d4f)"
             @click="confirmDelete"
           >
-            确认删除
+            {{ deleting ? "删除中..." : "确认删除" }}
           </button>
         </view>
       </view>
@@ -142,13 +156,21 @@
 </template>
 
 <script>
+import {
+  createBossContact,
+  deleteBossContact,
+  getUser,
+  listBossContacts,
+} from "@/api/backend";
+
 export default {
   data() {
     return {
-      phoneList: [
-        { name: "张先生", phone: "13888888888" },
-        { name: "李女士", phone: "13666666666" },
-      ],
+      primaryPhone: "暂无手机号",
+      phoneList: [],
+      loading: false,
+      saving: false,
+      deleting: false,
       editingIndex: -1,
       deletingIndex: -1,
       showPhoneModal: false,
@@ -159,7 +181,31 @@ export default {
       },
     };
   },
+  onLoad() {
+    this.loadContacts();
+  },
   methods: {
+    getUserId() {
+      return uni.getStorageSync("userId") || "2001";
+    },
+    async loadContacts() {
+      this.loading = true;
+      try {
+        const userId = this.getUserId();
+        const [contacts, user] = await Promise.all([
+          listBossContacts(userId),
+          getUser(userId),
+        ]);
+        const list = Array.isArray(contacts) ? contacts : [];
+        const primary = list.find((item) => item.isDefault);
+        this.primaryPhone = user?.phone || primary?.phone || "暂无手机号";
+        this.phoneList = list.filter((item) => !item.isDefault).slice(0, 3);
+      } catch (error) {
+        uni.showToast({ title: error.message || "联系人加载失败", icon: "none" });
+      } finally {
+        this.loading = false;
+      }
+    },
     goBack() {
       uni.navigateBack();
     },
@@ -177,7 +223,7 @@ export default {
     closeModal() {
       this.showPhoneModal = false;
     },
-    savePhone() {
+    async savePhone() {
       if (!this.formData.name.trim()) {
         uni.showToast({ title: "请输入联系人姓名", icon: "none" });
         return;
@@ -187,17 +233,34 @@ export default {
         return;
       }
 
-      if (this.editingIndex >= 0) {
-        this.phoneList[this.editingIndex] = { ...this.formData };
-      } else {
-        if (this.phoneList.length >= 3) {
-          uni.showToast({ title: "最多添加3个备用联系人", icon: "none" });
-          return;
-        }
-        this.phoneList.push({ ...this.formData });
+      if (this.editingIndex < 0 && this.phoneList.length >= 3) {
+        uni.showToast({ title: "最多添加3个备用联系人", icon: "none" });
+        return;
       }
-
-      this.closeModal();
+      this.saving = true;
+      try {
+        const payload = {
+          userId: this.getUserId(),
+          name: this.formData.name.trim(),
+          phone: this.formData.phone.trim(),
+          isDefault: false,
+        };
+        const current = this.editingIndex >= 0 ? this.phoneList[this.editingIndex] : null;
+        if (current?.id) {
+          // 后端当前仅提供删除/新增联系人接口，编辑通过替换记录完成。
+          await deleteBossContact(current.id);
+          await createBossContact(payload);
+        } else {
+          await createBossContact(payload);
+        }
+        this.closeModal();
+        await this.loadContacts();
+        uni.showToast({ title: "保存成功", icon: "success" });
+      } catch (error) {
+        uni.showToast({ title: error.message || "保存失败", icon: "none" });
+      } finally {
+        this.saving = false;
+      }
     },
     deletePhone(index) {
       this.deletingIndex = index;
@@ -206,17 +269,23 @@ export default {
     closeDeleteModal() {
       this.showDeleteModal = false;
     },
-    confirmDelete() {
-      if (this.deletingIndex >= 0) {
-        this.phoneList.splice(this.deletingIndex, 1);
+    async confirmDelete() {
+      const current = this.phoneList[this.deletingIndex];
+      if (!current?.id) return;
+      this.deleting = true;
+      try {
+        await deleteBossContact(current.id);
+        this.closeDeleteModal();
+        await this.loadContacts();
+        uni.showToast({ title: "删除成功", icon: "success" });
+      } catch (error) {
+        uni.showToast({ title: error.message || "删除失败", icon: "none" });
+      } finally {
+        this.deleting = false;
       }
-      this.closeDeleteModal();
     },
     saveAndReturn() {
-      uni.showToast({ title: "保存成功", icon: "success" });
-      setTimeout(() => {
-        uni.navigateBack();
-      }, 500);
+      uni.navigateBack();
     },
   },
 };
@@ -403,6 +472,13 @@ export default {
   width: 2rpx;
   height: 24rpx;
   background: #e0e0e0;
+}
+
+.empty-state {
+  padding: 48rpx 24rpx;
+  text-align: center;
+  color: #999;
+  font-size: 26rpx;
 }
 
 .add-btn {

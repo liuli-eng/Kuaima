@@ -1,24 +1,18 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <!-- 导航栏 -->
-    <view class="nav-bar">
+    <view
+      class="nav-bar"
+      :style="{
+        paddingTop: `${statusBarHeight}px`,
+        height: `${statusBarHeight + 50}px`,
+      }"
+    >
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
       <text class="nav-title">企业自招认证</text>
-      <view class="nav-right">
-        <text>⋯</text>
-      </view>
+      <view class="nav-placeholder" />
     </view>
 
     <scroll-view scroll-y class="scroll-area">
@@ -33,19 +27,40 @@
         <text class="form-title">企业信息</text>
         <view class="form-item">
           <text class="form-label">企业名称</text>
-          <input class="form-input" placeholder="请输入营业执照上的全称" v-model="companyName" />
+          <input
+            class="form-input"
+            placeholder="请输入营业执照上的全称"
+            v-model="companyName"
+            maxlength="100"
+          />
         </view>
         <view class="form-item">
           <text class="form-label">统一社会信用代码</text>
-          <input class="form-input" placeholder="请输入18位信用代码" v-model="creditCode" />
+          <input
+            class="form-input"
+            placeholder="请输入18位信用代码"
+            v-model="creditCode"
+            maxlength="18"
+          />
         </view>
         <view class="form-item">
           <text class="form-label">法定代表人</text>
-          <input class="form-input" placeholder="请输入法人姓名" v-model="legalPerson" />
+          <input
+            class="form-input"
+            placeholder="请输入法人姓名"
+            v-model="legalPerson"
+            maxlength="50"
+          />
         </view>
         <view class="form-item">
           <text class="form-label">联系电话</text>
-          <input class="form-input" placeholder="请输入联系电话" v-model="contactPhone" />
+          <input
+            class="form-input"
+            placeholder="请输入联系电话"
+            v-model="contactPhone"
+            maxlength="11"
+            type="number"
+          />
         </view>
       </view>
 
@@ -54,71 +69,156 @@
         <text class="form-title">上传营业执照</text>
         <view class="upload-area" @click="uploadLicense">
           <view class="upload-icon">
-            <text style="font-size:36px;color:#FF6B35;">☁</text>
+            <text style="font-size: 36px; color: #ff6b35">☁</text>
           </view>
-          <text class="upload-text">点击上传营业执照</text>
-          <text class="upload-hint">请上传原件或加盖公章的复印件，支持JPG/PNG格式，不超过5M</text>
+          <text class="upload-text">{{
+            licensePath ? "已选择营业执照" : "点击上传营业执照"
+          }}</text>
+          <text class="upload-hint"
+            >请上传原件或加盖公章的复印件，支持JPG/PNG格式，不超过5M</text
+          >
         </view>
       </view>
 
       <!-- 同意协议 -->
       <view class="agree-row">
-        <view class="agree-checkbox" :class="{ checked: agreed }" @click="toggleAgree"></view>
+        <view
+          class="agree-checkbox"
+          :class="{ checked: agreed }"
+          @click="toggleAgree"
+        ></view>
         <text class="agree-text">
-          我已阅读并同意<text class="agree-link" @click.stop="showAgreement('service')">《企业认证服务协议》</text>和<text class="agree-link" @click.stop="showAgreement('rule')">《信息发布规则》</text>，承诺所提交的材料真实有效。
+          我已阅读并同意<text
+            class="agree-link"
+            @click.stop="showAgreement('service')"
+            >《企业认证服务协议》</text
+          >和<text class="agree-link" @click.stop="showAgreement('rule')"
+            >《信息发布规则》</text
+          >，承诺所提交的材料真实有效。
         </text>
       </view>
 
       <!-- 提交按钮 -->
-      <button class="submit-btn" :disabled="!agreed" @click="submitForm">提交认证</button>
+      <button
+        class="submit-btn"
+        :disabled="!agreed || submitting"
+        @click="submitForm"
+      >
+        {{ submitting ? "提交中..." : "提交认证" }}
+      </button>
     </scroll-view>
   </view>
 </template>
 
 <script>
+import { getBossProfile, submitEnterpriseCertification } from "@/api/backend";
+
 export default {
   data() {
     return {
-      companyName: '',
-      creditCode: '',
-      legalPerson: '',
-      contactPhone: '',
-      agreed: false
-    }
+      statusBarHeight: 0,
+      userId: "",
+      companyName: "",
+      creditCode: "",
+      legalPerson: "",
+      contactPhone: "",
+      licensePath: "",
+      agreed: false,
+      submitting: false,
+    };
+  },
+  onLoad() {
+    try {
+      const info =
+        typeof uni.getWindowInfo === "function"
+          ? uni.getWindowInfo()
+          : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
+    } catch (_) {}
+    this.userId = String(uni.getStorageSync("userId") || "2001");
+    this.loadProfile();
   },
   methods: {
+    async loadProfile() {
+      try {
+        const profile = await getBossProfile(this.userId);
+        if (!profile) return;
+        this.companyName = profile.companyName || "";
+        this.legalPerson = profile.legalRep || profile.realName || "";
+        this.contactPhone = profile.contactPhone || profile.phone || "";
+      } catch (_) {
+        // 未登录或接口不可用时保留空表单，不用演示数据覆盖用户输入。
+      }
+    },
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     toggleAgree() {
-      this.agreed = !this.agreed
+      this.agreed = !this.agreed;
     },
     uploadLicense() {
       uni.chooseImage({
         count: 1,
-        sizeType: ['compressed'],
-        sourceType: ['album', 'camera'],
+        sizeType: ["compressed"],
+        sourceType: ["album", "camera"],
         success: (res) => {
-          uni.showToast({ title: '上传成功', icon: 'success' })
-        }
-      })
+          this.licensePath = res.tempFilePaths?.[0] || "selected";
+          uni.showToast({ title: "已选择营业执照", icon: "success" });
+        },
+      });
     },
     showAgreement(type) {
-      if (type === 'service') {
-        uni.showToast({ title: '《企业认证服务协议》', icon: 'none' })
+      if (type === "service") {
+        uni.showToast({ title: "《企业认证服务协议》", icon: "none" });
       } else {
-        uni.showToast({ title: '《信息发布规则》', icon: 'none' })
+        uni.showToast({ title: "《信息发布规则》", icon: "none" });
       }
     },
-    submitForm() {
-      if (!this.companyName.trim()) {
-        uni.showToast({ title: '请填写企业名称', icon: 'none' })
-        return
+    async submitForm() {
+      if (this.submitting) return;
+      const checks = [
+        [this.companyName, "请填写企业名称"],
+        [this.creditCode, "请填写统一社会信用代码"],
+        [this.legalPerson, "请填写法定代表人"],
+        [this.contactPhone, "请填写联系电话"],
+      ];
+      const missing = checks.find(([value]) => !String(value || "").trim());
+      if (missing) {
+        uni.showToast({ title: missing[1], icon: "none" });
+        return;
       }
-      uni.showToast({ title: '提交成功！\n\n审核周期约1-3个工作日，请耐心等待。', icon: 'success', duration: 3000 })
-    }
-  }
-}
+      const creditCode = this.creditCode.trim().toUpperCase();
+      if (!/^[0-9A-Z]{18}$/.test(creditCode)) {
+        uni.showToast({
+          title: "统一社会信用代码须为18位数字或字母",
+          icon: "none",
+        });
+        return;
+      }
+      if (!/^1\d{10}$/.test(this.contactPhone.trim())) {
+        uni.showToast({ title: "请输入正确的联系电话", icon: "none" });
+        return;
+      }
+      this.submitting = true;
+      try {
+        await submitEnterpriseCertification({
+          userId: this.userId,
+          companyName: this.companyName.trim(),
+          industry: "企业自招",
+          licenseNo: creditCode,
+          legalRep: this.legalPerson.trim(),
+          contactPhone: this.contactPhone.trim(),
+        });
+        uni.showToast({ title: "提交成功，请等待审核", icon: "success" });
+        setTimeout(() => uni.navigateBack(), 900);
+      } catch (error) {
+        uni.showToast({ title: error.message || "提交认证失败", icon: "none" });
+      } finally {
+        this.submitting = false;
+      }
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -131,51 +231,39 @@ export default {
   overflow: hidden;
 }
 
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: #fff;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .nav-bar {
-  height: 50px;
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 32rpx 18rpx;
   background: #fff;
+  flex-shrink: 0;
+  position: relative;
 }
 
 .nav-back {
-  width: 32px;
-  height: 32px;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 36rpx;
 }
 
 .nav-title {
-  font-size: 17px;
+  position: absolute;
+  left: 50%;
+  bottom: 24rpx;
+  transform: translateX(-50%);
+  font-size: 34rpx;
   font-weight: 600;
   color: #333;
 }
 
-.nav-right {
-  display: flex;
-  gap: 14px;
-  color: #333;
+.nav-placeholder {
+  width: 64rpx;
+  height: 64rpx;
 }
 
 .scroll-area {
@@ -248,11 +336,11 @@ export default {
 }
 
 .upload-area {
-  border: 1px dashed #FF6B35;
+  border: 1px dashed #ff6b35;
   border-radius: 12px;
   padding: 24px;
   text-align: center;
-  background: #FFF8F5;
+  background: #fff8f5;
 }
 
 .upload-text {
@@ -285,8 +373,8 @@ export default {
 }
 
 .agree-checkbox.checked {
-  background: #FF6B35;
-  border-color: #FF6B35;
+  background: #ff6b35;
+  border-color: #ff6b35;
 }
 
 .agree-text {
@@ -296,13 +384,13 @@ export default {
 }
 
 .agree-link {
-  color: #FF6B35;
+  color: #ff6b35;
 }
 
 .submit-btn {
   width: calc(100% - 32px);
   padding: 14px;
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: #fff;
   border: none;
   border-radius: 24px;
