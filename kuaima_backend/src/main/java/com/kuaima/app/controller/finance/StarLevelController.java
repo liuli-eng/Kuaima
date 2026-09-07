@@ -1,5 +1,7 @@
 package com.kuaima.app.controller.finance;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +17,7 @@ import com.kuaima.app.domain.starlevel.repository.UserStarLevelRepository;
  */
 @RestController
 @RequestMapping("/star-level")
+@Tag(name = "星级", description = "用户星级评级")
 public class StarLevelController {
 
     private final UserStarLevelRepository starLevelRepository;

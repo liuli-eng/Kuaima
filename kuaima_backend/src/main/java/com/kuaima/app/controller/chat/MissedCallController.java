@@ -2,6 +2,8 @@ package com.kuaima.app.controller.chat;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/missed-calls")
 @RequiredArgsConstructor
+@Tag(name = "漏接来电", description = "漏接来电记录与提醒")
 public class MissedCallController {
 
     private final MissedCallRepository missedCallRepository;

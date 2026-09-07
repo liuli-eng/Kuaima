@@ -2,6 +2,8 @@ package com.kuaima.app.controller.learn;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,6 +18,7 @@ import com.kuaima.app.common.Result;
  */
 @RestController
 @RequestMapping("/notices")
+@Tag(name = "规则公示", description = "对外公开的规则与公告查询")
 public class NoticePublicController {
 
     private final NoticeRepository noticeRepository;

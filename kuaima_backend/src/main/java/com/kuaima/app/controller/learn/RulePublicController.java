@@ -2,6 +2,8 @@ package com.kuaima.app.controller.learn;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +21,7 @@ import jakarta.persistence.EntityNotFoundException;
  */
 @RestController
 @RequestMapping("/rules")
+@Tag(name = "规则公示", description = "对外公开的规则查询")
 public class RulePublicController {
 
     private final RulesRepository rulesRepository;

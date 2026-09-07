@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +28,7 @@ import jakarta.persistence.EntityNotFoundException;
  */
 @RestController
 @RequestMapping("/courses")
+@Tag(name = "课程学习", description = "培训课程学习")
 public class CourseController {
 
     private final CourseRepository courseRepository;

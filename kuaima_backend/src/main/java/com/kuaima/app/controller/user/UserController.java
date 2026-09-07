@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +34,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 @RestController
 @RequestMapping("/user")
+@Tag(name = "用户中心", description = "用户资料、身份认证、信用分")
 public class UserController {
 
     private final UserRepository userRepository;
@@ -46,6 +50,7 @@ public class UserController {
     }
 
     /** 获取用户完整资料：GET /user/{id} */
+    @Operation(summary = "获取用户资料", description = "返回 User 实体完整信息（含 nickname、avatar、phone、certStatus、creditScore、companyName 等）")
     @GetMapping("/{id}")
     public Result<User> getProfile(@PathVariable Long id) {
         return Result.success(getUserOrThrow(id));
@@ -55,6 +60,7 @@ public class UserController {
      * 修改个人资料：PUT /user/{id}
      * 仅更新传入的非空字段（nickname, avatar, phone, email, age, gender, city, skills, remark）
      */
+    @Operation(summary = "修改用户资料", description = "仅更新传入的非空字段（nickname, avatar, phone, email, age, gender, city, skills, remark）")
     @PutMapping("/{id}")
     @Transactional
     public Result<User> updateProfile(@PathVariable Long id, @RequestBody User body) {
@@ -97,6 +103,7 @@ public class UserController {
      * body: { "realName": "张三", "idCard": "110101199001011234" }
      * 设置 certStatus=待审核, certType=REALNAME, 并落库 realName / idCard
      */
+    @Operation(summary = "提交实名认证", description = "请求体含 realName 和 idCard。设置 User.certType=REALNAME、certStatus=待审核，并写入 Certification 审核记录")
     @PostMapping("/{id}/realname")
     @Transactional
     public Result<User> submitRealname(@PathVariable Long id, @RequestBody Map<String, String> body) {
@@ -123,6 +130,7 @@ public class UserController {
      * 认证审核记录：GET /user/{id}/certifications
      * 查询 CertificationRepository，返回该用户的认证审核轨迹
      */
+    @Operation(summary = "认证审核历史", description = "查询 CertificationRepository，返回该用户的认证审核记录列表（按 id 倒序）")
     @GetMapping("/{id}/certifications")
     public Result<List<Certification>> listCertifications(@PathVariable Long id) {
         // 校验用户存在
@@ -134,6 +142,7 @@ public class UserController {
      * 信用分概览：GET /user/{id}/credit
      * 返回 creditScore + 最近 10 条信用流水
      */
+    @Operation(summary = "信用分与近期流水", description = "返回 creditScore 和最近 10 条 CreditFlow 信用流水")
     @GetMapping("/{id}/credit")
     public Result<Map<String, Object>> getCredit(@PathVariable Long id) {
         User user = getUserOrThrow(id);
@@ -147,6 +156,7 @@ public class UserController {
     /**
      * 信用流水分页查询：GET /user/{id}/credit/flows?page=0&size=10
      */
+    @Operation(summary = "信用流水分页查询", description = "分页返回 CreditFlow 列表（userId、delta、reason、bizType、timestamp），按 id 倒序")
     @GetMapping("/{id}/credit/flows")
     public Result<List<CreditFlow>> listCreditFlows(@PathVariable Long id,
                                                     @RequestParam(defaultValue = "0") int page,

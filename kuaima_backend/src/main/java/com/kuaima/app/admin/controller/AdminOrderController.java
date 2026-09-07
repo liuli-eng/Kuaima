@@ -2,6 +2,9 @@ package com.kuaima.app.admin.controller;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -20,6 +23,7 @@ import com.kuaima.app.domain.boss.repository.BossOrderRespository;
  */
 @RestController
 @RequestMapping("/admin/orders")
+@Tag(name = "后台-用工订单", description = "用工订单管理")
 public class AdminOrderController {
 
     private final BaseOrderItemRespository itemRepository;
@@ -32,6 +36,7 @@ public class AdminOrderController {
     }
 
     /** 订单/报名列表（admin 全量视图，支持按状态过滤 + 分页） */
+    @Operation(summary = "全部报名记录列表", description = "admin 全量视图，支持按 status 过滤（已报名/已录用/已到岗/已完成/取消报名/取消招工）+ 分页，按 id 倒序")
     @GetMapping
     public Result<List<BaseOrderItem>> list(@RequestParam(required = false) String status,
                                             @RequestParam(defaultValue = "0") int page,

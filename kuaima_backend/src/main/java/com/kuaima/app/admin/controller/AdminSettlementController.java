@@ -2,6 +2,9 @@ package com.kuaima.app.admin.controller;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -22,6 +25,7 @@ import com.kuaima.app.domain.wallet.service.SettlementService;
  */
 @RestController
 @RequestMapping("/admin/settlements")
+@Tag(name = "后台-结算", description = "结算审批与管理")
 public class AdminSettlementController {
 
     private final SettlementRespository settlementRepository;
@@ -34,6 +38,7 @@ public class AdminSettlementController {
     }
 
     /** 结算单列表 */
+    @Operation(summary = "结算单列表分页", description = "按 status(待支付/已支付/已取消) 可选过滤，page/size 分页，按 id 倒序")
     @GetMapping
     public Result<Page<Settlement>> list(@RequestParam(required = false) String status,
                                           @RequestParam(defaultValue = "0") int page,
@@ -44,6 +49,7 @@ public class AdminSettlementController {
     }
 
     /** 结算单详情 */
+    @Operation(summary = "结算单详情", description = "按 id 查询 Settlement 完整信息，结算单不存在返回 404")
     @GetMapping("/{id}")
     public Result<Settlement> get(@PathVariable Long id) {
         return Result.success(settlementRepository.findById(id)
@@ -51,6 +57,7 @@ public class AdminSettlementController {
     }
 
     /** admin 手动结算（模拟支付） */
+    @Operation(summary = "手动结算", description = "模拟支付：「待支付 → 已支付」，工资入零工钱包。仅待支付的结算单可以支付")
     @PostMapping("/{id}/pay")
     public Result<Settlement> pay(@PathVariable Long id) {
         return Result.success(settlementService.mockPay(id));

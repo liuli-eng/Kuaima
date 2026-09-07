@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -29,6 +31,7 @@ import com.kuaima.app.domain.user.repository.UserRepository;
  */
 @RestController
 @RequestMapping("/boss/sub-accounts")
+@Tag(name = "子账户", description = "老板子账户管理")
 public class SubAccountController {
 
     private final SubAccountRepository subAccountRepository;

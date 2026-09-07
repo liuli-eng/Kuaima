@@ -2,6 +2,8 @@ package com.kuaima.app.controller.finance;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,7 @@ import com.kuaima.app.domain.wallet.repository.WalletFlowRespository;
  * 费用明细与支付明细（基于钱包流水）。
  */
 @RestController
+@Tag(name = "财务总览", description = "用户钱包、流水、收支总览")
 public class FinanceController {
 
     private final WalletFlowRespository walletFlowRespository;

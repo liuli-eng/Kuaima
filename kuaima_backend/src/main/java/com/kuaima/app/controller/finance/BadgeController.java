@@ -2,6 +2,8 @@ package com.kuaima.app.controller.finance;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +20,7 @@ import com.kuaima.app.domain.badge.repository.UserBadgeRepository;
  */
 @RestController
 @RequestMapping("/badges")
+@Tag(name = "徽章", description = "用户徽章展示")
 public class BadgeController {
 
     private final BadgeRepository badgeRepository;

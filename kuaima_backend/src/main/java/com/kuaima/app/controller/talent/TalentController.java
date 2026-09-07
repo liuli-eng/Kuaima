@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +37,7 @@ import com.kuaima.app.domain.user.repository.UserRepository;
  */
 @RestController
 @RequestMapping("/talent")
+@Tag(name = "人才库", description = "零工人才库浏览与收藏")
 public class TalentController {
 
     private final UserRepository userRepository;

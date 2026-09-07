@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +31,7 @@ import jakarta.persistence.EntityNotFoundException;
  */
 @RestController
 @RequestMapping("/exams")
+@Tag(name = "考试", description = "培训考试与答题")
 public class ExamController {
 
     private final ExamRepository examRepository;

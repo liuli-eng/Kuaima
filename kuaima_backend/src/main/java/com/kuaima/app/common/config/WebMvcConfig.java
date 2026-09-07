@@ -17,7 +17,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
-        // 将 fastjson2 置于最前，优先用于 JSON 请求/响应转换
+        // 将 fastjson2 置于最前，优先用于业务接口的 JSON 请求/响应转换
+        // Fastjson2HttpMessageConverter.supports() 已排除 io.swagger.v3.* / org.springdoc.* 包
+        // 这些对象会自动回退到默认的 Jackson converter 处理
         converters.add(0, new Fastjson2HttpMessageConverter());
     }
 

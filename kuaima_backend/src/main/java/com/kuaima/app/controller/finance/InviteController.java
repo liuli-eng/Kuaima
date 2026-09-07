@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +24,7 @@ import com.kuaima.app.domain.invite.repository.InviteRelationRepository;
  */
 @RestController
 @RequestMapping("/invite")
+@Tag(name = "邀请奖励", description = "邀请好友、邀请奖励")
 public class InviteController {
 
     private final InviteCodeRepository inviteCodeRepository;

@@ -3,6 +3,8 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -24,6 +26,7 @@ import com.kuaima.app.common.Result;
 /** 管理员账号管理 */
 @RestController
 @RequestMapping("/admin/admin-users")
+@Tag(name = "后台-用户CRUD", description = "用户增删改查")
 public class AdminUserCrudController {
 
     private final AdminUserRepository repo;

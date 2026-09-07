@@ -50,6 +50,14 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/service/faqs").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
+                // 放行 Swagger / OpenAPI 文档相关路径
+                .requestMatchers(
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/swagger-resources/**",
+                        "/webjars/**"
+                ).permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {

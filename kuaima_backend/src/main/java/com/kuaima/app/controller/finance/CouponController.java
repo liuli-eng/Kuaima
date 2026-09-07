@@ -3,6 +3,8 @@ package com.kuaima.app.controller.finance;
 import java.sql.Date;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +26,7 @@ import jakarta.persistence.EntityNotFoundException;
  */
 @RestController
 @RequestMapping("/coupons")
+@Tag(name = "优惠券", description = "用户优惠券管理")
 public class CouponController {
 
     private final CouponRepository couponRepository;

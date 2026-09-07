@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,7 @@ import com.kuaima.app.domain.points.repository.PointsFlowRepository;
  */
 @RestController
 @RequestMapping("/points")
+@Tag(name = "积分", description = "用户积分账户与流水")
 public class PointsController {
 
     private final PointsAccountRepository accountRepository;

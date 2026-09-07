@@ -22,3 +22,17 @@ kuaima:
   settle:
     # 平台服务费率(% of 工资)，规则待定，默认 0 即暂不收取
     service-fee-rate: 0
+
+# SpringDoc OpenAPI / Swagger 文档配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui/index.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    doc-expansion: none
+    display-request-duration: true
+

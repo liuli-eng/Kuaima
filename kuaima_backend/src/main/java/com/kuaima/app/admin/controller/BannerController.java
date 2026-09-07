@@ -3,6 +3,8 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +21,7 @@ import com.kuaima.app.common.Result;
 /** Banner 管理 CRUD */
 @RestController
 @RequestMapping("/admin/banners")
+@Tag(name = "后台-Banner", description = "App 首页 Banner 管理")
 public class BannerController {
 
     private final BannerRepository repo;

@@ -2,6 +2,8 @@ package com.kuaima.app.controller.service;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,6 +17,7 @@ import com.kuaima.app.domain.social.repository.SocialGroupRepository;
  */
 @RestController
 @RequestMapping("/social-groups")
+@Tag(name = "社群", description = "用户社群/工会管理")
 public class SocialGroupController {
 
     private final SocialGroupRepository socialGroupRepository;

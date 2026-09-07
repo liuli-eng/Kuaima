@@ -4,6 +4,8 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +26,7 @@ import jakarta.persistence.EntityNotFoundException;
  */
 @RestController
 @RequestMapping("/insurance")
+@Tag(name = "保险", description = "用工保险管理")
 public class InsuranceController {
 
     private final InsuranceRepository insuranceRepository;

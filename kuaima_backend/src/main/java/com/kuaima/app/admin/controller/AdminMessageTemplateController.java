@@ -3,6 +3,8 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -23,6 +25,7 @@ import com.kuaima.app.common.Result;
 /** 消息模板管理 CRUD */
 @RestController
 @RequestMapping("/admin/message-templates")
+@Tag(name = "后台-消息模板", description = "消息模板管理")
 public class AdminMessageTemplateController {
 
     private final MessageTemplateRepository repo;

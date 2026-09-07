@@ -1,5 +1,7 @@
 package com.kuaima.app.controller.chat;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/notification-settings")
 @RequiredArgsConstructor
+@Tag(name = "通知设置", description = "用户消息通知偏好设置")
 public class NotificationSettingController {
 
     private final NotificationSettingRepository notificationSettingRepository;

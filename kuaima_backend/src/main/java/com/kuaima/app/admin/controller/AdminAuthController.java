@@ -3,6 +3,9 @@ package com.kuaima.app.admin.controller;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +27,7 @@ import java.time.LocalDateTime;
  */
 @RestController
 @RequestMapping("/admin/auth")
+@Tag(name = "后台-登录", description = "管理员登录鉴权")
 public class AdminAuthController {
 
     private final AdminUserRepository adminUserRepository;
@@ -38,6 +42,7 @@ public class AdminAuthController {
         this.jwtUtil = jwtUtil;
     }
 
+    @Operation(summary = "管理员登录", description = "账号密码登录，返回 accessToken（JWT role 前缀 ADMIN_）、adminId、username、name、role（SUPER_ADMIN/ADMIN/EDITOR/VIEWER）；登录成功自动更新 lastLoginTime")
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody AdminLoginDto dto) {
         if (!StringUtils.hasText(dto.getUsername()) || !StringUtils.hasText(dto.getPassword())) {
@@ -65,6 +70,7 @@ public class AdminAuthController {
         return Result.success(data);
     }
 
+    @Operation(summary = "获取当前管理员", description = "返回当前登录管理员信息（预留接口，当前返回空对象）")
     @GetMapping("/me")
     public Result<Map<String, Object>> me() {
         return Result.success(new HashMap<>());

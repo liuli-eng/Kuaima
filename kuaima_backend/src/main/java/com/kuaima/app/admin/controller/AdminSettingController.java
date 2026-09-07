@@ -2,6 +2,8 @@ package com.kuaima.app.admin.controller;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +22,7 @@ import java.util.Map;
 /** 系统设置 */
 @RestController
 @RequestMapping("/admin/settings")
+@Tag(name = "后台-设置", description = "平台参数设置")
 public class AdminSettingController {
 
     private final AdminSettingRepository repo;

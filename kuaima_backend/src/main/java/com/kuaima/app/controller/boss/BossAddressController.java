@@ -2,6 +2,8 @@ package com.kuaima.app.controller.boss;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/boss/addresses")
 @RequiredArgsConstructor
+@Tag(name = "老板-地址", description = "老板工作地址管理")
 public class BossAddressController {
 
     private final BossAddressRepository bossAddressRepository;

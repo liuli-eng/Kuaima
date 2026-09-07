@@ -2,6 +2,8 @@ package com.kuaima.app.controller.service;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,6 +18,7 @@ import com.kuaima.app.domain.faq.repository.FaqRepository;
  */
 @RestController
 @RequestMapping("/faq")
+@Tag(name = "常见问题(管理)", description = "FAQ 管理(后台)")
 public class FaqController {
 
     private final FaqRepository faqRepository;

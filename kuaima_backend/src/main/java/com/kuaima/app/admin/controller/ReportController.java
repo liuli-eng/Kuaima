@@ -3,6 +3,8 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,6 +20,7 @@ import com.kuaima.app.common.Result;
 /** 举报处理 */
 @RestController
 @RequestMapping("/admin/reports")
+@Tag(name = "后台-举报", description = "用户举报处理")
 public class ReportController {
 
     private final ReportRepository repo;

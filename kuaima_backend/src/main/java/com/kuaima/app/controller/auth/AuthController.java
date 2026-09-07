@@ -3,6 +3,9 @@ package com.kuaima.app.controller.auth;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "认证管理", description = "微信登录、JWT 鉴权、短信验证码")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -55,6 +59,7 @@ public class AuthController {
         return data;
     }
 
+    @Operation(summary = "微信小程序登录", description = "小程序端 wx.login() 获取 code，后端调用微信 jscode2session 换取 openid；用户不存在时按所选身份自动注册，老用户以本次选择的身份为准直接切换。若传入 phoneCode，后端调用微信 getuserphonenumber 换取手机号并保存")
     @PostMapping("/wechat/login")
     public Result<Map<String, Object>> wechatLogin(@RequestBody WechatLoginDto dto) {
         if (dto == null || !StringUtils.hasText(dto.getCode())) {
@@ -103,6 +108,7 @@ public class AuthController {
      * 当前登录用户完整资料：GET /auth/me
      * 从 JWT 解析出 uid 后反查 User 实体返回完整 profile
      */
+    @Operation(summary = "获取当前用户", description = "从 JWT 解析出 uid 后反查 User 实体，返回当前登录用户的完整资料")
     @GetMapping("/me")
     public Result<User> me(Authentication authentication) {
         Long uid = currentUserId(authentication);
@@ -117,6 +123,7 @@ public class AuthController {
      * 切换身份：POST /auth/switch-role?role=BOSS|USER
      * 更新当前用户 role，并签发包含新 role 的新 JWT
      */
+    @Operation(summary = "切换用户身份", description = "更新当前用户 role，并签发包含新 role 的新 JWT accessToken")
     @PostMapping("/switch-role")
     @Transactional
     public Result<Map<String, Object>> switchRole(@RequestParam String role,
@@ -141,6 +148,7 @@ public class AuthController {
      * 注销账号（软删除）：POST /auth/cancel?userId={id}&reason={reason}
      * 仅将 User.status 置为「注销」，不物理删除，保留历史数据
      */
+    @Operation(summary = "账号注销", description = "软删除：将 User.status 置为「注销」并记录注销原因，不物理删除，保留历史数据")
     @PostMapping("/cancel")
     @Transactional
     public Result<User> cancel(@RequestParam Long userId,

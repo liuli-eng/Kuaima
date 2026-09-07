@@ -5,6 +5,9 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -26,6 +29,7 @@ import com.kuaima.app.domain.wallet.repository.SettlementRespository;
  */
 @RestController
 @RequestMapping("/admin/dashboard")
+@Tag(name = "后台-仪表盘", description = "运营数据看板")
 public class AdminDashboardController {
 
     private final UserRepository userRepository;
@@ -41,6 +45,7 @@ public class AdminDashboardController {
     }
 
     /** 基础统计 */
+    @Operation(summary = "Dashboard 基础统计", description = "返回 workerTotal(零工总数)、bossTotal(雇主总数)、orderTotal(订单总数)、settledTotal(结算单条数)、pendingAudit(待审核订单数)")
     @GetMapping("/stats")
     public Result<Map<String, Object>> stats() {
         Map<String, Object> data = new HashMap<>();
@@ -64,6 +69,7 @@ public class AdminDashboardController {
     }
 
     /** 订单趋势（近7天每日订单数） */
+    @Operation(summary = "订单趋势", description = "返回近 7 天每日订单数，用于折线图。返回 {labels: [...], values: [...]}")
     @GetMapping("/trend")
     public Result<Map<String, Object>> trend() {
         List<BossOrder> allOrders = orderRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
@@ -100,6 +106,7 @@ public class AdminDashboardController {
     }
 
     /** 工种分布（按 type 字段分组统计） */
+    @Operation(summary = "工种分布", description = "按招工类型（日结/压薪日结/月结）分组统计订单数，用于饼图。每项含 name、value、color")
     @GetMapping("/distribution")
     public Result<List<Map<String, Object>>> distribution() {
         List<BossOrder> allOrders = orderRepository.findAll();
@@ -134,6 +141,7 @@ public class AdminDashboardController {
     }
 
     /** 最近订单（最新8条，含雇主名称） */
+    @Operation(summary = "最近订单", description = "返回最新 8 条订单（含 employerName 雇主名称），按 id 倒序。返回 BossOrderView")
     @GetMapping("/recent-orders")
     public Result<List<BossOrderView>> recentOrders() {
         PageRequest pageable = PageRequest.of(0, 8, Sort.by(Sort.Direction.DESC, "id"));

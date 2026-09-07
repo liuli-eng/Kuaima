@@ -2,6 +2,8 @@ package com.kuaima.app.controller.service;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/service/faqs")
 @RequiredArgsConstructor
+@Tag(name = "常见问题", description = "FAQ 公开查询")
 public class FaqPublicController {
 
     private final FaqRepository faqRepository;

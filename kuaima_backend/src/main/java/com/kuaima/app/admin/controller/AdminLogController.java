@@ -3,6 +3,8 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -18,6 +20,7 @@ import com.kuaima.app.common.Result;
 /** 操作日志查询（只读） */
 @RestController
 @RequestMapping("/admin/logs")
+@Tag(name = "后台-操作日志", description = "管理员操作日志查询")
 public class AdminLogController {
 
     private final AdminLogRepository repo;

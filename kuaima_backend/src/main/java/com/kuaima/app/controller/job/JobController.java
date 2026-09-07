@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +36,7 @@ import com.kuaima.app.domain.jobfavorite.repository.JobFavoriteRepository;
  */
 @RestController
 @RequestMapping("/jobs")
+@Tag(name = "零工-招工", description = "零工浏览/搜索/报名招工订单")
 public class JobController {
 
     private final JobFavoriteRepository favoriteRepository;
@@ -50,6 +54,7 @@ public class JobController {
     // ==================== 收藏 ====================
 
     /** 收藏岗位列表：GET /jobs/favorites?userId=1 */
+    @Operation(summary = "收藏岗位列表", description = "返回 JobFavorite 列表，每项含收藏 ID 与关联 BossOrder 订单详情")
     @GetMapping("/favorites")
     public Result<List<Map<String, Object>>> listFavorites(@RequestParam Long userId) {
         List<JobFavorite> favorites = favoriteRepository.findByUserIdOrderByIdDesc(userId);
@@ -65,6 +70,7 @@ public class JobController {
     }
 
     /** 收藏岗位：POST /jobs/favorites  body: { "userId": 1, "orderId": 2 } */
+    @Operation(summary = "收藏岗位", description = "请求体含 userId 和 orderId。重复收藏返回 400 已收藏过该岗位")
     @PostMapping("/favorites")
     @Transactional
     public Result<JobFavorite> favoriteJob(@RequestBody Map<String, Long> body) {
@@ -83,6 +89,7 @@ public class JobController {
     }
 
     /** 取消收藏：DELETE /jobs/favorites/{id} */
+    @Operation(summary = "取消收藏岗位", description = "按收藏记录 ID 删除 JobFavorite")
     @DeleteMapping("/favorites/{id}")
     @Transactional
     public Result<Void> unfavoriteJob(@PathVariable Long id) {
@@ -91,6 +98,7 @@ public class JobController {
     }
 
     /** 检查收藏状态：GET /jobs/favorites/check?userId=1&orderId=2 */
+    @Operation(summary = "检查收藏状态", description = "返回 {favorited: true/false} 表示当前用户是否已收藏该订单")
     @GetMapping("/favorites/check")
     public Result<Map<String, Object>> checkFavorite(@RequestParam Long userId, @RequestParam Long orderId) {
         Map<String, Object> result = new HashMap<>();
@@ -101,6 +109,7 @@ public class JobController {
     // ==================== 浏览记录 ====================
 
     /** 浏览记录分页：GET /jobs/history?userId=1&page=0&size=20 */
+    @Operation(summary = "浏览记录列表", description = "返回 BrowseHistory 分页列表，每项含 historyId、orderId、viewedAt 与关联 BossOrder 详情")
     @GetMapping("/history")
     public Result<List<Map<String, Object>>> listBrowseHistory(@RequestParam Long userId,
                                                                @RequestParam(defaultValue = "0") int page,
@@ -122,6 +131,7 @@ public class JobController {
     }
 
     /** 记录浏览：POST /jobs/history  body: { "userId": 1, "orderId": 2 } */
+    @Operation(summary = "记录岗位浏览", description = "请求体含 userId 和 orderId，写入 BrowseHistory 并记录 viewedAt 时间")
     @PostMapping("/history")
     @Transactional
     public Result<BrowseHistory> recordBrowse(@RequestBody Map<String, Long> body) {
@@ -138,6 +148,7 @@ public class JobController {
     }
 
     /** 清空浏览记录：DELETE /jobs/history?userId=1 */
+    @Operation(summary = "清空浏览记录", description = "按 userId 删除该用户的全部 BrowseHistory 记录")
     @DeleteMapping("/history")
     @Transactional
     public Result<Void> clearBrowseHistory(@RequestParam Long userId) {

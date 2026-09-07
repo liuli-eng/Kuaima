@@ -2,6 +2,8 @@ package com.kuaima.app.controller.chat;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +32,7 @@ import lombok.Setter;
 @RestController
 @RequestMapping("/chat")
 @RequiredArgsConstructor
+@Tag(name = "聊天", description = "会话与消息收发")
 public class ChatController {
 
     private final ChatSessionRepository chatSessionRepository;

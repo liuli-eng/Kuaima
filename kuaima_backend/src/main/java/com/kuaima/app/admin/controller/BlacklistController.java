@@ -3,6 +3,8 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +21,7 @@ import com.kuaima.app.common.Result;
 /** 黑名单管理 */
 @RestController
 @RequestMapping("/admin/blacklists")
+@Tag(name = "后台-黑名单", description = "用户黑名单管理")
 public class BlacklistController {
 
     private final BlacklistRepository repo;

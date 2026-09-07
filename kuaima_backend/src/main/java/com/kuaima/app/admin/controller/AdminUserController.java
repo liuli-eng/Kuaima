@@ -1,5 +1,8 @@
 package com.kuaima.app.admin.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -22,6 +25,7 @@ import jakarta.persistence.EntityNotFoundException;
  */
 @RestController
 @RequestMapping("/admin/users")
+@Tag(name = "后台-用户", description = "用户列表与统计")
 public class AdminUserController {
 
     private final UserRepository userRepository;
@@ -31,6 +35,7 @@ public class AdminUserController {
     }
 
     /** 零工列表 */
+    @Operation(summary = "零工列表分页", description = "参数：status(正常/冻结)、keyword(昵称/手机号模糊)、page(默认 0)、size(默认 10)。返回 User，不含 password")
     @GetMapping("/workers")
     public Result<Page<User>> workers(@RequestParam(required = false) String status,
                                       @RequestParam(required = false) String keyword,
@@ -43,6 +48,7 @@ public class AdminUserController {
     }
 
     /** 雇主列表 */
+    @Operation(summary = "雇主列表分页", description = "参数同零工列表，含 companyName 等企业字段")
     @GetMapping("/bosses")
     public Result<Page<User>> bosses(@RequestParam(required = false) String status,
                                      @RequestParam(required = false) String keyword,
@@ -55,6 +61,7 @@ public class AdminUserController {
     }
 
     /** 用户详情 */
+    @Operation(summary = "用户详情", description = "按 id 查询用户完整信息，用户不存在返回 404")
     @GetMapping("/{id}")
     public Result<User> get(@PathVariable Long id) {
         return Result.success(userRepository.findById(id)
@@ -62,6 +69,7 @@ public class AdminUserController {
     }
 
     /** 冻结 */
+    @Operation(summary = "冻结用户", description = "将用户 status 置为「冻结」")
     @PutMapping("/{id}/freeze")
     public Result<User> freeze(@PathVariable Long id) {
         User u = userRepository.findById(id)
@@ -71,6 +79,7 @@ public class AdminUserController {
     }
 
     /** 解冻 */
+    @Operation(summary = "解冻用户", description = "将用户 status 置为「正常」")
     @PutMapping("/{id}/unfreeze")
     public Result<User> unfreeze(@PathVariable Long id) {
         User u = userRepository.findById(id)
@@ -80,6 +89,7 @@ public class AdminUserController {
     }
 
     /** 批量冻结 */
+    @Operation(summary = "批量冻结用户", description = "按 ids 数组批量将用户 status 置为「冻结」")
     @PutMapping("/freeze/batch")
     public Result<Void> freezeBatch(@RequestParam java.util.List<Long> ids) {
         for (Long id : ids) {
@@ -92,6 +102,7 @@ public class AdminUserController {
     }
 
     /** 批量解冻 */
+    @Operation(summary = "批量解冻用户", description = "按 ids 数组批量将用户 status 置为「正常」")
     @PutMapping("/unfreeze/batch")
     public Result<Void> unfreezeBatch(@RequestParam java.util.List<Long> ids) {
         for (Long id : ids) {

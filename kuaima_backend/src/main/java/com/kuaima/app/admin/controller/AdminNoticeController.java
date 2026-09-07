@@ -3,6 +3,9 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -23,6 +26,7 @@ import com.kuaima.app.common.Result;
 /** 公告管理 CRUD */
 @RestController
 @RequestMapping("/admin/notices")
+@Tag(name = "后台-公告", description = "规则与公告管理")
 public class AdminNoticeController {
 
     private final NoticeRepository repo;
@@ -30,6 +34,7 @@ public class AdminNoticeController {
     public AdminNoticeController(NoticeRepository repo) { this.repo = repo; }
 
     /** 列表（分页，按状态过滤，按 id 倒序） */
+    @Operation(summary = "公告列表分页", description = "按 status(已发布/草稿/已下架) 过滤，按 id 倒序分页返回 Notice 列表")
     @GetMapping
     public Result<List<Notice>> list(@RequestParam(required = false) String status,
                                      @RequestParam(defaultValue = "0") int page,
@@ -41,11 +46,13 @@ public class AdminNoticeController {
         return Result.success(result.getContent(), page, result.getTotalElements());
     }
 
+    @Operation(summary = "公告详情", description = "按 id 查询 Notice 完整信息")
     @GetMapping("/{id}")
     public Result<Notice> get(@PathVariable Long id) {
         return Result.success(repo.findById(id).orElseThrow());
     }
 
+    @Operation(summary = "新增公告", description = "创建 Notice，新建/更新为「已发布」时自动记录 publishTime（仅首次）")
     @PostMapping
     public Result<Notice> create(@RequestBody Notice notice) {
         notice.setCreateTime(LocalDateTime.now());
@@ -56,6 +63,7 @@ public class AdminNoticeController {
         return Result.success(repo.save(notice));
     }
 
+    @Operation(summary = "更新公告", description = "按 id 更新 Notice，字段非空才更新；首次置为「已发布」时自动记录 publishTime")
     @PutMapping("/{id}")
     public Result<Notice> update(@PathVariable Long id, @RequestBody Notice notice) {
         Notice existing = repo.findById(id).orElseThrow();
@@ -73,6 +81,7 @@ public class AdminNoticeController {
         return Result.success(repo.save(existing));
     }
 
+    @Operation(summary = "删除公告", description = "按 id 删除 Notice")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         repo.deleteById(id);

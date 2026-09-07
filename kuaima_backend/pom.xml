@@ -91,6 +91,13 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- SpringDoc OpenAPI：替代旧版 Swagger3，提供 /v3/api-docs + /swagger-ui/index.html -->
+		<!-- Spring Boot 4.x 必须使用 springdoc 3.x 系列（2.x 仅兼容 Spring Boot 3.x） -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>3.0.3</version>
+		</dependency>
 	</dependencies>
 
 	<build>
