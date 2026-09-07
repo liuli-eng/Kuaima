@@ -80,12 +80,14 @@
               <text class="salary-label">预计报酬</text>
               <view class="salary-content">
                 <view class="salary-value">
-                  <text>{{ hasSalary ? salary * 8 : 800 }}</text>
+                  <text>{{ hasSalary ? salary * workHours : "--" }}</text>
                   <text class="salary-unit">元/天</text>
                 </view>
-                <text class="salary-sub"
-                  >每个零工{{ salary }}元/小时*8小时</text
-                >
+                <text class="salary-sub">{{
+                  hasSalary
+                    ? `每个零工${salary}元/小时*${workHours}小时`
+                    : "请先设置工价"
+                }}</text>
               </view>
             </view>
           </view>
@@ -122,7 +124,7 @@
               <view class="salary-content">
                 <view class="salary-value">
                   <text>{{
-                    piecePrice && estOutput ? piecePrice * estOutput : "-"
+                    piecePrice && estOutput ? piecePrice * estOutput : "--"
                   }}</text>
                   <text class="salary-unit">元/天</text>
                 </view>
@@ -140,7 +142,7 @@
         <view class="section-card">
           <view class="section-header" style="justify-content: space-between">
             <text class="section-title">联系电话</text>
-            <text style="font-size: 14px; color: #333">13698756321</text>
+            <text style="font-size: 14px; color: #333">{{ contactPhone }}</text>
           </view>
           <view class="form-row" style="border-bottom: none">
             <text style="font-size: 12px; color: #999"
@@ -213,7 +215,13 @@
 </template>
 
 <script>
-import { createOrder, getOrder, updateOrder } from "@/api/backend";
+import {
+  createOrder,
+  getCurrentUser,
+  getOrder,
+  getUser,
+  updateOrder,
+} from "@/api/backend";
 
 export default {
   data() {
@@ -222,7 +230,7 @@ export default {
       count: 1,
       payType: "hourly",
       hasSalary: false,
-      salary: 100,
+      salary: "",
       piecePrice: 0,
       pieceUnit: "件",
       estOutput: 0,
@@ -232,7 +240,27 @@ export default {
       settlementLabel: "日结",
       hasExplicitType: false,
       orderId: "",
+      workTimeVersion: 0,
+      contactPhone: "暂无手机号",
     };
+  },
+  computed: {
+    workHours() {
+      this.workTimeVersion;
+      const workTime = uni.getStorageSync("workTimeSelection") || {};
+      const durationMatch = String(workTime.duration || "").match(/[\d.]+/);
+      if (durationMatch) return Number(durationMatch[0]);
+      const start = String(workTime.startTime || "");
+      const end = String(workTime.endTime || "");
+      if (!/^\d{1,2}:\d{2}$/.test(start) || !/^\d{1,2}:\d{2}$/.test(end)) {
+        return 0;
+      }
+      const [sh, sm] = start.split(":").map(Number);
+      const [eh, em] = end.split(":").map(Number);
+      let minutes = eh * 60 + em - (sh * 60 + sm);
+      if (minutes <= 0) minutes += 24 * 60;
+      return minutes / 60;
+    },
   },
   onLoad(options) {
     try {
@@ -254,17 +282,37 @@ export default {
   },
   onShow() {
     this.loadRecruitSettings();
+    this.loadContactPhone();
+    this.workTimeVersion += 1;
   },
   onUnload() {
     uni.$off("recruitSettingsSaved", this.applyRecruitSettings);
   },
   methods: {
+    async loadContactPhone() {
+      const cachedUser = uni.getStorageSync("userInfo") || {};
+      this.contactPhone =
+        cachedUser.phone || cachedUser.phoneNumber || "暂无手机号";
+      try {
+        const userId = uni.getStorageSync("userId");
+        const [currentUser, user] = await Promise.all([
+          getCurrentUser().catch(() => null),
+          userId ? getUser(userId).catch(() => null) : Promise.resolve(null),
+        ]);
+        this.contactPhone =
+          currentUser?.phone ||
+          currentUser?.phoneNumber ||
+          user?.phone ||
+          user?.phoneNumber ||
+          this.contactPhone;
+      } catch (_) {}
+    },
     goBack() {
       uni.navigateBack();
     },
     navigateTo(page) {
       const query =
-        page === "invite-worker" && this.orderId
+        ["invite-worker", "recruit-settings"].includes(page) && this.orderId
           ? `?orderId=${encodeURIComponent(this.orderId)}`
           : "";
       uni.navigateTo({ url: `/pages/boss/${page}${query}` });
@@ -312,11 +360,14 @@ export default {
       uni.showModal({
         title: "设置工价",
         editable: true,
-        placeholderText: "100",
+        placeholderText: "请输入工价",
         success: (res) => {
           if (res.confirm && res.content) {
-            this.salary = parseFloat(res.content) || 100;
-            this.hasSalary = true;
+            const salary = parseFloat(res.content);
+            if (Number.isFinite(salary) && salary > 0) {
+              this.salary = salary;
+              this.hasSalary = true;
+            }
           }
         },
       });
@@ -800,7 +851,11 @@ function formatLocalDate(date) {
   font-size: 16px;
   font-weight: 600;
   margin: 0;
-  line-height: 48px;
+  padding: 0;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .submit-btn::after {

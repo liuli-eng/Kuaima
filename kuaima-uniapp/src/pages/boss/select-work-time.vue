@@ -176,6 +176,11 @@
 </template>
 
 <script>
+function extractDay(value) {
+  const match = String(value || "").match(/(?:^|[-月])(\d{1,2})(?:日)?$/);
+  return match ? String(Number(match[1])) : String(value || "");
+}
+
 export default {
   data() {
     return {
@@ -256,9 +261,18 @@ export default {
       this.selectedSlot =
         saved.selectedSlot || `${this.startTime} - ${this.endTime}`;
       this.multiDayEnabled = Boolean(saved.multiDayEnabled);
-      if (Array.isArray(saved.selectedDates)) {
+      if (Array.isArray(saved.dateOptions) && saved.dateOptions.length) {
+        const selected = new Set((saved.selectedDates || []).map(String));
+        this.days = saved.dateOptions.map((item) => ({
+          weekday: item.weekday,
+          day: extractDay(item.value || item.date),
+          date: item.value || item.date,
+          selected: selected.has(String(item.value || item.date)),
+        }));
+      } else if (Array.isArray(saved.selectedDates)) {
+        const selected = new Set(saved.selectedDates.map(String));
         this.days.forEach((day) => {
-          day.selected = saved.selectedDates.includes(day.date);
+          day.selected = selected.has(String(day.date));
         });
       }
     }

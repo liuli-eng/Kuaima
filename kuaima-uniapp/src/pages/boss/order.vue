@@ -112,6 +112,16 @@
               >
               <text class="job-btn btn-danger" @click="cancelJob(job.id)"
                 >取消招工</text
+            >
+            </template>
+            <template v-else-if="job.status === 'pending'">
+              <text
+                class="job-btn btn-secondary"
+                @click="navigateTo('publish-info', { id: job.id })"
+                >编辑招工</text
+              >
+              <text class="job-btn btn-danger" @click="cancelJob(job.id)"
+                >取消招工</text
               >
             </template>
             <template v-else-if="job.status === 'ended'">
@@ -1060,13 +1070,16 @@ export default {
 
 .modal-content {
   width: 280px;
+  max-width: calc(100% - 48px);
   background: #fff;
   border-radius: 16px;
   padding: 24px 20px;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .modal-title {
+  display: block;
   font-size: 16px;
   font-weight: 600;
   color: #333;
@@ -1074,12 +1087,14 @@ export default {
 }
 
 .modal-subtitle {
+  display: block;
   font-size: 13px;
   color: #999;
   margin-bottom: 16px;
 }
 
 .modal-desc {
+  display: block;
   font-size: 12px;
   color: #666;
   margin-bottom: 20px;
@@ -1093,10 +1108,15 @@ export default {
 
 .modal-btn {
   flex: 1;
-  padding: 10px 0;
+  height: 42px;
+  padding: 0;
   border-radius: 20px;
   font-size: 14px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .modal-btn-cancel {

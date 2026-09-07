@@ -144,6 +144,8 @@
 </template>
 
 <script>
+import { getOrder } from "@/api/backend";
+
 export default {
   data() {
     return {
@@ -155,9 +157,10 @@ export default {
       signNotify: true,
       startRemind: true,
       settleNotify: true,
+      orderId: "",
     };
   },
-  onLoad() {
+  async onLoad(options = {}) {
     try {
       const info =
         typeof uni.getWindowInfo === "function"
@@ -165,13 +168,51 @@ export default {
           : uni.getSystemInfoSync();
       this.statusBarHeight = Number(info.statusBarHeight || 0);
     } catch (_) {}
-    const saved = uni.getStorageSync("recruitSettings");
-    if (saved && typeof saved === "object") {
-      this.settleMode = saved.settleMode || this.settleMode;
-      this.settleType = saved.type || this.modeToType(this.settleMode);
+    this.orderId = options.orderId || options.id || "";
+    if (this.orderId) {
+      this.applySavedSettings(
+        uni.getStorageSync(`recruitSettings:${this.orderId}`),
+      );
+      await this.loadOrderSettings(this.orderId);
+    } else {
+      this.applySavedSettings(uni.getStorageSync("recruitSettings"));
     }
   },
   methods: {
+    applySavedSettings(saved) {
+      if (!saved || typeof saved !== "object") return;
+      this.settleMode = saved.settleMode || this.settleMode;
+      this.settleType = saved.type || this.modeToType(this.settleMode);
+      if (["auto", "manual"].includes(saved.signMode)) {
+        this.signMode = saved.signMode;
+      }
+      ["phoneNotify", "signNotify", "startRemind", "settleNotify"].forEach(
+        (key) => {
+          if (typeof saved[key] === "boolean") this[key] = saved[key];
+        },
+      );
+    },
+    async loadOrderSettings(id) {
+      try {
+        const order = await getOrder(id);
+        this.applySavedSettings(order);
+        const typeMap = {
+          daily: "日结",
+          month: "月结",
+          heldBack: "压薪日结",
+          DAY: "日结",
+          MONTHLY: "月结",
+          PRESS: "压薪日结",
+        };
+        const type = order?.type || order?.settlementType || order?.salaryType;
+        if (typeMap[type]) {
+          this.settleType = typeMap[type] === "日结" ? "daily" : typeMap[type] === "月结" ? "month" : "heldBack";
+          this.settleMode = typeMap[type];
+        }
+      } catch (_) {
+        // 编辑接口失败时保留已有本地配置，避免覆盖用户当前选择。
+      }
+    },
     goBack() {
       uni.navigateBack();
     },
@@ -196,8 +237,16 @@ export default {
       const data = {
         settleMode: this.settleMode,
         type: this.settleType || this.modeToType(this.settleMode),
+        signMode: this.signMode,
+        phoneNotify: this.phoneNotify,
+        signNotify: this.signNotify,
+        startRemind: this.startRemind,
+        settleNotify: this.settleNotify,
       };
       uni.setStorageSync("recruitSettings", data);
+      if (this.orderId) {
+        uni.setStorageSync(`recruitSettings:${this.orderId}`, data);
+      }
       uni.$emit("recruitSettingsSaved", data);
       uni.showToast({ title: "设置保存成功！", icon: "success" });
       setTimeout(() => uni.navigateBack(), 500);
@@ -529,7 +578,11 @@ export default {
   border-radius: 23px;
   font-size: 15px;
   margin: 0;
-  line-height: 1.4;
+  padding: 0;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .save-btn::after {
   border: none;

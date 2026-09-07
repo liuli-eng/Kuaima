@@ -25,7 +25,7 @@
           <text class="section-title">主要联系电话</text>
           <view class="phone-item">
             <view class="phone-icon primary">
-              <text style="font-size: 32rpx">📞</text>
+              <text class="phone-glyph">☎</text>
             </view>
             <view class="phone-info">
               <text class="phone-number"
@@ -58,7 +58,7 @@
               class="phone-item"
             >
               <view class="phone-icon">
-                <text style="font-size: 32rpx">📞</text>
+                <text class="phone-glyph">☎</text>
               </view>
               <view class="phone-info">
                 <text class="phone-number">{{ item.phone }}</text>
@@ -104,13 +104,21 @@
         }}</text>
         <view class="form-group">
           <text>联系人姓名</text>
-          <input type="text" placeholder="请输入姓名" v-model="formData.name" />
+          <input
+            class="form-input"
+            type="text"
+            placeholder="请输入姓名"
+            placeholder-class="form-input-placeholder"
+            v-model="formData.name"
+          />
         </view>
         <view class="form-group">
           <text>手机号码</text>
           <input
+            class="form-input"
             type="tel"
             placeholder="请输入11位手机号"
+            placeholder-class="form-input-placeholder"
             maxlength="11"
             v-model="formData.phone"
           />
@@ -159,6 +167,7 @@
 import {
   createBossContact,
   deleteBossContact,
+  getCurrentUser,
   getUser,
   listBossContacts,
 } from "@/api/backend";
@@ -192,13 +201,18 @@ export default {
       this.loading = true;
       try {
         const userId = this.getUserId();
-        const [contacts, user] = await Promise.all([
-          listBossContacts(userId),
-          getUser(userId),
+        const [contacts, currentUser, user] = await Promise.all([
+          listBossContacts(userId).catch(() => []),
+          getCurrentUser().catch(() => null),
+          getUser(userId).catch(() => null),
         ]);
         const list = Array.isArray(contacts) ? contacts : [];
-        const primary = list.find((item) => item.isDefault);
-        this.primaryPhone = user?.phone || primary?.phone || "暂无手机号";
+        const cachedUser = uni.getStorageSync("userInfo") || {};
+        this.primaryPhone =
+          currentUser?.phone ||
+          user?.phone ||
+          cachedUser.phone ||
+          "暂无手机号";
         this.phoneList = list.filter((item) => !item.isDefault).slice(0, 3);
       } catch (error) {
         uni.showToast({ title: error.message || "联系人加载失败", icon: "none" });
@@ -310,7 +324,7 @@ export default {
   font-size: 30rpx;
   font-weight: 600;
   color: #333;
-  background: #fff;
+  background: #fff8e6;
 }
 
 .status-icons {
@@ -367,6 +381,7 @@ export default {
   margin: 24rpx;
   border-radius: 24rpx;
   padding: 32rpx;
+  box-sizing: border-box;
 }
 
 .section-title {
@@ -408,6 +423,10 @@ export default {
   color: #ff6b35;
 }
 
+.phone-icon:not(.primary) {
+  color: #1e88e5;
+}
+
 .phone-info {
   flex: 1;
   min-width: 0;
@@ -418,7 +437,8 @@ export default {
   font-weight: 600;
   color: #333;
   line-height: 1.4;
-  word-break: break-all;
+  white-space: nowrap;
+  display: block;
 }
 
 .phone-tag {
@@ -434,9 +454,16 @@ export default {
 .phone-desc {
   font-size: 24rpx;
   color: #999;
-  margin-top: 4rpx;
+  margin-top: 6rpx;
   line-height: 1.5;
-  word-break: break-all;
+  white-space: nowrap;
+  display: block;
+}
+
+.phone-glyph {
+  font-size: 36rpx;
+  line-height: 1;
+  color: inherit;
 }
 
 .phone-actions {
@@ -488,7 +515,7 @@ export default {
   gap: 16rpx;
   padding: 28rpx;
   background: #fff;
-  margin: 24rpx;
+  margin: 24rpx 8rpx 0;
   border-radius: 24rpx;
   border: 2rpx dashed #ccc;
   color: #1e88e5;
@@ -515,13 +542,14 @@ export default {
 
 .bottom-btn {
   flex-shrink: 0;
-  padding: 24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
+  padding: 24rpx 32rpx calc(68rpx + env(safe-area-inset-bottom));
   background: #fff;
 }
 
 .btn-save {
   width: 100%;
   height: 96rpx;
+  padding: 0;
   background: linear-gradient(135deg, #ffd700, #ffa500);
   color: #fff;
   border: none;
@@ -530,7 +558,10 @@ export default {
   font-weight: 600;
   box-shadow: 0 8rpx 24rpx rgba(255, 165, 0, 0.3);
   margin: 0;
-  line-height: 1.4;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal {
@@ -569,17 +600,28 @@ export default {
   margin-bottom: 12rpx;
 }
 
-.form-group input {
+.form-input {
   width: 100%;
-  padding: 20rpx 24rpx;
+  height: 76rpx;
+  min-height: 76rpx;
+  padding: 0 24rpx;
   border: 2rpx solid #ddd;
   border-radius: 16rpx;
   font-size: 30rpx;
+  line-height: 76rpx;
   outline: none;
   box-sizing: border-box;
+  background: #fff;
+  color: #333;
 }
 
-.form-group input:focus {
+.form-input-placeholder {
+  color: #b5b5b5;
+  font-size: 28rpx;
+  line-height: 76rpx;
+}
+
+.form-input:focus {
   border-color: #1e88e5;
 }
 

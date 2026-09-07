@@ -27,6 +27,7 @@
           <text class="order-status" :class="item.status">{{ item.statusText }}</text>
         </view>
       </view>
+      <view class="scroll-bottom-space"></view>
       <view class="empty-state" v-if="!orders.length"><text class="empty-icon">¥</text><text>暂无待结算订单</text></view>
     </scroll-view>
     <view class="bottom-bar"><view class="bar-info"><text class="bar-label">已选金额</text><text class="bar-amount">¥{{ selectedAmount.toFixed(2) }}</text><text class="bar-count">{{ selectedIds.length ? `已选${selectedIds.length}笔订单` : '未选择任何订单' }}</text></view><button class="settle-btn" :disabled="!selectedIds.length" @click="settleSelected">结算所选{{ selectedIds.length ? `（${selectedIds.length}笔）` : '' }}</button></view>
@@ -71,7 +72,7 @@ export default {
 .nav-bar { display:flex; align-items:center; justify-content:space-between; padding:0 16px; box-sizing:border-box; background:#fff; flex-shrink:0; }
 .nav-back { width:32px; height:32px; display:flex; align-items:center; justify-content:center; font-size:24px; color:#333; }
 .nav-title { font-size:17px; font-weight:600; color:#333; }
-.scroll-area { flex:1; height:0; min-height:0; overflow-y:auto; padding-bottom:90px; }
+.scroll-area { flex:1; height:0; min-height:0; overflow-y:auto; }
 .summary-card,.select-all-bar,.order-card { background:#fff; margin:12px 16px; border-radius:12px; padding:16px; box-sizing:border-box; }
 .summary-header,.order-header,.select-all-left { display:flex; align-items:center; }
 .summary-header,.order-header { justify-content:space-between; }
@@ -92,6 +93,7 @@ export default {
 .order-info,.order-workers { display:block; color:#999; font-size:12px; margin-top:6px; }
 .order-workers { color:#666; }
 .order-status { display:inline-block; margin-top:6px; padding:2px 8px; font-size:11px; }
+.scroll-bottom-space { height:120px; }
 .bottom-bar { position:absolute; bottom:0; left:0; right:0; min-height:70px; background:#fff; border-top:1px solid #f0f0f0; display:flex; align-items:center; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); gap:12px; box-sizing:border-box; z-index:20; }
 .bar-info { flex:1; min-width:0; }
 .bar-amount { display:block; color:#FF6B35; font-size:20px; font-weight:700; }

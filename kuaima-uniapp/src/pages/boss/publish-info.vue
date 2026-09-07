@@ -258,6 +258,22 @@ export default {
       uni.navigateBack();
     },
     navigateTo(page) {
+      if (page === "select-work-time") {
+        const workTime = uni.getStorageSync("workTimeSelection") || {};
+        const selectedDates = this.dates
+          .filter((item) => item.selected)
+          .map((item) => item.value);
+        uni.setStorageSync("workTimeSelection", {
+          ...workTime,
+          selectedDates,
+          dateOptions: this.dates.map((item) => ({
+            value: item.value,
+            weekday: item.weekday,
+            date: item.date,
+            selected: item.selected,
+          })),
+        });
+      }
       uni.navigateTo({ url: `/pages/boss/${page}` });
     },
     editJob() {

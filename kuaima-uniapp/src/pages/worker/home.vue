@@ -183,12 +183,10 @@ const filterDefaults = {
 const filterForm = reactive({ ...filterDefaults });
 
 const filteredJobs = computed(() =>
-  activeTab.value === "DAY"
-    ? jobs.value
-    : jobs.value.filter(
-        (job) =>
-          (job.settlementType || job.salaryType || "DAY") === activeTab.value,
-      ),
+  jobs.value.filter(
+    (job) =>
+      (job.settlementType || job.salaryType || "DAY") === activeTab.value,
+  ),
 );
 
 const mockJobs = [
@@ -315,10 +313,7 @@ async function loadJobs() {
           return job;
         }),
       );
-      const categoryJobs = USE_MOCK
-        ? mockJobs.filter((item) => item.salaryType !== "DAY").map(normalizeJob)
-        : [];
-      jobs.value = [...apiJobs, ...categoryJobs];
+      jobs.value = apiJobs;
       return;
     }
     jobs.value = USE_MOCK ? mockJobs.map(normalizeJob) : [];

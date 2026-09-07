@@ -5,44 +5,53 @@
       :class="selectedRole"
       :style="{ paddingTop: `${statusBarHeight}px` }"
     >
-      <view class="top-nav"
-        ><button v-if="userRole" class="nav-back" @click="goBack">‹</button
-        ><view v-else class="nav-placeholder" /><view class="brand-tag"
-          >快马日结</view
-        ></view
-      >
+      <view class="top-nav">
+        <button v-if="userRole" class="nav-back" @click="goBack">‹</button>
+        <view v-else class="nav-placeholder"></view>
+        <view v-if="userRole" class="brand-tag">快马日结</view>
+      </view>
       <view v-if="!userRole" class="role-select-view">
-        <text class="section-title">选择身份</text
-        ><text class="section-subtitle">选择您的身份，开始使用快马日结</text>
-        <button
-          class="role-card worker"
-          :class="{ active: selectedRole === 'worker' }"
-          @click="selectedRole = 'worker'"
-        >
-          <view class="role-card-left"
-            ><text class="role-icon">🐴</text
-            ><view
-              ><text class="role-name">我要找活</text
-              ><text class="role-desc">零工、日结、快速上岗</text></view
-            ></view
-          ><text class="role-arrow">›</text>
-        </button>
-        <button
-          class="role-card boss"
-          :class="{ active: selectedRole === 'boss' }"
-          @click="selectedRole = 'boss'"
-        >
-          <view class="role-card-left"
-            ><text class="role-icon">🐎</text
-            ><view
-              ><text class="role-name">我要招人</text
-              ><text class="role-desc">招工、发活、高效管理</text></view
-            ></view
-          ><text class="role-arrow">›</text>
-        </button>
+        <view class="welcome-copy">
+          <text class="welcome-subtitle">很高兴见到你</text>
+          <text class="welcome-title">请选择你的身份</text>
+        </view>
+        <view class="role-grid">
+          <button
+            class="role-card worker"
+            :class="{ active: selectedRole === 'worker' }"
+            @click="selectedRole = 'worker'"
+          >
+            <view v-if="selectedRole === 'worker'" class="selected-mark">✓</view>
+            <text class="role-name">零工找活</text>
+            <text class="role-desc">真老板</text>
+            <text class="role-desc">真工价</text>
+            <text class="role-desc">真日结</text>
+            <image
+              class="role-art"
+              src="/static/login-worker.png"
+              mode="widthFix"
+            />
+          </button>
+          <button
+            class="role-card boss"
+            :class="{ active: selectedRole === 'boss' }"
+            @click="selectedRole = 'boss'"
+          >
+            <view v-if="selectedRole === 'boss'" class="selected-mark">✓</view>
+            <text class="role-name">老板招工</text>
+            <text class="role-desc">熟练工</text>
+            <text class="role-desc">上岗快</text>
+            <text class="role-desc">人靠谱</text>
+            <image
+              class="role-art"
+              src="/static/login-boss.png"
+              mode="widthFix"
+            />
+          </button>
+        </view>
         <SafeBottomAction class="bottom-action"
           ><button class="role-cta" @click="confirmRole">
-            确认选择
+            {{ selectedRole === "worker" ? "我是零工，去找活" : "我是老板，去招工" }}
           </button></SafeBottomAction
         >
       </view>
@@ -68,9 +77,22 @@
         >
         <view class="mobile-login-card"
           ><text class="login-title">手机号一键登录</text
-          ><button class="phone-input-btn" @click="doLogin">
-            手机号快捷登录</button
-          ><text class="divider-line" @click="goBack">切换身份</text
+          >
+          <!-- #ifdef MP-WEIXIN -->
+          <button
+            class="phone-input-btn"
+            open-type="getPhoneNumber"
+            @getphonenumber="handlePhoneLogin"
+          >
+            手机号快捷登录
+          </button>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
+          <button class="phone-input-btn" @click="doLogin()">
+            手机号快捷登录
+          </button>
+          <!-- #endif -->
+          <text class="divider-line" @click="goBack">切换身份</text
           ><view class="agreement-row"
             ><view
               class="custom-checkbox"
@@ -93,6 +115,7 @@
           }}</text></view
         >
       </view>
+      <view class="page-indicator"></view>
     </view>
   </view>
 </template>
@@ -127,7 +150,16 @@ function openAgreement(page) {
     icon: "none",
   });
 }
-async function doLogin() {
+function handlePhoneLogin(event) {
+  const phoneCode = event?.detail?.code;
+  if (!phoneCode) {
+    errorMessage.value = "需要授权手机号后才能快捷登录";
+    return;
+  }
+  doLogin(phoneCode);
+}
+
+async function doLogin(phoneCode = "") {
   if (!agreed.value) {
     errorMessage.value = "请先阅读并同意服务协议及隐私协议";
     return;
@@ -140,7 +172,11 @@ async function doLogin() {
       provider: "weixin",
       success: async ({ code }) => {
         try {
-          const result = await wechatLogin({ code, role });
+          const result = await wechatLogin({
+            code,
+            role,
+            ...(phoneCode ? { phoneCode } : {}),
+          });
           uni.setStorageSync("token", result.accessToken);
           uni.setStorageSync("userId", String(result.userId));
           uni.setStorageSync("role", result.role);
@@ -197,18 +233,22 @@ async function doLogin() {
   padding-top: var(--status-bar-height);
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, #fffbf5, #ffe4b5 55%, #ffbe5a);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #fffbf5 0%, #ffe4b5 50%, #ffbe5a 100%);
   color: #333;
 }
 .phone-frame.boss {
-  background: linear-gradient(180deg, #fff5e6, #ffe4b5 55%, #ffd966);
+  background: linear-gradient(180deg, #fff5e6 0%, #ffe4b5 50%, #ffd966 100%);
 }
 .top-nav {
   height: 50px;
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 20px;
+  box-sizing: border-box;
 }
 .nav-placeholder,
 .nav-back {
@@ -238,13 +278,20 @@ async function doLogin() {
 }
 .role-select-view,
 .login-view {
-  height: calc(100% - 44px);
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 .role-select-view {
-  padding: 16px 24px 0;
+  padding: 18px 20px 24px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #fff8d6 0%, #ffec99 100%);
 }
+.welcome-copy { text-align: center; margin-bottom: 22px; }
+.welcome-subtitle { display: block; font-size: 13px; font-weight: 500; color: #8b6f00; margin-bottom: 8px; }
+.welcome-title { display: block; font-size: 25px; line-height: 1.3; font-weight: 800; color: #2d2200; }
+.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
 .section-title {
   font-size: 28px;
   font-weight: 800;
@@ -258,60 +305,78 @@ async function doLogin() {
   margin-bottom: 24px;
 }
 .role-card {
-  width: 100%;
+  position: relative;
+  width: auto;
+  min-width: 0;
+  min-height: 380px;
   border: 2px solid transparent;
-  background: #fff;
-  border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 16px;
+  background: #f8e387;
+  border-radius: 14px;
+  padding: 18px 14px 14px;
+  margin: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
   text-align: left;
-  box-shadow: 0 4px 20px #0000000f;
+  box-shadow: none;
+  box-sizing: border-box;
+  overflow: hidden;
 }
+.role-card.worker { background: #ffd93d; border-color: #ffbf00; }
+.role-card.boss { background: #f8e387; border-color: #e9c74c; }
+.role-card::after { border: none; }
 .role-card.worker.active {
-  border-color: #ff6b35;
-  background: #fff5f0;
+  border-color: #2f2d27;
+  background: #ffd93d;
+  box-shadow: 0 10px 22px rgba(45, 34, 0, 0.35);
 }
 .role-card.boss.active {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: #2f2d27;
+  background: #f8e387;
+  box-shadow: 0 10px 22px rgba(45, 34, 0, 0.25);
 }
-.role-card-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.role-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  background: #fff0e8;
-}
-.boss .role-icon {
-  background: #e8f0ff;
-}
-.role-name,
-.role-desc {
+.role-name, .role-desc {
   display: block;
 }
 .role-name {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 23px;
+  font-weight: 900;
+  color: #2d2200;
+  margin-bottom: 12px;
 }
 .role-desc {
+  width: 100%;
+  text-align: center;
+  background: #fff;
+  color: #4a3500;
   font-size: 13px;
-  color: #999;
-  margin-top: 4px;
+  line-height: 34px;
+  height: 34px;
+  margin-top: 6px;
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
-.role-arrow {
-  font-size: 30px;
-  color: #999;
+.role-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: auto;
+  margin-bottom: -14px;
+}
+.selected-mark {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 38px;
+  height: 38px;
+  border-radius: 0 12px 0 12px;
+  background: #303036;
+  color: #fff;
+  text-align: center;
+  line-height: 38px;
+  font-size: 24px;
+  font-weight: 800;
 }
 .bottom-action {
   margin-top: auto;
@@ -323,15 +388,27 @@ async function doLogin() {
 .phone-input-btn {
   border: 0;
   color: #fff;
-  padding: 16px;
+  padding: 16px 20px;
   border-radius: 50px;
   font-weight: 700;
   font-size: 16px;
   box-shadow: 0 8px 24px #ff6b3559;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
+.role-cta::after,
+.phone-input-btn::after { border: none; }
 .role-cta {
   width: 100%;
-  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+  margin-top: 28px;
+  background: linear-gradient(135deg, #ffd93d 0%, #f5b700 100%);
+  color: #4a3500;
+  font-weight: 800;
+  letter-spacing: 1px;
+  box-shadow: 0 8px 24px rgba(255, 200, 30, 0.45);
 }
 .hero {
   position: relative;
@@ -423,6 +500,17 @@ async function doLogin() {
   color: #e34d59;
   font-size: 12px;
   margin-top: 12px;
+}
+.page-indicator {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 134px;
+  height: 5px;
+  border-radius: 3px;
+  background: #000;
+  transform: translateX(-50%);
+  z-index: 20;
 }
 @media (max-width: 430px) {
   .phone-frame {
