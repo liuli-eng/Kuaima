@@ -3,6 +3,9 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.admin.entity.Notice;
@@ -25,8 +29,17 @@ public class AdminNoticeController {
 
     public AdminNoticeController(NoticeRepository repo) { this.repo = repo; }
 
+    /** 列表（分页，按状态过滤，按 id 倒序） */
     @GetMapping
-    public Result<List<Notice>> list() { return Result.success(repo.findAll()); }
+    public Result<List<Notice>> list(@RequestParam(required = false) String status,
+                                     @RequestParam(defaultValue = "0") int page,
+                                     @RequestParam(defaultValue = "10") int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        Page<Notice> result = (status != null && !status.isEmpty())
+                ? repo.findByStatus(status, pageable)
+                : repo.findAll(pageable);
+        return Result.success(result.getContent(), page, result.getTotalElements());
+    }
 
     @GetMapping("/{id}")
     public Result<Notice> get(@PathVariable Long id) {

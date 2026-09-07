@@ -115,6 +115,8 @@ function resolveBackendUrl(url, userId, data) {
   }
   if (url === "/worker/notifications" || url.startsWith("/worker/notifications?")) return `/message/list?userId=${encodeURIComponent(userId)}&page=0&size=20`;
   if (url === "/worker/notification/unread") return `/message/unread?userId=${encodeURIComponent(userId)}`;
+  // 零工认证状态：后端无 /worker/... Controller，重写到 /user/{userId}（User 实体含 certStatus 字段）
+  if (url === "/worker/certification/status") return `/user/${userId}`;
   return url;
 }
 

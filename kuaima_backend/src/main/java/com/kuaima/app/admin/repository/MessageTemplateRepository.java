@@ -2,6 +2,8 @@ package com.kuaima.app.admin.repository;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.kuaima.app.admin.entity.MessageTemplate;
@@ -11,4 +13,10 @@ public interface MessageTemplateRepository extends JpaRepository<MessageTemplate
     List<MessageTemplate> findByStatusOrderByUpdateTimeDesc(String status);
 
     List<MessageTemplate> findByEventOrderByUpdateTimeDesc(String event);
+
+    /** 按状态过滤 + 分页（按更新时间倒序） */
+    Page<MessageTemplate> findByStatus(String status, Pageable pageable);
+
+    /** 按事件过滤 + 分页（按更新时间倒序） */
+    Page<MessageTemplate> findByEvent(String event, Pageable pageable);
 }

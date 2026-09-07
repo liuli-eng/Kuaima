@@ -1,80 +1,440 @@
 <template>
   <div>
-    <div class="page-header">
-      <h1 class="page-title">{{ isEdit ? '编辑规则' : '新增规则' }}</h1>
-      <p class="page-desc">填写规则信息，支持富文本编辑</p>
+    <!-- 顶部编辑头部 -->
+    <div class="edit-header">
+      <div class="edit-header-left">
+        <div class="edit-header-info">
+          <h2>{{ isEdit ? '编辑规则' : '新增规则' }}</h2>
+          <div class="edit-header-meta">
+            <span class="edit-id-badge">{{ isEdit ? ('ID: ' + (form.code || form.id || '--')) : '新规则' }}</span>
+            <span>{{ form.category || typeCategoryMap[currentType] }}</span>
+          </div>
+        </div>
+        <span :class="['status-badge', statusBadgeClass]">{{ statusLabel(form.status) }}</span>
+      </div>
+      <div class="edit-header-actions">
+        <button class="btn btn-outline" @click="goBack">
+          <i class="fas fa-arrow-left"></i> 返回列表
+        </button>
+        <button class="btn btn-outline" @click="previewRule">
+          <i class="fas fa-eye"></i> 预览
+        </button>
+        <button class="btn btn-primary" @click="saveAndPublish">
+          <i class="fas fa-check"></i> 保存发布
+        </button>
+      </div>
     </div>
 
-    <div class="card">
-      <el-form :model="form" label-width="100px" style="max-width: 900px;">
-        <el-form-item label="规则标题" required>
-          <el-input v-model="form.title" placeholder="请输入规则标题" />
-        </el-form-item>
-        <el-form-item label="规则分类" required>
-          <el-select v-model="form.category" placeholder="请选择分类" style="width: 100%;">
-            <el-option label="通知公告" value="通知公告" />
-            <el-option label="信用评定" value="信用评定" />
-            <el-option label="收费标准" value="收费标准" />
-            <el-option label="交易规则" value="交易规则" />
-            <el-option label="隐私协议" value="隐私协议" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="版本号">
-          <el-input v-model="form.version" placeholder="如 v1.0" style="width: 160px;" />
-        </el-form-item>
-        <el-form-item label="生效状态">
-          <el-switch v-model="form.active" active-text="生效中" inactive-text="未生效" />
-        </el-form-item>
-        <el-form-item label="生效时间">
-          <div class="date-picker-wrap" style="width: 120px;">
-            <el-date-picker v-model="form.effectiveTime" type="date" placeholder="选择生效日期" style="width: 100%;" />
+    <div class="edit-layout">
+      <!-- 左栏 -->
+      <div class="left-col">
+        <!-- 1. 基本信息 -->
+        <div class="card">
+          <div class="form-section">
+            <div class="form-section-title">
+              <span class="section-num">1</span> 基本信息
+            </div>
+
+            <div style="margin-bottom: 18px;">
+              <label class="form-label">规则类型 <span class="required">*</span></label>
+              <div class="type-selector">
+                <div
+                  v-for="t in typeOptions"
+                  :key="t.key"
+                  :class="['type-option', { selected: currentType === t.key }]"
+                  @click="selectType(t.key)"
+                >
+                  <div class="type-icon" :style="{ background: t.gradient }">
+                    <i :class="['fas', t.icon]"></i>
+                  </div>
+                  <div class="type-name">{{ t.name }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div>
+                <label class="form-label">规则名称 <span class="required">*</span></label>
+                <el-input v-model="form.title" placeholder="请输入规则名称，如：平台服务协议" />
+              </div>
+              <div>
+                <label class="form-label">版本号</label>
+                <el-input v-model="form.version" placeholder="如：v1.0" style="width: 160px;" />
+              </div>
+              <div>
+                <label class="form-label">规则分类</label>
+                <el-input v-model="form.category" placeholder="自动生成或手动填写" />
+              </div>
+              <div>
+                <label class="form-label">状态</label>
+                <el-radio-group v-model="form.status" @change="onStatusChange">
+                  <el-radio value="draft">草稿</el-radio>
+                  <el-radio value="published">立即发布</el-radio>
+                  <el-radio value="archived">归档</el-radio>
+                </el-radio-group>
+              </div>
+            </div>
           </div>
-        </el-form-item>
-        <el-form-item label="规则内容" required>
-          <el-input v-model="form.content" type="textarea" :rows="15" placeholder="请输入规则内容..." />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handlePublish">发布</el-button>
-          <el-button @click="handleSave">存草稿</el-button>
-          <el-button @click="router.back()">取消</el-button>
-        </el-form-item>
-      </el-form>
+        </div>
+
+        <!-- 2. 规则内容 -->
+        <div class="card">
+          <div class="form-section">
+            <div class="form-section-title">
+              <span class="section-num">2</span> 规则内容
+            </div>
+
+            <div class="full-width">
+              <label class="form-label">规则详细内容 <span class="required">*</span></label>
+              <div class="rich-text-toolbar">
+                <select class="toolbar-select">
+                  <option>正文</option>
+                  <option>标题1</option>
+                  <option>标题2</option>
+                  <option>标题3</option>
+                </select>
+                <span class="divider"></span>
+                <button type="button" title="加粗"><i class="fas fa-bold"></i></button>
+                <button type="button" title="斜体"><i class="fas fa-italic"></i></button>
+                <button type="button" title="下划线"><i class="fas fa-underline"></i></button>
+                <span class="divider"></span>
+                <button type="button" title="无序列表"><i class="fas fa-list-ul"></i></button>
+                <button type="button" title="有序列表"><i class="fas fa-list-ol"></i></button>
+                <button type="button" title="引用"><i class="fas fa-quote-left"></i></button>
+                <span class="divider"></span>
+                <button type="button" title="超链接"><i class="fas fa-link"></i></button>
+                <button type="button" title="图片"><i class="fas fa-image"></i></button>
+                <span class="divider"></span>
+                <button type="button" title="撤销"><i class="fas fa-undo"></i></button>
+                <button type="button" title="重做"><i class="fas fa-redo"></i></button>
+              </div>
+              <el-input
+                v-model="form.content"
+                type="textarea"
+                :rows="14"
+                placeholder="请输入规则详细内容..."
+                resize="vertical"
+                class="content-editor"
+              />
+              <div class="form-hint">支持多段落、列表、加粗等格式。内容会展示给所有相关用户查看。</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 发布设置 -->
+        <div class="card">
+          <div class="form-section">
+            <div class="form-section-title">
+              <span class="section-num">3</span> 发布设置
+            </div>
+
+            <div class="form-group">
+              <div>
+                <label class="form-label">生效时间</label>
+                <el-date-picker
+                  v-model="form.effectiveTime"
+                  type="date"
+                  placeholder="选择生效日期"
+                  value-format="YYYY-MM-DD"
+                  style="width: 100%;"
+                />
+              </div>
+              <div>
+                <label class="form-label">失效时间</label>
+                <el-date-picker
+                  v-model="form.expireTime"
+                  type="date"
+                  placeholder="选择失效日期"
+                  value-format="YYYY-MM-DD"
+                  style="width: 100%;"
+                />
+              </div>
+              <div>
+                <label class="form-label">适用对象</label>
+                <el-select v-model="form.scope" style="width: 100%;">
+                  <el-option label="全部用户" value="all" />
+                  <el-option label="仅零工" value="worker" />
+                  <el-option label="仅雇主" value="boss" />
+                </el-select>
+              </div>
+              <div>
+                <label class="form-label">是否置顶</label>
+                <el-radio-group v-model="form.pinned">
+                  <el-radio value="yes">是</el-radio>
+                  <el-radio value="no">否</el-radio>
+                </el-radio-group>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部操作栏 -->
+        <div class="action-bar">
+          <button class="btn btn-outline" @click="goBack">
+            <i class="fas fa-arrow-left"></i> 返回
+          </button>
+          <button class="btn btn-outline" @click="saveDraft">
+            <i class="fas fa-save"></i> 保存草稿
+          </button>
+          <button class="btn btn-primary" @click="saveAndPublish">
+            <i class="fas fa-paper-plane"></i> 保存并发布
+          </button>
+        </div>
+      </div>
+
+      <!-- 右栏 -->
+      <div class="right-col">
+        <!-- 规则信息 -->
+        <div class="card info-card">
+          <div class="info-card-title">
+            <i class="fas fa-info-circle"></i> 规则信息
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">规则ID</span>
+            <span class="info-row-value">{{ isEdit ? (form.code || form.id || '--') : '自动生成' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">创建人</span>
+            <span class="info-row-value">{{ form.creator || '超级管理员' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">创建时间</span>
+            <span class="info-row-value">{{ form.createTime || '--' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">更新时间</span>
+            <span class="info-row-value">{{ form.updateTime || '--' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">状态</span>
+            <span class="info-row-value">{{ statusLabel(form.status) }}</span>
+          </div>
+        </div>
+
+        <!-- 填写提示 -->
+        <div class="card info-card">
+          <div class="info-card-title">
+            <i class="fas fa-lightbulb"></i> 填写提示
+          </div>
+          <div class="tip-list">
+            <div class="tip-item" v-for="(tip, i) in tips" :key="i">
+              <i class="fas fa-check-circle"></i>
+              <span>{{ tip }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 修改历史（仅编辑时显示） -->
+        <div v-if="isEdit && history.length" class="card info-card">
+          <div class="info-card-title">
+            <i class="fas fa-history"></i> 修改历史
+          </div>
+          <div class="timeline-list">
+            <div class="timeline-item" v-for="(h, i) in history" :key="i">
+              <div class="timeline-dot"><i :class="['fas', h.icon]"></i></div>
+              <div class="timeline-content">
+                <div class="timeline-title">{{ h.title }}</div>
+                <div class="timeline-time">{{ h.time }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- 预览弹窗 -->
+    <el-dialog v-model="previewVisible" title="规则预览" width="640px">
+      <div class="preview-meta">
+        <span><i class="fas fa-tag" style="color: var(--primary);"></i> {{ form.category }}</span>
+        <span><i class="fas fa-code-branch" style="color: var(--primary);"></i> {{ form.version || 'v1.0' }}</span>
+        <span :class="['status-badge', statusBadgeClass]">{{ statusLabel(form.status) }}</span>
+      </div>
+      <div class="preview-content">{{ form.content || '(暂无内容)' }}</div>
+      <template #footer>
+        <button class="btn btn-outline" @click="previewVisible = false">关闭</button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { reactive, computed, onMounted } from 'vue'
+import { reactive, computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listRules, createRules, updateRules } from '@/api/content'
 
 const router = useRouter()
 const route = useRoute()
-const isEdit = computed(() => !!route.params.id)
+
+const routeId = computed(() => route.params.id)
+const routeTab = computed(() => route.params.tab || 'notice')
+const isEdit = computed(() => !!routeId.value)
+
+const typeCategoryMap = {
+  notice: '规则公示',
+  credit: '信用分规则',
+  fee: '收费规则',
+  trade: '交易规则',
+  private: '飞单认定与处理规则'
+}
+
+const typeOptions = [
+  { key: 'notice', name: '规则公示', icon: 'fa-bullhorn', gradient: 'linear-gradient(135deg,#3B82F6,#2563EB)' },
+  { key: 'credit', name: '信用分规则', icon: 'fa-star', gradient: 'linear-gradient(135deg,#10B981,#059669)' },
+  { key: 'fee', name: '收费规则', icon: 'fa-coins', gradient: 'linear-gradient(135deg,#F59E0B,#D97706)' },
+  { key: 'trade', name: '交易规则', icon: 'fa-exchange-alt', gradient: 'linear-gradient(135deg,#8B5CF6,#6D28D9)' },
+  { key: 'private', name: '飞单认定', icon: 'fa-ban', gradient: 'linear-gradient(135deg,#EF4444,#DC2626)' }
+]
+
+const tips = [
+  '规则名称建议简洁明确，如"平台服务协议"',
+  '内容支持富文本格式，可使用标题、列表、加粗等',
+  '发布前请仔细检查内容，已发布规则仅能编辑',
+  '建议先保存草稿，预览无误后再发布',
+  '版本号规则：首次发布为v1.0，后续递增'
+]
+
+const currentType = ref(routeTab.value)
+const previewVisible = ref(false)
+const history = ref([])
 
 const form = reactive({
+  id: null,
+  code: '',
   title: '',
-  category: '',
-  version: '',
-  active: true,
+  category: typeCategoryMap[routeTab.value],
+  version: 'v1.0',
+  status: 'draft',
+  content: '',
   effectiveTime: '',
-  content: ''
+  expireTime: '',
+  scope: 'all',
+  pinned: 'no',
+  creator: '',
+  createTime: '',
+  updateTime: ''
 })
 
+const statusBadgeClass = computed(() => {
+  const map = { published: 'success', draft: 'draft', archived: 'archived' }
+  return map[form.status] || 'draft'
+})
+
+const statusLabel = (status) => {
+  const map = { published: '已发布', draft: '草稿', archived: '已归档' }
+  return map[status] || '草稿'
+}
+
+const selectType = (key) => {
+  currentType.value = key
+  form.category = typeCategoryMap[key]
+}
+
+const onStatusChange = () => {}
+
+const goBack = () => router.push({ name: 'Rules' })
+
+const previewRule = () => {
+  if (!form.title || !form.content) {
+    ElMessage.warning('请填写规则名称和内容后再预览')
+    return
+  }
+  previewVisible.value = true
+}
+
+const validateForm = () => {
+  if (!form.title.trim()) {
+    ElMessage.warning('请输入规则名称')
+    return false
+  }
+  if (!form.content.trim()) {
+    ElMessage.warning('请输入规则内容')
+    return false
+  }
+  return true
+}
+
+const buildPayload = (overrideStatus) => {
+  const now = new Date().toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-')
+  return {
+    ...form,
+    type: currentType.value,
+    status: overrideStatus || form.status,
+    statusClass: overrideStatus === 'published' ? 'success' : overrideStatus === 'archived' ? 'default' : 'warning',
+    updateTime: now,
+    createTime: form.createTime || now
+  }
+}
+
+const saveDraft = async () => {
+  if (!validateForm()) return
+  try {
+    const payload = buildPayload('draft')
+    if (isEdit.value) {
+      await updateRules(routeId.value, payload)
+    } else {
+      await createRules(payload)
+    }
+    ElMessage.success('已保存草稿')
+    goBack()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
+}
+
+const saveAndPublish = async () => {
+  if (!validateForm()) return
+  const targetStatus = form.status === 'published' ? 'published' : (form.status === 'archived' ? 'archived' : 'published')
+  try {
+    const payload = buildPayload(targetStatus)
+    if (isEdit.value) {
+      await updateRules(routeId.value, payload)
+    } else {
+      await createRules(payload)
+    }
+    ElMessage.success(targetStatus === 'published' ? '规则已发布' : '已保存')
+    goBack()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
+}
+
 const loadExisting = async () => {
-  if (!isEdit.value) return
-  const id = route.params.id
+  if (!isEdit.value) {
+    const now = new Date().toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-')
+    form.createTime = now
+    form.updateTime = now
+    return
+  }
   try {
     const res = await listRules()
     const list = Array.isArray(res) ? res : (res?.data || [])
-    const found = list.find(r => String(r.id) === String(id))
+    const found = list.find(r => String(r.id) === String(routeId.value))
     if (found) {
-      form.title = found.title
-      form.category = found.category
-      form.version = found.version
-      form.effectiveTime = found.effectiveTime
-      form.content = found.content || ''
+      Object.assign(form, {
+        id: found.id,
+        code: found.code || '',
+        title: found.title || '',
+        category: found.category || '',
+        version: found.version || 'v1.0',
+        status: found.status || 'draft',
+        content: found.content || '',
+        effectiveTime: found.effectiveTime || '',
+        expireTime: found.expireTime || '',
+        scope: found.scope || 'all',
+        pinned: found.pinned || 'no',
+        creator: found.creator || '超级管理员',
+        createTime: found.createTime || '',
+        updateTime: found.updateTime || ''
+      })
+      if (found.type && typeCategoryMap[found.type]) {
+        currentType.value = found.type
+      }
+      history.value = [
+        { icon: 'fa-plus', title: '创建规则', time: `由 ${form.creator || '管理员'} 创建` },
+        ...(found.updateTime ? [{ icon: 'fa-edit', title: '修改内容', time: form.updateTime }] : []),
+        ...(found.status === 'published' ? [{ icon: 'fa-check-circle', title: '发布上线', time: form.updateTime }] : [])
+      ]
     }
   } catch (e) {
     console.warn('[RulesEdit] 加载失败:', e)
@@ -82,39 +442,303 @@ const loadExisting = async () => {
   }
 }
 
-const handlePublish = async () => {
-  if (!form.title || !form.category) {
-    ElMessage.warning('请填写必填项')
-    return
-  }
-  const payload = { ...form, status: '已发布', statusClass: 'success' }
-  try {
-    if (isEdit.value) {
-      await updateRules(route.params.id, payload)
-    } else {
-      await createRules(payload)
-    }
-    ElMessage.success('已发布')
-    router.back()
-  } catch (e) {
-    ElMessage.error('发布失败')
-  }
-}
-
-const handleSave = async () => {
-  const payload = { ...form, status: '草稿', statusClass: 'default' }
-  try {
-    if (isEdit.value) {
-      await updateRules(route.params.id, payload)
-    } else {
-      await createRules(payload)
-    }
-    ElMessage.success('已存草稿')
-    router.back()
-  } catch (e) {
-    ElMessage.error('保存失败')
-  }
-}
-
 onMounted(loadExisting)
 </script>
+
+<style scoped>
+.edit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  margin-bottom: 16px;
+}
+.edit-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.edit-header-info h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0 0 4px 0;
+}
+.edit-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-muted, #9CA3AF);
+}
+.edit-id-badge {
+  padding: 2px 8px;
+  background: var(--bg-page, #F9FAFB);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+.edit-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.edit-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+.left-col, .right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.form-section {
+  padding: 20px 24px;
+}
+.form-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border, #E5E7EB);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-section-title .section-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary, #FF6B35);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.form-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 24px;
+}
+.form-group .full-width { grid-column: 1 / -1; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #6B7280);
+  margin-bottom: 6px;
+}
+.form-label .required { color: #ef4444; margin-left: 2px; }
+.form-hint {
+  font-size: 12px;
+  color: var(--text-muted, #9CA3AF);
+  margin-top: 6px;
+}
+
+.type-selector {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.type-option {
+  border: 2px solid var(--border, #E5E7EB);
+  border-radius: 8px;
+  padding: 14px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+}
+.type-option:hover {
+  border-color: var(--primary, #FF6B35);
+}
+.type-option.selected {
+  border-color: var(--primary, #FF6B35);
+  background: #FFF8F3;
+}
+.type-option .type-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+}
+.type-option .type-name {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.rich-text-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border, #E5E7EB);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--bg-page, #F9FAFB);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.rich-text-toolbar button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary, #6B7280);
+  transition: all 0.2s;
+}
+.rich-text-toolbar button:hover {
+  background: #fff;
+  color: var(--primary, #FF6B35);
+}
+.rich-text-toolbar .divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border, #E5E7EB);
+  margin: 4px 4px;
+}
+.rich-text-toolbar .toolbar-select {
+  height: 32px;
+  border: 1px solid var(--border, #E5E7EB);
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+}
+.content-editor :deep(.el-textarea__inner) {
+  min-height: 300px !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  line-height: 1.7;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-badge.draft { background: #FEF3C7; color: #D97706; }
+.status-badge.success { background: #D1FAE5; color: #059669; }
+.status-badge.archived { background: #E5E7EB; color: #6B7280; }
+
+.action-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 18px 24px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.info-card { padding: 18px 20px; }
+.info-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.info-card-title i { color: var(--primary, #FF6B35); }
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border, #E5E7EB);
+  font-size: 13px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-row-label { color: var(--text-muted, #9CA3AF); }
+.info-row-value { color: var(--text-primary, #111827); font-weight: 500; }
+
+.tip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tip-item {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #6B7280);
+  line-height: 1.5;
+}
+.tip-item i {
+  color: var(--primary, #FF6B35);
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+}
+.timeline-item {
+  display: flex;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border, #E5E7EB);
+}
+.timeline-item:last-child { border-bottom: none; }
+.timeline-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #FFF8F3;
+  color: var(--primary, #FF6B35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.timeline-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.timeline-time { font-size: 12px; color: var(--text-muted, #9CA3AF); }
+
+.preview-meta {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-muted, #9CA3AF);
+  flex-wrap: wrap;
+}
+.preview-content {
+  background: var(--bg-page, #F9FAFB);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary, #6B7280);
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+</style>

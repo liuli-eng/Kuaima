@@ -48,6 +48,6 @@ export function resetAdminPassword(id, newPassword = 'admin123') {
 export function deleteAdminUser(id) { return request.delete(`/admin/admin-users/${id}`) }
 
 // ============ Logs ============
-export function listLogs({ page = 0, size = 20 } = {}) {
-  return request.get('/admin/logs', { params: { page, size } })
+export function listLogs({ type, page = 0, size = 20 } = {}) {
+  return request.get('/admin/logs', { params: { type, page, size } })
 }

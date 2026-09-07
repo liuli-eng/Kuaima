@@ -40,7 +40,7 @@
         </button>
       </div>
 
-      <el-table :data="filteredNotices" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
+      <el-table :data="notices" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
         <el-table-column label="类型" width="100">
           <template #default="{ row }">
             <el-tag :type="row.typeClass === 'info' ? 'primary' : row.typeClass === 'warning' ? 'warning' : 'success'" effect="light">{{ row.type }}</el-tag>
@@ -66,7 +66,17 @@
       </el-table>
 
       <div class="pagination">
-        <div class="pagination-info">共 {{ filteredNotices.length }} 条记录</div>
+        <div class="pagination-info">共 {{ total }} 条记录</div>
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="sizes, prev, pager, next, jumper"
+          background
+          @size-change="onSizeChange"
+          @current-change="onPageChange"
+        />
       </div>
     </div>
 
@@ -121,13 +131,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listNotices, createNotice, updateNotice, deleteNotice } from '@/api/content'
 
 const notices = ref([])
+const total = ref(0)
 const statusFilter = ref('')
 const publishTimeRange = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const showModal = ref(false)
 const editingId = ref(null)
@@ -138,31 +151,53 @@ const form = ref({
   content: ''
 })
 
-const filteredNotices = computed(() => {
-  const [start, end] = publishTimeRange.value || []
-  return notices.value.filter(n => {
-    if (statusFilter.value && n.status !== statusFilter.value) return false
-    // 日期范围筛选：publishTime 为空或草稿未发布时跳过日期过滤
-    const pt = n.publishTime ? String(n.publishTime).slice(0, 10) : ''
-    if (start && pt && pt < start) return false
-    if (end && pt && pt > end) return false
-    return true
-  })
+// 切换筛选条件时，自动回到第一页并重新加载
+watch([statusFilter, publishTimeRange], () => {
+  currentPage.value = 1
+  loadData()
 })
+
+const onSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadData()
+}
+
+const onPageChange = (page) => {
+  currentPage.value = page
+  loadData()
+}
 
 const loadData = async () => {
   try {
-    const res = await listNotices()
-    notices.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
+    const res = await listNotices({
+      status: statusFilter.value || undefined,
+      page: currentPage.value - 1,
+      size: pageSize.value,
+    })
+    const d = res.data
+    const list = Array.isArray(d) ? d : (Array.isArray(res) ? res : [])
+    // 前端按发布时间范围过滤（后端未实现该筛选条件）
+    const [start, end] = publishTimeRange.value || []
+    notices.value = list.filter(n => {
+      const pt = n.publishTime ? String(n.publishTime).slice(0, 10) : ''
+      if (start && pt && pt < start) return false
+      if (end && pt && pt > end) return false
+      return true
+    })
+    total.value = res.total ?? d?.total ?? list.length
   } catch (e) {
     console.warn('[Notices] 加载失败:', e)
     notices.value = []
+    total.value = 0
   }
 }
 
 const resetFilters = () => {
   statusFilter.value = ''
   publishTimeRange.value = []
+  currentPage.value = 1
+  loadData()
 }
 
 const openCreateModal = () => {

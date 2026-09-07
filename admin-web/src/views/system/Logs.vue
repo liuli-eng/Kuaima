@@ -24,7 +24,7 @@
         <button class="btn btn-outline btn-sm" style="margin-left: auto;"><i class="fas fa-download"></i> 导出</button>
       </div>
 
-      <el-table :data="filteredLogs" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
+      <el-table :data="logs" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
         <el-table-column prop="id" label="日志ID" width="100" />
         <el-table-column prop="operator" label="操作人" width="120" />
         <el-table-column prop="type" label="操作类型" width="120">
@@ -48,37 +48,79 @@
       </el-table>
 
       <div class="pagination">
-        <div class="pagination-info">共 {{ filteredLogs.length }} 条记录</div>
+        <div class="pagination-info">共 {{ total }} 条记录</div>
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="sizes, prev, pager, next, jumper"
+          background
+          @size-change="onSizeChange"
+          @current-change="onPageChange"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { listLogs } from '@/api/system'
 
 const logs = ref([])
+const total = ref(0)
 const searchKeyword = ref('')
 const typeFilter = ref('')
 const dateRange = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
 
-const filteredLogs = computed(() => {
-  return logs.value.filter(l => {
-    if (searchKeyword.value && !l.operator.includes(searchKeyword.value) && !l.target.includes(searchKeyword.value)) return false
-    if (typeFilter.value && l.type !== typeFilter.value) return false
-    return true
-  })
+// 切换筛选条件时，自动回到第一页并重新加载
+watch([searchKeyword, typeFilter, dateRange], () => {
+  currentPage.value = 1
+  loadData()
 })
+
+const onSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadData()
+}
+
+const onPageChange = (page) => {
+  currentPage.value = page
+  loadData()
+}
 
 const loadData = async () => {
   try {
-    const res = await listLogs({ page: 0, size: 100 })
+    const res = await listLogs({
+      type: typeFilter.value || undefined,
+      page: currentPage.value - 1,
+      size: pageSize.value,
+    })
     const d = res.data
-    logs.value = Array.isArray(d) ? d : (d?.content || d?.list || [])
+    const list = Array.isArray(d) ? d : (d?.content || d?.list || [])
+    // 关键字 + 日期范围仍在前端过滤（后端未实现 LIKE 与日期范围查询）
+    const kw = searchKeyword.value.trim()
+    const [start, end] = dateRange.value || []
+    logs.value = list.filter(l => {
+      if (kw) {
+        const op = (l.operator || '').toLowerCase()
+        const tg = (l.target || '').toLowerCase()
+        if (!op.includes(kw.toLowerCase()) && !tg.includes(kw.toLowerCase())) return false
+      }
+      const t = l.createTime ? String(l.createTime).slice(0, 10) : (l.time ? String(l.time).slice(0, 10) : '')
+      if (start && t && t < start) return false
+      if (end && t && t > end) return false
+      return true
+    })
+    total.value = res.total ?? d?.total ?? list.length
   } catch (e) {
     console.warn('[Logs] 加载失败:', e)
     logs.value = []
+    total.value = 0
   }
 }
 
@@ -86,6 +128,8 @@ const resetFilters = () => {
   searchKeyword.value = ''
   typeFilter.value = ''
   dateRange.value = []
+  currentPage.value = 1
+  loadData()
 }
 
 onMounted(loadData)

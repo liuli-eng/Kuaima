@@ -13,7 +13,7 @@
     <div class="card">
       <el-tabs v-model="activeTab">
         <el-tab-pane label="待确认" name="pending">
-          <el-table :data="pendingList" stripe>
+          <el-table :data="pagedPending" stripe>
             <el-table-column label="用户" min-width="160">
               <template #default="{ row }">
                 <div class="user-cell">
@@ -46,10 +46,23 @@
               </template>
             </el-table-column>
           </el-table>
+          <div class="pagination">
+            <div class="pagination-info">共 {{ pendingList.length }} 条记录</div>
+            <el-pagination
+              v-model:current-page="pendingPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="pendingList.length"
+              layout="sizes, prev, pager, next, jumper"
+              background
+              @current-change="(p) => pendingPage = p"
+              @size-change="(s) => { pageSize = s; pendingPage = 1 }"
+            />
+          </div>
         </el-tab-pane>
-        
+
         <el-tab-pane label="已录用" name="accepted">
-          <el-table :data="acceptedList" stripe>
+          <el-table :data="pagedAccepted" stripe>
             <el-table-column label="用户" min-width="160">
               <template #default="{ row }">
                 <div class="user-cell">
@@ -69,10 +82,23 @@
               </template>
             </el-table-column>
           </el-table>
+          <div class="pagination">
+            <div class="pagination-info">共 {{ acceptedList.length }} 条记录</div>
+            <el-pagination
+              v-model:current-page="acceptedPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="acceptedList.length"
+              layout="sizes, prev, pager, next, jumper"
+              background
+              @current-change="(p) => acceptedPage = p"
+              @size-change="(s) => { pageSize = s; acceptedPage = 1 }"
+            />
+          </div>
         </el-tab-pane>
-        
+
         <el-tab-pane label="已拒绝" name="rejected">
-          <el-table :data="rejectedList" stripe>
+          <el-table :data="pagedRejected" stripe>
             <el-table-column label="用户" min-width="160">
               <template #default="{ row }">
                 <div class="user-cell">
@@ -87,6 +113,19 @@
             <el-table-column prop="rejectReason" label="拒绝原因" min-width="140" />
             <el-table-column prop="rejectTime" label="拒绝时间" width="160" />
           </el-table>
+          <div class="pagination">
+            <div class="pagination-info">共 {{ rejectedList.length }} 条记录</div>
+            <el-pagination
+              v-model:current-page="rejectedPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="rejectedList.length"
+              layout="sizes, prev, pager, next, jumper"
+              background
+              @current-change="(p) => rejectedPage = p"
+              @size-change="(s) => { pageSize = s; rejectedPage = 1 }"
+            />
+          </div>
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -94,27 +133,40 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
 
 const activeTab = ref('pending')
+const pageSize = ref(10)
+const pendingPage = ref(1)
+const acceptedPage = ref(1)
+const rejectedPage = ref(1)
 
-const pendingList = [
+const pendingList = ref([
   { name: '张建国', phone: '138****8888', avatar: '张', realName: '已认证', skills: ['装配', '电子'], creditScore: 85, applyTime: '2024-03-15 10:30' },
   { name: '郑小龙', phone: '137****4444', avatar: '郑', realName: '已认证', skills: ['电子'], creditScore: 50, applyTime: '2024-03-15 10:45' }
-]
+])
 
-const acceptedList = [
+const acceptedList = ref([
   { name: '刘芳', phone: '135****7777', avatar: '刘', creditScore: 95, acceptTime: '2024-03-15 11:00' },
   { name: '孙美玲', phone: '135****8888', avatar: '孙', creditScore: 82, acceptTime: '2024-03-15 11:15' }
-]
+])
 
-const rejectedList = [
+const rejectedList = ref([
   { name: '吴志强', phone: '136****1111', avatar: '吴', rejectReason: '信用分过低', rejectTime: '2024-03-14 16:00' }
-]
+])
+
+const slicePage = (list, page, size) => {
+  const start = (page - 1) * size
+  return list.slice(start, start + size)
+}
+
+const pagedPending = computed(() => slicePage(pendingList.value, pendingPage.value, pageSize.value))
+const pagedAccepted = computed(() => slicePage(acceptedList.value, acceptedPage.value, pageSize.value))
+const pagedRejected = computed(() => slicePage(rejectedList.value, rejectedPage.value, pageSize.value))
 </script>
 
 <style scoped>
@@ -136,5 +188,12 @@ const rejectedList = [
   font-weight: 600;
   color: #fff;
   flex-shrink: 0;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
 }
 </style>

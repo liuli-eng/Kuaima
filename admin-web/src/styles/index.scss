@@ -188,7 +188,7 @@ html {
   background-color: #FFF0EB;
 }
 
-// el-pagination 分页激活页码
+// el-pagination 分页激活页码 — 主题橘黄色
 .el-pagination .el-pager li.is-active {
   background-color: var(--primary);
   color: #fff;
@@ -196,6 +196,45 @@ html {
 
 .el-pagination .el-pager li:hover {
   color: var(--primary);
+}
+
+// background 模式（<el-pagination background>）下激活页码橘黄主题
+.el-pagination.is-background {
+  .el-pager li,
+  .btn-prev,
+  .btn-next {
+    &.is-active {
+      background-color: var(--primary) !important;
+      color: #fff !important;
+
+      &:hover {
+        background-color: var(--primary-dark) !important;
+        color: #fff !important;
+      }
+    }
+
+    &:hover {
+      color: var(--primary) !important;
+    }
+  }
+
+  // 非 active 页 hover 时浅橘黄背景
+  .el-pager li:not(.is-active):hover,
+  .btn-prev:not(:disabled):hover,
+  .btn-next:not(:disabled):hover {
+    background-color: var(--primary-light, #FFF8E6) !important;
+  }
+}
+
+// 跳页输入框聚焦边框橘黄
+.el-pagination__editor.el-input .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--primary) inset !important;
+}
+
+.el-pagination__jump {
+  .el-pagination__goto {
+    color: var(--text-secondary);
+  }
 }
 
 // el-tabs 标签页激活态

@@ -3,6 +3,9 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,8 +26,27 @@ public class CertificationController {
 
     public CertificationController(CertificationRepository repo) { this.repo = repo; }
 
+    /** 列表（分页，按 type/status 过滤，按 id 倒序） */
     @GetMapping
-    public Result<List<Certification>> list() { return Result.success(repo.findAll()); }
+    public Result<List<Certification>> list(@RequestParam(required = false) String type,
+                                            @RequestParam(required = false) String status,
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(defaultValue = "10") int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        Page<Certification> result;
+        boolean hasType = type != null && !type.isEmpty();
+        boolean hasStatus = status != null && !status.isEmpty();
+        if (hasType && hasStatus) {
+            result = repo.findByTypeAndStatus(type, status, pageable);
+        } else if (hasType) {
+            result = repo.findByType(type, pageable);
+        } else if (hasStatus) {
+            result = repo.findByStatus(status, pageable);
+        } else {
+            result = repo.findAll(pageable);
+        }
+        return Result.success(result.getContent(), page, result.getTotalElements());
+    }
 
     @GetMapping("/{id}")
     public Result<Certification> get(@PathVariable Long id) {

@@ -25,10 +25,13 @@ public class AdminLogController {
     public AdminLogController(AdminLogRepository repo) { this.repo = repo; }
 
     @GetMapping
-    public Result<Page<AdminLog>> list(@RequestParam(defaultValue = "0") int page,
+    public Result<Page<AdminLog>> list(@RequestParam(required = false) String type,
+                                       @RequestParam(defaultValue = "0") int page,
                                        @RequestParam(defaultValue = "20") int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        Page<AdminLog> result = repo.findAll(pageable);
+        Page<AdminLog> result = (type != null && !type.isEmpty())
+                ? repo.findByType(type, pageable)
+                : repo.findAll(pageable);
         return Result.success(result, page, result.getTotalElements());
     }
 }

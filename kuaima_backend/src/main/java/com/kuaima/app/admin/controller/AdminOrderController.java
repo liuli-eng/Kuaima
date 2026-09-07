@@ -2,12 +2,16 @@ package com.kuaima.app.admin.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.Result;
+import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 
@@ -27,14 +31,15 @@ public class AdminOrderController {
         this.orderRepository = orderRepository;
     }
 
-    /** 订单/报名列表（admin 全量视图） */
+    /** 订单/报名列表（admin 全量视图，支持按状态过滤 + 分页） */
     @GetMapping
-    public Result<List<?>> list(@RequestParam(required = false) String status) {
-        // 返回报名记录列表，admin 端展示完整订单+零工信息
-        List<com.kuaima.app.domain.boss.entity.BaseOrderItem> items = itemRepository.findAll();
-        if (status != null && !status.isBlank()) {
-            items = items.stream().filter(i -> status.equals(i.getStatus())).toList();
-        }
-        return Result.success(items);
+    public Result<List<BaseOrderItem>> list(@RequestParam(required = false) String status,
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(defaultValue = "10") int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        Page<BaseOrderItem> items = (status != null && !status.isBlank())
+                ? itemRepository.findByStatus(status, pageable)
+                : itemRepository.findAll(pageable);
+        return Result.success(items.getContent(), page, items.getTotalElements());
     }
 }

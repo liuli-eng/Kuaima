@@ -61,7 +61,16 @@
 
       <div class="pagination">
         <div class="pagination-info">共 {{ total }} 条记录</div>
-        <el-pagination background layout="total, sizes, prev, pager, next, jumper" :total="total" :page-size="pageSize" :current-page="currentPage" @current-change="handlePageChange" />
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="sizes, prev, pager, next, jumper"
+          background
+          @size-change="onSizeChange"
+          @current-change="onPageChange"
+        />
       </div>
     </div>
   </div>
@@ -110,7 +119,11 @@ const normalizeOrder = (item) => ({
 
 const loadOrders = async () => {
   try {
-    const res = await listOrders({ status: statusFilter.value || undefined })
+    const res = await listOrders({
+      status: statusFilter.value || undefined,
+      page: currentPage.value - 1,
+      size: pageSize.value,
+    })
     const d = res.data
     const list = Array.isArray(d) ? d : (d?.content || d?.list || [])
     total.value = res.total ?? d?.totalElements ?? d?.total ?? list.length
@@ -137,6 +150,17 @@ const handleReset = () => {
 }
 
 const handlePageChange = (page) => {
+  currentPage.value = page
+  loadOrders()
+}
+
+const onSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadOrders()
+}
+
+const onPageChange = (page) => {
   currentPage.value = page
   loadOrders()
 }

@@ -14,7 +14,7 @@
       <button class="btn btn-outline btn-sm" @click="resetFilters"><i class="fas fa-rotate-left"></i> 重置</button>
     </div>
 
-    <el-table :data="filteredData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
+    <el-table :data="tableData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
       <el-table-column prop="id" label="审核ID" width="120" />
       <el-table-column prop="type" label="类型" width="120" />
       <el-table-column prop="applicant" label="申请人" min-width="180" />
@@ -36,13 +36,23 @@
     </el-table>
 
     <div class="pagination">
-      <div class="pagination-info">共 {{ filteredData.length }} 条记录</div>
+      <div class="pagination-info">共 {{ total }} 条记录</div>
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="total"
+        layout="sizes, prev, pager, next, jumper"
+        background
+        @size-change="onSizeChange"
+        @current-change="onPageChange"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listCertifications, auditCertPass, auditCertReject } from '@/api/content'
@@ -51,28 +61,57 @@ const props = defineProps({ type: { type: String, default: 'worker' } })
 const router = useRouter()
 
 const tableData = ref([])
+const total = ref(0)
 const statusFilter = ref('')
 const searchKeyword = ref('')
 const dateRange = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const typeMap = { worker: '零工认证', boss: '雇主认证' }
 
-const filteredData = computed(() => {
-  return tableData.value.filter(c => {
-    if (props.type && c.type !== typeMap[props.type]) return false
-    if (statusFilter.value && c.status !== statusFilter.value) return false
-    if (searchKeyword.value && !c.applicant.includes(searchKeyword.value)) return false
-    return true
-  })
+// 切换筛选条件时，自动回到第一页并重新加载
+watch([statusFilter, searchKeyword, dateRange, () => props.type], () => {
+  currentPage.value = 1
+  loadData()
 })
+
+const onSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadData()
+}
+
+const onPageChange = (page) => {
+  currentPage.value = page
+  loadData()
+}
 
 const loadData = async () => {
   try {
-    const res = await listCertifications()
-    tableData.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
+    const res = await listCertifications({
+      type: typeMap[props.type] || undefined,
+      status: statusFilter.value || undefined,
+      page: currentPage.value - 1,
+      size: pageSize.value,
+    })
+    const d = res.data
+    const list = Array.isArray(d) ? d : (Array.isArray(res) ? res : [])
+    // 关键字 + 日期范围仍在前端过滤（后端未实现 LIKE 与日期范围查询）
+    const kw = searchKeyword.value.trim()
+    const [start, end] = dateRange.value || []
+    tableData.value = list.filter(c => {
+      if (kw && !(c.applicant || '').includes(kw)) return false
+      const at = c.applyTime ? String(c.applyTime).slice(0, 10) : ''
+      if (start && at && at < start) return false
+      if (end && at && at > end) return false
+      return true
+    })
+    total.value = res.total ?? d?.total ?? list.length
   } catch (e) {
     console.warn('[CertificationList] 加载失败:', e)
     tableData.value = []
+    total.value = 0
   }
 }
 
@@ -80,6 +119,8 @@ const resetFilters = () => {
   statusFilter.value = ''
   searchKeyword.value = ''
   dateRange.value = []
+  currentPage.value = 1
+  loadData()
 }
 
 const viewDetail = (row) => {

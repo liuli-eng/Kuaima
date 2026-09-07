@@ -51,6 +51,20 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination">
+        <div class="pagination-info">共 {{ total }} 条记录</div>
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="sizes, prev, pager, next, jumper"
+          background
+          @size-change="onSizeChange"
+          @current-change="onPageChange"
+        />
+      </div>
     </div>
 
     <!-- 审核详情弹窗 -->
@@ -135,6 +149,20 @@ const rejectVisible = ref(false)
 const currentItem = ref(null)
 
 const auditData = ref([])
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+const onSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadAuditData()
+}
+
+const onPageChange = (page) => {
+  currentPage.value = page
+  loadAuditData()
+}
 
 const statusClassMap = {
   '待审核': 'warning',
@@ -170,24 +198,30 @@ const loadAuditData = async () => {
       type: undefined,
       status: statusFilter.value || undefined,
       title: searchKeyword.value || undefined,
-      page: 0,
-      size: 50,
+      page: currentPage.value - 1,
+      size: pageSize.value,
     })
     const d = res.data
     const list = Array.isArray(d) ? d : (d?.content || d?.list || [])
     auditData.value = list.map(normalizeAudit)
+    total.value = res.total ?? d?.total ?? list.length
   } catch (err) {
     console.warn('[JobAudit] API 加载失败:', err.message)
     auditData.value = []
+    total.value = 0
     ElMessage.error('加载审核数据失败')
   }
 }
 
-const handleSearch = () => loadAuditData()
+const handleSearch = () => {
+  currentPage.value = 1
+  loadAuditData()
+}
 
 const handleReset = () => {
   searchKeyword.value = ''
   statusFilter.value = '待审核'
+  currentPage.value = 1
   loadAuditData()
 }
 
@@ -269,5 +303,12 @@ onMounted(loadAuditData)
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
 }
 </style>

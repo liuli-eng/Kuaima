@@ -112,7 +112,16 @@
 
       <div class="pagination">
         <div class="pagination-info">共 {{ total }} 条记录</div>
-        <el-pagination background layout="total, prev, pager, next, jumper" :total="total" :page-size="pageSize" :current-page="currentPage" @current-change="handlePageChange" />
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="sizes, prev, pager, next, jumper"
+          background
+          @size-change="onSizeChange"
+          @current-change="onPageChange"
+        />
       </div>
     </div>
   </div>
@@ -232,6 +241,17 @@ const handleReset = () => {
   loadData()
 }
 const handlePageChange = (page) => {
+  currentPage.value = page
+  loadData()
+}
+
+const onSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadData()
+}
+
+const onPageChange = (page) => {
   currentPage.value = page
   loadData()
 }

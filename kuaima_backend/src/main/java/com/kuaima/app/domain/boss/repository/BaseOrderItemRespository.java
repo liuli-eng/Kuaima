@@ -2,6 +2,8 @@ package com.kuaima.app.domain.boss.repository;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +14,9 @@ public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, L
 
     /** 查询某订单的所有报名记录 */
     List<BaseOrderItem> findByOrderId(Long orderId);
+
+    /** 后台订单列表分页：按报名状态过滤 + 分页（status 为空时返回全部） */
+    Page<BaseOrderItem> findByStatus(String status, Pageable pageable);
 
     /** 查询某用户报名过的订单记录 */
     List<BaseOrderItem> findByUserId(Long userId);

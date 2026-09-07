@@ -34,7 +34,7 @@
             </button>
           </div>
 
-          <el-table :data="filteredTemplates" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
+          <el-table :data="messageTemplates" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
             <el-table-column prop="id" label="模板ID" width="100" />
             <el-table-column prop="name" label="模板名称" min-width="180" />
             <el-table-column label="触发事件" width="140">
@@ -67,10 +67,23 @@
               </template>
             </el-table-column>
           </el-table>
+          <div class="pagination">
+            <div class="pagination-info">共 {{ templateTotal }} 条记录</div>
+            <el-pagination
+              v-model:current-page="templatePage"
+              v-model:page-size="templatePageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="templateTotal"
+              layout="sizes, prev, pager, next, jumper"
+              background
+              @size-change="(s) => { templatePageSize = s; templatePage = 1; loadTemplates() }"
+              @current-change="(p) => { templatePage = p; loadTemplates() }"
+            />
+          </div>
         </el-tab-pane>
 
         <el-tab-pane label="推送记录" name="record">
-          <el-table :data="pushRecords" stripe>
+          <el-table :data="pagedRecords" stripe>
             <el-table-column prop="id" label="记录ID" width="100" />
             <el-table-column prop="template" label="模板名称" min-width="180" />
             <el-table-column prop="receiver" label="接收对象" width="140" />
@@ -81,6 +94,19 @@
               </template>
             </el-table-column>
           </el-table>
+          <div class="pagination">
+            <div class="pagination-info">共 {{ pushRecords.length }} 条记录</div>
+            <el-pagination
+              v-model:current-page="recordPage"
+              v-model:page-size="recordPageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="pushRecords.length"
+              layout="sizes, prev, pager, next, jumper"
+              background
+              @size-change="(s) => { recordPageSize = s; recordPage = 1 }"
+              @current-change="(p) => recordPage = p"
+            />
+          </div>
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -140,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   listMessageTemplates,
@@ -151,6 +177,11 @@ import {
 } from '@/api/content'
 
 const activeTab = ref('template')
+const templatePage = ref(1)
+const templatePageSize = ref(10)
+const templateTotal = ref(0)
+const recordPage = ref(1)
+const recordPageSize = ref(10)
 
 const eventMap = {
   order_success: '订单完成',
@@ -180,12 +211,15 @@ const pushRecords = ref([
 const searchKeyword = ref('')
 const eventFilter = ref('')
 
-const filteredTemplates = computed(() => {
-  return messageTemplates.value.filter(t => {
-    if (searchKeyword.value && !t.name.includes(searchKeyword.value)) return false
-    if (eventFilter.value && t.event !== eventFilter.value) return false
-    return true
-  })
+const pagedRecords = computed(() => {
+  const start = (recordPage.value - 1) * recordPageSize.value
+  return pushRecords.value.slice(start, start + recordPageSize.value)
+})
+
+// 切换筛选条件时，自动回到第一页并重新加载
+watch([searchKeyword, eventFilter], () => {
+  templatePage.value = 1
+  loadTemplates()
 })
 
 // 弹窗逻辑
@@ -217,17 +251,26 @@ const formatDateTime = (val) => {
 
 const loadTemplates = async () => {
   try {
-    const params = {}
-    if (eventFilter.value) params.event = eventFilter.value
-    const res = await listMessageTemplates(params)
-    const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
-    messageTemplates.value = list.map(t => ({
-      ...t,
-      lastUsed: formatDateTime(t.lastUsed)
-    }))
+    const res = await listMessageTemplates({
+      event: eventFilter.value || undefined,
+      page: templatePage.value - 1,
+      size: templatePageSize.value,
+    })
+    const d = res.data
+    const list = Array.isArray(d) ? d : (Array.isArray(res) ? res : [])
+    // 关键字仍在前端过滤（后端未实现 LIKE 查询）
+    const kw = searchKeyword.value.trim()
+    messageTemplates.value = list
+      .filter(t => !kw || (t.name || '').includes(kw))
+      .map(t => ({
+        ...t,
+        lastUsed: formatDateTime(t.lastUsed)
+      }))
+    templateTotal.value = res.total ?? d?.total ?? list.length
   } catch (e) {
     console.warn('[Messages] 加载模板失败:', e)
     messageTemplates.value = []
+    templateTotal.value = 0
   }
 }
 
@@ -337,6 +380,13 @@ onMounted(loadTemplates)
   font-size: 12px;
   color: var(--text-muted);
   margin-top: 4px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
 }
 
 /* 表格操作按钮 — 链接风格 */

@@ -3,6 +3,9 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,20 +29,23 @@ public class AdminMessageTemplateController {
 
     public AdminMessageTemplateController(MessageTemplateRepository repo) { this.repo = repo; }
 
-    /** 列表：GET /admin/message-templates?status=&event= */
+    /** 列表（分页）：GET /admin/message-templates?status=&event=&page=&size= */
     @GetMapping
     public Result<List<MessageTemplate>> list(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String event) {
-        List<MessageTemplate> result;
+            @RequestParam(required = false) String event,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updateTime"));
+        Page<MessageTemplate> result;
         if (status != null && !status.isEmpty()) {
-            result = repo.findByStatusOrderByUpdateTimeDesc(status);
+            result = repo.findByStatus(status, pageable);
         } else if (event != null && !event.isEmpty()) {
-            result = repo.findByEventOrderByUpdateTimeDesc(event);
+            result = repo.findByEvent(event, pageable);
         } else {
-            result = repo.findAll();
+            result = repo.findAll(pageable);
         }
-        return Result.success(result);
+        return Result.success(result.getContent(), page, result.getTotalElements());
     }
 
     @GetMapping("/{id}")

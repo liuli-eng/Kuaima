@@ -108,7 +108,7 @@ const routes = [
         meta: { title: '规则管理', icon: 'fa-book' }
       },
       {
-        path: 'rules/edit/:id?',
+        path: 'rules/edit/:id?/:tab?',
         name: 'RulesEdit',
         component: () => import('@/views/content/RulesEdit.vue'),
         meta: { title: '编辑规则', icon: 'fa-edit', hidden: true }
