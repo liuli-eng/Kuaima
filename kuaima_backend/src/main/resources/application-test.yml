@@ -9,10 +9,25 @@ spring:
       ddl-auto: update
     show-sql: true
 
+
 jwt:
-  secret: suma-backend-jwt-test-secret-key-0123456789abcdef0123456789
-  expiration: 3600000
+  secret: 7sK9dP2qR5zX8bN4vG1tL6cW3jF0hY7mA9sD2fJ5kQ8pZ1xV4bN7gT0lC3rH6jM9wS2dF5
+  # access token 有效期（毫秒），3 天
+  expiration: 259200000
 
 wechat:
   appid: wx4c163632a2e19ea5
   secret: 14be11aeff46c668f888ac7bdd4a5388
+
+# SpringDoc OpenAPI / Swagger 文档配置
+springdoc:
+  api-docs:
+    enabled: false
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui/index.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    doc-expansion: none
+    display-request-duration: true

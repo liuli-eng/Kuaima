@@ -13,8 +13,8 @@
     
     <!-- 菜单 -->
     <nav class="sidebar-menu">
-      <template v-for="group in menuGroups" :key="group.id">
-        <div class="menu-group-title" v-show="!appStore.sidebarCollapsed">{{ group.name }}</div>
+      <template v-for="group in filteredMenuGroups" :key="group.id">
+        <div class="menu-group-title" v-show="!appStore.sidebarCollapsed && group.items.length">{{ group.name }}</div>
         <router-link
           v-for="item in group.items"
           :key="item.path"
@@ -41,13 +41,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
+import { useUserStore } from '@/stores/user'
+import { hasPerm } from '@/utils/permission'
 import { listJobs } from '@/api/job'
 import { listCertifications } from '@/api/content'
 
 const appStore = useAppStore()
+const userStore = useUserStore()
 const route = useRoute()
 
 // 红点数量（0 时不显示）
@@ -68,53 +71,64 @@ const menuGroups = [
     id: 'user',
     name: '用户管理',
     items: [
-      { path: '/admin/workers', name: '零工管理', icon: 'fa-user' },
-      { path: '/admin/bosses', name: '老板管理', icon: 'fa-building' }
+      { path: '/admin/workers', name: '零工管理', icon: 'fa-user', permKey: 'permUser.u1' },
+      { path: '/admin/bosses', name: '老板管理', icon: 'fa-building', permKey: 'permUser.u2' }
     ]
   },
   {
     id: 'job',
     name: '招工管理',
     items: [
-      { path: '/admin/jobs', name: '招工管理', icon: 'fa-briefcase' },
-      { path: '/admin/job-audit', name: '招工审核', icon: 'fa-check-circle', badgeKey: 'jobAudit' }
+      { path: '/admin/jobs', name: '招工管理', icon: 'fa-briefcase', permKey: 'permJob.j1' },
+      { path: '/admin/job-audit', name: '招工审核', icon: 'fa-check-circle', badgeKey: 'jobAudit', permKey: 'permJob.j2' }
     ]
   },
   {
     id: 'order',
     name: '订单结算',
     items: [
-      { path: '/admin/orders', name: '用工订单', icon: 'fa-clipboard-list' },
-      { path: '/admin/settlement', name: '结算管理', icon: 'fa-coins' }
+      { path: '/admin/orders', name: '用工订单', icon: 'fa-clipboard-list', permKey: 'permOrder.o1' },
+      { path: '/admin/settlement', name: '结算管理', icon: 'fa-coins', permKey: 'permOrder.o3' }
     ]
   },
   {
     id: 'content',
     name: '内容管理',
     items: [
-      { path: '/admin/certification', name: '认证审核', icon: 'fa-id-card', badgeKey: 'certAudit' },
-      { path: '/admin/notices', name: '公告管理', icon: 'fa-bullhorn' },
-      { path: '/admin/rules', name: '规则管理', icon: 'fa-book' },
-      // { path: '/admin/banners', name: 'Banner管理', icon: 'fa-image' }
+      { path: '/admin/certification', name: '认证审核', icon: 'fa-id-card', badgeKey: 'certAudit', permKey: 'permContent.c1' },
+      { path: '/admin/notices', name: '公告管理', icon: 'fa-bullhorn', permKey: 'permContent.c3' },
+      { path: '/admin/rules', name: '规则管理', icon: 'fa-book', permKey: 'permContent.c4' },
+      // { path: '/admin/banners', name: 'Banner管理', icon: 'fa-image', permKey: 'permContent.c2' }
     ]
   },
   {
     id: 'message',
     name: '消息客服',
     items: [
-      { path: '/admin/messages', name: '消息管理', icon: 'fa-envelope' },
-      { path: '/admin/service', name: '客服管理', icon: 'fa-headset' }
+      { path: '/admin/messages', name: '消息管理', icon: 'fa-envelope', permKey: 'permService.s1' },
+      { path: '/admin/service', name: '客服管理', icon: 'fa-headset', permKey: 'permService.s2' }
     ]
   },
   {
     id: 'system',
     name: '系统管理',
     items: [
-      { path: '/admin/settings', name: '系统设置', icon: 'fa-cog' },
-      { path: '/admin/logs', name: '操作日志', icon: 'fa-file-alt' }
+      { path: '/admin/settings', name: '系统设置', icon: 'fa-cog', permKey: 'permSystem.sys3' },
+      { path: '/admin/logs', name: '操作日志', icon: 'fa-file-alt', permKey: 'permSystem.sys4' }
     ]
   }
 ]
+
+// 根据当前管理员权限过滤菜单项；空分组自动隐藏
+const filteredMenuGroups = computed(() => {
+  const perms = userStore.userInfo?.permissions
+  return menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.permKey || hasPerm(perms, item.permKey))
+    }))
+    .filter((group) => group.items.length > 0)
+})
 
 const loadBadges = async () => {
   // 招工审核：待审核数量

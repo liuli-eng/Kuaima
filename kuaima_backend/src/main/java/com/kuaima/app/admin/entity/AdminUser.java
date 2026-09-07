@@ -61,6 +61,10 @@ public class AdminUser {
     @Column(nullable = false, length = 20)
     private String status = "启用";
 
+    /** 创建者管理员 ID（who created this admin account）；新建时由当前登录管理员填入 */
+    @Column
+    private Long createdBy;
+
     @Column
     private LocalDateTime lastLoginTime;
 

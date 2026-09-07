@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { hasPerm } from '@/utils/permission'
 
 const routes = [
   {
@@ -18,7 +20,7 @@ const routes = [
     component: () => import('@/layout/AdminLayout.vue'),
     redirect: '/admin/dashboard',
     children: [
-      // 数据统计
+      // 数据统计（所有角色可见）
       {
         path: 'dashboard',
         name: 'Dashboard',
@@ -30,133 +32,134 @@ const routes = [
         path: 'workers',
         name: 'Workers',
         component: () => import('@/views/user/Workers.vue'),
-        meta: { title: '零工管理', icon: 'fa-user' }
+        meta: { title: '零工管理', icon: 'fa-user', permKey: 'permUser.u1' }
       },
       {
         path: 'bosses',
         name: 'Bosses',
         component: () => import('@/views/user/Bosses.vue'),
-        meta: { title: '老板管理', icon: 'fa-building' }
+        meta: { title: '老板管理', icon: 'fa-building', permKey: 'permUser.u2' }
       },
       // 招工管理
       {
         path: 'jobs',
         name: 'Jobs',
         component: () => import('@/views/job/Jobs.vue'),
-        meta: { title: '招工管理', icon: 'fa-briefcase' }
+        meta: { title: '招工管理', icon: 'fa-briefcase', permKey: 'permJob.j1' }
       },
       {
         path: 'jobs/edit/:id?',
         name: 'JobEdit',
         component: () => import('@/views/job/JobEdit.vue'),
-        meta: { title: '编辑招工', icon: 'fa-edit', hidden: true }
+        meta: { title: '编辑招工', icon: 'fa-edit', hidden: true, permKey: 'permJob.j1' }
       },
       {
         path: 'jobs/applicants/:id',
         name: 'JobApplicants',
         component: () => import('@/views/job/JobApplicants.vue'),
-        meta: { title: '报名人员', icon: 'fa-users', hidden: true }
+        meta: { title: '报名人员', icon: 'fa-users', hidden: true, permKey: 'permJob.j3' }
       },
       {
         path: 'job-audit',
         name: 'JobAudit',
         component: () => import('@/views/job/JobAudit.vue'),
-        meta: { title: '招工审核', icon: 'fa-check-circle' }
+        meta: { title: '招工审核', icon: 'fa-check-circle', permKey: 'permJob.j2' }
       },
       // 订单结算
       {
         path: 'orders',
         name: 'Orders',
         component: () => import('@/views/order/Orders.vue'),
-        meta: { title: '用工订单', icon: 'fa-clipboard-list' }
+        meta: { title: '用工订单', icon: 'fa-clipboard-list', permKey: 'permOrder.o1' }
       },
       {
         path: 'settlement',
         name: 'Settlement',
         component: () => import('@/views/order/Settlement.vue'),
-        meta: { title: '结算管理', icon: 'fa-coins' }
+        meta: { title: '结算管理', icon: 'fa-coins', permKey: 'permOrder.o3' }
       },
       // 内容管理
       {
         path: 'certification',
         name: 'Certification',
         component: () => import('@/views/content/Certification.vue'),
-        meta: { title: '认证审核', icon: 'fa-id-card' }
+        meta: { title: '认证审核', icon: 'fa-id-card', permKey: 'permContent.c1' }
       },
       {
         path: 'certification/detail/:id',
         name: 'CertificationDetail',
         component: () => import('@/views/content/CertificationDetail.vue'),
-        meta: { title: '认证详情', icon: 'fa-eye', hidden: true }
+        meta: { title: '认证详情', icon: 'fa-eye', hidden: true, permKey: 'permContent.c1' }
       },
       // {
       //   path: 'banners',
       //   name: 'Banners',
       //   component: () => import('@/views/content/Banners.vue'),
-      //   meta: { title: 'Banner管理', icon: 'fa-image' }
+      //   meta: { title: 'Banner管理', icon: 'fa-image', permKey: 'permContent.c2' }
       // },
       {
         path: 'notices',
         name: 'Notices',
         component: () => import('@/views/content/Notices.vue'),
-        meta: { title: '公告管理', icon: 'fa-bullhorn' }
+        meta: { title: '公告管理', icon: 'fa-bullhorn', permKey: 'permContent.c3' }
       },
       {
         path: 'rules',
         name: 'Rules',
         component: () => import('@/views/content/Rules.vue'),
-        meta: { title: '规则管理', icon: 'fa-book' }
+        meta: { title: '规则管理', icon: 'fa-book', permKey: 'permContent.c4' }
       },
       {
         path: 'rules/edit/:id?/:tab?',
         name: 'RulesEdit',
         component: () => import('@/views/content/RulesEdit.vue'),
-        meta: { title: '编辑规则', icon: 'fa-edit', hidden: true }
+        meta: { title: '编辑规则', icon: 'fa-edit', hidden: true, permKey: 'permContent.c4' }
       },
       // 消息客服
       {
         path: 'messages',
         name: 'Messages',
         component: () => import('@/views/message/Messages.vue'),
-        meta: { title: '消息管理', icon: 'fa-envelope' }
+        meta: { title: '消息管理', icon: 'fa-envelope', permKey: 'permService.s1' }
       },
       {
         path: 'service',
         name: 'Service',
         component: () => import('@/views/message/Service.vue'),
-        meta: { title: '客服管理', icon: 'fa-headset' }
+        meta: { title: '客服管理', icon: 'fa-headset', permKey: 'permService.s2' }
       },
       {
         path: 'service/chat/:id',
         name: 'ServiceChat',
         component: () => import('@/views/message/ServiceChat.vue'),
-        meta: { title: '会话处理', icon: 'fa-comments', hidden: true }
+        meta: { title: '会话处理', icon: 'fa-comments', hidden: true, permKey: 'permService.s2' }
       },
       // 系统管理
       {
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/system/Settings.vue'),
-        meta: { title: '系统设置', icon: 'fa-cog' }
+        meta: { title: '系统设置', icon: 'fa-cog', permKey: 'permSystem.sys3' }
       },
       {
         path: 'template-edit',
         name: 'TemplateEdit',
         component: () => import('@/views/system/TemplateEdit.vue'),
-        meta: { title: '模板编辑', icon: 'fa-edit', hidden: true }
+        meta: { title: '模板编辑', icon: 'fa-edit', hidden: true, permKey: 'permSystem.sys3' }
       },
       {
         path: 'admin-user/form',
         name: 'AdminUserForm',
         component: () => import('@/views/system/AdminUserForm.vue'),
-        meta: { title: '新建账号', icon: 'fa-user-plus', hidden: true }
+        meta: { title: '新建账号', icon: 'fa-user-plus', hidden: true, permKey: 'permUser.u3' }
       },
       {
         path: 'logs',
         name: 'Logs',
         component: () => import('@/views/system/Logs.vue'),
-        meta: { title: '操作日志', icon: 'fa-file-alt' }
+        meta: { title: '操作日志', icon: 'fa-file-alt', permKey: 'permSystem.sys4' }
       },
+      // 个人资料/密码/账户：所有登录用户可见，无需额外权限
       {
         path: 'profile',
         name: 'Profile',
@@ -188,17 +191,31 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
+// 路由守卫：登录校验 + 权限校验
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token')
-  
+
   if (to.meta.public) {
-    next()
-  } else if (!token) {
-    next('/login')
-  } else {
-    next()
+    return next()
   }
+  if (!token) {
+    return next('/login')
+  }
+
+  // 权限校验：路由 meta.permKey 配置了所需权限
+  const permKey = to.meta?.permKey
+  if (permKey) {
+    const userStore = useUserStore()
+    const perms = userStore.userInfo?.permissions
+    if (!hasPerm(perms, permKey)) {
+      // 无权限：回到首页（dashboard），避免死循环
+      if (to.path === '/admin/dashboard') {
+        return next()
+      }
+      return next('/admin/dashboard')
+    }
+  }
+  next()
 })
 
 export default router

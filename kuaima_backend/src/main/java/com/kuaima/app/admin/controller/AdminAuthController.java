@@ -6,6 +6,7 @@ import java.util.Map;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +19,7 @@ import com.kuaima.app.common.Result;
 import com.kuaima.app.admin.dto.AdminLoginDto;
 import com.kuaima.app.admin.entity.AdminUser;
 import com.kuaima.app.admin.repository.AdminUserRepository;
+import com.kuaima.app.security.model.LoginUser;
 import com.kuaima.app.security.util.JwtUtil;
 
 import java.time.LocalDateTime;
@@ -42,7 +44,7 @@ public class AdminAuthController {
         this.jwtUtil = jwtUtil;
     }
 
-    @Operation(summary = "管理员登录", description = "账号密码登录，返回 accessToken（JWT role 前缀 ADMIN_）、adminId、username、name、role（SUPER_ADMIN/ADMIN/EDITOR/VIEWER）；登录成功自动更新 lastLoginTime")
+    @Operation(summary = "管理员登录", description = "账号密码登录，返回 accessToken（JWT role 前缀 ADMIN_）、adminId、username、name、role（SUPER_ADMIN/ADMIN/EDITOR/VIEWER）、permissions（权限树 JSON）；登录成功自动更新 lastLoginTime")
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody AdminLoginDto dto) {
         if (!StringUtils.hasText(dto.getUsername()) || !StringUtils.hasText(dto.getPassword())) {
@@ -67,12 +69,31 @@ public class AdminAuthController {
         data.put("username", admin.getUsername());
         data.put("name", admin.getName());
         data.put("role", admin.getRole());
+        data.put("permissions", admin.getPermissions());
         return Result.success(data);
     }
 
-    @Operation(summary = "获取当前管理员", description = "返回当前登录管理员信息（预留接口，当前返回空对象）")
+    @Operation(summary = "获取当前管理员", description = "返回当前登录管理员信息（含角色、权限树 permissions、创建者 createdBy 等），供前端路由守卫/菜单过滤/按钮鉴权使用")
     @GetMapping("/me")
     public Result<Map<String, Object>> me() {
-        return Result.success(new HashMap<>());
+        Object principal = SecurityContextHolder.getContext().getAuthentication() == null
+                ? null
+                : SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (!(principal instanceof LoginUser lu)) {
+            return Result.error(401, "未登录或登录已过期");
+        }
+        AdminUser admin = adminUserRepository.findById(lu.id()).orElse(null);
+        if (admin == null) {
+            return Result.error(404, "管理员账号不存在");
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("adminId", admin.getId());
+        data.put("username", admin.getUsername());
+        data.put("name", admin.getName());
+        data.put("role", admin.getRole());
+        data.put("permissions", admin.getPermissions());
+        data.put("createdBy", admin.getCreatedBy());
+        data.put("email", admin.getEmail());
+        return Result.success(data);
     }
 }

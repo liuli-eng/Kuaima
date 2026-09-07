@@ -8,7 +8,7 @@
         </button>
         <div>
           <h1 class="page-title">{{ isEdit ? '编辑管理员' : '新建账号' }}</h1>
-          <p class="page-desc">{{ isEdit ? '修改管理员信息和权限配置' : '创建新的管理员账号并分配权限' }}</p>
+          <p class="page-desc">{{ isEdit ? '修改信息和权限配置' : '创建新的账号并分配权限' }}</p>
         </div>
       </div>
     </div>
@@ -22,7 +22,7 @@
           </div>
           <div class="form-group">
             <div>
-              <label class="form-label">管理员姓名<span class="required">*</span></label>
+              <label class="form-label">账号姓名<span class="required">*</span></label>
               <input type="text" class="form-input" v-model.trim="form.name" maxlength="50" placeholder="请输入真实姓名">
             </div>
             <div>
@@ -59,11 +59,14 @@
           </div>
           <div style="margin-bottom:16px;">
             <label class="form-label">选择角色<span class="required">*</span></label>
-            <select class="form-input" v-model="roleValue" @change="onRoleChange(roleValue)" :disabled="isSuperAdminEdit">
-              <option v-for="r in roleOptions" :key="r.v" :value="r.v">{{ r.label }}</option>
+            <select class="form-input" v-model="roleValue" @change="onRoleChange(roleValue)" :disabled="roleSelectDisabled">
+              <option v-for="r in visibleRoleOptions" :key="r.v" :value="r.v">{{ r.label }}</option>
             </select>
             <div v-if="isSuperAdminEdit" class="super-admin-notice">
               <i class="fas fa-shield-alt"></i> 超级管理员角色和权限受系统保护，不可修改
+            </div>
+            <div v-else-if="isEdit && !isOwnCreated" class="super-admin-notice">
+              <i class="fas fa-lock"></i> 该账号由其他管理员创建，仅可编辑基本信息，角色/权限/状态不可修改
             </div>
           </div>
 
@@ -73,14 +76,14 @@
               <div class="perm-module" v-for="m in modules" :key="m.key" :class="{ open: m.open }">
                 <div class="perm-module-header">
                   <div class="perm-module-info">
-                    <input type="checkbox" :checked="moduleAllChecked(m)" @change="toggleAllModule(m, $event.target.checked)" @click.stop :disabled="isSuperAdminEdit">
+                    <input type="checkbox" :checked="moduleAllChecked(m)" @change="toggleAllModule(m, $event.target.checked)" @click.stop :disabled="permDisabled">
                     <label @click="toggleModule(m)"><i :class="m.icon"></i> {{ m.name }}</label>
                   </div>
                   <i class="fas fa-chevron-right perm-expand" @click="toggleModule(m)"></i>
                 </div>
                 <div class="perm-module-body" v-show="m.open">
                   <label class="perm-item" v-for="item in m.items" :key="item.key">
-                    <input type="checkbox" v-model="item.checked" :disabled="isSuperAdminEdit"> {{ item.label }}
+                    <input type="checkbox" v-model="item.checked" :disabled="permDisabled"> {{ item.label }}
                   </label>
                 </div>
               </div>
@@ -102,7 +105,7 @@
           <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
             <div class="status-row">
               <span class="status-row-label">账号状态</span>
-              <div class="toggle-switch" :class="{ active: form.status === '启用', disabled: isSuperAdminEdit }" @click="toggleStatus"></div>
+              <div class="toggle-switch" :class="{ active: form.status === '启用', disabled: isSuperAdminEdit || (isEdit && !isOwnCreated) }" @click="toggleStatus"></div>
             </div>
             <div class="status-row">
               <span class="status-row-label">允许登录</span>
@@ -163,8 +166,14 @@ const form = reactive({
   remark: '',
   status: '启用',
   lastLoginTime: '',
-  createTime: ''
+  createTime: '',
+  createdBy: null // 该账号的创建者管理员 ID
 })
+
+// 当前登录管理员 ID（来自 user store / localStorage）
+const currentAdminId = computed(() => Number(localStorage.getItem('admin_id') || 0))
+// 是否为当前管理员自己创建的账号（可改角色/权限/状态）
+const isOwnCreated = computed(() => isEdit.value && form.createdBy != null && Number(form.createdBy) === currentAdminId.value)
 
 // ====== 角色 ======
 // 原型下拉框 6 种角色
@@ -181,6 +190,12 @@ const ROLE_FROM_BACKEND = Object.fromEntries(Object.entries(BACKEND_ROLE).map(([
 const roleValue = ref('admin')
 // 超级管理员保护：编辑超级管理员时角色和权限不可修改
 const isSuperAdminEdit = computed(() => isEdit.value && roleValue.value === 'super')
+// 新建时下拉框不展示"超级管理员"选项（后端禁止新建超级管理员）
+const visibleRoleOptions = computed(() => isEdit.value ? roleOptions : roleOptions.filter(r => r.v !== 'super'))
+// 角色 select 是否禁用：编辑超级管理员 / 编辑非自建账号 时禁用
+const roleSelectDisabled = computed(() => isSuperAdminEdit.value || (isEdit.value && !isOwnCreated.value))
+// 权限树是否禁用：同上
+const permDisabled = computed(() => isSuperAdminEdit.value || (isEdit.value && !isOwnCreated.value))
 
 // ====== 权限树 ======
 const modules = reactive([
@@ -281,6 +296,10 @@ const toggleStatus = () => {
     ElMessage.warning('超级管理员账号不可禁用')
     return
   }
+  if (isEdit.value && !isOwnCreated.value) {
+    ElMessage.warning('仅可修改自己创建的账号的状态')
+    return
+  }
   form.status = form.status === '启用' ? '禁用' : '启用'
 }
 
@@ -297,6 +316,7 @@ const loadDetail = async () => {
     form.status = d.status || '启用'
     form.lastLoginTime = d.lastLoginTime || ''
     form.createTime = d.createTime || ''
+    form.createdBy = d.createdBy ?? null
     roleValue.value = ROLE_FROM_BACKEND[d.role] || 'viewer'
     // 回显权限树
     if (d.permissions) {
@@ -358,13 +378,13 @@ const handleSave = async () => {
       name: form.name,
       phone: form.phone,
       email: form.email || null,
-      remark: form.remark || null,
-      status: form.status
+      remark: form.remark || null
     }
-    // 超级管理员角色和权限受保护，不提交这两个字段
-    if (!isSuperAdminEdit.value) {
+    // 超级管理员 / 非自建账号：不提交 role/permissions/status（后端会拒绝，前端先过滤）
+    if (!isSuperAdminEdit.value && (!isEdit.value || isOwnCreated.value)) {
       payload.role = BACKEND_ROLE[roleValue.value] || 'ADMIN'
       payload.permissions = JSON.stringify(collectPermissions())
+      payload.status = form.status
     }
     if (isEdit.value) {
       if (form.password) payload.password = form.password
