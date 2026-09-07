@@ -141,7 +141,7 @@ const cards = [
   { id: 'orders', group: 'order', title: '订单管理', desc: '日结订单、状态追踪', icon: 'fas fa-clipboard-list', path: '/orders' },
   { id: 'settlement', group: 'order', title: '结算管理', desc: '结算记录、明细查看', icon: 'fas fa-coins', path: '/settlement' },
   { id: 'certification', group: 'content', title: '认证审核', desc: '实名认证、企业认证', icon: 'fas fa-id-card', path: '/certification' },
-  { id: 'banners', group: 'content', title: 'Banner管理', desc: '首页轮播、活动推广', icon: 'fas fa-image', path: '/banners' },
+  // { id: 'banners', group: 'content', title: 'Banner管理', desc: '首页轮播、活动推广', icon: 'fas fa-image', path: '/banners' },
   { id: 'notices', group: 'content', title: '公告管理', desc: '人工创建发布的平台公告', icon: 'fas fa-bullhorn', path: '/notices' },
   { id: 'rules', group: 'content', title: '规则管理', desc: '公示/信用/收费/交易/飞单', icon: 'fas fa-book', path: '/rules' },
   { id: 'messages', group: 'message', title: '消息管理', desc: '业务触发的系统消息模板', icon: 'fas fa-envelope', path: '/messages' },
@@ -171,7 +171,7 @@ const features = [
   },
   {
     title: '内容运营中心',
-    desc: 'Banner管理、公告发布、消息推送，活动运营得心应手。',
+    desc: '公告发布、消息推送，活动运营得心应手。',
     icon: 'fas fa-bullhorn',
     iconStyle: 'background:linear-gradient(135deg,#FFFBEB,#FEF3C7); color:#F59E0B;'
   },

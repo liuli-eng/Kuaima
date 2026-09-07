@@ -89,12 +89,12 @@ const routes = [
         component: () => import('@/views/content/CertificationDetail.vue'),
         meta: { title: '认证详情', icon: 'fa-eye', hidden: true }
       },
-      {
-        path: 'banners',
-        name: 'Banners',
-        component: () => import('@/views/content/Banners.vue'),
-        meta: { title: 'Banner管理', icon: 'fa-image' }
-      },
+      // {
+      //   path: 'banners',
+      //   name: 'Banners',
+      //   component: () => import('@/views/content/Banners.vue'),
+      //   meta: { title: 'Banner管理', icon: 'fa-image' }
+      // },
       {
         path: 'notices',
         name: 'Notices',

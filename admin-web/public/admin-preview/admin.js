@@ -12,7 +12,7 @@ const adminPages = [
     { id: 'points', name: '积分管理', icon: 'fa-star', group: 'finance' },
     { id: 'certification', name: '认证审核', icon: 'fa-id-card', group: 'content' },
     { id: 'certification-detail', name: '认证详情', icon: 'fa-eye', group: 'content', parent: 'certification' },
-    { id: 'banners', name: 'Banner管理', icon: 'fa-image', group: 'content' },
+    // { id: 'banners', name: 'Banner管理', icon: 'fa-image', group: 'content' },
     { id: 'notices', name: '公告管理', icon: 'fa-bullhorn', group: 'content' },
     { id: 'rules', name: '规则管理', icon: 'fa-book', group: 'content' },
     { id: 'rules-edit', name: '新增规则', icon: 'fa-edit', group: 'content', parent: 'rules' },

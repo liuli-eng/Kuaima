@@ -215,7 +215,7 @@ const modules = reactive([
     key: 'permContent', name: '内容管理', icon: 'fas fa-cog', open: false,
     items: [
       { key: 'c1', label: '认证审核', checked: false },
-      { key: 'c2', label: 'Banner管理', checked: false },
+      // { key: 'c2', label: 'Banner管理', checked: false },
       { key: 'c3', label: '公告管理', checked: false },
       { key: 'c4', label: '规则管理', checked: false }
     ]

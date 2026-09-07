@@ -95,7 +95,7 @@ const menuGroups = [
       { path: '/admin/certification', name: '认证审核', icon: 'fa-id-card', badgeKey: 'certAudit' },
       { path: '/admin/notices', name: '公告管理', icon: 'fa-bullhorn' },
       { path: '/admin/rules', name: '规则管理', icon: 'fa-book' },
-      { path: '/admin/banners', name: 'Banner管理', icon: 'fa-image' }
+      // { path: '/admin/banners', name: 'Banner管理', icon: 'fa-image' }
     ]
   },
   {
