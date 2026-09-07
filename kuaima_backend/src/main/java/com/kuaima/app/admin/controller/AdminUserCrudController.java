@@ -139,7 +139,7 @@ public class AdminUserCrudController {
         if (!isOwnCreated) {
             return Result.error(403, "只能重置自己创建的账号的密码");
         }
-        String pwd = body.getOrDefault("newPassword", "admin123");
+        String pwd = body.getOrDefault("newPassword", "123456");
         existing.setPassword(passwordEncoder.encode(pwd));
         existing.setUpdateTime(LocalDateTime.now());
         return Result.success(repo.save(existing));

@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kuaima.app.admin.entity.Notice;
 import com.kuaima.app.admin.repository.NoticeRepository;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.security.model.LoginUser;
+
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /** 公告管理 CRUD */
 @RestController
@@ -32,6 +35,17 @@ public class AdminNoticeController {
     private final NoticeRepository repo;
 
     public AdminNoticeController(NoticeRepository repo) { this.repo = repo; }
+
+    /** 获取当前登录管理员的显示名（优先姓名，其次账号） */
+    private String currentAdminName() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication() == null
+                ? null
+                : SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof LoginUser u) {
+            return u.username();
+        }
+        return null;
+    }
 
     /** 列表（分页，按状态过滤，按 id 倒序） */
     @Operation(summary = "公告列表分页", description = "按 status(已发布/草稿/已下架) 过滤，按 id 倒序分页返回 Notice 列表")
@@ -52,11 +66,14 @@ public class AdminNoticeController {
         return Result.success(repo.findById(id).orElseThrow());
     }
 
-    @Operation(summary = "新增公告", description = "创建 Notice，新建/更新为「已发布」时自动记录 publishTime（仅首次）")
+    @Operation(summary = "新增公告", description = "创建 Notice，自动记录发布人为当前登录管理员；新建/更新为「已发布」时自动记录 publishTime（仅首次）")
     @PostMapping
     public Result<Notice> create(@RequestBody Notice notice) {
         notice.setCreateTime(LocalDateTime.now());
         notice.setUpdateTime(LocalDateTime.now());
+        if (notice.getPublisher() == null || notice.getPublisher().isBlank()) {
+            notice.setPublisher(currentAdminName());
+        }
         if ("已发布".equals(notice.getStatus())) {
             notice.setPublishTime(LocalDateTime.now());
         }

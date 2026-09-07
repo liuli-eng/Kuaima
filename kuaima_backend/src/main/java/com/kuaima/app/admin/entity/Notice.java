@@ -37,6 +37,10 @@ public class Notice {
     @Column(length = 20)
     private String status = "已发布"; // 已发布 / 草稿 / 已下架
 
+    /** 发布人（创建该公告的管理员姓名/账号） */
+    @Column(length = 50)
+    private String publisher;
+
     @Column
     private LocalDateTime publishTime;
 

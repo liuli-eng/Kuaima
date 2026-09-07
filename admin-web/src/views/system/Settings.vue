@@ -284,6 +284,7 @@
                 <tr>
                   <th>ID</th>
                   <th>姓名</th>
+                  <th>手机号</th>
                   <th>角色</th>
                   <th>权限组</th>
                   <th>最近登录</th>
@@ -302,22 +303,24 @@
                       <span>{{ u.name || '-' }}</span>
                     </div>
                   </td>
+                  <td>{{ u.phone || '-' }}</td>
                   <td>
                     <span :class="['role-tag', roleClass(u.role)]">{{ roleLabel(u.role) }}</span>
                   </td>
                   <td>{{ u.dept || u.permissionGroup || '-' }}</td>
                   <td>{{ formatTime(u.lastLoginTime || u.lastLogin) }}</td>
                   <td>
-                    <span :class="['status-badge', isOnline(u) ? 'success' : 'default']">
-                      {{ isOnline(u) ? '在线' : '离线' }}
+                    <span :class="['status-badge', u.status === '禁用' ? 'default' : 'success']">
+                      {{ u.status === '禁用' ? '禁用' : '启用' }}
                     </span>
                   </td>
                   <td>
                     <a class="card-action" @click="goEditAdmin(u)">编辑</a>
+                    <a class="card-action" style="margin-left:8px; color:#F59E0B;" @click="handleResetPassword(u)">重置密码</a>
                   </td>
                 </tr>
                 <tr v-if="adminUsers.length === 0">
-                  <td colspan="7" class="empty-cell">暂无管理员数据</td>
+                  <td colspan="8" class="empty-cell">暂无管理员数据</td>
                 </tr>
               </tbody>
             </table>
@@ -419,7 +422,8 @@
           <div class="settings-section-title">
             <i class="fas fa-sms"></i> 短信通知模板
             <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="onAddTemplate('短信')">
-              <i class="fas fa-plus"></i> 添加模板
+              <!-- <i class="fas fa-plus"></i> -->
+               添加模板
             </button>
           </div>
 
@@ -447,7 +451,8 @@
           <div class="settings-section-title" style="margin-top:28px;">
             <i class="fas fa-envelope-open"></i> 站内信模板
             <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="onAddTemplate('站内信')">
-              <i class="fas fa-plus"></i> 添加模板
+              <!-- <i class="fas fa-plus"></i> -->
+               添加模板
             </button>
           </div>
 
@@ -778,8 +783,8 @@
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, testSendTemplate, uploadFile } from '@/api/system'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, testSendTemplate, uploadFile, resetAdminPassword } from '@/api/system'
 import { listMessageTemplates } from '@/api/content'
 import request from '@/api/request'
 
@@ -1050,19 +1055,6 @@ const avatarBg = (u) => {
   return map[u.role] || 'linear-gradient(135deg,#F59E0B,#D97706)'
 }
 
-const isOnline = (u) => {
-  // 后端没有在线状态时，依据 status / enabled 字段或最近登录推断
-  if (u.status === '启用' || u.enabled === true) {
-    // 近30分钟内登录视为在线
-    const last = u.lastLoginTime || u.lastLogin
-    if (!last) return true
-    const ts = new Date(String(last).replace(/-/g, '/')).getTime()
-    if (isNaN(ts)) return true
-    return Date.now() - ts < 30 * 60 * 1000
-  }
-  return false
-}
-
 // ====== Load ======
 const applyPlatformSettings = (list) => {
   const map = {}
@@ -1198,17 +1190,36 @@ const goEditAdmin = (row) => {
   router.push(`/admin/admin-user/form?mode=edit&id=${row.id}`)
 }
 
+/** 重置密码：默认重置为 123456（仅限自己创建的账号） */
+const handleResetPassword = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要将账号「${row.name || row.username}」的密码重置为 123456 吗？`,
+      '重置密码',
+      { type: 'warning', confirmButtonText: '重置', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await resetAdminPassword(row.id, '123456')
+    ElMessage.success('密码已重置为 123456')
+  } catch (e) {
+    console.warn('[Settings] 重置密码失败:', e)
+  }
+}
+
 const onAddTemplate = (type) => {
   const tplType = type === 'sms' || type === '短信' ? 'sms' : 'message'
-  router.push(`/system/template-edit?type=${tplType}`)
+  router.push(`/admin/template-edit?type=${tplType}`)
 }
 
 const onEditTemplate = (type, id) => {
   const tplType = type === 'sms' || type === '短信' ? 'sms' : 'message'
   if (id) {
-    router.push(`/system/template-edit?type=${tplType}&id=${id}`)
+    router.push(`/admin/template-edit?type=${tplType}&id=${id}`)
   } else {
-    router.push(`/system/template-edit?type=${tplType}`)
+    router.push(`/admin/template-edit?type=${tplType}`)
   }
 }
 

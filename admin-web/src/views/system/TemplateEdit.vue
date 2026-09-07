@@ -346,7 +346,7 @@ const openPreview = () => {
 }
 
 const goBack = () => {
-  router.push('/system/settings?tab=notice')
+  router.push('/admin/settings?tab=notice')
 }
 
 const saveTemplate = async () => {
