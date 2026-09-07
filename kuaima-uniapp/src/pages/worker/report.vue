@@ -36,9 +36,16 @@ async function submit() {
   submitting.value = true;
   try {
     await request({
-      url: "/worker/reports",
+      url: "/admin/reports",
       method: "POST",
-      data: { type: type.value, target: target.value, detail: detail.value },
+      data: {
+        reporterId: Number(uni.getStorageSync("userId") || 2001),
+        targetId: Number(target.value) || 0,
+        type: type.value,
+        reason: target.value
+          ? `举报对象：${target.value}\n${detail.value}`
+          : detail.value,
+      },
     });
     uni.showToast({ title: "举报已提交", icon: "success" });
     setTimeout(() => uni.navigateBack(), 500);

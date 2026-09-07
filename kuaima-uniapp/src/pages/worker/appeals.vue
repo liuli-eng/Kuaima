@@ -23,37 +23,12 @@
   </view>
 </template>
 <script setup>
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
-import { request } from "@/api/http";
-
-const records = ref([
-  {
-    id: 1,
-    reason: "订单误取消申诉",
-    orderNo: "KM20260830001",
-    time: "08月31日",
-    status: "approved",
-    statusText: "申诉通过",
-  },
-  {
-    id: 2,
-    reason: "迟到扣分申诉",
-    orderNo: "KM20260828006",
-    time: "08月29日",
-    status: "pending",
-    statusText: "审核中",
-  },
-]);
-onMounted(async () => {
-  try {
-    const result = await request({ url: "/worker/appeals" });
-    if (result) records.value = result.records || result;
-  } catch (_) {}
-});
+const records = ref([]);
 function create() {
-  uni.navigateTo({ url: "/pages/worker/appeal-submit" });
+  uni.showToast({ title: "后端暂未提供申诉接口", icon: "none" });
 }
 </script>
 <style scoped>

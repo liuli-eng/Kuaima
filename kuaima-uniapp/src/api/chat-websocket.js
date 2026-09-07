@@ -11,6 +11,7 @@ class UniappWsClient {
     this.maxReconnect = 5
     this.manualClose = false
     this.baseUrl = ''
+    this.connected = false
   }
 
   /**
@@ -33,6 +34,7 @@ class UniappWsClient {
 
     this.socketTask.onOpen(() => {
       console.log('[WS] 连接成功')
+      this.connected = true
       this.reconnectAttempts = 0
       this._emit('open', {})
     })
@@ -48,6 +50,7 @@ class UniappWsClient {
 
     this.socketTask.onClose(() => {
       console.log('[WS] 连接关闭')
+      this.connected = false
       this._emit('close', {})
       if (!this.manualClose && this.reconnectAttempts < this.maxReconnect) {
         this.reconnectAttempts++
@@ -57,6 +60,7 @@ class UniappWsClient {
     })
 
     this.socketTask.onError((err) => {
+      this.connected = false
       console.error('[WS] 连接错误:', err)
       this._emit('error', err)
     })
@@ -64,7 +68,7 @@ class UniappWsClient {
 
   /** 发送消息 */
   send(data) {
-    if (this.socketTask) {
+    if (this.socketTask && this.connected) {
       this.socketTask.send({
         data: JSON.stringify(data),
         fail: (err) => console.error('[WS] 发送失败:', err)
@@ -91,6 +95,7 @@ class UniappWsClient {
 
   close() {
     this.manualClose = true
+    this.connected = false
     if (this.socketTask) {
       this.socketTask.close()
       this.socketTask = null
