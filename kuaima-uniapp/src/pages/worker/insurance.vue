@@ -32,7 +32,6 @@
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
-import { request } from "@/api/http";
 const types = ["意外受伤", "财产损失", "其他"];
 const orderNo = ref("");
 const type = ref("");
@@ -41,20 +40,7 @@ const submitting = ref(false);
 async function submit() {
   if (!orderNo.value || !type.value || !detail.value.trim())
     return uni.showToast({ title: "请完善报案信息", icon: "none" });
-  submitting.value = true;
-  try {
-    await request({
-      url: "/worker/insurance/reports",
-      method: "POST",
-      data: { orderNo: orderNo.value, type: type.value, detail: detail.value },
-    });
-    uni.showToast({ title: "报案已提交", icon: "success" });
-    setTimeout(() => uni.navigateBack(), 500);
-  } catch (e) {
-    uni.showToast({ title: e.message || "提交失败", icon: "none" });
-  } finally {
-    submitting.value = false;
-  }
+  uni.showToast({ title: "后端暂未提供保险报案接口", icon: "none" });
 }
 </script>
 <style scoped>

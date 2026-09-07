@@ -1,10 +1,9 @@
-let BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://8.148.144.146/api";
+let BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 
-// 微信开发者工具不支持相对代理地址，统一使用公网 API 地址。
+// H5 开发环境通过 Vite 代理访问 /api；微信开发者工具不支持该相对代理地址。
 // #ifdef MP-WEIXIN
-// 可通过 VITE_MP_API_BASE_URL 覆盖为其他测试环境。
+// 真机预览时请通过 VITE_MP_API_BASE_URL 指向电脑局域网 IP 或 HTTPS 测试域名。
 BASE_URL = import.meta.env.VITE_MP_API_BASE_URL || "http://8.148.144.146/api";
 // #endif
 
@@ -42,7 +41,6 @@ function mockResponse(url, method = "GET", data) {
   if (url.includes("withdraw-records")) return null;
   if (url.includes("/worker/orders")) return null;
   if (url.includes("/worker/settlements")) return null;
-  if (url.includes("/worker/appeals")) return null;
   if (url.includes("/worker/insurance")) return null;
   if (url.includes("/worker/notifications")) return null;
   return null;

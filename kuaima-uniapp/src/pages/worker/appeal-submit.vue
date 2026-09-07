@@ -62,7 +62,6 @@
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
-import { request } from "@/api/http";
 const reasons = ["订单误取消", "迟到扣分", "差评申诉", "其他"];
 const reason = ref("");
 const detail = ref("");
@@ -72,25 +71,7 @@ const submitting = ref(false);
 async function submit() {
   if (!reason.value || !detail.value.trim())
     return uni.showToast({ title: "请完善申诉信息", icon: "none" });
-  submitting.value = true;
-  try {
-    await request({
-      url: "/worker/appeals",
-      method: "POST",
-      data: {
-        reason: reason.value,
-        detail: detail.value,
-        phone: phone.value,
-        images: images.value,
-      },
-    });
-    uni.showToast({ title: "申诉已提交", icon: "success" });
-    setTimeout(() => uni.navigateBack(), 500);
-  } catch (e) {
-    uni.showToast({ title: e.message || "提交失败", icon: "none" });
-  } finally {
-    submitting.value = false;
-  }
+  uni.showToast({ title: "后端暂未提供申诉接口", icon: "none" });
 }
 function chooseImage() {
   uni.chooseImage({

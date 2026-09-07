@@ -153,13 +153,14 @@ const remainingCount = computed(() =>
 );
 onShow(async () => {
   isRealname.value =
-    uni.getStorageSync("workerCertStatus") === "已通过" ||
-    uni.getStorageSync("workerRealname") === true;
+    ["已通过", "通过", "已认证"].includes(
+      uni.getStorageSync("workerCertStatus"),
+    ) || uni.getStorageSync("workerRealname") === true;
   try {
     const result = await getCertificationStatus();
-    const status = result?.status || result?.certStatus || "未认证";
+    const status = result?.certStatus || result?.status || "未认证";
     uni.setStorageSync("workerCertStatus", status);
-    isRealname.value = status === "已通过";
+    isRealname.value = ["已通过", "通过", "已认证"].includes(status);
     if (isRealname.value) uni.setStorageSync("workerRealname", true);
   } catch (_) {}
 });

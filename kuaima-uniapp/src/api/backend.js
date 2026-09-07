@@ -13,12 +13,40 @@ function query(params) {
     .join("&");
 }
 
-export function getCertificationStatus() {
-  return request({ url: "/worker/certification/status" });
+export async function getCertificationStatus(userId) {
+  const id = userId || uni.getStorageSync("userId") || "2001";
+  const profile = await request({ url: `/user/${encodeURIComponent(id)}` });
+  let certStatus = profile?.certStatus || "未认证";
+
+  // 当前后端审核接口只更新认证记录，可能未同步 User.certStatus；
+  // 因此用户资料未显示通过时，再以最新的个人实名认证记录为准。
+  if (!["已通过", "通过", "已认证"].includes(certStatus)) {
+    try {
+      const records = await request({
+        url: `/user/${encodeURIComponent(id)}/certifications`,
+      });
+      const rows = Array.isArray(records)
+        ? records
+        : records?.records || records?.content || [];
+      const realname = rows.find((item) =>
+        ["REALNAME", "零工实名", "个人实名", "实名认证"].includes(
+          item?.type || item?.certType,
+        ),
+      );
+      if (realname?.status) certStatus = realname.status;
+    } catch (_) {}
+  }
+
+  return { ...(profile || {}), certStatus };
 }
 
 export function submitCertification(data) {
-  return request({ url: "/worker/certification", method: "POST", data });
+  const userId = uni.getStorageSync("userId") || "2001";
+  return request({
+    url: `/user/${encodeURIComponent(userId)}/realname`,
+    method: "POST",
+    data,
+  });
 }
 
 export function listOrders(params = {}) {

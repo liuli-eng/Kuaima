@@ -25,7 +25,6 @@
 <script setup>
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { request } from "@/api/http";
 const accounts = ref([
   { id: 1, typeName: "微信零钱", account: "138****5678", default: true },
 ]);
@@ -37,27 +36,7 @@ const saving = ref(false);
 async function add() {
   if (!account.value.trim() || !name.value.trim())
     return uni.showToast({ title: "请完善账号信息", icon: "none" });
-  saving.value = true;
-  try {
-    await request({
-      url: "/worker/wallet/accounts",
-      method: "POST",
-      data: { type: type.value, account: account.value, name: name.value },
-    });
-    accounts.value.push({
-      id: Date.now(),
-      typeName: type.value,
-      account: account.value,
-      default: false,
-    });
-    account.value = "";
-    name.value = "";
-    uni.showToast({ title: "添加成功", icon: "success" });
-  } catch (error) {
-    uni.showToast({ title: error.message || "添加失败", icon: "none" });
-  } finally {
-    saving.value = false;
-  }
+  uni.showToast({ title: "后端暂未提供提现账号管理接口", icon: "none" });
 }
 </script>
 <style scoped>
