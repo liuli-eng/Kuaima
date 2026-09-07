@@ -1,3 +1,4 @@
+
 {
   "name": "快马日结",
   "appid": "__UNI__KUAIMA",
@@ -6,5 +7,6 @@
   "versionCode": "100",
   "transformPx": false,
   "h5": { "title": "快马日结" },
-  "mp-weixin": { "appid": "wx4c163632a2e19ea5", "setting": { "urlCheck": false }, "usingComponents": true }
+  "mp-weixin": { "appid": "wx4c163632a2e19ea5", 
+   "setting": { "urlCheck": false }, "usingComponents": true }
 }

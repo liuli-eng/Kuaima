@@ -13,6 +13,14 @@ function query(params) {
     .join("&");
 }
 
+function normalizeId(value, fieldName) {
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error(`${fieldName} 不合法`);
+  }
+  return id;
+}
+
 export async function getCertificationStatus(userId) {
   const id = userId || uni.getStorageSync("userId") || "2001";
   const profile = await request({ url: `/user/${encodeURIComponent(id)}` });
@@ -335,8 +343,15 @@ export function listFavoriteJobs(userId) {
   return request({ url: `/jobs/favorites?${query({ userId })}` });
 }
 
-export function favoriteJob(data) {
-  return request({ url: "/jobs/favorites", method: "POST", data });
+export function favoriteJob(data = {}) {
+  return request({
+    url: "/jobs/favorites",
+    method: "POST",
+    data: {
+      userId: normalizeId(data.userId, "userId"),
+      orderId: normalizeId(data.orderId, "orderId"),
+    },
+  });
 }
 
 export function unfavoriteJob(id) {
@@ -355,8 +370,15 @@ export function listBrowseHistory(userId, params = {}) {
   });
 }
 
-export function recordJobBrowse(data) {
-  return request({ url: "/jobs/history", method: "POST", data });
+export function recordJobBrowse(data = {}) {
+  return request({
+    url: "/jobs/history",
+    method: "POST",
+    data: {
+      userId: normalizeId(data.userId, "userId"),
+      orderId: normalizeId(data.orderId, "orderId"),
+    },
+  });
 }
 
 export function clearJobBrowseHistory(userId) {
