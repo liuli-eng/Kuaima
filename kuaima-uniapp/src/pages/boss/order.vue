@@ -1,6 +1,6 @@
 <template>
   <view class="container">
-    <scroll-view scroll-y class="scroll-area">
+    <scroll-view scroll-y class="scroll-area" @scrolltolower="loadMoreOrders">
       <!-- 头部 -->
       <view
         class="header-bar"
@@ -23,9 +23,17 @@
       </view>
 
       <!-- 筛选标签 -->
-      <view class="filter-tabs">
-        <text class="filter-tab active">全部</text>
-      </view>
+      <scroll-view class="filter-tabs-scroll" scroll-x :show-scrollbar="false">
+        <view class="filter-tabs">
+          <text
+          v-for="tab in statusTabs"
+          :key="tab.value || 'all'"
+          class="filter-tab"
+          :class="{ active: statusFilter === tab.value }"
+          @click="switchStatusFilter(tab.value)"
+          >{{ tab.label }}</text>
+        </view>
+      </scroll-view>
 
       <!-- 实名认证Banner -->
       <view
@@ -171,6 +179,8 @@
         <text class="empty-icon">▣</text>
         <text>暂无招工订单</text>
       </view>
+      <view v-else-if="loadingMore" class="list-state">正在加载更多...</view>
+      <view v-else-if="!hasMore" class="list-state">没有更多招工订单了</view>
 
       <view style="height: 20px"></view>
     </scroll-view>
@@ -259,7 +269,6 @@
 import {
   changeOrderStatus,
   getCurrentUser,
-  listOrderItems,
   listOrders as fetchOrders,
 } from "@/api/backend";
 
@@ -283,69 +292,6 @@ function getSafeArea() {
     return { statusBarHeight: 0, menuSafeRight: 16 };
   }
 }
-
-const demoJobs = [
-  {
-    id: 1,
-    title: "电商分拣打包",
-    workTime: "08:00 ~ 18:00",
-    location: "松江区车墩镇",
-    wage: "180元/天",
-    recruitCount: 5,
-    currentApply: 13,
-    status: "recruiting",
-  },
-  {
-    id: 2,
-    title: "餐饮服务员",
-    workTime: "10:00 ~ 20:00",
-    location: "松江区中山街道",
-    wage: "150元/天",
-    recruitCount: 2,
-    currentApply: 5,
-    status: "ended",
-  },
-  {
-    id: 3,
-    title: "快递搬运装卸工",
-    workTime: "07:00 ~ 17:00",
-    location: "松江区九亭镇",
-    wage: "200元/天",
-    recruitCount: 4,
-    currentApply: 8,
-    status: "settling",
-  },
-  {
-    id: 4,
-    title: "冷库分拣员",
-    workTime: "06:00 ~ 16:00",
-    location: "松江区泗泾镇",
-    wage: "220元/天",
-    recruitCount: 3,
-    currentApply: 6,
-    status: "completed",
-  },
-  {
-    id: 5,
-    title: "装配工",
-    workTime: "08:00 ~ 18:00",
-    location: "松江区新桥镇",
-    wage: "250元/天",
-    recruitCount: 5,
-    currentApply: 11,
-    status: "cancelled",
-  },
-  {
-    id: 6,
-    title: "超市理货员",
-    workTime: "09:00 ~ 19:00",
-    location: "松江区洞泾镇",
-    wage: "160元/天",
-    recruitCount: 2,
-    currentApply: 4,
-    status: "recruiting",
-  },
-];
 
 const statusByBackend = {
   待审核: "pending",
@@ -380,7 +326,7 @@ function normalizeOrder(order, currentApply = 0) {
     location: order.address || "地点待定",
     wage,
     recruitCount: Number(order.orderNum || 0),
-    currentApply,
+    currentApply: Number(order.currentApply ?? currentApply ?? 0),
     status: statusByBackend[order.orderStatus] || "pending",
     statusText: order.orderStatus || "待审核",
   };
@@ -392,6 +338,16 @@ export default {
     return {
       ...safeArea,
       jobList: [],
+      statusTabs: [
+        { label: "全部", value: null },
+        { label: "待审核", value: "待审核" },
+        { label: "审核拒绝", value: "审核拒绝" },
+        { label: "招工中", value: "招工中" },
+        { label: "招工结束", value: "招工结束" },
+        { label: "待结算", value: "待结算" },
+        { label: "已完成", value: "已完成" },
+        { label: "取消招工", value: "取消招工" },
+      ],
       statusMap: {
         recruiting: { text: "招工中", class: "status-recruiting" },
         pending: { text: "待审核", class: "status-ended" },
@@ -401,7 +357,7 @@ export default {
         completed: { text: "已完成", class: "status-completed" },
         cancelled: { text: "取消招工", class: "status-cancelled" },
       },
-      currentFilter: "all",
+      statusFilter: null,
       showCancelModal: false,
       showConfirmModal: false,
       cancelTargetId: null,
@@ -409,6 +365,10 @@ export default {
       confirmTargetId: null,
       confirmTargetTitle: "",
       loading: false,
+      loadingMore: false,
+      page: 0,
+      pageSize: 20,
+      hasMore: true,
       operating: false,
       isCertified: false,
       orderFilter: null,
@@ -428,8 +388,6 @@ export default {
   computed: {
     filteredJobs() {
       return this.jobList.filter((job) => {
-        if (this.currentFilter !== "all" && job.status !== this.currentFilter)
-          return false;
         return this.matchesOrderFilter(job, this.orderFilter);
       });
     },
@@ -441,6 +399,26 @@ export default {
     },
     applyOrderFilter(filter) {
       this.orderFilter = filter && typeof filter === "object" ? filter : null;
+    },
+    getOrderFilterParams() {
+      const filter = this.orderFilter || {};
+      const params = {};
+      if (filter.date && filter.date !== "全部") params.filterDate = filter.date;
+      if (filter.jobType && filter.jobType !== "全部") {
+        params.jobType = filter.jobType;
+      }
+      if (filter.salary && filter.salary !== "不限") params.salary = filter.salary;
+      if (filter.location && filter.location !== "不限") {
+        params.location = filter.location;
+      }
+      if (filter.experience && filter.experience !== "不限") {
+        params.experience = filter.experience;
+      }
+      if (filter.gender && filter.gender !== "不限") params.gender = filter.gender;
+      if (Array.isArray(filter.tags) && filter.tags.length) {
+        params.tags = filter.tags.join(",");
+      }
+      return params;
     },
     matchesOrderFilter(job, filter) {
       if (!filter) return true;
@@ -562,34 +540,47 @@ export default {
         .join("&");
       uni.navigateTo({ url: query ? `${url}?${query}` : url });
     },
-    async loadOrders() {
-      if (this.loading) return;
-      this.loading = true;
+    async loadOrders(reset = true) {
+      if (this.loading || this.loadingMore) return;
+      if (reset) {
+        this.loading = true;
+        this.page = 0;
+        this.hasMore = true;
+      } else {
+        if (!this.hasMore) return;
+        this.loadingMore = true;
+      }
       try {
-        const result = await fetchOrders({ page: 0, size: 100 });
+        const result = await fetchOrders({
+          page: this.page,
+          size: this.pageSize,
+          status: this.statusFilter || undefined,
+          ...this.getOrderFilterParams(),
+        });
         const orders = Array.isArray(result) ? result : result?.records || [];
-        this.jobList = await Promise.all(
-          orders.map(async (order) => {
-            try {
-              const items = await listOrderItems(order.id);
-              return normalizeOrder(
-                order,
-                Array.isArray(items) ? items.length : 0,
-              );
-            } catch (_) {
-              return normalizeOrder(order);
-            }
-          }),
-        );
+        const normalized = orders.map((order) => normalizeOrder(order));
+        this.jobList = reset ? normalized : [...this.jobList, ...normalized];
+        this.hasMore = orders.length === this.pageSize;
+        if (this.hasMore) this.page += 1;
       } catch (error) {
-        this.jobList = [];
+        if (reset) this.jobList = [];
         uni.showToast({
           title: error.message || "招工列表加载失败",
           icon: "none",
         });
       } finally {
         this.loading = false;
+        this.loadingMore = false;
       }
+    },
+    loadMoreOrders() {
+      this.loadOrders(false);
+    },
+    async switchStatusFilter(status) {
+      if (this.statusFilter === status || this.loading || this.loadingMore)
+        return;
+      this.statusFilter = status;
+      await this.loadOrders(true);
     },
     switchTab(tab) {
       const tabPages = {
@@ -739,13 +730,23 @@ export default {
   white-space: nowrap;
 }
 
+.filter-tabs-scroll {
+  width: 100%;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
 .filter-tabs {
-  display: flex;
-  gap: 16px;
+  display: inline-flex;
+  min-width: 100%;
+  gap: 18px;
   padding: 0 16px;
+  box-sizing: border-box;
 }
 
 .filter-tab {
+  display: inline-block;
+  flex-shrink: 0;
   padding: 8px 0;
   font-size: 14px;
   color: #666;

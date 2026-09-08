@@ -33,7 +33,7 @@
       <view class="form-section">
         <view class="form-item" @click="editJob">
           <text class="form-label">工种</text>
-          <text class="form-value">{{ jobValue }}</text>
+          <text class="form-value" :class="{ placeholder: !jobValue }">{{ jobValue || "请选择" }}</text>
           <text class="› form-arrow"></text>
         </view>
         <view class="form-item" @click="navigateTo('task-content')">
@@ -149,15 +149,19 @@ export default {
   data() {
     return {
       statusBarHeight: 0,
-      jobValue: "普工、焊锡工",
+      jobValue: "",
       workContent: "",
       taskDetail: "",
       genderAgeValue: "性别不限、18岁~不限",
       workLocationValue: "",
       workTimeValue: "",
-      jobName: "普工、焊锡工",
+      jobName: "",
+      primaryJobName: "",
       publishType: "",
       orderId: "",
+      industryId: "",
+      enterpriseTypeIds: [],
+      jobIds: [],
       dates: buildDateOptions(),
     };
   },
@@ -173,6 +177,7 @@ export default {
     uni.$on("genderAgeSelected", this.applyGenderAge);
     uni.$on("workLocationSelected", this.applyWorkLocation);
     uni.$on("workTimeSelected", this.applyWorkTime);
+    uni.$on("jobsSelected", this.applyJobsSelected);
     const saved = uni.getStorageSync("taskContent");
     if (saved) this.applyTaskContent(saved);
     const savedGenderAge = uni.getStorageSync("genderAgeSelection");
@@ -186,7 +191,12 @@ export default {
     if (options?.job) {
       this.jobName = decodeURIComponent(options.job);
       this.jobValue = this.jobName;
+      this.primaryJobName = this.jobName.split("、").filter(Boolean)[0] || "";
     }
+    this.industryId = options?.industryId || "";
+    this.enterpriseTypeIds = parseIdList(options?.enterpriseTypeIds);
+    this.jobIds = parseIdList(options?.jobIds || options?.jobId);
+    if (this.jobName || this.jobIds.length) this.saveJobCategorySelection();
     this.publishType = options?.type || "";
     this.orderId = options?.id || "";
     if (this.orderId) this.loadOrder(this.orderId);
@@ -196,6 +206,7 @@ export default {
     uni.$off("genderAgeSelected", this.applyGenderAge);
     uni.$off("workLocationSelected", this.applyWorkLocation);
     uni.$off("workTimeSelected", this.applyWorkTime);
+    uni.$off("jobsSelected", this.applyJobsSelected);
   },
   onShow() {
     // 编辑已有订单时，岗位详情接口是唯一数据源，避免旧草稿覆盖接口回显。
@@ -219,6 +230,15 @@ export default {
         if (!detail || typeof detail !== "object") return;
         this.jobName = detail.orderTitle || detail.postion || this.jobName;
         this.jobValue = this.jobName;
+        this.primaryJobName = detail.postion || this.jobName.split("、")[0] || "";
+        this.industryId = detail.industryId || this.industryId;
+        this.enterpriseTypeIds = parseIdList(
+          detail.enterpriseTypeIds || this.enterpriseTypeIds,
+        );
+        this.jobIds = parseIdList(
+          detail.jobIds || detail.jobCategoryIds || detail.jobCategoryId || this.jobIds,
+        );
+        this.saveJobCategorySelection();
         this.workContent = detail.orderContent || "";
         this.taskDetail = detail.orderContent || "";
         this.workLocationValue = detail.address || "";
@@ -286,6 +306,29 @@ export default {
       this.workContent = data.title || data.desc || this.workContent;
       this.taskDetail = data.desc || this.taskDetail;
     },
+    applyJobsSelected(data = {}) {
+      const names = Array.isArray(data.jobs) ? data.jobs.filter(Boolean) : [];
+      if (names.length) {
+        this.jobName = names.join("、");
+        this.jobValue = this.jobName;
+        this.primaryJobName = names[0];
+      }
+      this.industryId = data.industryId || this.industryId;
+      this.enterpriseTypeIds = parseIdList(data.enterpriseTypeIds);
+      this.jobIds = parseIdList(data.jobIds);
+      this.saveJobCategorySelection(data);
+    },
+    saveJobCategorySelection(extra = {}) {
+      const previous = uni.getStorageSync("jobCategorySelection") || {};
+      uni.setStorageSync("jobCategorySelection", {
+        ...previous,
+        ...extra,
+        industryId: this.industryId || extra.industryId || "",
+        enterpriseTypeIds: [...this.enterpriseTypeIds],
+        jobIds: [...this.jobIds],
+        jobs: this.jobName ? this.jobName.split("、").filter(Boolean) : [],
+      });
+    },
     applyGenderAge(data = {}) {
       if (data.display) this.genderAgeValue = data.display;
     },
@@ -315,14 +358,27 @@ export default {
       uni.$emit("workTimeSelected", data);
     },
     nextStep() {
+      if (!this.jobName) {
+        uni.showToast({ title: "请先选择工种", icon: "none" });
+        return;
+      }
       if (!this.workContent) {
         uni.showToast({ title: "请先选择干活内容", icon: "none" });
         return;
       }
       const settings = uni.getStorageSync("recruitSettings") || {};
       const type = this.publishType || settings.type || "daily";
+      const categoryQuery = [
+        this.industryId ? `&industryId=${encodeURIComponent(this.industryId)}` : "",
+        this.enterpriseTypeIds.length
+          ? `&enterpriseTypeIds=${encodeURIComponent(this.enterpriseTypeIds.join(","))}`
+          : "",
+        this.jobIds.length
+          ? `&jobIds=${encodeURIComponent(this.jobIds.join(","))}`
+          : "",
+      ].join("");
       uni.navigateTo({
-        url: `/pages/boss/recruit-demand?job=${encodeURIComponent(this.jobName)}&type=${encodeURIComponent(type)}${this.orderId ? `&id=${encodeURIComponent(this.orderId)}` : ""}`,
+        url: `/pages/boss/recruit-demand?job=${encodeURIComponent(this.primaryJobName || this.jobName.split("、")[0])}&type=${encodeURIComponent(type)}${this.orderId ? `&id=${encodeURIComponent(this.orderId)}` : ""}${categoryQuery}`,
       });
     },
   },
@@ -331,6 +387,15 @@ export default {
 function extractTime(value) {
   const match = String(value || "").match(/(?:T|\s)(\d{1,2}:\d{2})/);
   return match ? match[1] : "";
+}
+
+function parseIdList(value) {
+  if (Array.isArray(value)) return value.filter((item) => item !== "" && item != null);
+  if (value === undefined || value === null || value === "") return [];
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function formatWorkTime(start, end) {

@@ -131,10 +131,12 @@
             class="filter-option"
             :class="{ active: tagActive.includes(index) }"
             @click="toggleTag(index)"
-            >{{ item }}</text
+          >{{ item }}</text
           >
         </view>
       </view>
+
+      <view class="scroll-bottom-space"></view>
     </scroll-view>
 
     <!-- 底部操作栏 -->
@@ -323,9 +325,11 @@ export default {
 
 .content-area {
   flex: 1;
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
   overflow-y: auto;
-  padding: 16px;
-  padding-bottom: 100px;
+  padding: 16px 20px 0;
 }
 
 .filter-section {
@@ -341,18 +345,26 @@ export default {
 }
 
 .filter-options {
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 8px 10px;
 }
 
 .filter-option {
+  box-sizing: border-box;
+  max-width: 100%;
   padding: 8px 16px;
   background: #f5f5f5;
   border: 1px solid #e8e8e8;
   border-radius: 20px;
   font-size: 13px;
   color: #666;
+}
+
+.scroll-bottom-space {
+  height: calc(112px + env(safe-area-inset-bottom));
 }
 
 .filter-option.active {
@@ -362,41 +374,48 @@ export default {
 }
 
 .bottom-bar {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 80px;
+  min-height: 88px;
+  box-sizing: border-box;
   background: #fff;
   border-top: 1px solid #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 24px;
+  padding: 14px 24px calc(14px + env(safe-area-inset-bottom));
   z-index: 10;
   gap: 16px;
 }
 
 .reset-btn {
-  width: 140px;
-  padding: 12px;
+  flex: 1;
+  height: 48px;
+  margin: 0;
+  padding: 0;
   background: #f5f5f5;
   border: none;
   border-radius: 24px;
   font-size: 15px;
   font-weight: 500;
   color: #666;
+  line-height: 48px;
 }
 
 .confirm-btn {
-  width: 140px;
-  padding: 12px;
+  flex: 1;
+  height: 48px;
+  margin: 0;
+  padding: 0;
   background: linear-gradient(135deg, #3b82f6, #60a5fa);
   border: none;
   border-radius: 24px;
   font-size: 15px;
   font-weight: 600;
   color: #fff;
+  line-height: 48px;
   box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
 }
 </style>

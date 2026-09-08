@@ -1,17 +1,25 @@
 package com.kuaima.app.domain.boss.entity;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 import com.kuaima.app.domain.base.entity.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "boss_order")
+@Table(name = "boss_order", indexes = {
+        @Index(name = "idx_boss_order_owner_status", columnList = "create_by,order_status"),
+        @Index(name = "idx_boss_order_start_time", columnList = "start_time"),
+        @Index(name = "idx_boss_order_job_category", columnList = "job_category_id"),
+        @Index(name = "idx_boss_order_salary", columnList = "salary")
+})
 @Setter
 @Getter
 public class BossOrder extends BaseEntity {
@@ -57,5 +65,24 @@ public class BossOrder extends BaseEntity {
 
     @Column(comment = "月结才有试工时间")
     private String trialDuration;
+
+    @Column(name = "job_category_id", comment = "工种分类ID")
+    private Long jobCategoryId;
+
+    @Column(precision = 10, scale = 7, comment = "工作地点经度")
+    private BigDecimal longitude;
+
+    @Column(precision = 10, scale = 7, comment = "工作地点纬度")
+    private BigDecimal latitude;
+
+    @Column(length = 30, comment = "经验要求编码")
+    private String experience;
+
+    @Column(length = 20, comment = "性别要求编码")
+    private String gender;
+
+    /** 列表展示用：有效报名数，不落库 */
+    @Transient
+    private Long currentApply;
 
 }

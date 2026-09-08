@@ -20,17 +20,23 @@
         }}</text></view
       >
       <view v-if="loading" class="state">工种加载中...</view>
-      <view v-else-if="loadError" class="state error" @click="loadJobs"
+      <view v-else-if="loadError" class="state error" @click="retryLoad"
         >工种加载失败，点击重试</view
       >
-      <view v-else-if="!visibleJobs.length" class="state">未找到相关工种</view>
+      <view v-else-if="!visibleJobs.length" class="state">{{ searchText ? "暂无匹配工种" : "暂无热门工种" }}</view>
       <view v-else class="hot-grid">
         <view
           v-for="job in visibleJobs"
           :key="job.id || job.name"
           class="hot-item"
           @click="selectJob(job)"
-          >{{ job.name }}</view
+          >
+          <text class="hot-name">{{ job.name || job.displayName }}</text>
+          <text v-if="job.description" class="hot-desc">{{ job.description }}</text>
+          <text v-if="searchText && (job.industryName || job.enterpriseTypeName)" class="hot-context">
+            {{ [job.industryName, job.enterpriseTypeName].filter(Boolean).join(" · ") }}
+          </text>
+        </view
         >
       </view>
       <view class="view-all" @click="viewAllJobs"
@@ -46,20 +52,19 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { listJobCategories } from "@/api/backend";
+import {
+  listHotJobCategories,
+  searchJobCategories,
+} from "@/api/backend";
 
 const searchText = ref("");
 const jobs = ref([]);
 const loading = ref(false);
 const loadError = ref(false);
-const visibleJobs = computed(() => {
-  const keyword = searchText.value.trim();
-  return keyword
-    ? jobs.value.filter((item) => item.name.includes(keyword))
-    : jobs.value.filter((item) => item.hot !== false).slice(0, 8);
-});
+const visibleJobs = computed(() => jobs.value);
+let searchTimer = null;
 onMounted(() => {
   // 从“选择工种”进入代表开始新建岗位，不能沿用上次编辑的草稿缓存。
   [
@@ -68,63 +73,77 @@ onMounted(() => {
     "workLocationSelection",
     "workTimeSelection",
     "recruitSettings",
+    "jobCategorySelection",
   ].forEach((key) => uni.removeStorageSync(key));
-  loadJobs();
+  loadHotJobs();
 });
-async function loadJobs() {
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer);
+});
+watch(searchText, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  const keyword = searchText.value.trim();
+  if (!keyword) {
+    loadHotJobs();
+    return;
+  }
+  searchTimer = setTimeout(() => searchJobs(keyword), 300);
+});
+function extractRows(result) {
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.data)) return result.data;
+  if (Array.isArray(result?.records)) return result.records;
+  if (Array.isArray(result?.content)) return result.content;
+  if (Array.isArray(result?.list)) return result.list;
+  if (Array.isArray(result?.data?.records)) return result.data.records;
+  if (Array.isArray(result?.data?.content)) return result.data.content;
+  return [];
+}
+async function loadHotJobs() {
   loading.value = true;
   loadError.value = false;
   try {
-    const result = await listJobCategories();
-    const rows = Array.isArray(result)
-      ? result
-      : result?.records || result?.content || result?.list || [];
-    jobs.value = flattenJobs(rows);
-    if (!jobs.value.length) jobs.value = defaultJobs();
+    jobs.value = extractRows(await listHotJobCategories()).map((item) => ({
+      ...item,
+      name: item.name || item.displayName || "",
+    })).filter((item) => item.name);
   } catch (error) {
-    jobs.value = defaultJobs();
-    uni.showToast({ title: error.message || "工种加载失败", icon: "none" });
+    jobs.value = [];
+    loadError.value = true;
   } finally {
     loading.value = false;
   }
 }
-function flattenJobs(rows) {
-  const result = [];
-  rows.forEach((item, index) => {
-    const children = item.children || item.jobs || item.items;
-    if (Array.isArray(children) && children.length) {
-      children.forEach((child, childIndex) => {
-        const name =
-          child.name || child.title || child.jobName || child.categoryName;
-        if (name)
-          result.push({
-            ...child,
-            id: child.id || `${index}-${childIndex}`,
-            name,
-          });
-      });
-      return;
-    }
-    const name = item.name || item.title || item.jobName || item.categoryName;
-    if (name) result.push({ ...item, id: item.id || index, name });
-  });
-  return result;
+async function searchJobs(keyword) {
+  loading.value = true;
+  loadError.value = false;
+  try {
+    jobs.value = extractRows(await searchJobCategories(keyword, 20)).filter(
+      (item) => item && (item.name || item.displayName),
+    );
+  } catch (_) {
+    jobs.value = [];
+    loadError.value = true;
+  } finally {
+    loading.value = false;
+  }
 }
-function defaultJobs() {
-  return [
-    "电子厂普工",
-    "五金厂CNC操作工",
-    "注塑厂注塑工",
-    "快递分拣打包工",
-    "快递搬运装卸工",
-    "电商分拣打包工",
-    "电商手工活",
-    "餐饮服务员",
-  ].map((name, index) => ({ id: `default-${index}`, name, hot: true }));
+function retryLoad() {
+  const keyword = searchText.value.trim();
+  if (keyword) searchJobs(keyword);
+  else loadHotJobs();
 }
 function selectJob(job) {
+  const params = [
+    `job=${encodeURIComponent(job.name || job.displayName)}`,
+    `jobId=${encodeURIComponent(job.jobCategoryId || job.id)}`,
+  ];
+  if (job.industryId) params.push(`industryId=${encodeURIComponent(job.industryId)}`);
+  if (job.enterpriseTypeId) {
+    params.push(`enterpriseTypeIds=${encodeURIComponent(job.enterpriseTypeId)}`);
+  }
   uni.navigateTo({
-    url: `/pages/boss/publish-info?job=${encodeURIComponent(job.name)}${job.id ? `&jobId=${encodeURIComponent(job.id)}` : ""}`,
+    url: `/pages/boss/publish-info?${params.join("&")}`,
   });
 }
 function viewAllJobs() {
@@ -199,6 +218,10 @@ function openService() {
   gap: 20rpx;
 }
 .hot-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
   width: calc(50% - 10rpx);
   padding: 32rpx 12rpx;
@@ -207,6 +230,23 @@ function openService() {
   color: #333;
   text-align: center;
   font-size: 28rpx;
+}
+.hot-name {
+  color: inherit;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+.hot-desc,
+.hot-context {
+  display: block;
+  width: 100%;
+  margin-top: 8rpx;
+  overflow: hidden;
+  color: #999;
+  font-size: 22rpx;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .hot-item:active {
   background: #fff3ed;

@@ -6,13 +6,6 @@
         class="modal-header"
         :style="{ paddingTop: `${statusBarHeight + 14}px` }"
       >
-        <view
-          class="modal-close"
-          :style="{ top: `${statusBarHeight + 14}px` }"
-          @click="goBack"
-        >
-          <text class="close-icon">×</text>
-        </view>
         <text class="modal-title">更多工种</text>
         <text class="modal-desc">选对工种，免费推荐更多熟手</text>
       </view>
@@ -28,31 +21,44 @@
       <scroll-view scroll-y class="tab-content">
         <!-- 行业选择 -->
         <view class="tab-pane" :class="{ active: currentTab === 'industry' }">
-          <view class="industry-item" v-for="(item, index) in industries" :key="index" @click="selectIndustry(item)">
-            <text>{{ item }}</text>
+          <view v-if="loading" class="state">分类加载中...</view>
+          <view v-else-if="loadError" class="state error" @click="loadCategories">分类加载失败，点击重试</view>
+          <view v-else-if="!industries.length" class="state">暂无行业数据</view>
+          <view v-else class="industry-item" v-for="item in industries" :key="item.id" @click="selectIndustry(item)">
+            <text>{{ item.name }}</text>
             <text class="arrow-icon">›</text>
           </view>
         </view>
 
         <!-- 企业类型选择 -->
         <view class="tab-pane" :class="{ active: currentTab === 'type' }">
-          <view class="type-item" :class="{ selected: selectedTypes.includes(item) }" v-for="(item, index) in types" :key="index" @click="selectType(item)">
-            <text>{{ item }}</text>
-            <view class="check" v-if="selectedTypes.includes(item)">
+          <view v-if="loading" class="state">分类加载中...</view>
+          <view v-else-if="loadError" class="state error" @click="loadCategories">分类加载失败，点击重试</view>
+          <view v-else-if="!currentEnterpriseTypes.length" class="state">暂无企业类型数据</view>
+          <view v-else class="type-item" :class="{ selected: isEnterpriseSelected(item) }" v-for="item in currentEnterpriseTypes" :key="item.id" @click="selectType(item)">
+            <text>{{ item.name }}</text>
+            <view class="check" v-if="isEnterpriseSelected(item)">
               <text class="check-icon">✓</text>
             </view>
+          </view>
+          <view v-if="!loading && !loadError && selectedIndustry" class="type-item add-type-item" @click="addCustomEnterpriseType">
+            <text>其他企业类型</text>
+            <text class="add-type-icon">＋</text>
           </view>
         </view>
 
         <!-- 工种选择 -->
         <view class="tab-pane" :class="{ active: currentTab === 'job' }">
-          <view class="job-row" :class="{ selected: selectedJobs.includes(index) }" v-for="(job, index) in jobs" :key="index" @click="toggleJob(index)">
+          <view v-if="loading" class="state">分类加载中...</view>
+          <view v-else-if="loadError" class="state error" @click="loadCategories">分类加载失败，点击重试</view>
+          <view v-else-if="!currentJobs.length" class="state">暂无工种数据</view>
+          <view v-else class="job-row" :class="{ selected: selectedJobIds.includes(job.id) }" v-for="job in currentJobs" :key="job.id" @click="toggleJob(job)">
             <view class="job-info">
               <text class="job-name">{{ job.name }}</text>
-              <text class="job-desc">{{ job.desc }}</text>
+              <text class="job-desc">{{ job.description || "暂无说明" }}</text>
             </view>
             <view class="checkbox">
-              <text v-if="selectedJobs.includes(index)" class="checkbox-icon">✓</text>
+              <text v-if="selectedJobIds.includes(job.id)" class="checkbox-icon">✓</text>
             </view>
           </view>
         </view>
@@ -61,58 +67,49 @@
       <!-- 底部按钮 -->
       <view class="bottom-bar" :style="{ paddingBottom: `calc(12px + ${safeBottom}px)` }">
         <button class="btn-prev" @click="prevStep">{{ prevLabel }}</button>
-        <button class="btn-next" :disabled="!canNext" @click="nextStep">{{ nextLabel }}</button>
+          <button class="btn-next" :disabled="!canNext || loading || loadError" @click="nextStep">{{ nextLabel }}</button>
       </view>
     </view>
   </view>
 </template>
 
 <script>
+import { listJobCategoryTree } from "@/api/backend";
+
+function extractRows(result) {
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.data)) return result.data;
+  if (Array.isArray(result?.records)) return result.records;
+  if (Array.isArray(result?.content)) return result.content;
+  if (Array.isArray(result?.list)) return result.list;
+  if (Array.isArray(result?.data?.records)) return result.data.records;
+  if (Array.isArray(result?.data?.content)) return result.data.content;
+  return [];
+}
+
 export default {
   data() {
     return {
       statusBarHeight: 0,
       safeBottom: 0,
       orderId: "",
-      currentTab: 'industry',
-      selectedIndustry: '',
-      selectedTypes: [],
-      selectedJobs: [],
-      industries: [
-        '制造业工厂',
-        '电商/仓储/物流/运输',
-        '服务业',
-        '建筑/装修',
-        '农业/渔业/林业',
-        '其他行业'
-      ],
-      types: [
-        '电子厂',
-        '五金厂',
-        '注塑厂',
-        '快递公司',
-        '电商仓库',
-        '餐饮/酒店',
-        '建筑工地'
-      ],
-      jobs: [
-        { name: '普工', desc: '操作工/流水线/组装/打螺丝/打包/包装/测试' },
-        { name: '焊锡工', desc: '流水线/电路板/焊锡/点焊' },
-        { name: 'SMT操作工', desc: 'SMT操作/贴料/上料/检板/测试/调试/维修' },
-        { name: '搬运装卸工', desc: '搬运/装卸/仓库/物流' },
-        { name: '杂工', desc: '杂事/临时/辅助工作' },
-        { name: '清洁工', desc: '车间清洁/卫生打扫' },
-        { name: '叉车工', desc: '叉车操作/仓库搬运' },
-        { name: '仓管', desc: '仓库管理/出入库/盘点' }
-      ]
-    }
+      currentTab: "industry",
+      industries: [],
+      selectedIndustryId: null,
+      selectedEnterpriseTypeIds: [],
+      selectedCustomEnterpriseTypeNames: [],
+      selectedJobIds: [],
+      customEnterpriseTypes: {},
+      loading: false,
+      loadError: "",
+    };
   },
   onLoad(options = {}) {
     try {
-      const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
-      this.statusBarHeight = Number(info.statusBarHeight || 0)
-      this.safeBottom = Number(info.safeAreaInsets?.bottom || 0)
-      this.orderId = options.id || ""
+      const info = typeof uni.getWindowInfo === "function" ? uni.getWindowInfo() : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
+      this.safeBottom = Number(info.safeAreaInsets?.bottom || 0);
+      this.orderId = options.id || "";
     } catch (_) {}
     if (!this.orderId) {
       // 从新建流程进入时清理上次编辑留下的跨页缓存；编辑已有岗位则保留回填数据。
@@ -122,88 +119,238 @@ export default {
         "workLocationSelection",
         "workTimeSelection",
         "recruitSettings",
+        "jobCategorySelection",
       ].forEach((key) => uni.removeStorageSync(key));
     }
+    this.loadCategories();
   },
   computed: {
+    selectedIndustry() {
+      return this.industries.find((item) => item.id === this.selectedIndustryId) || null;
+    },
+    currentEnterpriseTypes() {
+      const types = Array.isArray(this.selectedIndustry?.enterpriseTypes)
+        ? this.selectedIndustry.enterpriseTypes
+        : [];
+      const custom = this.customEnterpriseTypes[String(this.selectedIndustryId)] || [];
+      return [...types, ...custom];
+    },
+    selectedEnterpriseTypes() {
+      return this.currentEnterpriseTypes.filter((item) =>
+        item.custom
+          ? this.selectedCustomEnterpriseTypeNames.includes(item.name)
+          : this.selectedEnterpriseTypeIds.includes(item.id),
+      );
+    },
+    currentJobs() {
+      return this.selectedEnterpriseTypes.flatMap((enterprise) =>
+        (Array.isArray(enterprise.jobs) ? enterprise.jobs : []).map((job) => ({
+          ...job,
+          enterpriseTypeId: job.enterpriseTypeId ?? enterprise.id,
+          enterpriseTypeName: enterprise.name,
+        })),
+      );
+    },
+    selectedJobs() {
+      return this.currentJobs.filter((item) => this.selectedJobIds.includes(item.id));
+    },
     canNext() {
-      if (this.currentTab === 'industry') {
-        return !!this.selectedIndustry
-      } else if (this.currentTab === 'type') {
-        return this.selectedTypes.length > 0
-      } else {
-        return this.selectedJobs.length > 0
+      if (this.currentTab === "industry") return Boolean(this.selectedIndustryId);
+      if (this.currentTab === "type") {
+        return this.selectedEnterpriseTypeIds.length > 0 || this.selectedCustomEnterpriseTypeNames.length > 0;
       }
+      return this.selectedJobIds.length > 0;
     },
     prevLabel() {
-      return this.currentTab === 'industry' ? '取消' : '上一步'
+      return this.currentTab === "industry" ? "取消" : "上一步";
     },
     nextLabel() {
-      if (this.currentTab !== 'job') return '下一步'
-      return this.selectedJobs.length ? `完成 (${this.selectedJobs.length})` : '完成'
-    }
+      if (this.currentTab !== "job") return "下一步";
+      return this.selectedJobIds.length ? `完成 (${this.selectedJobIds.length})` : "完成";
+    },
   },
   methods: {
+    async loadCategories() {
+      this.loading = true;
+      this.loadError = "";
+      try {
+        const result = await listJobCategoryTree();
+        this.industries = extractRows(result).filter(
+          (item) => item && item.id !== undefined && item.id !== null,
+        );
+        this.restoreSelection();
+      } catch (error) {
+        this.industries = [];
+        this.loadError = error.message || "分类加载失败";
+      } finally {
+        this.loading = false;
+      }
+    },
+    restoreSelection() {
+      const saved = uni.getStorageSync("jobCategorySelection");
+      if (!saved || typeof saved !== "object") return;
+      this.customEnterpriseTypes = saved.customEnterpriseTypeOptions || {};
+      this.selectedCustomEnterpriseTypeNames = Array.isArray(saved.customEnterpriseTypes)
+        ? saved.customEnterpriseTypes
+        : [];
+      const industryId = Number(saved.industryId);
+      if (!this.industries.some((item) => Number(item.id) === industryId)) return;
+      this.selectedIndustryId = this.industries.find(
+        (item) => Number(item.id) === industryId,
+      )?.id;
+      const validTypeIds = new Set(this.currentEnterpriseTypes.map((item) => String(item.id)));
+      this.selectedEnterpriseTypeIds = (saved.enterpriseTypeIds || [])
+        .map(String)
+        .filter((id) => validTypeIds.has(id))
+        .map((id) => this.currentEnterpriseTypes.find((item) => String(item.id) === id)?.id);
+      const validJobIds = new Set(this.currentJobs.map((item) => String(item.id)));
+      this.selectedJobIds = (saved.jobIds || [])
+        .map(String)
+        .filter((id) => validJobIds.has(id))
+        .map((id) => this.currentJobs.find((item) => String(item.id) === id)?.id);
+    },
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack();
     },
     switchTab(tab) {
-      this.currentTab = tab
+      if (tab === "type" && !this.selectedIndustryId) return;
+      if (
+        tab === "job" &&
+        !this.selectedEnterpriseTypeIds.length &&
+        !this.selectedCustomEnterpriseTypeNames.length
+      ) return;
+      this.currentTab = tab;
     },
-    selectIndustry(name) {
-      this.selectedIndustry = name
-      this.currentTab = 'type'
-    },
-    selectType(name) {
-      const idx = this.selectedTypes.indexOf(name)
-      if (idx >= 0) {
-        this.selectedTypes.splice(idx, 1)
-      } else {
-        this.selectedTypes.push(name)
+    selectIndustry(industry) {
+      if (this.selectedIndustryId !== industry.id) {
+        this.selectedEnterpriseTypeIds = [];
+        this.selectedCustomEnterpriseTypeNames = [];
+        this.selectedJobIds = [];
       }
-      // 原型中选择企业类型后直接进入工种多选
-      this.currentTab = 'job'
+      this.selectedIndustryId = industry.id;
+      this.currentTab = "type";
     },
-    toggleJob(index) {
-      const idx = this.selectedJobs.indexOf(index)
+    addCustomEnterpriseType() {
+      if (!this.selectedIndustryId) return;
+      uni.showModal({
+        title: "填写企业类型名称",
+        editable: true,
+        placeholderText: "请输入",
+        success: (result) => {
+          if (!result.confirm) return;
+          const name = String(result.content || "").trim();
+          if (!name) {
+            uni.showToast({ title: "请输入企业类型名称", icon: "none" });
+            return;
+          }
+          const key = String(this.selectedIndustryId);
+          const list = this.customEnterpriseTypes[key] || [];
+          const exists = [...this.currentEnterpriseTypes].some((item) => item.name === name);
+          if (exists) {
+            uni.showToast({ title: "该企业类型已存在", icon: "none" });
+            return;
+          }
+          const custom = {
+            id: `custom-${key}-${Date.now()}`,
+            name,
+            jobs: [],
+            custom: true,
+          };
+          this.customEnterpriseTypes = {
+            ...this.customEnterpriseTypes,
+            [key]: [...list, custom],
+          };
+          this.selectedCustomEnterpriseTypeNames.push(name);
+          // 自定义类型没有后端分类 ID，单独保存名称，不加入真实 ID 参数。
+          this.saveSelectionDraft();
+          uni.showToast({ title: "已添加企业类型", icon: "success" });
+        },
+      });
+    },
+    selectType(enterprise) {
+      if (enterprise.custom) {
+        const customIndex = this.selectedCustomEnterpriseTypeNames.indexOf(enterprise.name);
+        if (customIndex >= 0) this.selectedCustomEnterpriseTypeNames.splice(customIndex, 1);
+        else this.selectedCustomEnterpriseTypeNames.push(enterprise.name);
+        return;
+      }
+      const idx = this.selectedEnterpriseTypeIds.indexOf(enterprise.id);
       if (idx >= 0) {
-        this.selectedJobs.splice(idx, 1)
+        this.selectedEnterpriseTypeIds.splice(idx, 1);
+        const removedJobIds = new Set(
+          (enterprise.jobs || []).map((job) => String(job.id)),
+        );
+        this.selectedJobIds = this.selectedJobIds.filter(
+          (id) => !removedJobIds.has(String(id)),
+        );
       } else {
-        this.selectedJobs.push(index)
+        this.selectedEnterpriseTypeIds.push(enterprise.id);
+      }
+    },
+    isEnterpriseSelected(enterprise) {
+      return enterprise.custom
+        ? this.selectedCustomEnterpriseTypeNames.includes(enterprise.name)
+        : this.selectedEnterpriseTypeIds.includes(enterprise.id);
+    },
+    toggleJob(job) {
+      const idx = this.selectedJobIds.indexOf(job.id);
+      if (idx >= 0) {
+        this.selectedJobIds.splice(idx, 1);
+      } else {
+        this.selectedJobIds.push(job.id);
       }
     },
     prevStep() {
-      if (this.currentTab === 'industry') {
-        this.goBack()
-      } else if (this.currentTab === 'type') {
-        this.currentTab = 'industry'
+      if (this.currentTab === "industry") {
+        this.goBack();
+      } else if (this.currentTab === "type") {
+        this.currentTab = "industry";
       } else {
-        this.currentTab = 'type'
+        this.currentTab = "type";
       }
     },
     nextStep() {
-      if (this.currentTab === 'industry') {
-        this.currentTab = 'type'
-      } else if (this.currentTab === 'type') {
-        this.currentTab = 'job'
+      if (!this.canNext) return;
+      if (this.currentTab === "industry") {
+        this.currentTab = "type";
+      } else if (this.currentTab === "type") {
+        this.currentTab = "job";
       } else {
-        const selectedJobNames = this.selectedJobs.map(i => this.jobs[i].name)
+        const selectedJobNames = this.selectedJobs.map((item) => item.name);
         const data = {
-          industry: this.selectedIndustry,
-          types: this.selectedTypes,
-          jobs: selectedJobNames
-        }
-        uni.$emit('jobsSelected', data)
-        const idQuery = this.orderId
-          ? `&id=${encodeURIComponent(this.orderId)}`
-          : "";
+          industryId: this.selectedIndustryId,
+          industry: this.selectedIndustry?.name || "",
+          enterpriseTypeIds: [...this.selectedEnterpriseTypeIds],
+          enterpriseTypes: this.selectedEnterpriseTypes.map((item) => item.name),
+          customEnterpriseTypes: [...this.selectedCustomEnterpriseTypeNames],
+          customEnterpriseTypeOptions: this.customEnterpriseTypes,
+          jobIds: [...this.selectedJobIds],
+          jobs: selectedJobNames,
+        };
+        uni.setStorageSync("jobCategorySelection", data);
+        uni.$emit("jobsSelected", data);
+        const params = [
+          `job=${encodeURIComponent(selectedJobNames.join("、"))}`,
+          `industryId=${encodeURIComponent(this.selectedIndustryId)}`,
+          `enterpriseTypeIds=${encodeURIComponent(this.selectedEnterpriseTypeIds.join(","))}`,
+          `jobIds=${encodeURIComponent(this.selectedJobIds.join(","))}`,
+        ];
+        if (this.orderId) params.push(`id=${encodeURIComponent(this.orderId)}`);
         uni.navigateTo({
-          url: `/pages/boss/publish-info?job=${encodeURIComponent(selectedJobNames.join('、'))}${idQuery}`,
+          url: `/pages/boss/publish-info?${params.join("&")}`,
         });
       }
-    }
-  }
-}
+    },
+    saveSelectionDraft() {
+      const previous = uni.getStorageSync("jobCategorySelection") || {};
+      uni.setStorageSync("jobCategorySelection", {
+        ...previous,
+        customEnterpriseTypes: [...this.selectedCustomEnterpriseTypeNames],
+        customEnterpriseTypeOptions: this.customEnterpriseTypes,
+      });
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -233,24 +380,6 @@ export default {
   box-sizing: content-box;
   position: relative;
   white-space: nowrap;
-}
-
-.modal-close {
-  position: absolute;
-  right: 24rpx;
-  top: 40rpx;
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-icon {
-  color: #999;
-  font-size: 44rpx;
-  font-weight: 300;
-  line-height: 1;
 }
 
 .modal-title {
@@ -315,6 +444,17 @@ export default {
   display: block;
 }
 
+.state {
+  padding: 120rpx 0;
+  color: #999;
+  text-align: center;
+  font-size: 28rpx;
+}
+
+.state.error {
+  color: #ff6b35;
+}
+
 .industry-item {
   padding: 36rpx 0;
   border-bottom: 2rpx solid #f5f5f5;
@@ -354,6 +494,15 @@ export default {
 
 .type-item.selected {
   color: #FF6B35;
+}
+
+.add-type-item {
+  color: #FF6B35;
+}
+
+.add-type-icon {
+  font-size: 36rpx;
+  font-weight: 300;
 }
 
 .check {

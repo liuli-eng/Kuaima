@@ -7,8 +7,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,8 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
+import com.kuaima.app.domain.boss.model.BossOrderQuery;
 import com.kuaima.app.domain.boss.service.BossOrderService;
+import com.kuaima.app.domain.jobcategory.model.JobCategoryModels.HotItem;
+import com.kuaima.app.domain.jobcategory.service.JobCategoryService;
 import com.kuaima.app.domain.user.entity.User;
+import com.kuaima.app.domain.user.constant.UserRole;
+import com.kuaima.app.security.model.LoginUser;
 
 @RestController
 @RequestMapping("/boss")
@@ -29,9 +36,11 @@ import com.kuaima.app.domain.user.entity.User;
 public class BossController {
 
     private final BossOrderService bossOrderService;
+    private final JobCategoryService jobCategoryService;
 
-    public BossController(BossOrderService bossOrderService) {
+    public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService) {
         this.bossOrderService = bossOrderService;
+        this.jobCategoryService = jobCategoryService;
     }
 
     // ==================== 招工订单 ====================
@@ -39,7 +48,8 @@ public class BossController {
     /** 发布订单 */
     @Operation(summary = "发布招工订单", description = "创建 BossOrder，初始状态自动为「待审核」，admin 审核通过后变为「招工中」并广播新岗位消息。必填：orderTitle、type、postion、orderNum、duration、salary")
     @PostMapping("/order")
-    public Result<BossOrder> createOrder(@RequestBody BossOrder order) {
+    public Result<BossOrder> createOrder(@RequestBody BossOrder order, Authentication authentication) {
+        order.setCreateBy(requireCurrentBossId(authentication));
         return Result.success(bossOrderService.createOrder(order));
     }
 
@@ -62,14 +72,12 @@ public class BossController {
      * type 取值：daily(每天日结) / heldBack(压薪日结) / month(月结)
      * page 从 0 开始，size 默认 10
      */
-    @Operation(summary = "订单列表分页", description = "支持 type(招工类型)、status(订单状态)、title(标题模糊) 过滤，page 从 0 开始，size 默认 10、限制 1~100")
+    @Operation(summary = "订单列表分页", description = "仅返回当前老板账号创建的订单。所有非空筛选条件按 AND 组合，支持 type、status、title、startDate/endDate、jobCategoryId、salaryMin/salaryMax、经纬度距离、experience、gender、tags、tagMode(ALL/ANY) 和分页；返回准确 total 及 currentApply")
     @GetMapping("/order")
-    public Result<List<BossOrder>> listOrders(@RequestParam(required = false) String type,
-                                                   @RequestParam(required = false) String status,
-                                                   @RequestParam(required = false) String title,
-                                                   @RequestParam(defaultValue = "0") int page,
-                                                   @RequestParam(defaultValue = "10") int size) {
-        Page<BossOrder> result = bossOrderService.listOrders(type, status, title, page, size);
+    public Result<List<BossOrder>> listOrders(@ModelAttribute BossOrderQuery query,
+                                               Authentication authentication) {
+        Long bossId = requireCurrentBossId(authentication);
+        Page<BossOrder> result = bossOrderService.listOrders(bossId, query);
         return Result.success(result.getContent(), result.getNumber(), result.getTotalElements());
     }
 
@@ -186,10 +194,10 @@ public class BossController {
     }
 
     /** 工种分类：/boss/job-categories */
-    @Operation(summary = "工种分类列表", description = "返回 BossOrder.postion 的 distinct 值列表，如 [{name: 普工}, {name: 焊工}]")
+    @Operation(summary = "热门工种列表", description = "兼容原有前端路径，返回基础数据表中启用的热门工种；完整三级分类请使用 /job-categories/tree")
     @GetMapping("/job-categories")
-    public Result<List<Map<String, Object>>> getJobCategories() {
-        return Result.success(bossOrderService.getJobCategories());
+    public Result<List<HotItem>> getJobCategories() {
+        return Result.success(jobCategoryService.hot());
     }
 
     /** 老板资料：/boss/profile/{userId} */
@@ -250,5 +258,25 @@ public class BossController {
         return Result.success(bossOrderService.submitEnterpriseCert(userId,
                 body.get("companyName"), body.get("industry"),
                 body.get("licenseNo"), body.get("legalRep")));
+    }
+
+    /** 从 JWT 认证主体提取老板 ID。 */
+    private Long currentBossId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof LoginUser loginUser
+                && UserRole.BOSS.equals(loginUser.role())) {
+            if (loginUser.id() == null) {
+                throw new IllegalStateException("老板登录身份缺少用户ID，请重新登录");
+            }
+            return loginUser.id();
+        }
+        return null;
+    }
+
+    private Long requireCurrentBossId(Authentication authentication) {
+        Long bossId = currentBossId(authentication);
+        if (bossId == null) {
+            throw new IllegalStateException("当前登录账号不是老板账号");
+        }
+        return bossId;
     }
 }

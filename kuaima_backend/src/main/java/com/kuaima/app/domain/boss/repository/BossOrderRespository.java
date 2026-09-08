@@ -5,12 +5,13 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.kuaima.app.domain.boss.entity.BossOrder;
 
-public interface BossOrderRespository extends JpaRepository<BossOrder, Long> {
+public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, JpaSpecificationExecutor<BossOrder> {
 
     /** 按 类型/状态/标题 组合过滤分页查询（参数为空表示不过滤） */
     @Query("""
@@ -23,6 +24,20 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long> {
                                 @Param("status") String status,
                                 @Param("title") String title,
                                 Pageable pageable);
+
+    /** 老板端岗位列表：强制按创建人隔离数据 */
+    @Query("""
+            select o from BossOrder o
+            where o.createBy = :createBy
+              and (:type is null or o.type = :type)
+              and (:status is null or o.orderStatus = :status)
+              and (:title is null or o.orderTitle like concat('%', :title, '%'))
+            """)
+    Page<BossOrder> searchByCreateBy(@Param("createBy") Long createBy,
+                                     @Param("type") String type,
+                                     @Param("status") String status,
+                                     @Param("title") String title,
+                                     Pageable pageable);
 
     /** 某老板发布的全部订单（最新在前） */
     List<BossOrder> findByCreateByOrderByIdDesc(Long createBy);
@@ -50,7 +65,4 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long> {
                            @Param("duration") Integer duration,
                            Pageable pageable);
 
-    /** 工种分类：所有岗位 distinct 值 */
-    @Query("select distinct o.postion from BossOrder o where o.postion is not null")
-    List<String> findDistinctPositions();
 }

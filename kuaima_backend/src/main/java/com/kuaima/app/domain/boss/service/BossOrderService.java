@@ -1,9 +1,12 @@
 package com.kuaima.app.domain.boss.service;
 
 import java.sql.Date;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,8 +20,10 @@ import com.kuaima.app.domain.boss.constant.BossStatus;
 import com.kuaima.app.domain.boss.constant.BossType;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
+import com.kuaima.app.domain.boss.model.BossOrderQuery;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
+import com.kuaima.app.domain.boss.repository.BossOrderSpecifications;
 import com.kuaima.app.domain.message.constant.BizType;
 import com.kuaima.app.domain.message.constant.MessageType;
 import com.kuaima.app.domain.message.service.MessageService;
@@ -76,6 +81,7 @@ public class BossOrderService {
         if (order.getSalary() == null || order.getSalary() <= 0) {
             throw new IllegalArgumentException("工资必须大于 0");
         }
+        validateOrderCoordinates(order.getLongitude(), order.getLatitude());
         checkTimeRange(order.getStartTime(), order.getEndTime());
         // 试工时间仅月结类型有效
         if (!BossType.MONTH.equals(order.getType())) {
@@ -148,6 +154,7 @@ public class BossOrderService {
         if (StringUtils.hasText(update.getTags())) {
             order.setTags(update.getTags());
         }
+        applyFilterFields(order, update);
         if (update.getOrderNum() != null) {
             if (update.getOrderNum() <= 0) {
                 throw new IllegalArgumentException("招工人数必须大于 0");
@@ -176,6 +183,7 @@ public class BossOrderService {
         if (BossType.MONTH.equals(order.getType()) && StringUtils.hasText(update.getTrialDuration())) {
             order.setTrialDuration(update.getTrialDuration());
         }
+        validateOrderCoordinates(order.getLongitude(), order.getLatitude());
         checkTimeRange(order.getStartTime(), order.getEndTime());
         return orderRepository.save(order);
     }
@@ -185,13 +193,30 @@ public class BossOrderService {
         return getOrderOrThrow(id);
     }
 
-    /** 订单列表分页查询，可按类型/状态/标题过滤，按 id 倒序（最新在前） */
-    public Page<BossOrder> listOrders(String type, String status, String title, int page, int size) {
+    /**
+     * 订单列表分页查询，可按类型/状态/标题过滤，按 id 倒序（最新在前）。
+     * bossId 非空时仅返回该老板创建的岗位；为空时保留零工端公开列表的原有查询行为。
+     */
+    public Page<BossOrder> listOrders(Long bossId, BossOrderQuery query) {
+        validateListQuery(query);
         // 页码从 0 开始，size 限制在 [1, 100]
-        int safePage = Math.max(page, 0);
-        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safePage = Math.max(query.getPage(), 0);
+        int safeSize = Math.min(Math.max(query.getSize(), 1), 100);
         Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "id"));
-        return orderRepository.search(type, status, title, pageable);
+        Page<BossOrder> result = orderRepository.findAll(BossOrderSpecifications.from(bossId, query), pageable);
+        fillCurrentApply(result.getContent());
+        return result;
+    }
+
+    /** 兼容现有服务层调用。 */
+    public Page<BossOrder> listOrders(Long bossId, String type, String status, String title, int page, int size) {
+        BossOrderQuery query = new BossOrderQuery();
+        query.setType(type);
+        query.setStatus(status);
+        query.setTitle(title);
+        query.setPage(page);
+        query.setSize(size);
+        return listOrders(bossId, query);
     }
 
     /** 删除订单，仅"待审核"/"审核拒绝"/"招工中"/"取消招工"状态可删除 */
@@ -404,6 +429,7 @@ public class BossOrderService {
     /** 保存草稿：不校验必填字段，状态固定为"草稿" */
     @Transactional
     public BossOrder saveDraft(BossOrder order) {
+        validateOrderCoordinates(order.getLongitude(), order.getLatitude());
         order.setOrderStatus(BossStatus.ORDER_DRAFT);
         return orderRepository.save(order);
     }
@@ -430,9 +456,11 @@ public class BossOrderService {
         if (StringUtils.hasText(update.getOrderRemark())) order.setOrderRemark(update.getOrderRemark());
         if (StringUtils.hasText(update.getAddress())) order.setAddress(update.getAddress());
         if (StringUtils.hasText(update.getTags())) order.setTags(update.getTags());
+        applyFilterFields(order, update);
         if (update.getStartTime() != null) order.setStartTime(update.getStartTime());
         if (update.getEndTime() != null) order.setEndTime(update.getEndTime());
         if (StringUtils.hasText(update.getTrialDuration())) order.setTrialDuration(update.getTrialDuration());
+        validateOrderCoordinates(order.getLongitude(), order.getLatitude());
         return orderRepository.save(order);
     }
 
@@ -470,18 +498,6 @@ public class BossOrderService {
     public User getBossProfile(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + userId));
-    }
-
-    /** 工种分类：distinct 岗位 + 常用静态分类 */
-    public java.util.List<java.util.Map<String, Object>> getJobCategories() {
-        java.util.List<String> positions = orderRepository.findDistinctPositions();
-        java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
-        for (String pos : positions) {
-            java.util.Map<String, Object> item = new java.util.HashMap<>();
-            item.put("name", pos);
-            result.add(item);
-        }
-        return result;
     }
 
     // ==================== 高级筛选 ====================
@@ -535,10 +551,102 @@ public class BossOrderService {
                 .orElseThrow(() -> new EntityNotFoundException("报名记录不存在: " + id));
     }
 
+    /** 为岗位列表批量填充有效报名数（排除取消报名、取消招工）。 */
+    private void fillCurrentApply(List<BossOrder> orders) {
+        if (orders.isEmpty()) {
+            return;
+        }
+        List<Long> orderIds = orders.stream().map(BossOrder::getId).toList();
+        List<String> activeStatuses = List.of(
+                BossStatus.ITEM_APPLIED,
+                BossStatus.ITEM_HIRED,
+                BossStatus.ITEM_ON_WORK,
+                BossStatus.ITEM_FINISHED);
+        Map<Long, Long> countByOrderId = itemRepository
+                .countByOrderIdsAndStatuses(orderIds, activeStatuses)
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).longValue(),
+                        row -> ((Number) row[1]).longValue()));
+        orders.forEach(order -> order.setCurrentApply(countByOrderId.getOrDefault(order.getId(), 0L)));
+    }
+
     /** 校验开始/结束时间：两者都填时开始必须早于结束 */
     private void checkTimeRange(java.util.Date startTime, java.util.Date endTime) {
         if (startTime != null && endTime != null && startTime.after(endTime)) {
             throw new IllegalArgumentException("结束时间必须晚于开始时间");
+        }
+    }
+
+    /** 更新筛选相关字段；null/空字符串表示调用方未修改该字段。 */
+    private void applyFilterFields(BossOrder target, BossOrder source) {
+        if (source.getJobCategoryId() != null) {
+            target.setJobCategoryId(source.getJobCategoryId());
+        }
+        if (source.getLongitude() != null) {
+            target.setLongitude(source.getLongitude());
+        }
+        if (source.getLatitude() != null) {
+            target.setLatitude(source.getLatitude());
+        }
+        if (StringUtils.hasText(source.getExperience())) {
+            target.setExperience(source.getExperience().trim());
+        }
+        if (StringUtils.hasText(source.getGender())) {
+            target.setGender(source.getGender().trim());
+        }
+    }
+
+    /** 坐标必须成对出现并落在经纬度合法范围内。历史订单可保持坐标为空。 */
+    private void validateOrderCoordinates(BigDecimal longitude, BigDecimal latitude) {
+        if ((longitude == null) != (latitude == null)) {
+            throw new IllegalArgumentException("经度和纬度必须同时填写");
+        }
+        if (longitude != null && (longitude.compareTo(BigDecimal.valueOf(-180)) < 0
+                || longitude.compareTo(BigDecimal.valueOf(180)) > 0)) {
+            throw new IllegalArgumentException("经度必须在 -180 到 180 之间");
+        }
+        if (latitude != null && (latitude.compareTo(BigDecimal.valueOf(-90)) < 0
+                || latitude.compareTo(BigDecimal.valueOf(90)) > 0)) {
+            throw new IllegalArgumentException("纬度必须在 -90 到 90 之间");
+        }
+    }
+
+    /** 校验列表筛选参数，避免生成无意义或不安全的距离/范围条件。 */
+    private void validateListQuery(BossOrderQuery query) {
+        if (query == null) {
+            throw new IllegalArgumentException("查询参数不能为空");
+        }
+        if (query.getSalaryMin() != null && query.getSalaryMax() != null
+                && query.getSalaryMin() > query.getSalaryMax()) {
+            throw new IllegalArgumentException("最低工资不能高于最高工资");
+        }
+        if (query.getSalaryMin() != null && query.getSalaryMin() < 0
+                || query.getSalaryMax() != null && query.getSalaryMax() < 0) {
+            throw new IllegalArgumentException("工资筛选值不能小于 0");
+        }
+        if (query.getStartDate() != null && query.getEndDate() != null
+                && query.getStartDate().isAfter(query.getEndDate())) {
+            throw new IllegalArgumentException("开始日期不能晚于结束日期");
+        }
+        boolean hasLongitude = query.getLongitude() != null;
+        boolean hasLatitude = query.getLatitude() != null;
+        if (hasLongitude != hasLatitude) {
+            throw new IllegalArgumentException("经度和纬度必须同时填写");
+        }
+        if (hasLongitude) {
+            validateOrderCoordinates(query.getLongitude(), query.getLatitude());
+        }
+        if (query.getDistanceKm() != null && query.getDistanceKm() <= 0) {
+            throw new IllegalArgumentException("距离必须大于 0 公里");
+        }
+        if (query.getDistanceKm() != null && !hasLongitude) {
+            throw new IllegalArgumentException("按距离筛选时必须提供经度和纬度");
+        }
+        if (StringUtils.hasText(query.getTagMode())
+                && !"ALL".equalsIgnoreCase(query.getTagMode().trim())
+                && !"ANY".equalsIgnoreCase(query.getTagMode().trim())) {
+            throw new IllegalArgumentException("tagMode 只能是 ALL 或 ANY");
         }
     }
 

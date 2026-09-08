@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.boss.repository;
 
 import java.util.List;
+import java.util.Collection;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -55,4 +56,14 @@ public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, L
             where o.createBy = :bossId
             """)
     long countApplicantsByBossId(@Param("bossId") Long bossId);
+
+    /** 按订单批量统计有效报名数，避免岗位列表逐单查询 */
+    @Query("""
+            select i.orderId, count(i)
+            from BaseOrderItem i
+            where i.orderId in :orderIds and i.status in :statuses
+            group by i.orderId
+            """)
+    List<Object[]> countByOrderIdsAndStatuses(@Param("orderIds") Collection<Long> orderIds,
+                                              @Param("statuses") Collection<String> statuses);
 }

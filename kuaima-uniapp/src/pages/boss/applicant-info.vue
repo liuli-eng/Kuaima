@@ -351,7 +351,7 @@ export default {
         });
       }
       uni.showToast({
-        title: `已对「${applicant.name}」执行：${actionText}`,
+        title: `已${actionText}「${applicant.name}」`,
         icon: "success",
       });
 

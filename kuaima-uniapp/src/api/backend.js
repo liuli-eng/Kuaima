@@ -263,6 +263,20 @@ export function listJobCategories() {
   return request({ url: "/boss/job-categories" });
 }
 
+export function listJobCategoryTree() {
+  return request({ url: "/job-categories/tree" });
+}
+
+export function listHotJobCategories() {
+  return request({ url: "/job-categories/hot" });
+}
+
+export function searchJobCategories(keyword, size = 20) {
+  return request({
+    url: `/job-categories/search?${query({ keyword, size })}`,
+  });
+}
+
 export function listBossAddresses(userId) {
   return request({ url: `/boss/addresses?${query({ userId })}` });
 }
