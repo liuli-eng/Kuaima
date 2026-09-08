@@ -1,7 +1,10 @@
 package com.kuaima.app.admin.controller;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.admin.entity.Notice;
+import com.kuaima.app.admin.entity.NoticeRead;
+import com.kuaima.app.admin.repository.NoticeReadRepository;
 import com.kuaima.app.admin.repository.NoticeRepository;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.security.model.LoginUser;
@@ -33,8 +38,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 public class AdminNoticeController {
 
     private final NoticeRepository repo;
+    private final NoticeReadRepository readRepo;
 
-    public AdminNoticeController(NoticeRepository repo) { this.repo = repo; }
+    public AdminNoticeController(NoticeRepository repo, NoticeReadRepository readRepo) {
+        this.repo = repo;
+        this.readRepo = readRepo;
+    }
 
     /** 获取当前登录管理员的显示名（优先姓名，其次账号） */
     private String currentAdminName() {
@@ -43,6 +52,17 @@ public class AdminNoticeController {
                 : SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof LoginUser u) {
             return u.username();
+        }
+        return null;
+    }
+
+    /** 获取当前登录管理员的 ID */
+    private Long currentAdminId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication() == null
+                ? null
+                : SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof LoginUser u) {
+            return u.id();
         }
         return null;
     }
@@ -61,7 +81,7 @@ public class AdminNoticeController {
     }
 
     @Operation(summary = "公告详情", description = "按 id 查询 Notice 完整信息")
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     public Result<Notice> get(@PathVariable Long id) {
         return Result.success(repo.findById(id).orElseThrow());
     }
@@ -81,7 +101,7 @@ public class AdminNoticeController {
     }
 
     @Operation(summary = "更新公告", description = "按 id 更新 Notice，字段非空才更新；首次置为「已发布」时自动记录 publishTime")
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     public Result<Notice> update(@PathVariable Long id, @RequestBody Notice notice) {
         Notice existing = repo.findById(id).orElseThrow();
         if (notice.getTitle() != null) existing.setTitle(notice.getTitle());
@@ -99,9 +119,48 @@ public class AdminNoticeController {
     }
 
     @Operation(summary = "删除公告", description = "按 id 删除 Notice")
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     public Result<Void> delete(@PathVariable Long id) {
         repo.deleteById(id);
+        return Result.success();
+    }
+
+    /** 当前登录管理员未读的公告（发布范围为 web账号 或 全部），按 id 倒序，用于登录后浮层 */
+    @Operation(summary = "未读公告", description = "查询当前管理员未读的已发布公告（发布范围为 web账号 或 全部），按 id 倒序返回")
+    @GetMapping("/unread")
+    public Result<List<Notice>> unread() {
+        Long adminId = currentAdminId();
+        if (adminId == null) {
+            return Result.success(new java.util.ArrayList<>());
+        }
+        // 取最近的 20 条已发布公告，排除已读，按发布范围过滤（web账号 或 全部）
+        List<Notice> recent = repo.findTop20ByStatusOrderByIdDesc("已发布");
+        Set<Long> readIds = new HashSet<>(readRepo.findReadNoticeIds(adminId));
+        List<Notice> unread = recent.stream()
+                .filter(n -> "web账号".equals(n.getScope()) || "全部".equals(n.getScope()))
+                .filter(n -> !readIds.contains(n.getId()))
+                .collect(Collectors.toList());
+        return Result.success(unread);
+    }
+
+    /** 标记某条公告为已读（幂等：已存在则更新 readTime） */
+    @Operation(summary = "标记已读", description = "当前管理员将指定 id 公告标记为已读")
+    @PostMapping("/{id:[0-9]+}/read")
+    public Result<Void> markRead(@PathVariable Long id) {
+        Long adminId = currentAdminId();
+        if (adminId == null) {
+            return Result.error(401, "未登录");
+        }
+        if (!repo.existsById(id)) {
+            return Result.error(404, "公告不存在");
+        }
+        if (!readRepo.existsByAdminUserIdAndNoticeId(adminId, id)) {
+            NoticeRead rec = new NoticeRead();
+            rec.setAdminUserId(adminId);
+            rec.setNoticeId(id);
+            rec.setReadTime(LocalDateTime.now());
+            readRepo.save(rec);
+        }
         return Result.success();
     }
 }

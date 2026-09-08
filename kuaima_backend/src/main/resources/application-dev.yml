@@ -19,6 +19,18 @@ wechat:
   appid: wx4c163632a2e19ea5
   secret: 14be11aeff46c668f888ac7bdd4a5388
 
+# 阿里云短信（密钥通过环境变量注入，请勿硬编码）
+aliyun:
+  sms:
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
+    sign-name: 快马日结
+    template-code: SMS_470990050
+    # 验证码有效期（秒）
+    code-expiration: 300
+    # 重发间隔限制（秒）
+    resend-interval: 60
+
 # SpringDoc OpenAPI / Swagger 文档配置
 springdoc:
   api-docs:

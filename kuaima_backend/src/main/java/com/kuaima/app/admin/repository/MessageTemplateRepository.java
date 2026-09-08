@@ -19,4 +19,7 @@ public interface MessageTemplateRepository extends JpaRepository<MessageTemplate
 
     /** 按事件过滤 + 分页（按更新时间倒序） */
     Page<MessageTemplate> findByEvent(String event, Pageable pageable);
+
+    /** 查找所有启用且定时发送的模板 */
+    List<MessageTemplate> findByStatusAndSendWay(String status, String sendWay);
 }

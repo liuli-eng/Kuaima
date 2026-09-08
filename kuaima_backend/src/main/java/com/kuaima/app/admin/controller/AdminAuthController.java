@@ -19,6 +19,7 @@ import com.kuaima.app.common.Result;
 import com.kuaima.app.admin.dto.AdminLoginDto;
 import com.kuaima.app.admin.entity.AdminUser;
 import com.kuaima.app.admin.repository.AdminUserRepository;
+import com.kuaima.app.admin.service.AdminLogService;
 import com.kuaima.app.security.model.LoginUser;
 import com.kuaima.app.security.util.JwtUtil;
 
@@ -35,27 +36,32 @@ public class AdminAuthController {
     private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final AdminLogService logService;
 
     public AdminAuthController(AdminUserRepository adminUserRepository,
                                PasswordEncoder passwordEncoder,
-                               JwtUtil jwtUtil) {
+                               JwtUtil jwtUtil,
+                               AdminLogService logService) {
         this.adminUserRepository = adminUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.logService = logService;
     }
 
     @Operation(summary = "管理员登录", description = "账号密码登录，返回 accessToken（JWT role 前缀 ADMIN_）、adminId、username、name、role（SUPER_ADMIN/ADMIN/EDITOR/VIEWER）、permissions（权限树 JSON）；登录成功自动更新 lastLoginTime")
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody AdminLoginDto dto) {
         if (!StringUtils.hasText(dto.getUsername()) || !StringUtils.hasText(dto.getPassword())) {
+            logService.record(dto.getUsername(), null, "登录", "/admin/auth/login", null, "失败", "用户名或密码为空");
             return Result.error(400, "用户名和密码不能为空");
         }
-        AdminUser admin = adminUserRepository.findByUsername(dto.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("用户名或密码错误"));
-        if (!passwordEncoder.matches(dto.getPassword(), admin.getPassword())) {
+        AdminUser admin = adminUserRepository.findByUsername(dto.getUsername()).orElse(null);
+        if (admin == null || !passwordEncoder.matches(dto.getPassword(), admin.getPassword())) {
+            logService.record(dto.getUsername(), null, "登录", "/admin/auth/login", null, "失败", "用户名或密码错误");
             return Result.error(400, "用户名或密码错误");
         }
         if ("禁用".equals(admin.getStatus())) {
+            logService.record(dto.getUsername(), admin.getId(), "登录", "/admin/auth/login", null, "失败", "账号已被禁用");
             return Result.error(403, "账号已被禁用");
         }
         admin.setLastLoginTime(LocalDateTime.now());
@@ -70,6 +76,8 @@ public class AdminAuthController {
         data.put("name", admin.getName());
         data.put("role", admin.getRole());
         data.put("permissions", admin.getPermissions());
+
+        logService.record(admin.getUsername(), admin.getId(), "登录", "/admin/auth/login", null, "成功", "登录成功");
         return Result.success(data);
     }
 

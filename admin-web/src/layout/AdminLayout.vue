@@ -11,12 +11,15 @@
         </router-view>
       </div>
     </div>
+    <!-- 当天首次登录未读公告浮层 -->
+    <UnreadNoticeModal />
   </div>
 </template>
 
 <script setup>
 import Sidebar from './components/Sidebar.vue'
 import Topbar from './components/Topbar.vue'
+import UnreadNoticeModal from './components/UnreadNoticeModal.vue'
 import { useAppStore } from '@/stores/app'
 
 const appStore = useAppStore()

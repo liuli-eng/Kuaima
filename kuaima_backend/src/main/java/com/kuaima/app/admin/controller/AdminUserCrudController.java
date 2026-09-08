@@ -51,12 +51,21 @@ public class AdminUserCrudController {
         return null;
     }
 
-    @Operation(summary = "管理员列表", description = "分页查询管理员账号列表，按 id 倒序")
+    @Operation(summary = "账号列表", description = "分页查询管理员账号列表，按 id 倒序；超级管理员返回全部，普通管理员仅返回自己的账号及自己创建的账号")
     @GetMapping
     public Result<Page<AdminUser>> list(@RequestParam(defaultValue = "0") int page,
                                         @RequestParam(defaultValue = "10") int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        Page<AdminUser> result = repo.findAll(pageable);
+        Long currentId = currentAdminId();
+        Page<AdminUser> result;
+        // 判断当前管理员是否为超级管理员：是则返回全部，否则仅返回自己 + 自己创建的
+        boolean isSuperAdmin = (currentId != null
+                && repo.findById(currentId).map(a -> "SUPER_ADMIN".equals(a.getRole())).orElse(false));
+        if (isSuperAdmin) {
+            result = repo.findAll(pageable);
+        } else {
+            result = repo.findVisibleByAdmin(currentId, pageable);
+        }
         return Result.success(result, page, result.getTotalElements());
     }
 
@@ -84,7 +93,7 @@ public class AdminUserCrudController {
         return Result.success(repo.save(admin));
     }
 
-    @Operation(summary = "编辑管理员", description = "编辑管理员账号；超级管理员受系统保护不可修改角色/权限/状态；非自己创建的账号，仅可修改基本信息（姓名/电话/邮箱/备注/部门），不可修改角色、权限树、状态、密码")
+    @Operation(summary = "编辑账号", description = "编辑账号；超级管理员受系统保护不可修改角色/权限/状态；非自己创建的账号，仅可修改基本信息（姓名/电话/邮箱/备注/部门），不可修改角色、权限树、状态、密码")
     @PutMapping("/{id}")
     public Result<AdminUser> update(@PathVariable Long id, @RequestBody AdminUser patch) {
         AdminUser existing = repo.findById(id).orElseThrow();
@@ -115,6 +124,7 @@ public class AdminUserCrudController {
         }
 
         if (patch.getName() != null) existing.setName(patch.getName());
+        if (patch.getAvatar() != null) existing.setAvatar(patch.getAvatar());
         if (patch.getRole() != null && !isSuperAdmin && isOwnCreated) existing.setRole(patch.getRole());
         if (patch.getDept() != null) existing.setDept(patch.getDept());
         if (patch.getPhone() != null) existing.setPhone(patch.getPhone());

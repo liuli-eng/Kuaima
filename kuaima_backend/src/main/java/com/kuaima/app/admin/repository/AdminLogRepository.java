@@ -10,4 +10,10 @@ public interface AdminLogRepository extends JpaRepository<AdminLog, Long> {
 
     /** 按操作类型过滤 + 分页 */
     Page<AdminLog> findByType(String type, Pageable pageable);
+
+    /** 按操作人 ID 过滤 + 分页 */
+    Page<AdminLog> findByOperatorId(Long operatorId, Pageable pageable);
+
+    /** 按操作人 ID + 操作类型过滤 + 分页 */
+    Page<AdminLog> findByOperatorIdAndType(Long operatorId, String type, Pageable pageable);
 }

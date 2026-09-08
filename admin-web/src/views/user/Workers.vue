@@ -58,49 +58,42 @@
       </div>
 
       <el-table :data="tableData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column type="selection" width="50" />
-        <el-table-column prop="id" label="零工ID" width="100" />
-        <el-table-column label="用户" min-width="160">
+        <el-table-column type="selection" show-overflow-tooltip />
+        <el-table-column prop="id" label="零工ID" show-overflow-tooltip />
+        <el-table-column label="用户" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="user-cell">
               <span class="mini-avatar" :style="{ background: row.avatarColor || getAvatarColor(row.name) }">{{ getAvatarLetter(row.name) }}</span>
               <div>
                 <div style="font-weight: 500;">{{ row.name }}</div>
+                <div v-if="row.nickname && row.nickname !== row.name" class="text-muted" style="font-size: 12px;">{{ row.nickname }}</div>
                 <div class="text-muted" style="font-size: 12px;">{{ row.phone }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="certStatus" label="实名状态" width="100">
+        <el-table-column prop="certStatus" label="实名认证" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag :type="row.certStatus === '已认证' || row.certStatus === 'VERIFIED' || row.certStatus === true ? 'success' : 'info'" effect="light">{{ formatRealName(row.certStatus) }}</el-tag>
+            <el-tag :type="isPhoneVerified(row) ? 'success' : 'info'" effect="light">{{ isPhoneVerified(row) ? '手机号已验证' : '手机号未验证' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="技能标签" min-width="140">
+        <el-table-column label="技能标签" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag v-for="(skill, idx) in normalizeSkills(row.skills)" :key="idx" style="margin-right: 4px; margin-bottom: 2px;" type="warning" effect="light" size="small">{{ skill }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="信用分" width="180">
-          <template #default="{ row }">
-            <div class="credit-cell">
-              <el-progress :percentage="row.creditScore || row.creditProgress || 0" :color="getCreditColor(row.creditScore || row.creditProgress || 0)" :stroke-width="8" style="flex:1;" />
-              <span class="credit-score">{{ row.creditScore || '-' }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="orders" label="完成订单" width="100">
+        <el-table-column prop="orders" label="完成订单" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.orders ?? '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="registerTime" label="注册时间" width="140" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="registerTime" label="注册时间" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['status-badge', (row.status === '正常' || row.status === 'NORMAL' || row.status === 1) ? 'success' : 'danger']">{{ formatStatus(row.status) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small">详情</el-button>
             <el-button link type="warning" size="small" v-if="isNormal(row.status)" @click="handleFreeze(row)">冻结</el-button>
@@ -170,7 +163,8 @@ const loadStats = async () => {
 const normalizeWorker = (item) => {
   return {
     ...item,
-    name: item.nickname || item.username || item.phone,
+    name: item.username || item.phone,
+    nickname: item.nickname || '',
     registerTime: item.timestamp,
     // status 后端返回 "正常"/"冻结" 或枚举值，formatStatus 已做兼容
     // orders 后端暂无此字段，显示占位
@@ -221,6 +215,9 @@ const formatRealName = (v) => {
   if (v === true || v === 1 || v === '已认证') return '已认证'
   if (v === false || v === 0 || v === '未认证') return '未认证'
   return v || '-'
+}
+const isPhoneVerified = (row) => {
+  return row.certStatus === true || row.certStatus === 1 || row.certStatus === '已认证' || row.certStatus === 'VERIFIED'
 }
 const formatStatus = (s) => {
   if (s === 'NORMAL' || s === 1 || s === '正常') return '正常'

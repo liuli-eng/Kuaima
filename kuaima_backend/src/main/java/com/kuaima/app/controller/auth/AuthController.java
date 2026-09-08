@@ -24,6 +24,7 @@ import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.security.dto.WechatLoginDto;
 import com.kuaima.app.security.model.LoginUser;
 import com.kuaima.app.security.util.JwtUtil;
+import com.kuaima.app.service.SmsService;
 import com.kuaima.app.wechat.service.WechatService;
 import com.kuaima.app.wechat.service.WechatService.WechatUserInfo;
 
@@ -38,15 +39,18 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final WechatService wechatService;
+    private final SmsService smsService;
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           JwtUtil jwtUtil,
-                          WechatService wechatService) {
+                          WechatService wechatService,
+                          SmsService smsService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.wechatService = wechatService;
+        this.smsService = smsService;
     }
 
     private Map<String, Object> buildTokenResponse(User user) {
@@ -56,6 +60,8 @@ public class AuthController {
         data.put("userId", user.getId());
         data.put("username", user.getUsername());
         data.put("role", user.getRole());
+        data.put("phone", user.getPhone());
+        data.put("certStatus", user.getCertStatus());
         return data;
     }
 
@@ -162,6 +168,46 @@ public class AuthController {
                     : "注销原因：" + reason);
         }
         return Result.success(userRepository.save(user));
+    }
+
+    /**
+     * 发送短信验证码：POST /auth/sms/send?phone=13800000000
+     * 无需登录，60秒重发限制，验证码5分钟有效
+     */
+    @Operation(summary = "发送短信验证码", description = "无需登录，向指定手机号发送6位验证码；60秒重发限制，5分钟有效")
+    @PostMapping("/sms/send")
+    public Result<Void> sendSmsCode(@RequestParam String phone) {
+        String err = smsService.sendCode(phone);
+        if (err != null) {
+            return Result.error(400, err);
+        }
+        return Result.success();
+    }
+
+    /**
+     * 校验短信验证码：POST /auth/sms/verify?phone=13800000000&code=123456
+     * 无需登录，校验通过后删除验证码
+     */
+    @Operation(summary = "校验短信验证码", description = "无需登录，校验手机号+验证码，通过后验证码自动失效")
+    @PostMapping("/sms/verify")
+    public Result<Map<String, Object>> verifySmsCode(@RequestParam String phone,
+                                                      @RequestParam String code) {
+        boolean ok = smsService.verifyCode(phone, code);
+        if (!ok) {
+            return Result.error(400, "验证码错误或已过期");
+        }
+        // 验证通过后，将该手机号对应的所有用户 certStatus 置为已通过
+        var users = userRepository.findByPhone(phone);
+        for (var user : users) {
+            if (!"已通过".equals(user.getCertStatus())) {
+                user.setCertStatus("已通过");
+                userRepository.save(user);
+            }
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("phone", phone);
+        data.put("verified", true);
+        return Result.success(data);
     }
 
     /** 从 SecurityContext 提取当前登录用户 ID，缺失返回 null */

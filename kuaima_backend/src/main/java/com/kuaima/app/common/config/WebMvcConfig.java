@@ -3,17 +3,24 @@ package com.kuaima.app.common.config;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import com.kuaima.app.admin.interceptor.AdminLogInterceptor;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
     @Value("${kuaima.upload.dir:./uploads/}")
     private String uploadDir;
+
+    @Autowired
+    private AdminLogInterceptor adminLogInterceptor;
 
     @Override
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
@@ -39,5 +46,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadDir);
+    }
+
+    /** 注册操作日志拦截器，覆盖所有 /admin/** 接口 */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(adminLogInterceptor)
+                .addPathPatterns("/admin/**");
     }
 }

@@ -272,7 +272,7 @@
           </template>
 
           <div class="settings-section-title">
-            <i class="fas fa-users-cog"></i> 管理员列表
+            <i class="fas fa-users-cog"></i> 账号列表
             <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="goAddAdmin">
               新建账号
             </button>
@@ -307,7 +307,7 @@
                   <td>
                     <span :class="['role-tag', roleClass(u.role)]">{{ roleLabel(u.role) }}</span>
                   </td>
-                  <td>{{ u.dept || u.permissionGroup || '-' }}</td>
+                  <td>{{ getPermGroup(u) }}</td>
                   <td>{{ formatTime(u.lastLoginTime || u.lastLogin) }}</td>
                   <td>
                     <span :class="['status-badge', u.status === '禁用' ? 'default' : 'success']">
@@ -317,6 +317,7 @@
                   <td>
                     <a class="card-action" @click="goEditAdmin(u)">编辑</a>
                     <a class="card-action" style="margin-left:8px; color:#F59E0B;" @click="handleResetPassword(u)">重置密码</a>
+                    <a v-if="canToggleStatus(u)" class="card-action" :style="u.status === '禁用' ? 'margin-left:8px; color:#10B981;' : 'margin-left:8px; color:#EF4444;'" @click="handleToggleStatus(u)">{{ u.status === '禁用' ? '启用' : '禁用' }}</a>
                   </td>
                 </tr>
                 <tr v-if="adminUsers.length === 0">
@@ -784,7 +785,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, testSendTemplate, uploadFile, resetAdminPassword } from '@/api/system'
+import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, testSendTemplate, uploadFile, resetAdminPassword, updateAdminUser } from '@/api/system'
 import { listMessageTemplates } from '@/api/content'
 import request from '@/api/request'
 
@@ -1045,6 +1046,42 @@ const formatTime = (t) => {
   return s.length > 16 ? s.substring(0, 16) : s
 }
 
+/** 权限模块短名映射（与 AdminUserForm 权限树模块 key 对应） */
+const PERM_MODULE_LABELS = {
+  permUser: '用户',
+  permJob: '招工',
+  permOrder: '订单',
+  permContent: '内容',
+  permService: '消息',
+  permSystem: '系统'
+}
+
+/**
+ * 根据账号的 permissions 权限树生成「权限组」摘要（与原型一致）
+ * - 超级管理员：全部权限
+ * - 所有模块都至少有一个勾选：全部权限
+ * - 否则：用 "/" 连接已勾选的模块短名，如「用户/订单/招工」
+ * - 无权限：显示 "无"
+ */
+const getPermGroup = (u) => {
+  if (u.role === 'SUPER_ADMIN') return '全部权限'
+  let perms = u.permissions
+  if (!perms) return '无'
+  if (typeof perms === 'string') {
+    try { perms = JSON.parse(perms) } catch { return '无' }
+  }
+  if (!perms || typeof perms !== 'object') return '无'
+  const active = []
+  for (const key of Object.keys(PERM_MODULE_LABELS)) {
+    const mod = perms[key]
+    if (mod && typeof mod === 'object' && Object.values(mod).some(v => v === true)) {
+      active.push(PERM_MODULE_LABELS[key])
+    }
+  }
+  if (active.length === Object.keys(PERM_MODULE_LABELS).length) return '全部权限'
+  return active.length ? active.join('/') : '无'
+}
+
 const avatarBg = (u) => {
   const map = {
     SUPER_ADMIN: 'linear-gradient(135deg,#FF6B35,#FF8C42)',
@@ -1206,6 +1243,34 @@ const handleResetPassword = async (row) => {
     ElMessage.success('密码已重置为 123456')
   } catch (e) {
     console.warn('[Settings] 重置密码失败:', e)
+  }
+}
+
+/** 是否可切换状态：自己创建的账号且非超级管理员 */
+const canToggleStatus = (u) => {
+  if (u.role === 'SUPER_ADMIN') return false
+  const currentId = Number(localStorage.getItem('admin_id') || 0)
+  return u.createdBy != null && Number(u.createdBy) === currentId
+}
+
+/** 启用/禁用账号（仅限自己创建的账号） */
+const handleToggleStatus = async (u) => {
+  const target = u.status === '禁用' ? '启用' : '禁用'
+  try {
+    await ElMessageBox.confirm(
+      `确定要${target}账号「${u.name || u.username}」吗？${target === '禁用' ? '禁用后该账号将无法登录后台。' : ''}`,
+      target === '禁用' ? '禁用账号' : '启用账号',
+      { type: 'warning', confirmButtonText: target, cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await updateAdminUser(u.id, { status: target })
+    ElMessage.success(`账号已${target}`)
+    loadAdminUsers()
+  } catch (e) {
+    console.warn('[Settings] 切换账号状态失败:', e)
   }
 }
 

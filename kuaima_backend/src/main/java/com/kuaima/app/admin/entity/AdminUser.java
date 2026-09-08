@@ -36,6 +36,10 @@ public class AdminUser {
     @Column(length = 50)
     private String name;
 
+    /** 头像（Base64 或 URL） */
+    @Column(columnDefinition = "TEXT")
+    private String avatar;
+
     /** 角色: SUPER_ADMIN / ADMIN / EDITOR / VIEWER */
     @Column(nullable = false, length = 30)
     private String role;

@@ -41,31 +41,32 @@
       </div>
 
       <el-table :data="notices" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column label="公告ID" width="100">
+        <el-table-column label="公告ID" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="mono-cell">{{ formatId(row.id) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="类型" width="100">
+        <el-table-column label="类型" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag :type="row.typeClass === 'info' ? 'primary' : row.typeClass === 'warning' ? 'warning' : 'success'" effect="light">{{ row.type }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="公告标题" min-width="220" />
-        <el-table-column prop="scope" label="发布范围" width="110" />
-        <el-table-column prop="publisher" label="发布人" width="110">
+        <el-table-column prop="title" label="公告标题" show-overflow-tooltip />
+        <el-table-column prop="scope" label="发布范围" show-overflow-tooltip />
+        <el-table-column prop="publisher" label="发布人" show-overflow-tooltip>
           <template #default="{ row }">{{ row.publisher || '-' }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['status-badge', row.statusClass]">{{ row.status }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="publishTime" label="发布时间" width="160" />
-        <el-table-column label="操作" width="240" fixed="right">
+        <el-table-column label="发布时间" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatTime(row.publishTime) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <button class="table-action" @click="handleEdit(row)">编辑</button>
-            <!-- <button class="table-action">预览</button> -->
             <button v-if="row.status === '草稿'" class="table-action table-action-success" @click="handlePublish(row)">立即发布</button>
             <button v-else-if="row.status === '已发布'" class="table-action table-action-warning" @click="handleUnpublish(row)">下架</button>
             <button class="table-action table-action-danger" @click="handleDelete(row)">删除</button>
@@ -112,6 +113,7 @@
             <el-option label="仅零工" value="零工" />
             <el-option label="仅老板" value="雇主" />
             <el-option label="已实名用户" value="已实名" />
+            <el-option label="web账号" value="web账号" />
           </el-select>
         </el-form-item>
         <el-form-item label="公告内容">
@@ -151,6 +153,13 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 
 const formatId = (id) => 'N' + String(id || 0).padStart(3, '0')
+
+/** 格式化时间：2026-09-07T14:30:00 -> 2026-09-07 14:30 */
+const formatTime = (t) => {
+  if (!t) return '-'
+  const s = String(t).replace('T', ' ')
+  return s.length > 16 ? s.substring(0, 16) : s
+}
 
 const showModal = ref(false)
 const editingId = ref(null)

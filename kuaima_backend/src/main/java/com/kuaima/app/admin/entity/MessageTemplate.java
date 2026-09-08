@@ -47,6 +47,10 @@ public class MessageTemplate {
     @Column(length = 10)
     private String sendWay = "即时";
 
+    /** 定时发送时间（HH:mm），仅 sendWay=定时 时使用 */
+    @Column(length = 10)
+    private String scheduledTime;
+
     /** 发送时间：全天 / 工作时间 */
     @Column(length = 20)
     private String sendTime = "全天";
@@ -58,6 +62,10 @@ public class MessageTemplate {
     /** 最近使用时间 */
     @Column
     private LocalDateTime lastUsed;
+
+    /** 最近定时发送日期（yyyy-MM-dd），防止当天重复发送 */
+    @Column(length = 10)
+    private String lastSentDate;
 
     @Column
     private LocalDateTime createTime;

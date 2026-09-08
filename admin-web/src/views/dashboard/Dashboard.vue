@@ -72,14 +72,14 @@
       </div>
       
       <el-table :data="recentOrders" stripe style="width: 100%" :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column prop="id" label="订单号" width="160">
+        <el-table-column prop="id" label="订单号" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="color: var(--primary); font-family: monospace;">{{ row.id }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="employer" label="雇主" min-width="180" />
-        <el-table-column prop="job" label="工种" min-width="140" />
-        <el-table-column prop="worker" label="零工" width="140">
+        <el-table-column prop="employer" label="雇主" show-overflow-tooltip />
+        <el-table-column prop="job" label="工种" show-overflow-tooltip />
+        <el-table-column prop="worker" label="零工" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="worker-cell">
               <span class="mini-avatar" :style="{ background: row.avatarColor }">{{ row.avatarLetter }}</span>
@@ -87,17 +87,17 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="amount" label="金额" width="100">
+        <el-table-column prop="amount" label="金额" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="font-weight: 600;">{{ row.amount }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['status-badge', row.statusClass]">{{ row.status }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="time" label="时间" width="160" />
+        <el-table-column prop="time" label="时间" show-overflow-tooltip />
         <el-table-column label="操作" width="100" fixed="right">
           <template #default>
             <el-button link type="primary" size="small">查看</el-button>

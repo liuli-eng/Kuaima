@@ -10,11 +10,11 @@
         <el-input v-model="searchKeyword" placeholder="搜索操作人/对象" clearable style="width: 240px;" prefix-icon="Search" />
         <el-select v-model="typeFilter" placeholder="操作类型" clearable style="width: 140px;">
           <el-option label="登录" value="登录" />
-          <el-option label="数据修改" value="数据修改" />
-          <el-option label="审核" value="审核" />
-          <el-option label="权限变更" value="权限变更" />
+          <el-option label="新建" value="新建" />
+          <el-option label="编辑" value="编辑" />
           <el-option label="删除" value="删除" />
-          <el-option label="系统操作" value="系统操作" />
+          <el-option label="审核" value="审核" />
+          <el-option label="重置密码" value="重置密码" />
         </el-select>
         <div class="date-picker-wrap" style="width: 240px;">
           <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 100%;" />
@@ -25,24 +25,28 @@
       </div>
 
       <el-table :data="logs" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column prop="id" label="日志ID" width="100" />
-        <el-table-column prop="operator" label="操作人" width="120" />
-        <el-table-column prop="type" label="操作类型" width="120">
+        <el-table-column prop="id" label="日志ID" show-overflow-tooltip />
+        <el-table-column prop="operator" label="操作人" show-overflow-tooltip />
+        <el-table-column prop="type" label="操作类型" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag effect="light">{{ row.type }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="target" label="操作对象" min-width="180" />
-        <el-table-column prop="ip" label="IP地址" width="140" />
-        <el-table-column prop="time" label="时间" width="180" />
-        <el-table-column label="结果" width="100">
+        <el-table-column prop="target" label="操作对象" show-overflow-tooltip />
+        <el-table-column prop="ip" label="IP地址" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.ip || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="时间" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatTime(row.createTime) }}</template>
+        </el-table-column>
+        <el-table-column label="结果" show-overflow-tooltip>
           <template #default="{ row }">
-            <span :class="['status-badge', row.resultClass]">{{ row.result }}</span>
+            <span :class="['status-badge', row.result === '成功' ? 'success' : 'default']">{{ row.result }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
-          <template #default>
-            <el-button link type="primary" size="small">详情</el-button>
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -61,6 +65,51 @@
         />
       </div>
     </div>
+
+    <!-- 日志详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="日志详情" width="560px" :close-on-click-modal="false">
+      <div v-if="currentLog" class="log-detail">
+        <div class="log-detail-row">
+          <span class="log-detail-label">日志ID：</span>
+          <span class="log-detail-value" style="font-family:monospace; color:var(--primary);">{{ currentLog.id }}</span>
+        </div>
+        <div class="log-detail-row">
+          <span class="log-detail-label">操作人：</span>
+          <span class="log-detail-value">
+            <span class="avatar-sm">{{ (currentLog.operator || '-').charAt(0) }}</span>
+            {{ currentLog.operator || '-' }}
+          </span>
+        </div>
+        <div class="log-detail-row">
+          <span class="log-detail-label">操作类型：</span>
+          <span class="log-detail-value">
+            <el-tag effect="light">{{ currentLog.type || '-' }}</el-tag>
+          </span>
+        </div>
+        <div class="log-detail-row">
+          <span class="log-detail-label">操作对象：</span>
+          <span class="log-detail-value">{{ currentLog.target || '-' }}</span>
+        </div>
+        <div class="log-detail-row">
+          <span class="log-detail-label">详情描述：</span>
+          <span class="log-detail-value">{{ currentLog.detail || '-' }}</span>
+        </div>
+        <div class="log-detail-row">
+          <span class="log-detail-label">IP地址：</span>
+          <span class="log-detail-value" style="font-family:monospace;">{{ currentLog.ip || '-' }}</span>
+        </div>
+        <div class="log-detail-row">
+          <span class="log-detail-label">操作时间：</span>
+          <span class="log-detail-value">{{ formatTime(currentLog.createTime) }}</span>
+        </div>
+        <div class="log-detail-row">
+          <span class="log-detail-label">操作结果：</span>
+          <span class="log-detail-value">
+            <span :class="['status-badge', currentLog.result === '成功' ? 'success' : 'default']">{{ currentLog.result || '-' }}</span>
+          </span>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -75,6 +124,19 @@ const typeFilter = ref('')
 const dateRange = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
+const detailVisible = ref(false)
+const currentLog = ref(null)
+
+const formatTime = (t) => {
+  if (!t) return '-'
+  const s = String(t).replace('T', ' ')
+  return s.length > 16 ? s.substring(0, 16) : s
+}
+
+const showDetail = (row) => {
+  currentLog.value = row
+  detailVisible.value = true
+}
 
 // 切换筛选条件时，自动回到第一页并重新加载
 watch([searchKeyword, typeFilter, dateRange], () => {
@@ -149,5 +211,44 @@ onMounted(loadData)
   align-items: center;
   justify-content: space-between;
   margin-top: 16px;
+}
+
+/* 日志详情 */
+.log-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.log-detail-row {
+  display: flex;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.log-detail-label {
+  width: 84px;
+  flex-shrink: 0;
+  color: var(--text-muted, #9CA3AF);
+}
+.log-detail-value {
+  flex: 1;
+  color: var(--text-primary, #1F2937);
+  word-break: break-all;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.avatar-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B35, #FF8C42);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 4px;
 }
 </style>

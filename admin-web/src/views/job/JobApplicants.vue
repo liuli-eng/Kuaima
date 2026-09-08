@@ -14,7 +14,7 @@
       <el-tabs v-model="activeTab">
         <el-tab-pane label="待确认" name="pending">
           <el-table :data="pagedPending" stripe>
-            <el-table-column label="用户" min-width="160">
+            <el-table-column label="用户" show-overflow-tooltip>
               <template #default="{ row }">
                 <div class="user-cell">
                   <span class="mini-avatar">{{ row.avatar }}</span>
@@ -25,19 +25,19 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="realName" label="实名" width="100">
+            <el-table-column prop="realName" label="实名" show-overflow-tooltip>
               <template #default="{ row }">
                 <el-tag v-if="row.realName === '已认证'" type="success" effect="light">已认证</el-tag>
                 <el-tag v-else type="info" effect="light">未认证</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="技能标签" min-width="140">
+            <el-table-column label="技能标签" show-overflow-tooltip>
               <template #default="{ row }">
                 <el-tag v-for="skill in row.skills" :key="skill" size="small" type="warning" style="margin-right: 4px;">{{ skill }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="creditScore" label="信用分" width="100" />
-            <el-table-column prop="applyTime" label="报名时间" width="160" />
+            <el-table-column prop="creditScore" label="信用分" show-overflow-tooltip />
+            <el-table-column prop="applyTime" label="报名时间" show-overflow-tooltip />
             <el-table-column label="操作" width="200">
               <template #default>
                 <el-button link type="primary" size="small">查看资料</el-button>
@@ -63,7 +63,7 @@
 
         <el-tab-pane label="已录用" name="accepted">
           <el-table :data="pagedAccepted" stripe>
-            <el-table-column label="用户" min-width="160">
+            <el-table-column label="用户" show-overflow-tooltip>
               <template #default="{ row }">
                 <div class="user-cell">
                   <span class="mini-avatar">{{ row.avatar }}</span>
@@ -74,8 +74,8 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="creditScore" label="信用分" width="100" />
-            <el-table-column prop="acceptTime" label="录用时间" width="160" />
+            <el-table-column prop="creditScore" label="信用分" show-overflow-tooltip />
+            <el-table-column prop="acceptTime" label="录用时间" show-overflow-tooltip />
             <el-table-column label="操作" width="120">
               <template #default>
                 <el-button link type="primary" size="small">查看详情</el-button>
@@ -99,7 +99,7 @@
 
         <el-tab-pane label="已拒绝" name="rejected">
           <el-table :data="pagedRejected" stripe>
-            <el-table-column label="用户" min-width="160">
+            <el-table-column label="用户" show-overflow-tooltip>
               <template #default="{ row }">
                 <div class="user-cell">
                   <span class="mini-avatar">{{ row.avatar }}</span>
@@ -110,8 +110,8 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="rejectReason" label="拒绝原因" min-width="140" />
-            <el-table-column prop="rejectTime" label="拒绝时间" width="160" />
+            <el-table-column prop="rejectReason" label="拒绝原因" show-overflow-tooltip />
+            <el-table-column prop="rejectTime" label="拒绝时间" show-overflow-tooltip />
           </el-table>
           <div class="pagination">
             <div class="pagination-info">共 {{ rejectedList.length }} 条记录</div>

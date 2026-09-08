@@ -180,10 +180,16 @@ async function doLogin(phoneCode = "") {
           uni.setStorageSync("token", result.accessToken);
           uni.setStorageSync("userId", String(result.userId));
           uni.setStorageSync("role", result.role);
+          if (result.phone) uni.setStorageSync("userPhone", result.phone);
+          if (result.certStatus) {
+            uni.setStorageSync("workerCertStatus", result.certStatus);
+            uni.setStorageSync("certStatus", result.certStatus);
+          }
           try {
             const user = await getCurrentUser();
             if (user && typeof user === "object") {
               uni.setStorageSync("userInfo", user);
+              if (user.phone) uni.setStorageSync("userPhone", user.phone);
               if (user.certStatus)
                 uni.setStorageSync("workerCertStatus", user.certStatus);
             }

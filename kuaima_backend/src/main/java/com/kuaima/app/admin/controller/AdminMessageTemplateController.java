@@ -70,6 +70,10 @@ public class AdminMessageTemplateController {
         if (template.getSendWay() == null || template.getSendWay().isEmpty()) {
             template.setSendWay("即时");
         }
+        // 非定时方式清空定时时间
+        if (!"定时".equals(template.getSendWay())) {
+            template.setScheduledTime(null);
+        }
         if (template.getSendTime() == null || template.getSendTime().isEmpty()) {
             template.setSendTime("全天");
         }
@@ -89,6 +93,7 @@ public class AdminMessageTemplateController {
         if (template.getContent() != null) existing.setContent(template.getContent());
         if (template.getStatus() != null) existing.setStatus(template.getStatus());
         if (template.getSendWay() != null) existing.setSendWay(template.getSendWay());
+        if (template.getScheduledTime() != null) existing.setScheduledTime(template.getScheduledTime());
         if (template.getSendTime() != null) existing.setSendTime(template.getSendTime());
         if (template.getFreqLimit() != null) existing.setFreqLimit(template.getFreqLimit());
         existing.setUpdateTime(LocalDateTime.now());

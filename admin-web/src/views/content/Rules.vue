@@ -57,12 +57,12 @@
         stripe
         :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }"
       >
-        <el-table-column label="规则ID" width="110">
+        <el-table-column label="规则ID" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="rule-id">{{ row.code || row.id }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="规则名称" min-width="240">
+        <el-table-column label="规则名称" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="rule-name">
               <span class="category-icon" :style="{ background: currentTabMeta.gradient }">
@@ -72,18 +72,18 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="category" label="分类" width="160" />
-        <el-table-column label="版本号" width="100">
+        <el-table-column prop="category" label="分类" show-overflow-tooltip />
+        <el-table-column label="版本号" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="rule-version">{{ row.version || 'v1.0' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['status-badge', statusClass(row.status)]">{{ statusLabel(row.status) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="updateTime" label="更新时间" width="160" />
+        <el-table-column prop="updateTime" label="更新时间" show-overflow-tooltip />
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <div class="action-btns">

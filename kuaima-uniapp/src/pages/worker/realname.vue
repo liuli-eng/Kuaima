@@ -6,13 +6,13 @@
         <view class="header-icon"><text class="phone-icon">⌕</text></view>
         <text class="header-title">验证手机号</text>
         <text class="header-desc"
-          >为了保障您的账户安全，需要验证<br />您绑定的手机号 138****5678</text
+          >为了保障您的账户安全，需要验证<br />您绑定的手机号 {{ maskedPhone }}</text
         >
       </view>
       <view class="form-section">
         <view class="form-item"
           ><text class="form-label">手机号</text
-          ><input class="form-input phone" value="138 **** 5678" disabled
+          ><input class="form-input phone" :value="maskedPhone" disabled
         /></view>
         <view class="form-item"
           ><text class="form-label">验证码</text
@@ -24,11 +24,11 @@
             placeholder="请输入6位验证码"
           /><button
             class="send-code-btn"
-            :disabled="countdown > 0"
+            :disabled="countdown > 0 || sending"
             @click="sendCode"
           >
             {{
-              countdown
+              sending ? "发送中..." : countdown
                 ? `${countdown}s 后重试`
                 : sent
                   ? "重新获取"
@@ -37,8 +37,8 @@
           </button></view
         >
       </view>
-      <button class="verify-btn" :disabled="code.length !== 6" @click="verify">
-        确 认 验 证
+      <button class="verify-btn" :disabled="code.length !== 6 || verifying" @click="verify">
+        {{ verifying ? "验证中..." : "确 认 验 证" }}
       </button>
       <view class="tip-box"
         ><view class="tip-icon">!</view
@@ -62,33 +62,110 @@
   </view>
 </template>
 <script setup>
-import { ref, onBeforeUnmount } from "vue";
+import { ref, computed, onBeforeUnmount } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
+import { request } from "@/api/http";
+
+const phone = ref(uni.getStorageSync("userPhone") || "");
 const code = ref("");
 const countdown = ref(0);
 const sent = ref(false);
 const agreed = ref(true);
+const sending = ref(false);
+const verifying = ref(false);
 let timer;
-function sendCode() {
-  if (countdown.value) return;
-  sent.value = true;
-  countdown.value = 60;
-  timer = setInterval(() => {
-    countdown.value -= 1;
-    if (countdown.value <= 0) {
-      clearInterval(timer);
-      timer = null;
-    }
-  }, 1000);
-  uni.showToast({ title: "验证码已发送至 138****5678", icon: "success" });
+
+const maskedPhone = computed(() => {
+  if (!phone.value || phone.value.length < 7) return phone.value || "未绑定";
+  return phone.value.slice(0, 3) + "****" + phone.value.slice(-4);
+});
+
+function getBaseUrl() {
+  // #ifdef MP-WEIXIN
+  return import.meta.env.VITE_MP_API_BASE_URL || "http://8.148.144.146/api";
+  // #endif
+  // #ifndef MP-WEIXIN
+  return import.meta.env.VITE_API_BASE_URL || "/api";
+  // #endif
 }
+
+function sendCode() {
+  if (countdown.value || sending.value) return;
+  if (!phone.value) {
+    uni.showToast({ title: "未获取到手机号", icon: "none" });
+    return;
+  }
+  sending.value = true;
+  const baseUrl = getBaseUrl();
+  uni.request({
+    url: `${baseUrl}/auth/sms/send?phone=${encodeURIComponent(phone.value)}`,
+    method: "POST",
+    header: { "X-User-Id": uni.getStorageSync("userId") || "" },
+    success(res) {
+      const payload = res.data;
+      if (
+        res.statusCode >= 200 &&
+        res.statusCode < 300 &&
+        (!payload?.code || payload.code === 200 || payload.code === 0)
+      ) {
+        sent.value = true;
+        countdown.value = 60;
+        timer = setInterval(() => {
+          countdown.value -= 1;
+          if (countdown.value <= 0) {
+            clearInterval(timer);
+            timer = null;
+          }
+        }, 1000);
+        uni.showToast({ title: `验证码已发送至 ${maskedPhone.value}`, icon: "success" });
+      } else {
+        uni.showToast({ title: payload?.message || "发送失败", icon: "none" });
+      }
+    },
+    fail() {
+      uni.showToast({ title: "网络请求失败", icon: "none" });
+    },
+    complete() {
+      sending.value = false;
+    },
+  });
+}
+
 function verify() {
   if (!agreed.value)
     return uni.showToast({ title: "请先阅读并同意隐私政策", icon: "none" });
   if (code.value.length !== 6) return;
-  uni.showToast({ title: "验证成功", icon: "success" });
-  setTimeout(() => uni.navigateBack(), 600);
+  if (verifying.value) return;
+  verifying.value = true;
+  const baseUrl = getBaseUrl();
+  uni.request({
+    url: `${baseUrl}/auth/sms/verify?phone=${encodeURIComponent(phone.value)}&code=${encodeURIComponent(code.value)}`,
+    method: "POST",
+    header: { "X-User-Id": uni.getStorageSync("userId") || "" },
+    success(res) {
+      const payload = res.data;
+      if (
+        res.statusCode >= 200 &&
+        res.statusCode < 300 &&
+        (!payload?.code || payload.code === 200 || payload.code === 0)
+      ) {
+        uni.showToast({ title: "验证成功", icon: "success" });
+        // 更新本地认证状态
+        uni.setStorageSync("certStatus", "已通过");
+        setTimeout(() => uni.navigateBack(), 800);
+      } else {
+        uni.showToast({ title: payload?.message || "验证失败", icon: "none" });
+      }
+    },
+    fail() {
+      uni.showToast({ title: "网络请求失败", icon: "none" });
+    },
+    complete() {
+      verifying.value = false;
+    },
+  });
 }
+
 function openPrivacy() {
   uni.navigateTo({ url: "/pages/worker/user-agreement" });
 }
@@ -250,7 +327,7 @@ onBeforeUnmount(() => {
   width: 32rpx;
   height: 32rpx;
   flex-shrink: 0;
-  margin: 4rpx 16rpx 0 0;
+  margin: 4rpx 16rpx 0;
   border: 2rpx solid #ddd;
   border-radius: 8rpx;
   display: flex;

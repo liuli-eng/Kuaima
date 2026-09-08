@@ -14,6 +14,11 @@ export function createNotice(data) { return request.post('/admin/notices', data)
 export function updateNotice(id, data) { return request.put(`/admin/notices/${id}`, data) }
 export function deleteNotice(id) { return request.delete(`/admin/notices/${id}`) }
 
+// 未读公告（登录后浮层）
+export function listUnreadNotices() { return request.get('/admin/notices/unread') }
+// 标记已读
+export function markNoticeRead(id) { return request.post(`/admin/notices/${id}/read`) }
+
 // ============ Rules ============
 export function listRules({ page = 0, size = 10 } = {}) {
   return request.get('/admin/rules', { params: { page, size } })

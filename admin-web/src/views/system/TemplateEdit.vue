@@ -133,11 +133,10 @@
                   <el-option label="定时批量发送" value="定时" />
                 </el-select>
               </div>
-              <div>
-                <label class="form-label">发送时间</label>
-                <el-select v-model="form.sendTime" style="width:100%;">
-                  <el-option label="全天可发送" value="全天" />
-                  <el-option label="仅工作时间（9:00-19:00）" value="工作时间" />
+              <div v-if="form.sendWay === '定时'">
+                <label class="form-label">定时发送时间 <span class="required">*</span></label>
+                <el-select v-model="form.scheduledTime" placeholder="选择整点时间" style="width:100%;">
+                  <el-option v-for="h in 11" :key="h" :label="String(h + 8).padStart(2, '0') + ':00'" :value="String(h + 8).padStart(2, '0') + ':00'" />
                 </el-select>
               </div>
               <div>
@@ -276,6 +275,7 @@ const form = ref({
   status: 'enabled',
   content: '',
   sendWay: '即时',
+  scheduledTime: '',
   sendTime: '全天',
   freqLimit: '5'
 })
@@ -373,6 +373,7 @@ const saveTemplate = async () => {
       content: form.value.content,
       status: form.value.status,
       sendWay: form.value.sendWay,
+      scheduledTime: form.value.sendWay === '定时' ? form.value.scheduledTime : null,
       sendTime: form.value.sendTime,
       freqLimit: form.value.freqLimit
     }
@@ -406,6 +407,7 @@ const loadTemplate = async () => {
         content: tpl.content || '',
         status: tpl.status || 'enabled',
         sendWay: tpl.sendWay || '即时',
+        scheduledTime: tpl.scheduledTime || '',
         sendTime: tpl.sendTime || '全天',
         freqLimit: tpl.freqLimit || '5'
       }

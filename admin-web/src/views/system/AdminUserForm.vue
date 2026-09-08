@@ -7,7 +7,7 @@
           <i class="fas fa-arrow-left"></i> 返回
         </button>
         <div>
-          <h1 class="page-title">{{ isEdit ? '编辑管理员' : '新建账号' }}</h1>
+          <h1 class="page-title">{{ isEdit ? '编辑账号' : '新建账号' }}</h1>
           <p class="page-desc">{{ isEdit ? '修改信息和权限配置' : '创建新的账号并分配权限' }}</p>
         </div>
       </div>
@@ -96,9 +96,23 @@
       <div>
         <div class="sidebar-card">
           <div class="avatar-upload">
-            <div class="avatar-preview" id="avatarPreview">{{ avatarLetter }}</div>
-            <button class="avatar-upload-btn" @click="onUploadAvatar">
-              <i class="fas fa-camera"></i> 上传头像
+            <el-upload
+              class="avatar-uploader"
+              :show-file-list="false"
+              :before-upload="beforeAvatarUpload"
+              :http-request="handleAvatarUpload"
+              accept="image/png,image/jpeg,image/gif"
+            >
+              <img v-if="form.avatar" :src="form.avatar" class="avatar-img" alt="头像" />
+              <div v-else class="avatar-preview">{{ avatarLetter }}</div>
+              <div class="avatar-overlay">
+                <i class="fas fa-camera"></i>
+                <span>上传头像</span>
+              </div>
+            </el-upload>
+            <div class="avatar-tip">支持 JPG/PNG/GIF，大小不超过 2MB</div>
+            <button v-if="form.avatar" class="avatar-remove-btn" @click="form.avatar = ''">
+              <i class="fas fa-times"></i> 移除头像
             </button>
           </div>
 
@@ -127,13 +141,13 @@
 
           <div class="action-buttons">
             <button class="btn btn-primary" :disabled="saving" @click="handleSave">
-              <i class="fas fa-save"></i> {{ saving ? '保存中...' : (isEdit ? '保存修改' : '保存管理员') }}
+              <i class="fas fa-save"></i> {{ saving ? '保存中...' : '保存' }}
             </button>
             <button class="btn btn-outline" @click="goBack">取消</button>
           </div>
           <div style="margin-top:10px;" v-if="isEdit">
             <button class="btn btn-danger" style="width:100%;" @click="handleDelete">
-              <i class="fas fa-trash-alt"></i> 删除管理员
+              <i class="fas fa-trash-alt"></i> 删除
             </button>
           </div>
         </div>
@@ -164,6 +178,7 @@ const form = reactive({
   password: '',
   password2: '',
   remark: '',
+  avatar: '',
   status: '启用',
   lastLoginTime: '',
   createTime: '',
@@ -273,8 +288,34 @@ const onRoleChange = (v) => {
 
 // ====== 头像 ======
 const avatarLetter = computed(() => (form.name || '').charAt(0) || '管')
-const onUploadAvatar = () => {
-  ElMessage.info('头像上传功能暂未开放，当前展示姓名首字头像')
+const avatarUploading = ref(false)
+
+const beforeAvatarUpload = (file) => {
+  const validTypes = ['image/png', 'image/jpeg', 'image/gif']
+  if (!validTypes.includes(file.type)) {
+    ElMessage.error('仅支持 JPG/PNG/GIF 格式')
+    return false
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.error('头像大小不能超过 2MB')
+    return false
+  }
+  return true
+}
+
+const handleAvatarUpload = (option) => {
+  avatarUploading.value = true
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    form.avatar = e.target.result
+    avatarUploading.value = false
+    ElMessage.success('头像上传成功')
+  }
+  reader.onerror = () => {
+    avatarUploading.value = false
+    ElMessage.error('头像读取失败')
+  }
+  reader.readAsDataURL(option.file)
 }
 
 // ====== 工具 ======
@@ -313,6 +354,7 @@ const loadDetail = async () => {
     form.phone = d.phone || ''
     form.email = d.email || ''
     form.remark = d.remark || ''
+    form.avatar = d.avatar || ''
     form.status = d.status || '启用'
     form.lastLoginTime = d.lastLoginTime || ''
     form.createTime = d.createTime || ''
@@ -378,7 +420,8 @@ const handleSave = async () => {
       name: form.name,
       phone: form.phone,
       email: form.email || null,
-      remark: form.remark || null
+      remark: form.remark || null,
+      avatar: form.avatar || null
     }
     // 超级管理员 / 非自建账号：不提交 role/permissions/status（后端会拒绝，前端先过滤）
     if (!isSuperAdminEdit.value && (!isEdit.value || isOwnCreated.value)) {
@@ -615,7 +658,30 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+.avatar-uploader {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: hidden;
+}
+.avatar-uploader :deep(.el-upload) {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.avatar-img {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 .avatar-preview {
   width: 88px;
@@ -629,17 +695,43 @@ onMounted(() => {
   font-size: 32px;
   font-weight: 600;
 }
-.avatar-upload-btn {
-  padding: 6px 14px;
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
   font-size: 12px;
-  color: var(--primary);
-  border: 1px dashed var(--primary);
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.avatar-uploader:hover .avatar-overlay {
+  opacity: 1;
+}
+.avatar-tip {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.avatar-remove-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--danger);
+  border: 1px solid var(--danger);
   border-radius: 4px;
   background: #fff;
   cursor: pointer;
 }
-.avatar-upload-btn:hover {
-  background: #fff8f3;
+.avatar-remove-btn:hover {
+  background: #fef2f2;
 }
 .status-row {
   display: flex;

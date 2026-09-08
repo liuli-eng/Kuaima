@@ -60,9 +60,9 @@
       </div>
 
       <el-table :data="tableData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column type="selection" width="50" />
-        <el-table-column prop="id" label="雇主ID" width="100" />
-        <el-table-column label="雇主" min-width="200">
+        <el-table-column type="selection" show-overflow-tooltip />
+        <el-table-column prop="id" label="雇主ID" show-overflow-tooltip />
+        <el-table-column label="雇主" show-overflow-tooltip>
           <template #default="{ row }">
             <div>
               <div style="font-weight: 500;">{{ row.displayName }}</div>
@@ -70,8 +70,8 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="industry" label="行业类型" width="100" />
-        <el-table-column label="联系人" width="180">
+        <el-table-column prop="industry" label="行业类型" show-overflow-tooltip />
+        <el-table-column label="联系人" show-overflow-tooltip>
           <template #default="{ row }">
             <div>
               <div>{{ row.contact }}</div>
@@ -79,27 +79,27 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="jobs" label="招工数" width="100">
+        <el-table-column prop="jobs" label="招工数" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.jobs ?? '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="信用分" width="100">
+        <el-table-column label="信用分" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="font-weight: 600; color: var(--primary);">{{ row.creditScore || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="certStatus" label="认证状态" width="100">
+        <el-table-column prop="certStatus" label="认证状态" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag :type="(row.certStatus === '已认证' || row.certStatus === 'VERIFIED' || row.certStatus === 2) ? 'success' : 'warning'" effect="light">{{ formatCertStatus(row.certStatus) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['status-badge', isNormal(row.status) ? 'success' : 'danger']">{{ formatStatus(row.status) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small">详情</el-button>
             <el-button link type="primary" size="small">资质</el-button>

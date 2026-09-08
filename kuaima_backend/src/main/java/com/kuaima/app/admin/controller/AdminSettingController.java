@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kuaima.app.admin.entity.AdminSetting;
 import com.kuaima.app.admin.repository.AdminSettingRepository;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.service.SmsService;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -26,8 +27,12 @@ import java.util.Map;
 public class AdminSettingController {
 
     private final AdminSettingRepository repo;
+    private final SmsService smsService;
 
-    public AdminSettingController(AdminSettingRepository repo) { this.repo = repo; }
+    public AdminSettingController(AdminSettingRepository repo, SmsService smsService) {
+        this.repo = repo;
+        this.smsService = smsService;
+    }
 
     @GetMapping
     public Result<List<AdminSetting>> list() { return Result.success(repo.findAll()); }
@@ -125,10 +130,23 @@ public class AdminSettingController {
             return Result.error("请输入正确的11位手机号");
         }
 
-        // 原型阶段：记录日志并返回成功（无真实短信/推送通道）
+        if ("sms".equals(type)) {
+            // 短信：调用阿里云 SmsService 发送验证码
+            String err = smsService.sendCode(receiver);
+            if (err != null) {
+                return Result.error("短信发送失败: " + err);
+            }
+            String masked = receiver.substring(0, 3) + "****" + receiver.substring(7);
+            return Result.success(Map.of(
+                    "success", true,
+                    "maskedReceiver", masked,
+                    "sentAt", LocalDateTime.now().toString()
+            ));
+        }
+
+        // 站内信：记录日志并返回成功
         System.out.println("[测试发送] type=" + type + ", receiver=" + receiver
                 + ", template=" + templateTitle + ", content=" + content);
-
         String masked = receiver.substring(0, 3) + "****" + receiver.substring(7);
         return Result.success(Map.of(
                 "success", true,

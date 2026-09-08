@@ -19,24 +19,24 @@
       </div>
 
       <el-table :data="auditData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column prop="id" label="招工ID" width="100" />
-        <el-table-column prop="type" label="工种" min-width="140" />
-        <el-table-column prop="employer" label="雇主" min-width="180" />
-        <el-table-column prop="price" label="工价" width="100">
+        <el-table-column prop="id" label="招工ID" show-overflow-tooltip />
+        <el-table-column prop="type" label="工种" show-overflow-tooltip />
+        <el-table-column prop="employer" label="雇主" show-overflow-tooltip />
+        <el-table-column prop="price" label="工价" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="font-weight: 600; color: var(--primary);">{{ row.price }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="count" label="招聘人数" width="100" />
-        <el-table-column label="风险标签" min-width="160">
+        <el-table-column prop="count" label="招聘人数" show-overflow-tooltip />
+        <el-table-column label="风险标签" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag v-if="row.risk" type="danger" effect="light" style="margin-right: 4px;">价格偏低</el-tag>
             <el-tag v-if="row.risk2" type="warning" effect="light">信息不完整</el-tag>
             <span v-if="!row.risk && !row.risk2" class="text-muted">无风险</span>
           </template>
         </el-table-column>
-        <el-table-column prop="time" label="提交时间" width="160" />
-        <el-table-column label="状态" width="100">
+        <el-table-column prop="time" label="提交时间" show-overflow-tooltip />
+        <el-table-column label="状态" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['status-badge', row.statusClass]">{{ row.status }}</span>
           </template>

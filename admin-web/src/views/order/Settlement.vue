@@ -32,15 +32,15 @@
 
       <el-table :data="settlementData" stripe @selection-change="handleSelectionChange" :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
         <el-table-column type="selection" width="50" />
-        <el-table-column prop="id" label="结算单号" width="160" />
-        <el-table-column prop="orderId" label="订单号" width="160">
+        <el-table-column prop="id" label="结算单号" show-overflow-tooltip />
+        <el-table-column prop="orderId" label="订单号" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="color: var(--primary); font-family: monospace;">{{ row.orderId }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="employer" label="雇主" min-width="160" />
-        <el-table-column prop="worker" label="零工" width="120" />
-        <el-table-column label="结算金额" width="140">
+        <el-table-column prop="employer" label="雇主" show-overflow-tooltip />
+        <el-table-column prop="worker" label="零工" show-overflow-tooltip />
+        <el-table-column label="结算金额" show-overflow-tooltip>
           <template #default="{ row }">
             <div>
               <div style="font-weight: 600;">¥{{ row.amount }}</div>
@@ -48,19 +48,19 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="actualAmount" label="实付金额" width="120">
+        <el-table-column prop="actualAmount" label="实付金额" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="font-weight: 600; color: var(--success);">¥{{ row.actualAmount }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="method" label="支付方式" width="100" />
-        <el-table-column label="状态" width="100">
+        <el-table-column prop="method" label="支付方式" show-overflow-tooltip />
+        <el-table-column label="状态" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['status-badge', row.statusClass]">{{ row.status }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="time" label="时间" width="160" />
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column prop="time" label="时间" show-overflow-tooltip />
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small">详情</el-button>
             <el-button v-if="row.status === '待结算'" link type="success" size="small" @click="handleSettlePay(row)">确认结算</el-button>

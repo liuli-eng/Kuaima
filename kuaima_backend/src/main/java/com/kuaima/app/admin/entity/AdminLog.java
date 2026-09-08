@@ -22,8 +22,12 @@ public class AdminLog {
     @Column(length = 50)
     private String operator;
 
+    /** 操作人管理员 ID，用于非超管/管理员按本人过滤日志 */
+    @Column
+    private Long operatorId;
+
     @Column(length = 30)
-    private String type;       // 登录 / 数据修改 / 审核 / 权限变更 / 删除 / 系统操作
+    private String type;       // 登录 / 新建 / 编辑 / 删除 / 审核 / 启用 / 禁用
 
     @Column(length = 100)
     private String target;

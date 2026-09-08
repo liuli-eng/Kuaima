@@ -17,6 +17,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByOpenid(String openid);
 
+    /** 按手机号查询（可能多个用户共用同一手机号） */
+    List<User> findByPhone(String phone);
+
     /** 按角色查询（角色: BOSS/USER） */
     List<User> findByRole(String role);
 
