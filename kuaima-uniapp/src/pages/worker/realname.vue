@@ -80,90 +80,60 @@ const maskedPhone = computed(() => {
   return phone.value.slice(0, 3) + "****" + phone.value.slice(-4);
 });
 
-function getBaseUrl() {
-  // #ifdef MP-WEIXIN
-  return import.meta.env.VITE_MP_API_BASE_URL || "http://8.148.144.146/api";
-  // #endif
-  // #ifndef MP-WEIXIN
-  return import.meta.env.VITE_API_BASE_URL || "/api";
-  // #endif
+function startCountdown() {
+  sent.value = true;
+  countdown.value = 60;
+  timer = setInterval(() => {
+    countdown.value -= 1;
+    if (countdown.value <= 0) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }, 1000);
 }
 
-function sendCode() {
+async function sendCode() {
   if (countdown.value || sending.value) return;
   if (!phone.value) {
     uni.showToast({ title: "未获取到手机号", icon: "none" });
     return;
   }
   sending.value = true;
-  const baseUrl = getBaseUrl();
-  uni.request({
-    url: `${baseUrl}/auth/sms/send?phone=${encodeURIComponent(phone.value)}`,
-    method: "POST",
-    header: { "X-User-Id": uni.getStorageSync("userId") || "" },
-    success(res) {
-      const payload = res.data;
-      if (
-        res.statusCode >= 200 &&
-        res.statusCode < 300 &&
-        (!payload?.code || payload.code === 200 || payload.code === 0)
-      ) {
-        sent.value = true;
-        countdown.value = 60;
-        timer = setInterval(() => {
-          countdown.value -= 1;
-          if (countdown.value <= 0) {
-            clearInterval(timer);
-            timer = null;
-          }
-        }, 1000);
-        uni.showToast({ title: `验证码已发送至 ${maskedPhone.value}`, icon: "success" });
-      } else {
-        uni.showToast({ title: payload?.message || "发送失败", icon: "none" });
-      }
-    },
-    fail() {
-      uni.showToast({ title: "网络请求失败", icon: "none" });
-    },
-    complete() {
-      sending.value = false;
-    },
-  });
+  try {
+    await request({
+      url: `/auth/sms/send?phone=${encodeURIComponent(phone.value)}`,
+      method: "POST",
+    });
+    startCountdown();
+    uni.showToast({ title: `验证码已发送至 ${maskedPhone.value}`, icon: "success" });
+  } catch (err) {
+    uni.showToast({ title: err?.message || "发送失败", icon: "none" });
+  } finally {
+    sending.value = false;
+  }
 }
 
-function verify() {
+async function verify() {
   if (!agreed.value)
     return uni.showToast({ title: "请先阅读并同意隐私政策", icon: "none" });
   if (code.value.length !== 6) return;
   if (verifying.value) return;
   verifying.value = true;
-  const baseUrl = getBaseUrl();
-  uni.request({
-    url: `${baseUrl}/auth/sms/verify?phone=${encodeURIComponent(phone.value)}&code=${encodeURIComponent(code.value)}`,
-    method: "POST",
-    header: { "X-User-Id": uni.getStorageSync("userId") || "" },
-    success(res) {
-      const payload = res.data;
-      if (
-        res.statusCode >= 200 &&
-        res.statusCode < 300 &&
-        (!payload?.code || payload.code === 200 || payload.code === 0)
-      ) {
-        uni.showToast({ title: "验证成功", icon: "success" });
-        // 更新本地认证状态
-        uni.setStorageSync("certStatus", "已通过");
-        setTimeout(() => uni.navigateBack(), 800);
-      } else {
-        uni.showToast({ title: payload?.message || "验证失败", icon: "none" });
-      }
-    },
-    fail() {
-      uni.showToast({ title: "网络请求失败", icon: "none" });
-    },
-    complete() {
-      verifying.value = false;
-    },
-  });
+  try {
+    await request({
+      url: `/auth/sms/verify?phone=${encodeURIComponent(phone.value)}&code=${encodeURIComponent(code.value)}`,
+      method: "POST",
+    });
+    uni.showToast({ title: "验证成功", icon: "success" });
+    // 更新本地认证状态
+    uni.setStorageSync("certStatus", "已通过");
+    uni.setStorageSync("workerCertStatus", "已通过");
+    setTimeout(() => uni.navigateBack(), 800);
+  } catch (err) {
+    uni.showToast({ title: err?.message || "验证失败", icon: "none" });
+  } finally {
+    verifying.value = false;
+  }
 }
 
 function openPrivacy() {

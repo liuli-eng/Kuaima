@@ -16,19 +16,19 @@
       </view>
 
       <text class="page-title">验证手机号</text>
-      <text class="page-desc">为了保障您的账户安全，需要验证<br>您绑定的手机号 138****5678</text>
+      <text class="page-desc">为了保障您的账户安全，需要验证<br>您绑定的手机号 {{ maskedPhone }}</text>
 
       <!-- 表单 -->
       <view class="form-card">
         <view class="form-item">
           <text class="form-label">手机号</text>
-          <input type="tel" class="form-input phone" value="138 **** 5678" disabled />
+          <input type="tel" class="form-input phone" :value="maskedPhone" disabled />
         </view>
         <view class="form-item">
           <text class="form-label">验证码</text>
           <input type="text" class="form-input" placeholder="请输入6位验证码" v-model="code" maxlength="6" />
-          <button class="send-code-btn" :class="{ disabled: countdown > 0 }" @click="sendCode">
-            {{ countdown > 0 ? countdown + 's 后重试' : '获取验证码' }}
+          <button class="send-code-btn" :class="{ disabled: countdown > 0 || sending }" @click="sendCode">
+            {{ sending ? '发送中...' : countdown > 0 ? countdown + 's 后重试' : (sent ? '重新获取' : '获取验证码') }}
           </button>
         </view>
       </view>
@@ -43,7 +43,7 @@
         >{{ code[i-1] || '' }}</view>
       </view>
 
-      <button class="verify-btn" :disabled="code.length !== 6" @click="doVerify">确 认 验 证</button>
+      <button class="verify-btn" :disabled="code.length !== 6 || verifying" @click="doVerify">{{ verifying ? '验证中...' : '确 认 验 证' }}</button>
 
       <!-- 提示 -->
       <view class="tip-box">
@@ -63,13 +63,26 @@
 </template>
 
 <script>
+import { request } from '@/api/http'
+
 export default {
   data() {
     return {
       statusBarHeight: 0,
+      phone: uni.getStorageSync('userPhone') || '',
       code: '',
       countdown: 0,
-      agreed: false
+      sent: false,
+      agreed: true,
+      sending: false,
+      verifying: false,
+      timer: null
+    }
+  },
+  computed: {
+    maskedPhone() {
+      if (!this.phone || this.phone.length < 7) return this.phone || '未绑定'
+      return this.phone.slice(0, 3) + '****' + this.phone.slice(-4)
     }
   },
   onLoad() {
@@ -77,6 +90,9 @@ export default {
       const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
       this.statusBarHeight = Number(info.statusBarHeight || 0)
     } catch (_) {}
+  },
+  beforeDestroy() {
+    if (this.timer) clearInterval(this.timer)
   },
   methods: {
     goBack() {
@@ -86,18 +102,38 @@ export default {
       const url = page === 'user-agreement' ? '/pages/worker/user-agreement' : `/pages/${page}`
       uni.navigateTo({ url })
     },
-    sendCode() {
-      if (this.countdown > 0) return
+    startCountdown() {
+      this.sent = true
       this.countdown = 60
-      const timer = setInterval(() => {
+      this.timer = setInterval(() => {
         this.countdown--
         if (this.countdown <= 0) {
-          clearInterval(timer)
+          clearInterval(this.timer)
+          this.timer = null
         }
       }, 1000)
-      uni.showToast({ title: '验证码已发送至 138****5678', icon: 'success' })
     },
-    doVerify() {
+    async sendCode() {
+      if (this.countdown > 0 || this.sending) return
+      if (!this.phone) {
+        uni.showToast({ title: '未获取到手机号', icon: 'none' })
+        return
+      }
+      this.sending = true
+      try {
+        await request({
+          url: `/auth/sms/send?phone=${encodeURIComponent(this.phone)}`,
+          method: 'POST'
+        })
+        this.startCountdown()
+        uni.showToast({ title: `验证码已发送至 ${this.maskedPhone}`, icon: 'success' })
+      } catch (err) {
+        uni.showToast({ title: err?.message || '发送失败', icon: 'none' })
+      } finally {
+        this.sending = false
+      }
+    },
+    async doVerify() {
       if (!this.agreed) {
         uni.showToast({ title: '请先阅读并同意隐私政策', icon: 'none' })
         return
@@ -106,10 +142,24 @@ export default {
         uni.showToast({ title: '请输入6位验证码', icon: 'none' })
         return
       }
-      uni.showToast({ title: '验证成功！', icon: 'success' })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
+      if (this.verifying) return
+      this.verifying = true
+      try {
+        await request({
+          url: `/auth/sms/verify?phone=${encodeURIComponent(this.phone)}&code=${encodeURIComponent(this.code)}`,
+          method: 'POST'
+        })
+        uni.showToast({ title: '验证成功！', icon: 'success' })
+        uni.setStorageSync('certStatus', '已通过')
+        uni.setStorageSync('bossCertStatus', '已通过')
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 1000)
+      } catch (err) {
+        uni.showToast({ title: err?.message || '验证失败', icon: 'none' })
+      } finally {
+        this.verifying = false
+      }
     }
   }
 }
