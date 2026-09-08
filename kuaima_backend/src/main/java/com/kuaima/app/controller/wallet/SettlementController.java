@@ -11,11 +11,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
 
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.entity.Wallet;
 import com.kuaima.app.domain.wallet.service.SettlementService;
+import com.kuaima.app.common.ForbiddenBusinessException;
+import com.kuaima.app.domain.user.constant.UserRole;
+import com.kuaima.app.security.model.LoginUser;
 
 /**
  * 结算（老板付钱给零工）：
@@ -61,7 +65,8 @@ public class SettlementController {
     /** 某零工的结算单列表：GET /settle/worker/{userId} */
     @Operation(summary = "零工结算单列表", description = "返回该零工所有结算单数组")
     @GetMapping("/worker/{userId}")
-    public Result<List<Settlement>> listByWorker(@PathVariable Long userId) {
+    public Result<List<Settlement>> listByWorker(@PathVariable Long userId, Authentication authentication) {
+        requireCurrentWorker(userId, authentication);
         return Result.success(settlementService.listByWorker(userId));
     }
 
@@ -70,6 +75,14 @@ public class SettlementController {
     @GetMapping("/wallet/{userId}")
     public Result<Wallet> getWorkerWallet(@PathVariable Long userId) {
         return Result.success(settlementService.getWorkerWallet(userId));
+    }
+
+    private void requireCurrentWorker(Long userId, Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof LoginUser loginUser
+                && UserRole.USER.equals(loginUser.role()) && userId.equals(loginUser.id())) {
+            return;
+        }
+        throw new ForbiddenBusinessException("只能查询当前登录零工的结算记录");
     }
 
     /** 结算单详情：GET /settle/{id}/detail */

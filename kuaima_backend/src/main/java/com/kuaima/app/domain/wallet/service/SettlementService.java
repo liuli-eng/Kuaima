@@ -5,7 +5,11 @@ import java.math.RoundingMode;
 import java.sql.Date;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,9 +23,13 @@ import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.message.constant.BizType;
 import com.kuaima.app.domain.message.constant.MessageType;
 import com.kuaima.app.domain.message.service.MessageService;
+import com.kuaima.app.domain.user.entity.User;
+import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.entity.Wallet;
+import com.kuaima.app.domain.wallet.model.PendingSettlementModels.PendingSettlementItem;
+import com.kuaima.app.domain.wallet.model.PendingSettlementModels.PendingSettlementOrder;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -39,6 +47,7 @@ public class SettlementService {
     private final BaseOrderItemRespository itemRepository;
     private final WalletService walletService;
     private final MessageService messageService;
+    private final UserRepository userRepository;
 
     /** 平台服务费率(% of wage)，规则待定，默认 0 */
     @Value("${kuaima.settle.service-fee-rate:0}")
@@ -46,14 +55,16 @@ public class SettlementService {
 
     public SettlementService(SettlementRespository settlementRepository,
                              BossOrderRespository orderRepository,
-                             BaseOrderItemRespository itemRepository,
-                             WalletService walletService,
-                             MessageService messageService) {
+                            BaseOrderItemRespository itemRepository,
+                            WalletService walletService,
+                            MessageService messageService,
+                            UserRepository userRepository) {
         this.settlementRepository = settlementRepository;
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.walletService = walletService;
         this.messageService = messageService;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -108,6 +119,8 @@ public class SettlementService {
         s.setPayTime(LocalDateTime.now());
         settlementRepository.save(s);
 
+        markOrderCompletedIfSettled(s.getOrderId());
+
         // 工资入零工钱包
         walletService.credit(s.getWorkerId(), s.getWage(), WalletService.BIZ_WAGE,
                 s.getId(), "工资结算 orderId=" + s.getOrderId() + " 天数=" + s.getWorkDays());
@@ -116,6 +129,31 @@ public class SettlementService {
                 "您的工资 " + fenToYuan(s.getWage()) + " 元已到账，可在钱包中查看或提现。",
                 BizType.SETTLE, s.getId());
         return s;
+    }
+
+    /** 所有有效录取人员均已完成且结算单全部支付后，订单自动变为已完成。 */
+    private void markOrderCompletedIfSettled(Long orderId) {
+        BossOrder order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || !BossStatus.ORDER_PENDING_SETTLE.equals(order.getOrderStatus())) {
+            return;
+        }
+        List<BaseOrderItem> activeItems = itemRepository.findByOrderId(orderId).stream()
+                .filter(i -> BossStatus.ITEM_HIRED.equals(i.getStatus())
+                        || BossStatus.ITEM_ON_WORK.equals(i.getStatus())
+                        || BossStatus.ITEM_FINISHED.equals(i.getStatus()))
+                .toList();
+        if (activeItems.isEmpty() || activeItems.stream().anyMatch(i ->
+                !BossStatus.ITEM_FINISHED.equals(i.getStatus()))) {
+            return;
+        }
+        List<Settlement> settlements = settlementRepository.findByOrderIdOrderByIdDesc(orderId);
+        boolean allPaid = activeItems.stream().allMatch(item -> settlements.stream().anyMatch(settlement ->
+                item.getId().equals(settlement.getItemId())
+                        && SettlementStatus.PAID.equals(settlement.getStatus())));
+        if (allPaid) {
+            order.setOrderStatus(BossStatus.ORDER_COMPLETED);
+            orderRepository.save(order);
+        }
     }
 
     /** 按订单查结算单 */
@@ -136,6 +174,100 @@ public class SettlementService {
     /** 结算单详情 */
     public Settlement getSettlementDetail(Long id) {
         return getSettlementOrThrow(id);
+    }
+
+    /** 查询老板全部岗位的待结算报名聚合数据。 */
+    @Transactional(readOnly = true)
+    public List<PendingSettlementOrder> listPendingByBoss(Long bossId) {
+        if (bossId == null) {
+            throw new IllegalArgumentException("老板用户ID不能为空");
+        }
+        List<BossOrder> orders = orderRepository.findByCreateByOrderByIdDesc(bossId);
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, BossOrder> ordersById = orders.stream()
+                .collect(java.util.stream.Collectors.toMap(BossOrder::getId, item -> item));
+        List<BaseOrderItem> allItems = itemRepository.findByBossIdJoinOrder(bossId);
+        List<Long> itemIds = allItems.stream().map(BaseOrderItem::getId).filter(Objects::nonNull).toList();
+        Map<Long, List<Settlement>> settlementsByItem = itemIds.isEmpty()
+                ? Map.of()
+                : settlementRepository.findByItemIdInOrderByIdDesc(itemIds).stream()
+                        .collect(java.util.stream.Collectors.groupingBy(Settlement::getItemId));
+        Map<Long, User> usersById = loadUsers(allItems);
+        Map<Long, List<PendingSettlementItem>> pendingByOrder = new LinkedHashMap<>();
+
+        for (BaseOrderItem item : allItems) {
+            BossOrder order = ordersById.get(item.getOrderId());
+            if (order == null) continue;
+            List<Settlement> itemSettlements = settlementsByItem.getOrDefault(item.getId(), List.of());
+            Settlement pending = itemSettlements.stream()
+                    .filter(s -> SettlementStatus.PENDING.equals(s.getStatus()))
+                    .findFirst().orElse(null);
+            boolean paid = itemSettlements.stream().anyMatch(s -> SettlementStatus.PAID.equals(s.getStatus()));
+            if (paid && pending == null) continue;
+            if (pending == null && !BossStatus.ITEM_FINISHED.equals(item.getStatus())) continue;
+            PendingSettlementItem view = pending == null
+                    ? estimateItem(item, order, usersById.get(item.getUserId()))
+                    : toPendingItem(pending, usersById.get(item.getUserId()));
+            pendingByOrder.computeIfAbsent(order.getId(), ignored -> new ArrayList<>()).add(view);
+        }
+
+        return orders.stream()
+                .filter(order -> pendingByOrder.containsKey(order.getId()))
+                .map(order -> toPendingOrder(order, pendingByOrder.get(order.getId())))
+                .toList();
+    }
+
+    private Map<Long, User> loadUsers(List<BaseOrderItem> items) {
+        List<Long> userIds = items.stream().map(BaseOrderItem::getUserId)
+                .filter(Objects::nonNull).distinct().toList();
+        if (userIds.isEmpty()) return Map.of();
+        return userRepository.findAllById(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, item -> item));
+    }
+
+    private PendingSettlementItem estimateItem(BaseOrderItem item, BossOrder order, User worker) {
+        if (order.getSalary() == null || order.getSalary() <= 0) {
+            throw new IllegalStateException("订单工资未设置，无法计算待结算金额: " + order.getId());
+        }
+        int days = resolveWorkDays(item, null);
+        long wage = order.getSalary() * (long) days * 100L;
+        long total = wage + calculateServiceFee(wage);
+        return new PendingSettlementItem(item.getId(), item.getUserId(), workerName(worker), null, null,
+                fenToYuanValue(total), total, days);
+    }
+
+    private PendingSettlementItem toPendingItem(Settlement settlement, User worker) {
+        long amountFen = settlement.getTotalAmount() == null ? 0L : settlement.getTotalAmount();
+        return new PendingSettlementItem(settlement.getItemId(), settlement.getWorkerId(), workerName(worker),
+                settlement.getId(), settlement.getStatus(), fenToYuanValue(amountFen), amountFen,
+                settlement.getWorkDays());
+    }
+
+    private PendingSettlementOrder toPendingOrder(BossOrder order, List<PendingSettlementItem> items) {
+        long amountFen = items.stream().mapToLong(item -> item.amountFen() == null ? 0L : item.amountFen()).sum();
+        List<String> workers = items.stream().map(PendingSettlementItem::workerName)
+                .filter(org.springframework.util.StringUtils::hasText).distinct().toList();
+        boolean hasUncreated = items.stream().anyMatch(item -> item.settlementId() == null);
+        boolean hasPending = items.stream().anyMatch(item -> item.settlementId() != null);
+        String status = hasUncreated && hasPending ? "partial" : "waiting";
+        return new PendingSettlementOrder(order.getId(), order.getId(), order.getDate(),
+                org.springframework.util.StringUtils.hasText(order.getOrderTitle())
+                        ? order.getOrderTitle() : order.getPostion(),
+                fenToYuanValue(amountFen), amountFen, items.size(), workers, status,
+                "partial".equals(status) ? "部分结算" : "待结算", items);
+    }
+
+    private String workerName(User worker) {
+        if (worker == null) return "零工";
+        if (org.springframework.util.StringUtils.hasText(worker.getNickname())) return worker.getNickname();
+        if (org.springframework.util.StringUtils.hasText(worker.getRealName())) return worker.getRealName();
+        return "零工#" + worker.getId();
+    }
+
+    private BigDecimal fenToYuanValue(long fen) {
+        return BigDecimal.valueOf(fen).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
     // ==================== 内部方法 ====================

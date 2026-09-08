@@ -222,6 +222,10 @@ import {
   getUser,
   updateOrder,
 } from "@/api/backend";
+import {
+  checkBossPublishEligibility,
+  redirectByPublishEligibility,
+} from "@/api/publish-eligibility";
 
 export default {
   data() {
@@ -238,10 +242,19 @@ export default {
       jobName: "临时工岗位",
       settlementType: "daily",
       settlementLabel: "日结",
+      recruitSettings: {
+        signMode: "auto",
+        phoneNotify: true,
+        signNotify: true,
+        startRemind: true,
+        settleNotify: true,
+      },
       hasExplicitType: false,
       orderId: "",
       workTimeVersion: 0,
       contactPhone: "暂无手机号",
+      eligibilityReady: false,
+      eligibilityChecking: false,
     };
   },
   computed: {
@@ -279,8 +292,11 @@ export default {
     uni.$on("recruitSettingsSaved", this.applyRecruitSettings);
     this.loadRecruitSettings();
     if (this.orderId) this.loadOrder(this.orderId);
+    this.ensurePublishEligibility();
   },
   onShow() {
+    if (uni.getStorageSync("token")) this._eligibilityRedirected = false;
+    this.ensurePublishEligibility();
     this.loadRecruitSettings();
     this.loadContactPhone();
     this.workTimeVersion += 1;
@@ -289,6 +305,53 @@ export default {
     uni.$off("recruitSettingsSaved", this.applyRecruitSettings);
   },
   methods: {
+    async ensurePublishEligibility() {
+      if (this._eligibilityPromise) return this._eligibilityPromise;
+      if (!uni.getStorageSync("token")) {
+        if (!this._eligibilityRedirected) {
+          this._eligibilityRedirected = true;
+          uni.showToast({ title: "请先登录", icon: "none" });
+          setTimeout(() => uni.reLaunch({ url: "/pages/login/login?role=boss" }), 200);
+        }
+        return { canPublish: false, realnameStatus: "UNVERIFIED", enterpriseStatus: "UNVERIFIED", missing: ["REALNAME", "ENTERPRISE"] };
+      }
+      this.eligibilityChecking = true;
+      uni.showLoading({ title: "检查认证状态", mask: true });
+      this._eligibilityPromise = checkBossPublishEligibility({ redirect: false })
+        .then((result) => {
+          if (result.requestFailed || result.unauthorized) return result;
+          this.eligibilityReady = result.canPublish;
+          if (!result.canPublish) {
+            const pending = [result.realnameStatus, result.enterpriseStatus].includes("PENDING");
+            if (pending) {
+              if (!this._eligibilityRedirected) {
+                this._eligibilityRedirected = true;
+                uni.showToast({ title: "认证审核中", icon: "none" });
+                setTimeout(() => uni.navigateBack(), 300);
+              }
+            } else if (result.realnameStatus !== "APPROVED") {
+              if (!this._eligibilityRedirected) {
+                this._eligibilityRedirected = true;
+                if (result.realnameStatus === "REJECTED") uni.showToast({ title: "个人认证未通过，请重新提交认证", icon: "none" });
+                uni.navigateTo({ url: "/pages/boss/realname" });
+              }
+            } else if (result.enterpriseStatus !== "APPROVED") {
+              if (!this._eligibilityRedirected) {
+                this._eligibilityRedirected = true;
+                if (result.enterpriseStatus === "REJECTED") uni.showToast({ title: "企业认证未通过，请重新提交认证", icon: "none" });
+                uni.navigateTo({ url: "/pages/boss/enterprise-cert" });
+              }
+            }
+          }
+          return result;
+        })
+        .finally(() => {
+          this.eligibilityChecking = false;
+          uni.hideLoading();
+          this._eligibilityPromise = null;
+        });
+      return this._eligibilityPromise;
+    },
     async loadContactPhone() {
       const cachedUser = uni.getStorageSync("userInfo") || {};
       this.contactPhone =
@@ -318,9 +381,13 @@ export default {
       uni.navigateTo({ url: `/pages/boss/${page}${query}` });
     },
     loadRecruitSettings() {
-      if (this.hasExplicitType) return;
       const saved = uni.getStorageSync("recruitSettings");
-      if (saved && typeof saved === "object") this.applyRecruitSettings(saved);
+      if (saved && typeof saved === "object") {
+        // 发布页 URL 中的 type 是当前岗位结算方式，不能覆盖本地保存的通知开关。
+        this.applyRecruitSettings(
+          this.hasExplicitType ? { ...saved, type: undefined } : saved,
+        );
+      }
     },
     applyRecruitSettings(data = {}) {
       const typeMap = {
@@ -328,9 +395,20 @@ export default {
         heldBack: "压薪日结",
         month: "月结",
       };
-      if (!typeMap[data.type]) return;
-      this.settlementType = data.type;
-      this.settlementLabel = data.settleMode || typeMap[data.type];
+      if (typeMap[data.type]) {
+        this.settlementType = data.type;
+        this.settlementLabel = data.settleMode || typeMap[data.type];
+      }
+      const settings = this.recruitSettings || {};
+      this.recruitSettings = {
+        ...settings,
+        ...(data.signMode === "auto" || data.signMode === "manual"
+          ? { signMode: data.signMode }
+          : {}),
+        ...["phoneNotify", "signNotify", "startRemind", "settleNotify"]
+          .filter((key) => typeof data[key] === "boolean")
+          .reduce((result, key) => ({ ...result, [key]: data[key] }), {}),
+      };
     },
     async loadOrder(id) {
       try {
@@ -339,7 +417,8 @@ export default {
         this.jobName = detail.orderTitle || detail.postion || this.jobName;
         this.count = Number(detail.orderNum || this.count);
         this.settlementType = detail.type || this.settlementType;
-        this.applyRecruitSettings({ type: this.settlementType });
+        // 编辑岗位时优先使用详情接口返回的通知配置，避免沿用其他岗位的本地缓存。
+        this.applyRecruitSettings({ ...detail, type: this.settlementType });
         const hourly = String(detail.tags || "").match(/时薪:([\d.]+)/);
         const piece = String(detail.tags || "").match(/计件单价:([\d.]+)/);
         if (hourly) {
@@ -404,6 +483,8 @@ export default {
     },
     async publishJob() {
       if (this.publishing) return;
+      const eligibility = await this.ensurePublishEligibility();
+      if (!eligibility?.canPublish) return;
       if (this.payType === "hourly" && !this.hasSalary) {
         uni.showToast({ title: "请设置工价", icon: "none" });
         return;
@@ -455,6 +536,12 @@ export default {
           ]
             .filter(Boolean)
             .join("；"),
+          // 招工设置必须随岗位新增/编辑一起提交，后端据此持久化并在详情中回显。
+          signMode: this.recruitSettings.signMode,
+          phoneNotify: this.recruitSettings.phoneNotify,
+          signNotify: this.recruitSettings.signNotify,
+          startRemind: this.recruitSettings.startRemind,
+          settleNotify: this.recruitSettings.settleNotify,
         };
         const editing = Boolean(this.orderId);
         if (editing) await updateOrder(this.orderId, payload);
@@ -468,7 +555,16 @@ export default {
           800,
         );
       } catch (error) {
-        uni.showToast({ title: error.message || "发布失败", icon: "none" });
+        if (error?.statusCode === 403) {
+          uni.showToast({
+            title: error.message || "请先完成个人实名认证和企业认证",
+            icon: "none",
+          });
+          const eligibility = await checkBossPublishEligibility({ redirect: false });
+          if (!eligibility.canPublish) redirectByPublishEligibility(eligibility);
+        } else {
+          uni.showToast({ title: error.message || "发布失败", icon: "none" });
+        }
       } finally {
         this.publishing = false;
       }

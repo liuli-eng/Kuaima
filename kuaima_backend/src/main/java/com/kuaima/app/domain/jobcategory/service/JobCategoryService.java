@@ -6,11 +6,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.kuaima.app.domain.jobcategory.entity.JobCategory;
 import com.kuaima.app.domain.jobcategory.entity.JobEnterpriseType;
+import com.kuaima.app.domain.jobcategory.entity.JobIndustry;
 import com.kuaima.app.domain.jobcategory.model.JobCategoryModels.EnterpriseItem;
 import com.kuaima.app.domain.jobcategory.model.JobCategoryModels.HotItem;
 import com.kuaima.app.domain.jobcategory.model.JobCategoryModels.IndustryItem;
@@ -114,6 +116,88 @@ public class JobCategoryService {
                             item.getSortNo());
                 })
                 .toList();
+    }
+
+    /** 老板端新增企业类型；分类数据为全局共享数据，不按老板隔离。 */
+    @org.springframework.transaction.annotation.Transactional
+    public JobEnterpriseType createEnterpriseType(Long industryId, String name, Integer sortNo) {
+        String normalizedName = requireName(name, "企业类型名称");
+        JobIndustry industry = industryRepository.findById(industryId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("行业不存在: " + industryId));
+        if (!Boolean.TRUE.equals(industry.getEnabled())) {
+            throw new IllegalArgumentException("行业已停用，不能添加企业类型");
+        }
+        if (enterpriseRepository.existsByIndustryIdAndNameIgnoreCase(industryId, normalizedName)) {
+            throw new IllegalArgumentException("该行业下企业类型已存在: " + normalizedName);
+        }
+        JobEnterpriseType item = new JobEnterpriseType();
+        item.setIndustryId(industryId);
+        item.setName(normalizedName);
+        item.setSortNo(resolveSortNo(sortNo, enterpriseRepository.findMaxSortNoByIndustryId(industryId)));
+        item.setEnabled(true);
+        try {
+            return enterpriseRepository.saveAndFlush(item);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("该行业下企业类型已存在: " + normalizedName);
+        }
+    }
+
+    /** 老板端新增工种；工种必须归属于请求中的行业和企业类型。 */
+    @org.springframework.transaction.annotation.Transactional
+    public JobCategory createJob(Long industryId, Long enterpriseTypeId, String name,
+                                 String description, Integer sortNo) {
+        String normalizedName = requireName(name, "工种名称");
+        JobIndustry industry = industryRepository.findById(industryId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("行业不存在: " + industryId));
+        if (!Boolean.TRUE.equals(industry.getEnabled())) {
+            throw new IllegalArgumentException("行业已停用，不能添加工种");
+        }
+        JobEnterpriseType enterprise = enterpriseRepository.findById(enterpriseTypeId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("企业类型不存在: " + enterpriseTypeId));
+        if (!industryId.equals(enterprise.getIndustryId())) {
+            throw new IllegalArgumentException("企业类型不属于指定行业");
+        }
+        if (!Boolean.TRUE.equals(enterprise.getEnabled())) {
+            throw new IllegalArgumentException("企业类型已停用，不能添加工种");
+        }
+        if (categoryRepository.existsByIndustryIdAndEnterpriseTypeIdAndNameIgnoreCase(
+                industryId, enterpriseTypeId, normalizedName)) {
+            throw new IllegalArgumentException("该企业类型下工种已存在: " + normalizedName);
+        }
+        JobCategory item = new JobCategory();
+        item.setIndustryId(industryId);
+        item.setEnterpriseTypeId(enterpriseTypeId);
+        item.setName(normalizedName);
+        String normalizedDescription = StringUtils.hasText(description) ? description.trim() : null;
+        if (normalizedDescription != null && normalizedDescription.length() > 500) {
+            throw new IllegalArgumentException("工种描述长度不能超过500个字符");
+        }
+        item.setDescription(normalizedDescription);
+        item.setSortNo(resolveSortNo(sortNo, categoryRepository.findMaxSortNoByEnterpriseTypeId(enterpriseTypeId)));
+        item.setEnabled(true);
+        try {
+            return categoryRepository.saveAndFlush(item);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("该企业类型下工种已存在: " + normalizedName);
+        }
+    }
+
+    private String requireName(String name, String field) {
+        if (!StringUtils.hasText(name)) {
+            throw new IllegalArgumentException(field + "不能为空");
+        }
+        String normalized = name.trim();
+        if (normalized.length() > 100) {
+            throw new IllegalArgumentException(field + "长度不能超过100个字符");
+        }
+        return normalized;
+    }
+
+    private int resolveSortNo(Integer requested, Integer currentMax) {
+        if (requested != null && requested > 0) {
+            return requested;
+        }
+        return (currentMax == null ? 0 : currentMax) + 1;
     }
 
     private JobItem toJobItem(JobCategory item) {

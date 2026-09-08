@@ -21,7 +21,7 @@
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import JobCard from "@/components/JobCard.vue";
-import { request } from "@/api/http";
+import { applyPublicJob, listPublicJobs } from "@/api/backend";
 const keyword = ref("");
 const searched = ref(false);
 const results = ref([]);
@@ -45,9 +45,7 @@ async function doSearch() {
     return uni.showToast({ title: "请输入搜索内容", icon: "none" });
   searched.value = true;
   try {
-    const r = await request({
-      url: `/worker/jobs?title=${encodeURIComponent(keyword.value.trim())}&page=0&size=20`,
-    });
+    const r = await listPublicJobs({ title: keyword.value.trim(), page: 0, size: 20 });
     results.value = (Array.isArray(r) ? r : r?.records || []).map((item) => ({
       ...item,
       title: item.orderTitle || item.title || item.postion,
@@ -69,7 +67,7 @@ function open(job) {
 }
 async function apply(job) {
   try {
-    await request({ url: `/worker/orders/apply/${job.id}`, method: "POST" });
+    await applyPublicJob(job.id, { trial: job.salaryType === "MONTHLY" });
     job.applied = true;
     uni.showToast({ title: "报名成功", icon: "success" });
   } catch (e) {

@@ -97,6 +97,29 @@ export function applyOrder(orderId, data = {}) {
   });
 }
 
+/** 零工端公开岗位，只返回后端允许展示的“招工中”岗位。 */
+export function listPublicJobs(params = {}) {
+  return request({
+    url: `/jobs?${query({ page: 0, size: 20, ...params })}`,
+  });
+}
+
+export function getPublicJob(orderId) {
+  return request({ url: `/jobs/${normalizeId(orderId, "orderId")}` });
+}
+
+/** 零工身份由 JWT 获取，禁止再提交 userId。 */
+export function applyPublicJob(orderId, data = {}) {
+  return request({
+    url: `/jobs/${normalizeId(orderId, "orderId")}/apply`,
+    method: "POST",
+    data: {
+      remark: String(data.remark || "").trim(),
+      trial: data.trial === true,
+    },
+  });
+}
+
 export function listWorkerItems(userId) {
   return request({
     url: `/boss/user/items?userId=${encodeURIComponent(userId)}`,
@@ -274,6 +297,22 @@ export function listHotJobCategories() {
 export function searchJobCategories(keyword, size = 20) {
   return request({
     url: `/job-categories/search?${query({ keyword, size })}`,
+  });
+}
+
+export function createJobEnterpriseType(data = {}) {
+  return request({
+    url: "/boss/job-categories/enterprise-types",
+    method: "POST",
+    data,
+  });
+}
+
+export function createJobCategory(data = {}) {
+  return request({
+    url: "/boss/job-categories/jobs",
+    method: "POST",
+    data,
   });
 }
 

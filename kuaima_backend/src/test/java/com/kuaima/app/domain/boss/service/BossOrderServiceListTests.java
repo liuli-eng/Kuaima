@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import com.kuaima.app.domain.boss.constant.BossStatus;
+import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.model.BossOrderQuery;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
@@ -113,5 +114,55 @@ class BossOrderServiceListTests {
         tagModeQuery.setTags("包吃住,日结");
         tagModeQuery.setTagMode("INVALID");
         assertThrows(IllegalArgumentException.class, () -> service.listOrders(2L, tagModeQuery));
+    }
+
+    @Test
+    void hire_shouldAutomaticallyEndRecruitmentWhenHeadcountIsFull() {
+        BossOrder order = new BossOrder();
+        order.setId(21L);
+        order.setOrderStatus(BossStatus.ORDER_RECRUITING);
+        order.setOrderNum(1);
+        BaseOrderItem item = new BaseOrderItem();
+        item.setId(31L);
+        item.setOrderId(21L);
+        item.setUserId(41L);
+        item.setStatus(BossStatus.ITEM_APPLIED);
+        when(itemRepository.findById(31L)).thenReturn(java.util.Optional.of(item));
+        when(itemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemRepository.findByOrderId(21L)).thenReturn(List.of(item));
+        when(orderRepository.findById(21L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.hireItem(31L);
+
+        assertEquals(BossStatus.ORDER_RECRUIT_END, order.getOrderStatus());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void confirmWork_shouldMoveOrderToPendingSettlementAfterAllHiredWorkersArrive() {
+        BossOrder order = new BossOrder();
+        order.setId(22L);
+        order.setCreateBy(51L);
+        order.setOrderStatus(BossStatus.ORDER_RECRUIT_END);
+        BaseOrderItem arriving = new BaseOrderItem();
+        arriving.setId(32L);
+        arriving.setOrderId(22L);
+        arriving.setUserId(42L);
+        arriving.setStatus(BossStatus.ITEM_HIRED);
+        BaseOrderItem arrived = new BaseOrderItem();
+        arrived.setId(33L);
+        arrived.setOrderId(22L);
+        arrived.setStatus(BossStatus.ITEM_ON_WORK);
+        when(itemRepository.findById(32L)).thenReturn(java.util.Optional.of(arriving));
+        when(itemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemRepository.findByOrderId(22L)).thenReturn(List.of(arriving, arrived));
+        when(orderRepository.findById(22L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.confirmWork(32L);
+
+        assertEquals(BossStatus.ORDER_PENDING_SETTLE, order.getOrderStatus());
+        verify(orderRepository).save(order);
     }
 }

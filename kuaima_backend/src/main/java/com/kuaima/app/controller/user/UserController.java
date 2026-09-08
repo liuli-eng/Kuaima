@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
 
 import com.kuaima.app.admin.entity.Certification;
 import com.kuaima.app.admin.repository.CertificationRepository;
@@ -29,6 +30,9 @@ import com.kuaima.app.domain.user.entity.CreditFlow;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.CreditFlowRepository;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.user.service.CertificationService;
+import com.kuaima.app.security.model.LoginUser;
+import com.kuaima.app.common.ForbiddenBusinessException;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -40,13 +44,16 @@ public class UserController {
     private final UserRepository userRepository;
     private final CreditFlowRepository creditFlowRepository;
     private final CertificationRepository certificationRepository;
+    private final CertificationService certificationService;
 
     public UserController(UserRepository userRepository,
                           CreditFlowRepository creditFlowRepository,
-                          CertificationRepository certificationRepository) {
+                          CertificationRepository certificationRepository,
+                          CertificationService certificationService) {
         this.userRepository = userRepository;
         this.creditFlowRepository = creditFlowRepository;
         this.certificationRepository = certificationRepository;
+        this.certificationService = certificationService;
     }
 
     /** 获取用户完整资料：GET /user/{id} */
@@ -106,24 +113,18 @@ public class UserController {
     @Operation(summary = "提交实名认证", description = "请求体含 realName 和 idCard。设置 User.certType=REALNAME、certStatus=待审核，并写入 Certification 审核记录")
     @PostMapping("/{id}/realname")
     @Transactional
-    public Result<User> submitRealname(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public Result<User> submitRealname(@PathVariable Long id, @RequestBody Map<String, String> body,
+                                       Authentication authentication) {
         if (body == null) {
             throw new IllegalArgumentException("请求体不能为空");
         }
         String realName = body.get("realName");
         String idCard = body.get("idCard");
-        if (!StringUtils.hasText(realName)) {
-            throw new IllegalArgumentException("真实姓名不能为空");
+        if (!(authentication != null && authentication.getPrincipal() instanceof LoginUser loginUser)
+                || loginUser.id() == null || !id.equals(loginUser.id())) {
+            throw new ForbiddenBusinessException("只能提交当前登录用户的实名认证");
         }
-        if (!StringUtils.hasText(idCard)) {
-            throw new IllegalArgumentException("身份证号不能为空");
-        }
-        User user = getUserOrThrow(id);
-        user.setCertType("REALNAME");
-        user.setCertStatus("待审核");
-        user.setRealName(realName);
-        user.setIdCard(idCard);
-        return Result.success(userRepository.save(user));
+        return Result.success(certificationService.submitRealname(id, realName, idCard));
     }
 
     /**

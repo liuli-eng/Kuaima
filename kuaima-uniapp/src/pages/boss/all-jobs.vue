@@ -61,6 +61,13 @@
               <text v-if="selectedJobIds.includes(job.id)" class="checkbox-icon">✓</text>
             </view>
           </view>
+          <view v-if="!loading && !loadError && selectedEnterpriseTypeIds.length" class="job-row add-job-row" @click="addCustomJob">
+            <view class="job-info">
+              <text class="job-name">其他工种</text>
+              <text class="job-desc">点击添加新的工种</text>
+            </view>
+            <text class="add-type-icon">＋</text>
+          </view>
         </view>
       </scroll-view>
 
@@ -74,7 +81,11 @@
 </template>
 
 <script>
-import { listJobCategoryTree } from "@/api/backend";
+import {
+  createJobCategory,
+  createJobEnterpriseType,
+  listJobCategoryTree,
+} from "@/api/backend";
 
 function extractRows(result) {
   if (Array.isArray(result)) return result;
@@ -97,9 +108,7 @@ export default {
       industries: [],
       selectedIndustryId: null,
       selectedEnterpriseTypeIds: [],
-      selectedCustomEnterpriseTypeNames: [],
       selectedJobIds: [],
-      customEnterpriseTypes: {},
       loading: false,
       loadError: "",
     };
@@ -132,14 +141,11 @@ export default {
       const types = Array.isArray(this.selectedIndustry?.enterpriseTypes)
         ? this.selectedIndustry.enterpriseTypes
         : [];
-      const custom = this.customEnterpriseTypes[String(this.selectedIndustryId)] || [];
-      return [...types, ...custom];
+      return types;
     },
     selectedEnterpriseTypes() {
       return this.currentEnterpriseTypes.filter((item) =>
-        item.custom
-          ? this.selectedCustomEnterpriseTypeNames.includes(item.name)
-          : this.selectedEnterpriseTypeIds.includes(item.id),
+        this.selectedEnterpriseTypeIds.includes(item.id),
       );
     },
     currentJobs() {
@@ -157,7 +163,7 @@ export default {
     canNext() {
       if (this.currentTab === "industry") return Boolean(this.selectedIndustryId);
       if (this.currentTab === "type") {
-        return this.selectedEnterpriseTypeIds.length > 0 || this.selectedCustomEnterpriseTypeNames.length > 0;
+        return this.selectedEnterpriseTypeIds.length > 0;
       }
       return this.selectedJobIds.length > 0;
     },
@@ -189,10 +195,6 @@ export default {
     restoreSelection() {
       const saved = uni.getStorageSync("jobCategorySelection");
       if (!saved || typeof saved !== "object") return;
-      this.customEnterpriseTypes = saved.customEnterpriseTypeOptions || {};
-      this.selectedCustomEnterpriseTypeNames = Array.isArray(saved.customEnterpriseTypes)
-        ? saved.customEnterpriseTypes
-        : [];
       const industryId = Number(saved.industryId);
       if (!this.industries.some((item) => Number(item.id) === industryId)) return;
       this.selectedIndustryId = this.industries.find(
@@ -215,16 +217,13 @@ export default {
     switchTab(tab) {
       if (tab === "type" && !this.selectedIndustryId) return;
       if (
-        tab === "job" &&
-        !this.selectedEnterpriseTypeIds.length &&
-        !this.selectedCustomEnterpriseTypeNames.length
+        tab === "job" && !this.selectedEnterpriseTypeIds.length
       ) return;
       this.currentTab = tab;
     },
     selectIndustry(industry) {
       if (this.selectedIndustryId !== industry.id) {
         this.selectedEnterpriseTypeIds = [];
-        this.selectedCustomEnterpriseTypeNames = [];
         this.selectedJobIds = [];
       }
       this.selectedIndustryId = industry.id;
@@ -236,44 +235,45 @@ export default {
         title: "填写企业类型名称",
         editable: true,
         placeholderText: "请输入",
-        success: (result) => {
+        success: async (result) => {
           if (!result.confirm) return;
           const name = String(result.content || "").trim();
           if (!name) {
             uni.showToast({ title: "请输入企业类型名称", icon: "none" });
             return;
           }
-          const key = String(this.selectedIndustryId);
-          const list = this.customEnterpriseTypes[key] || [];
           const exists = [...this.currentEnterpriseTypes].some((item) => item.name === name);
           if (exists) {
             uni.showToast({ title: "该企业类型已存在", icon: "none" });
             return;
           }
-          const custom = {
-            id: `custom-${key}-${Date.now()}`,
+          this.loading = true;
+          try {
+          const result = await createJobEnterpriseType({
+            industryId: this.selectedIndustryId,
             name,
-            jobs: [],
-            custom: true,
-          };
-          this.customEnterpriseTypes = {
-            ...this.customEnterpriseTypes,
-            [key]: [...list, custom],
-          };
-          this.selectedCustomEnterpriseTypeNames.push(name);
-          // 自定义类型没有后端分类 ID，单独保存名称，不加入真实 ID 参数。
-          this.saveSelectionDraft();
-          uni.showToast({ title: "已添加企业类型", icon: "success" });
+          });
+            await this.loadCategories();
+            const created = this.currentEnterpriseTypes.find(
+              (item) => item.name === name || item.id === result?.id,
+            );
+            if (created) {
+              this.selectedEnterpriseTypeIds.push(created.id);
+              this.currentTab = "type";
+            }
+            uni.showToast({ title: "企业类型已添加", icon: "success" });
+          } catch (error) {
+            uni.showToast({
+              title: error.message || "企业类型添加失败，请联系管理员",
+              icon: "none",
+            });
+          } finally {
+            this.loading = false;
+          }
         },
       });
     },
     selectType(enterprise) {
-      if (enterprise.custom) {
-        const customIndex = this.selectedCustomEnterpriseTypeNames.indexOf(enterprise.name);
-        if (customIndex >= 0) this.selectedCustomEnterpriseTypeNames.splice(customIndex, 1);
-        else this.selectedCustomEnterpriseTypeNames.push(enterprise.name);
-        return;
-      }
       const idx = this.selectedEnterpriseTypeIds.indexOf(enterprise.id);
       if (idx >= 0) {
         this.selectedEnterpriseTypeIds.splice(idx, 1);
@@ -288,9 +288,59 @@ export default {
       }
     },
     isEnterpriseSelected(enterprise) {
-      return enterprise.custom
-        ? this.selectedCustomEnterpriseTypeNames.includes(enterprise.name)
-        : this.selectedEnterpriseTypeIds.includes(enterprise.id);
+      return this.selectedEnterpriseTypeIds.includes(enterprise.id);
+    },
+    async addCustomJob() {
+      if (!this.selectedIndustryId || !this.selectedEnterpriseTypeIds.length) return;
+      uni.showModal({
+        title: "填写工种名称",
+        editable: true,
+        placeholderText: "请输入工种名称",
+        success: async (result) => {
+          if (!result.confirm) return;
+          const name = String(result.content || "").trim();
+          if (!name) {
+            uni.showToast({ title: "请输入工种名称", icon: "none" });
+            return;
+          }
+          uni.showModal({
+            title: "填写工种说明（可选）",
+            editable: true,
+            placeholderText: "请输入工种说明",
+            success: async (descriptionResult) => {
+              if (!descriptionResult.confirm) return;
+              this.loading = true;
+              try {
+                const createdJobs = [];
+                for (const enterpriseTypeId of this.selectedEnterpriseTypeIds) {
+                  const response = await createJobCategory({
+                    industryId: this.selectedIndustryId,
+                    enterpriseTypeId,
+                    name,
+                    description: String(descriptionResult.content || "").trim(),
+                  });
+                  if (response?.id) createdJobs.push(response.id);
+                }
+                await this.loadCategories();
+                const ids = createdJobs.length
+                  ? createdJobs
+                  : this.currentJobs
+                      .filter((job) => job.name === name)
+                      .map((job) => job.id);
+                this.selectedJobIds = [...new Set([...this.selectedJobIds, ...ids])];
+                uni.showToast({ title: "工种已添加", icon: "success" });
+              } catch (error) {
+                uni.showToast({
+                  title: error.message || "工种添加失败，请重试",
+                  icon: "none",
+                });
+              } finally {
+                this.loading = false;
+              }
+            },
+          });
+        },
+      });
     },
     toggleJob(job) {
       const idx = this.selectedJobIds.indexOf(job.id);
@@ -322,8 +372,6 @@ export default {
           industry: this.selectedIndustry?.name || "",
           enterpriseTypeIds: [...this.selectedEnterpriseTypeIds],
           enterpriseTypes: this.selectedEnterpriseTypes.map((item) => item.name),
-          customEnterpriseTypes: [...this.selectedCustomEnterpriseTypeNames],
-          customEnterpriseTypeOptions: this.customEnterpriseTypes,
           jobIds: [...this.selectedJobIds],
           jobs: selectedJobNames,
         };
@@ -340,14 +388,6 @@ export default {
           url: `/pages/boss/publish-info?${params.join("&")}`,
         });
       }
-    },
-    saveSelectionDraft() {
-      const previous = uni.getStorageSync("jobCategorySelection") || {};
-      uni.setStorageSync("jobCategorySelection", {
-        ...previous,
-        customEnterpriseTypes: [...this.selectedCustomEnterpriseTypeNames],
-        customEnterpriseTypeOptions: this.customEnterpriseTypes,
-      });
     },
   },
 };

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.Result;
+import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.model.BossOrderQuery;
@@ -28,6 +29,7 @@ import com.kuaima.app.domain.jobcategory.model.JobCategoryModels.HotItem;
 import com.kuaima.app.domain.jobcategory.service.JobCategoryService;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.constant.UserRole;
+import com.kuaima.app.domain.user.service.CertificationService;
 import com.kuaima.app.security.model.LoginUser;
 
 @RestController
@@ -37,10 +39,13 @@ public class BossController {
 
     private final BossOrderService bossOrderService;
     private final JobCategoryService jobCategoryService;
+    private final CertificationService certificationService;
 
-    public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService) {
+    public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService,
+                          CertificationService certificationService) {
         this.bossOrderService = bossOrderService;
         this.jobCategoryService = jobCategoryService;
+        this.certificationService = certificationService;
     }
 
     // ==================== 招工订单 ====================
@@ -49,8 +54,16 @@ public class BossController {
     @Operation(summary = "发布招工订单", description = "创建 BossOrder，初始状态自动为「待审核」，admin 审核通过后变为「招工中」并广播新岗位消息。必填：orderTitle、type、postion、orderNum、duration、salary")
     @PostMapping("/order")
     public Result<BossOrder> createOrder(@RequestBody BossOrder order, Authentication authentication) {
-        order.setCreateBy(requireCurrentBossId(authentication));
+        Long bossId = requireCurrentBossId(authentication);
+        certificationService.requirePublishEligibility(bossId);
+        order.setCreateBy(bossId);
         return Result.success(bossOrderService.createOrder(order));
+    }
+
+    @Operation(summary = "发布资格查询", description = "查询当前老板个人实名认证和企业认证状态")
+    @GetMapping("/publish-eligibility")
+    public Result<Map<String, Object>> publishEligibility(Authentication authentication) {
+        return Result.success(certificationService.publishEligibility(requireCurrentBossId(authentication)));
     }
 
     /** 修改订单（仅招工中） */
@@ -250,12 +263,9 @@ public class BossController {
     /** 提交企业认证：POST /boss/enterprise-cert */
     @Operation(summary = "提交企业认证", description = "请求体含 userId、companyName、industry、licenseNo、legalRep。设置 User.certType=ENTERPRISE、certStatus=待审核")
     @PostMapping("/enterprise-cert")
-    public Result<User> submitEnterpriseCert(@RequestBody Map<String, String> body) {
-        Long userId = body.get("userId") != null ? Long.parseLong(body.get("userId")) : null;
-        if (userId == null) {
-            throw new IllegalArgumentException("userId 不能为空");
-        }
-        return Result.success(bossOrderService.submitEnterpriseCert(userId,
+    public Result<User> submitEnterpriseCert(@RequestBody Map<String, String> body, Authentication authentication) {
+        Long userId = requireCurrentBossId(authentication);
+        return Result.success(certificationService.submitEnterprise(userId,
                 body.get("companyName"), body.get("industry"),
                 body.get("licenseNo"), body.get("legalRep")));
     }
@@ -269,7 +279,7 @@ public class BossController {
             }
             return loginUser.id();
         }
-        return null;
+        throw new ForbiddenBusinessException("当前登录账号不是老板账号");
     }
 
     private Long requireCurrentBossId(Authentication authentication) {

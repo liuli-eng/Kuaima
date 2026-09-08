@@ -2,6 +2,7 @@ package com.kuaima.app.domain.jobcategory.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -100,6 +101,46 @@ class JobCategoryServiceTests {
         assertEquals("制造业工厂", result.get(0).industryName());
         assertEquals("电子厂", result.get(0).enterpriseTypeName());
         assertEquals("普工", result.get(0).name());
+    }
+
+    @Test
+    void createEnterpriseType_shouldValidateIndustryAndAssignNextSortNo() {
+        JobIndustry industry = industry(1L, "INDUSTRY_001", "制造业工厂", 1);
+        when(industryRepository.findById(1L)).thenReturn(java.util.Optional.of(industry));
+        when(enterpriseRepository.existsByIndustryIdAndNameIgnoreCase(1L, "新企业类型")).thenReturn(false);
+        when(enterpriseRepository.findMaxSortNoByIndustryId(1L)).thenReturn(3);
+        when(enterpriseRepository.saveAndFlush(any(JobEnterpriseType.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.createEnterpriseType(1L, " 新企业类型 ", null);
+
+        assertEquals("新企业类型", result.getName());
+        assertEquals(4, result.getSortNo());
+        assertEquals(1L, result.getIndustryId());
+    }
+
+    @Test
+    void createJob_shouldRejectEnterpriseFromAnotherIndustry() {
+        JobIndustry industry = industry(1L, "INDUSTRY_001", "制造业工厂", 1);
+        JobEnterpriseType enterprise = enterprise(11L, 2L, "电子厂", 1);
+        when(industryRepository.findById(1L)).thenReturn(java.util.Optional.of(industry));
+        when(enterpriseRepository.findById(11L)).thenReturn(java.util.Optional.of(enterprise));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.createJob(1L, 11L, "普工", null, null));
+    }
+
+    @Test
+    void createJob_shouldRejectDuplicateNameWithinEnterprise() {
+        JobIndustry industry = industry(1L, "INDUSTRY_001", "制造业工厂", 1);
+        JobEnterpriseType enterprise = enterprise(11L, 1L, "电子厂", 1);
+        when(industryRepository.findById(1L)).thenReturn(java.util.Optional.of(industry));
+        when(enterpriseRepository.findById(11L)).thenReturn(java.util.Optional.of(enterprise));
+        when(categoryRepository.existsByIndustryIdAndEnterpriseTypeIdAndNameIgnoreCase(1L, 11L, "普工"))
+                .thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.createJob(1L, 11L, "普工", null, null));
     }
 
     private JobIndustry industry(Long id, String code, String name, int sortNo) {

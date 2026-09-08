@@ -17,6 +17,12 @@ public class GlobalExceptionHandler {
         return Result.error(400, e.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenBusinessException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Result<Void> handleForbidden(ForbiddenBusinessException e) {
+        return Result.error(403, e.getMessage());
+    }
+
     /** 数据不存在 */
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)

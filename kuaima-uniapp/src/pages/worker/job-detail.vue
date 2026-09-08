@@ -107,8 +107,8 @@ import {
   checkFavoriteJob,
   favoriteJob,
   getCertificationStatus,
-  getOrder,
-  listOrderItems,
+  getPublicJob,
+  applyPublicJob,
   recordJobBrowse,
   unfavoriteJob,
 } from "@/api/backend";
@@ -186,15 +186,9 @@ async function loadDetail() {
   loading.value = true;
   loadError.value = false;
   try {
-    const [detail, items] = await Promise.all([
-      getOrder(id),
-      listOrderItems(id).catch(() => []),
-    ]);
+    const detail = await getPublicJob(id);
     if (detail) job.value = normalizeJob(detail);
-    appliedCount.value = Array.isArray(items)
-      ? items.filter((item) => !["取消报名", "取消招工"].includes(item.status))
-          .length
-      : 0;
+    appliedCount.value = Number(detail?.currentApplyCount ?? detail?.applyCount ?? 0);
   } catch (error) {
     loadError.value = true;
     uni.showToast({ title: error.message || "岗位详情加载失败", icon: "none" });
@@ -239,11 +233,7 @@ async function apply() {
   if (!isRealname.value) return goRealname();
   applying.value = true;
   try {
-    await request({
-      url: `/worker/orders/apply/${job.value.id}`,
-      method: "POST",
-      data: { trial: job.value.salaryType === "MONTHLY" ? true : undefined },
-    });
+    await applyPublicJob(job.value.id, { trial: job.value.salaryType === "MONTHLY" });
     applied.value = true;
     uni.showToast({ title: "报名成功", icon: "success" });
   } finally {

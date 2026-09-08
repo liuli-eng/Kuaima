@@ -71,6 +71,14 @@ public class User extends BaseEntity {
     @Column(length = 30)
     private String certType;
 
+    /** 个人实名认证状态：UNVERIFIED/PENDING/APPROVED/REJECTED。 */
+    @Column(length = 20)
+    private String realnameStatus = "UNVERIFIED";
+
+    /** 企业认证状态：UNVERIFIED/PENDING/APPROVED/REJECTED。 */
+    @Column(length = 20)
+    private String enterpriseStatus = "UNVERIFIED";
+
     /** 技能标签（逗号分隔） */
     @Column(length = 200)
     private String skills;

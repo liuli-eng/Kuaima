@@ -72,12 +72,17 @@
       </view>
 
       <!-- 用户消息 -->
-      <view class="msg-row self" v-for="(msg, index) in messages" :key="index">
-        <view class="msg-avatar user">
-          <text style="font-size:14px;">👤</text>
+      <view
+        class="msg-row"
+        :class="{ self: msg.role === 'user' }"
+        v-for="(msg, index) in messages"
+        :key="index"
+      >
+        <view class="msg-avatar" :class="msg.role === 'user' ? 'user' : 'service'">
+          <text style="font-size:14px;">{{ msg.role === "user" ? "👤" : "🎧" }}</text>
         </view>
         <view class="msg-content">
-          <view class="msg-bubble">{{ msg }}</view>
+          <view class="msg-bubble">{{ msg.text }}</view>
         </view>
       </view>
     </scroll-view>
@@ -121,11 +126,15 @@ export default {
     },
     sendMessage() {
       if (!this.inputText.trim()) return
-      this.messages.push(this.inputText)
+      const text = this.inputText.trim()
+      this.messages.push({ text, role: "user" })
       this.inputText = ''
       // 模拟客服回复
       setTimeout(() => {
-        this.messages.push('收到您的问题了，客服专员正在为您处理，请稍候...')
+        this.messages.push({
+          text: '收到您的问题了，客服专员正在为您处理，请稍候...',
+          role: "service",
+        })
       }, 1000)
     }
   }
@@ -136,10 +145,12 @@ export default {
 .container {
   width: 100%;
   height: 100vh;
+  min-height: 0;
   background: #f5f5f5;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .status-bar {
@@ -223,8 +234,11 @@ export default {
 
 .chat-messages {
   flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 14px 24px;
   background: #f5f5f5;
 }
 
@@ -268,7 +282,8 @@ export default {
 }
 
 .msg-content {
-  max-width: 75%;
+  min-width: 0;
+  max-width: calc(100% - 40px);
 }
 
 .msg-bubble {
@@ -323,8 +338,15 @@ export default {
 }
 
 .input-area {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 72px;
+  flex: 0 0 auto;
   background: #fff;
-  padding: 12px 14px;
+  /* 同时兼容微信开发者工具、iOS 真机和不支持 env() 的旧运行时。 */
+  padding: 10px 14px;
+  padding-bottom: calc(10px + constant(safe-area-inset-bottom));
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid #f0f0f0;
   display: flex;
   align-items: center;
@@ -332,20 +354,24 @@ export default {
 }
 
 .input-btn {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .input-wrap {
+  min-width: 0;
   flex: 1;
 }
 
 .input-field {
   width: 100%;
-  padding: 10px 14px;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 14px;
   background: #f5f5f5;
   border-radius: 20px;
   font-size: 14px;
@@ -355,12 +381,22 @@ export default {
 }
 
 .send-btn {
-  padding: 10px 20px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-width: 68px;
+  height: 40px;
+  margin: 0;
+  padding: 0 16px;
   background: linear-gradient(135deg, #FF6B35, #FF8C5A);
   color: white;
   border: none;
   border-radius: 20px;
   font-size: 14px;
   font-weight: 500;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 </style>

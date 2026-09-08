@@ -96,7 +96,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import JobCard from "@/components/JobCard.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { request, USE_MOCK } from "@/api/http";
-import { getCertificationStatus, listOrderItems } from "@/api/backend";
+import { applyPublicJob, getCertificationStatus, listPublicJobs } from "@/api/backend";
 
 const tabs = [
   { key: "DAY", label: "每天日结" },
@@ -279,40 +279,18 @@ async function loadJobs() {
   loading.value = true;
   error.value = false;
   try {
-    const result = await request({
-      url: "/worker/jobs?page=0&size=20&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD",
+    const result = await listPublicJobs({
+      page: 0,
+      size: 20,
+      type: activeTab.value === "DAY" ? "daily" : activeTab.value === "PRESS" ? "heldBack" : "month",
     });
     const records = result?.records || result;
     if (Array.isArray(records) && records.length > 0) {
-      const apiJobs = await Promise.all(
-        records.map(async (item) => {
+      const apiJobs = records.map((item) => {
           const job = normalizeJob(item);
-          try {
-            const result = await listOrderItems(item.id);
-            const items = Array.isArray(result)
-              ? result
-              : result?.records || [];
-            const activeItems = items.filter(
-              (row) => !["取消报名", "取消招工"].includes(row.status),
-            );
-            const userId = String(uni.getStorageSync("userId") || "");
-            const mine = activeItems.find(
-              (row) =>
-                String(row.userId || row.user?.id || row.workerId || "") ===
-                userId,
-            );
-            job.hiredCount =
-              item.applyCount ?? item.currentApplyCount ?? activeItems.length;
-            if (mine) {
-              job.applied = true;
-              job.appliedStatus = mine.status || "已报名";
-            }
-          } catch (_) {
-            // 岗位列表仍可正常展示，报名状态由接口返回时再补齐。
-          }
+          job.hiredCount = item.applyCount ?? item.currentApplyCount ?? item.hiredCount ?? 0;
           return job;
-        }),
-      );
+        });
       jobs.value = apiJobs;
       return;
     }
@@ -379,6 +357,7 @@ function search() {
 
 function switchTab(key) {
   activeTab.value = key;
+  loadJobs();
 }
 
 function openDetail(job) {
@@ -407,7 +386,7 @@ async function applyJob(job) {
   }
 
   try {
-    await request({ url: `/worker/orders/apply/${job.id}`, method: "POST" });
+    await applyPublicJob(job.id, { trial: job.salaryType === "MONTHLY" });
     job.applied = true;
     job.appliedStatus = "已报名";
     job.hiredCount = Number(job.hiredCount || 0) + 1;

@@ -40,6 +40,13 @@ public class SmsService {
     @Value("${aliyun.sms.resend-interval:60}")
     private int resendInterval;
 
+    /** 开发/测试环境固定验证码开关，生产环境必须保持关闭。 */
+    @Value("${aliyun.sms.mock-enabled:false}")
+    private boolean mockEnabled;
+
+    @Value("${aliyun.sms.mock-code:000000}")
+    private String mockCode;
+
     private Client client;
 
     /** 内存验证码存储：phone -> {code, expireAt, sentAt} */
@@ -65,6 +72,10 @@ public class SmsService {
     public String sendCode(String phone) {
         if (phone == null || !phone.matches("^1\\d{10}$")) {
             return "手机号格式不正确";
+        }
+        if (mockEnabled) {
+            System.out.println("[SmsService] 开发环境模拟发送验证码，phone=" + phone);
+            return null;
         }
         // 重发限制
         CodeEntry existing = codeStore.get(phone);
@@ -106,6 +117,9 @@ public class SmsService {
     public boolean verifyCode(String phone, String code) {
         if (phone == null || code == null) {
             return false;
+        }
+        if (mockEnabled) {
+            return code.equals(mockCode);
         }
         CodeEntry entry = codeStore.get(phone);
         if (entry == null) {

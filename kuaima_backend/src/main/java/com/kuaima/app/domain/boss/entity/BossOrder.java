@@ -81,6 +81,21 @@ public class BossOrder extends BaseEntity {
     @Column(length = 20, comment = "性别要求编码")
     private String gender;
 
+    @Column(name = "sign_mode", length = 10, comment = "报名方式：auto自动通过/manual手动审核")
+    private String signMode;
+
+    @Column(name = "phone_notify", comment = "报名电话通知")
+    private Boolean phoneNotify;
+
+    @Column(name = "sign_notify", comment = "零工报名通知")
+    private Boolean signNotify;
+
+    @Column(name = "start_remind", comment = "开工提醒")
+    private Boolean startRemind;
+
+    @Column(name = "settle_notify", comment = "结算通知")
+    private Boolean settleNotify;
+
     /** 列表展示用：有效报名数，不落库 */
     @Transient
     private Long currentApply;

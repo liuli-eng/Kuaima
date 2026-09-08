@@ -12,6 +12,12 @@ import com.kuaima.app.domain.jobcategory.entity.JobCategory;
 
 public interface JobCategoryRepository extends JpaRepository<JobCategory, Long> {
 
+    boolean existsByIndustryIdAndEnterpriseTypeIdAndNameIgnoreCase(
+            Long industryId, Long enterpriseTypeId, String name);
+
+    @Query("select coalesce(max(j.sortNo), 0) from JobCategory j where j.enterpriseTypeId = :enterpriseTypeId")
+    Integer findMaxSortNoByEnterpriseTypeId(@Param("enterpriseTypeId") Long enterpriseTypeId);
+
     List<JobCategory> findByEnterpriseTypeIdInAndEnabledTrueOrderBySortNoAscIdAsc(Collection<Long> enterpriseTypeIds);
 
     List<JobCategory> findByEnterpriseTypeIdAndEnabledTrueOrderBySortNoAscIdAsc(Long enterpriseTypeId);

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.user.constant.UserRole;
+import com.kuaima.app.domain.user.constant.CertificationStatus;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.security.dto.WechatLoginDto;
@@ -196,11 +197,19 @@ public class AuthController {
         if (!ok) {
             return Result.error(400, "验证码错误或已过期");
         }
-        // 验证通过后，将该手机号对应的所有用户 certStatus 置为已通过
+        // 当前业务规则：手机号验证通过即视为个人认证通过。
         var users = userRepository.findByPhone(phone);
         for (var user : users) {
+            boolean changed = false;
+            if (!CertificationStatus.APPROVED.equals(user.getRealnameStatus())) {
+                user.setRealnameStatus(CertificationStatus.APPROVED);
+                changed = true;
+            }
             if (!"已通过".equals(user.getCertStatus())) {
                 user.setCertStatus("已通过");
+                changed = true;
+            }
+            if (changed) {
                 userRepository.save(user);
             }
         }

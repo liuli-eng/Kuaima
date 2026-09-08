@@ -29,6 +29,7 @@ import com.kuaima.app.domain.message.constant.MessageType;
 import com.kuaima.app.domain.message.service.MessageService;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.user.service.CertificationService;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 
@@ -42,17 +43,30 @@ public class BossOrderService {
     private final UserRepository userRepository;
     private final MessageService messageService;
     private final SettlementRespository settlementRespository;
+    private final CertificationService certificationService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BossOrderService(BossOrderRespository orderRepository,
+                            BaseOrderItemRespository itemRepository,
+                            UserRepository userRepository,
+                            MessageService messageService,
+                            SettlementRespository settlementRespository,
+                            CertificationService certificationService) {
+        this.orderRepository = orderRepository;
+        this.itemRepository = itemRepository;
+        this.userRepository = userRepository;
+        this.messageService = messageService;
+        this.settlementRespository = settlementRespository;
+        this.certificationService = certificationService;
+    }
 
     public BossOrderService(BossOrderRespository orderRepository,
                             BaseOrderItemRespository itemRepository,
                             UserRepository userRepository,
                             MessageService messageService,
                             SettlementRespository settlementRespository) {
-        this.orderRepository = orderRepository;
-        this.itemRepository = itemRepository;
-        this.userRepository = userRepository;
-        this.messageService = messageService;
-        this.settlementRespository = settlementRespository;
+        this(orderRepository, itemRepository, userRepository, messageService,
+                settlementRespository, null);
     }
 
     // ==================== 订单管理 ====================
@@ -83,6 +97,7 @@ public class BossOrderService {
         }
         validateOrderCoordinates(order.getLongitude(), order.getLatitude());
         checkTimeRange(order.getStartTime(), order.getEndTime());
+        applyRecruitSettings(order, order);
         // 试工时间仅月结类型有效
         if (!BossType.MONTH.equals(order.getType())) {
             order.setTrialDuration(null);
@@ -155,6 +170,7 @@ public class BossOrderService {
             order.setTags(update.getTags());
         }
         applyFilterFields(order, update);
+        applyRecruitSettings(order, update);
         if (update.getOrderNum() != null) {
             if (update.getOrderNum() <= 0) {
                 throw new IllegalArgumentException("招工人数必须大于 0");
@@ -190,7 +206,9 @@ public class BossOrderService {
 
     /** 订单详情 */
     public BossOrder getOrder(Long id) {
-        return getOrderOrThrow(id);
+        BossOrder order = getOrderOrThrow(id);
+        normalizeRecruitSettings(order);
+        return order;
     }
 
     /**
@@ -205,6 +223,7 @@ public class BossOrderService {
         Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "id"));
         Page<BossOrder> result = orderRepository.findAll(BossOrderSpecifications.from(bossId, query), pageable);
         fillCurrentApply(result.getContent());
+        result.getContent().forEach(this::normalizeRecruitSettings);
         return result;
     }
 
@@ -356,6 +375,19 @@ public class BossOrderService {
         BaseOrderItem saved = itemRepository.save(item);
         // 录用结果：通知被录用的零工
         BossOrder order = getOrderOrThrow(item.getOrderId());
+        // 已录用/已到岗/已完成人数达到需求人数后，自动结束招工，停止继续报名。
+        if (BossStatus.ORDER_RECRUITING.equals(order.getOrderStatus())
+                && order.getOrderNum() != null && order.getOrderNum() > 0) {
+            long hiredCount = itemRepository.findByOrderId(order.getId()).stream()
+                    .filter(i -> BossStatus.ITEM_HIRED.equals(i.getStatus())
+                            || BossStatus.ITEM_ON_WORK.equals(i.getStatus())
+                            || BossStatus.ITEM_FINISHED.equals(i.getStatus()))
+                    .count();
+            if (hiredCount >= order.getOrderNum()) {
+                order.setOrderStatus(BossStatus.ORDER_RECRUIT_END);
+                orderRepository.save(order);
+            }
+        }
         messageService.sendToUser(item.getUserId(), MessageType.ORDER_HIRE, "录用通知",
                 "恭喜您！您已被「" + order.getOrderTitle() + "」" + order.getPostion() + "岗位录用（"
                         + order.getSalary() + "元/天），请准时到岗。",
@@ -375,6 +407,23 @@ public class BossOrderService {
         BaseOrderItem saved = itemRepository.save(item);
         // 零工确认到岗：通知老板
         BossOrder order = getOrderOrThrow(item.getOrderId());
+        // 招工已结束且所有已录取零工均已确认到岗后，订单进入待结算。
+        if (BossStatus.ORDER_RECRUIT_END.equals(order.getOrderStatus())) {
+            List<BaseOrderItem> items = itemRepository.findByOrderId(order.getId());
+            List<BaseOrderItem> activeHired = items.stream()
+                    .filter(i -> BossStatus.ITEM_HIRED.equals(i.getStatus())
+                            || BossStatus.ITEM_ON_WORK.equals(i.getStatus())
+                            || BossStatus.ITEM_FINISHED.equals(i.getStatus()))
+                    .toList();
+            boolean allArrived = !activeHired.isEmpty()
+                    && activeHired.stream().allMatch(i ->
+                            BossStatus.ITEM_ON_WORK.equals(i.getStatus())
+                                    || BossStatus.ITEM_FINISHED.equals(i.getStatus()));
+            if (allArrived) {
+                order.setOrderStatus(BossStatus.ORDER_PENDING_SETTLE);
+                orderRepository.save(order);
+            }
+        }
         messageService.sendToUser(order.getCreateBy(), MessageType.ITEM_WORK_CONFIRM, "零工已到岗",
                 userName(item.getUserId()) + " 已到达「" + order.getOrderTitle() + "」岗位，请留意安排工作。",
                 BizType.ITEM, item.getId());
@@ -457,6 +506,7 @@ public class BossOrderService {
         if (StringUtils.hasText(update.getAddress())) order.setAddress(update.getAddress());
         if (StringUtils.hasText(update.getTags())) order.setTags(update.getTags());
         applyFilterFields(order, update);
+        applyRecruitSettings(order, update);
         if (update.getStartTime() != null) order.setStartTime(update.getStartTime());
         if (update.getEndTime() != null) order.setEndTime(update.getEndTime());
         if (StringUtils.hasText(update.getTrialDuration())) order.setTrialDuration(update.getTrialDuration());
@@ -528,15 +578,10 @@ public class BossOrderService {
     /** 提交企业认证 */
     @Transactional
     public User submitEnterpriseCert(Long userId, String companyName, String industry, String licenseNo, String legalRep) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + userId));
-        user.setCertType("ENTERPRISE");
-        user.setCertStatus("待审核");
-        if (StringUtils.hasText(companyName)) user.setCompanyName(companyName);
-        if (StringUtils.hasText(industry)) user.setIndustry(industry);
-        if (StringUtils.hasText(licenseNo)) user.setLicenseNo(licenseNo);
-        if (StringUtils.hasText(legalRep)) user.setLegalRep(legalRep);
-        return userRepository.save(user);
+        if (certificationService == null) {
+            throw new IllegalStateException("认证服务未初始化");
+        }
+        return certificationService.submitEnterprise(userId, companyName, industry, licenseNo, legalRep);
     }
 
     // ==================== 内部方法 ====================
@@ -594,6 +639,46 @@ public class BossOrderService {
         }
         if (StringUtils.hasText(source.getGender())) {
             target.setGender(source.getGender().trim());
+        }
+    }
+
+    /** 创建时写入默认值，更新时仅覆盖请求中明确传入的设置。 */
+    private void applyRecruitSettings(BossOrder target, BossOrder source) {
+        if (source == target || source.getSignMode() != null || target.getSignMode() == null) {
+            if (StringUtils.hasText(source.getSignMode())) {
+                target.setSignMode(source.getSignMode().trim());
+            } else if (target.getSignMode() == null) {
+                target.setSignMode("auto");
+            }
+        }
+        if (source == target || source.getPhoneNotify() != null || target.getPhoneNotify() == null) {
+            target.setPhoneNotify(source.getPhoneNotify() != null ? source.getPhoneNotify() : Boolean.TRUE);
+        }
+        if (source == target || source.getSignNotify() != null || target.getSignNotify() == null) {
+            target.setSignNotify(source.getSignNotify() != null ? source.getSignNotify() : Boolean.TRUE);
+        }
+        if (source == target || source.getStartRemind() != null || target.getStartRemind() == null) {
+            target.setStartRemind(source.getStartRemind() != null ? source.getStartRemind() : Boolean.TRUE);
+        }
+        if (source == target || source.getSettleNotify() != null || target.getSettleNotify() == null) {
+            target.setSettleNotify(source.getSettleNotify() != null ? source.getSettleNotify() : Boolean.TRUE);
+        }
+        validateSignMode(target.getSignMode());
+    }
+
+    private void normalizeRecruitSettings(BossOrder order) {
+        if (!StringUtils.hasText(order.getSignMode())) {
+            order.setSignMode("auto");
+        }
+        if (order.getPhoneNotify() == null) order.setPhoneNotify(Boolean.TRUE);
+        if (order.getSignNotify() == null) order.setSignNotify(Boolean.TRUE);
+        if (order.getStartRemind() == null) order.setStartRemind(Boolean.TRUE);
+        if (order.getSettleNotify() == null) order.setSettleNotify(Boolean.TRUE);
+    }
+
+    private void validateSignMode(String signMode) {
+        if (!"auto".equals(signMode) && !"manual".equals(signMode)) {
+            throw new IllegalArgumentException("报名方式只能是 auto 或 manual");
         }
     }
 

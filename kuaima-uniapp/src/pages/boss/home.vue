@@ -130,6 +130,7 @@
 
 <script>
 import { getBossStats } from "@/api/backend";
+import { checkBossPublishEligibility } from "@/api/publish-eligibility";
 
 function getSafeArea() {
   try {
@@ -159,6 +160,7 @@ export default {
       nearbyWorkers: 0,
       fastestMinutes: 0,
       statsLoading: false,
+      publishChecking: false,
     };
   },
   onLoad() {
@@ -192,7 +194,17 @@ export default {
         this.statsLoading = false;
       }
     },
-    navigateTo(pageName) {
+    async navigateTo(pageName) {
+      if (pageName === "select-job") {
+        if (this.publishChecking) return;
+        this.publishChecking = true;
+        try {
+          const eligibility = await checkBossPublishEligibility();
+          if (!eligibility.canPublish) return;
+        } finally {
+          this.publishChecking = false;
+        }
+      }
       const bossPages = [
         "boss-employer",
         "boss-home",

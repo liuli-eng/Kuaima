@@ -7,8 +7,8 @@
         >你当前身份是{{ current === "worker" ? "零工" : "老板" }}</text
       >
       <view class="buttons">
-        <button class="primary" @click="switchRole">
-          切换为{{ current === "worker" ? "老板" : "零工" }}身份
+        <button class="primary" :disabled="switching" @click="switchRole">
+          {{ switching ? "切换中…" : `切换为${current === "worker" ? "老板" : "零工"}身份` }}
         </button>
         <button class="secondary" @click="cancel">暂不切换</button>
       </view>
@@ -19,18 +19,78 @@
 <script setup>
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
+import { wechatLogin } from "@/api/auth";
+import { USE_MOCK } from "@/api/http";
 
 const pages = getCurrentPages();
 const query = pages[pages.length - 1]?.options || {};
 const current = ref(query.role === "boss" ? "boss" : "worker");
+const switching = ref(false);
 
 function switchRole() {
   const target = current.value === "worker" ? "boss" : "worker";
-  uni.setStorageSync("currentRole", target);
-  uni.setStorageSync("role", target === "boss" ? "BOSS" : "WORKER");
-  uni.reLaunch({
-    url: target === "boss" ? "/pages/boss/home" : "/pages/worker/home",
+  const role = target === "boss" ? "BOSS" : "USER";
+  if (switching.value) return;
+  switching.value = true;
+
+  if (USE_MOCK) {
+    finishSwitch({
+      role,
+      userId: uni.getStorageSync("userId") || "2001",
+      accessToken: uni.getStorageSync("token"),
+    });
+    return;
+  }
+
+  // 身份切换必须重新获取微信 code，并由登录接口签发目标角色的 JWT。
+  // #ifdef MP-WEIXIN
+  uni.login({
+    provider: "weixin",
+    success: async ({ code }) => {
+      try {
+        const result = await wechatLogin({ code, role });
+        finishSwitch(result);
+      } catch (error) {
+        switching.value = false;
+        uni.showToast({
+          title: error.message || "身份切换失败",
+          icon: "none",
+        });
+      }
+    },
+    fail: () => {
+      switching.value = false;
+      uni.showToast({ title: "无法获取微信登录凭证", icon: "none" });
+    },
   });
+  return;
+  // #endif
+
+  // #ifdef H5
+  switching.value = false;
+  uni.showToast({ title: "请在微信小程序中完成身份切换", icon: "none" });
+  // #endif
+}
+
+function finishSwitch(result = {}) {
+  const targetRole = result.role || (current.value === "worker" ? "BOSS" : "USER");
+  if (result.accessToken) uni.setStorageSync("token", result.accessToken);
+  if (result.userId !== undefined) {
+    uni.setStorageSync("userId", String(result.userId));
+  }
+  uni.setStorageSync("role", targetRole);
+  uni.setStorageSync("currentRole", targetRole === "BOSS" ? "boss" : "worker");
+  uni.showToast({
+    title: targetRole === "BOSS" ? "已切换为老板身份" : "已切换为零工身份",
+    icon: "success",
+  });
+  setTimeout(
+    () =>
+      uni.reLaunch({
+        url: targetRole === "BOSS" ? "/pages/boss/home" : "/pages/worker/home",
+      }),
+    500,
+  );
 }
 
 function cancel() {

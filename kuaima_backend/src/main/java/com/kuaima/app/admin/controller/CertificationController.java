@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kuaima.app.admin.entity.Certification;
 import com.kuaima.app.admin.repository.CertificationRepository;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.domain.user.service.CertificationService;
 
 /** 认证审核 */
 @RestController
@@ -27,8 +28,12 @@ import com.kuaima.app.common.Result;
 public class CertificationController {
 
     private final CertificationRepository repo;
+    private final CertificationService certificationService;
 
-    public CertificationController(CertificationRepository repo) { this.repo = repo; }
+    public CertificationController(CertificationRepository repo, CertificationService certificationService) {
+        this.repo = repo;
+        this.certificationService = certificationService;
+    }
 
     /** 列表（分页，按 type/status 过滤，按 id 倒序） */
     @Operation(summary = "认证审核列表", description = "按 type(零工实名/企业认证) 和 status(待审核/已通过/已拒绝) 过滤分页，按 id 倒序")
@@ -63,20 +68,13 @@ public class CertificationController {
     @Operation(summary = "认证审核通过", description = "将 status 置为「已通过」，记录 auditTime")
     @PutMapping("/{id}/pass")
     public Result<Certification> pass(@PathVariable Long id) {
-        Certification c = repo.findById(id).orElseThrow();
-        c.setStatus("已通过");
-        c.setAuditTime(LocalDateTime.now());
-        return Result.success(repo.save(c));
+        return Result.success(certificationService.audit(id, true, null));
     }
 
     /** 审核拒绝 */
     @Operation(summary = "认证审核拒绝", description = "将 status 置为「已拒绝」，记录 rejectReason 和 auditTime")
     @PutMapping("/{id}/reject")
     public Result<Certification> reject(@PathVariable Long id, @RequestParam(required = false) String reason) {
-        Certification c = repo.findById(id).orElseThrow();
-        c.setStatus("已拒绝");
-        c.setRejectReason(reason);
-        c.setAuditTime(LocalDateTime.now());
-        return Result.success(repo.save(c));
+        return Result.success(certificationService.audit(id, false, reason));
     }
 }
