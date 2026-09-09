@@ -41,39 +41,42 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Query("""
             select m from Message m
              where m.userId = :userId
-               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes))
-                 or (:role = 'USER' and m.role = 'USER' and m.type not in :bossTypes))
+               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes) and m.type not in :userTypes)
+                 or (:role = 'USER' and (m.role = 'USER' or m.type in :userTypes) and m.type not in :bossTypes))
              order by m.id desc
             """)
     Page<Message> findByUserIdAndEffectiveRole(@Param("userId") Long userId,
                                                 @Param("role") String role,
                                                 @Param("bossTypes") List<String> bossTypes,
+                                                @Param("userTypes") List<String> userTypes,
                                                 Pageable pageable);
 
     @Query("""
             select m from Message m
              where m.userId = :userId
                and m.readFlag = :readFlag
-               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes))
-                 or (:role = 'USER' and m.role = 'USER' and m.type not in :bossTypes))
+               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes) and m.type not in :userTypes)
+                 or (:role = 'USER' and (m.role = 'USER' or m.type in :userTypes) and m.type not in :bossTypes))
              order by m.id desc
             """)
     Page<Message> findByUserIdAndEffectiveRoleAndReadFlag(@Param("userId") Long userId,
                                                            @Param("role") String role,
                                                            @Param("readFlag") boolean readFlag,
                                                            @Param("bossTypes") List<String> bossTypes,
+                                                           @Param("userTypes") List<String> userTypes,
                                                            Pageable pageable);
 
     @Query("""
             select count(m) from Message m
              where m.userId = :userId
                and m.readFlag = false
-               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes))
-                 or (:role = 'USER' and m.role = 'USER' and m.type not in :bossTypes))
+               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes) and m.type not in :userTypes)
+                 or (:role = 'USER' and (m.role = 'USER' or m.type in :userTypes) and m.type not in :bossTypes))
             """)
     long countByUserIdAndEffectiveRoleAndReadFlagFalse(@Param("userId") Long userId,
                                                         @Param("role") String role,
-                                                        @Param("bossTypes") List<String> bossTypes);
+                                                        @Param("bossTypes") List<String> bossTypes,
+                                                        @Param("userTypes") List<String> userTypes);
 
     /** 某用户某类型消息分页（如系统通知 SYSTEM_NOTICE） */
     Page<Message> findByUserIdAndTypeOrderByIdDesc(Long userId, String type, Pageable pageable);

@@ -102,6 +102,7 @@ import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { request } from "@/api/http";
+import { listWorkerOrders } from "@/api/backend";
 const types = [
   { key: "day", label: "日结" },
   { key: "press", label: "压薪日结" },
@@ -129,32 +130,10 @@ const filtered = computed(() =>
 );
 onMounted(async () => {
   try {
-    const r = await request({ url: "/worker/orders?pageNo=1&pageSize=50" });
-    const items = Array.isArray(r) ? r : r?.records;
+    const r = await listWorkerOrders({ page: 0, size: 50 });
+    const items = Array.isArray(r) ? r : r?.records || r?.content || [];
     if (Array.isArray(items)) {
-      mock.value = await Promise.all(
-        items.map(async (item) => {
-          try {
-            const order = await request({
-              url: `/worker/jobs/${item.orderId}`,
-            });
-            // 岗位详情提供类型、工资、地点等主数据；报名记录保留自身状态和关联 ID。
-            return normalizeOrder({
-              ...item,
-              ...order,
-              id: item.id,
-              orderId: item.orderId,
-              status: item.status,
-              workDate: item.workDate,
-              applyDate: item.applyDate,
-              hireDate: item.hireDate,
-              finishDate: item.finishDate,
-            });
-          } catch (_) {
-            return normalizeOrder(item);
-          }
-        }),
-      );
+      mock.value = items.map(normalizeOrder);
     }
   } catch (error) {
     mock.value = [];

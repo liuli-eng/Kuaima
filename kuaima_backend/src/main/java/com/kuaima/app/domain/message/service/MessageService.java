@@ -55,6 +55,13 @@ public class MessageService {
     @Transactional
     public void sendToList(List<Long> userIds, String type, String title, String content,
             String bizType, Long bizId) {
+        sendToList(userIds, null, type, title, content, bizType, bizId);
+    }
+
+    /** 发给一组用户并固定接收身份，避免账号切换后消息角色随用户当前角色漂移。 */
+    @Transactional
+    public void sendToList(List<Long> userIds, String role, String type, String title, String content,
+            String bizType, Long bizId) {
         if (userIds == null || userIds.isEmpty()) {
             return;
         }
@@ -62,7 +69,7 @@ public class MessageService {
         List<Message> messages = distinctIds.stream()
                 .map(id -> userRepository.findById(id).orElse(null))
                 .filter(u -> u != null)
-                .map(u -> build(u.getId(), u.getRole(), type, title, content, bizType, bizId))
+                .map(u -> build(u.getId(), role != null ? role : u.getRole(), type, title, content, bizType, bizId))
                 .toList();
         if (!messages.isEmpty()) {
             messageRepository.saveAll(messages);
@@ -107,10 +114,10 @@ public class MessageService {
         Pageable pageable = PageRequest.of(Math.max(page, 0), size);
         if (read == null) {
             return messageRepository.findByUserIdAndEffectiveRole(
-                    userId, role, MessageType.BOSS_MESSAGE_TYPES, pageable);
+                    userId, role, MessageType.BOSS_MESSAGE_TYPES, MessageType.USER_MESSAGE_TYPES, pageable);
         }
         return messageRepository.findByUserIdAndEffectiveRoleAndReadFlag(
-                userId, role, read, MessageType.BOSS_MESSAGE_TYPES, pageable);
+                userId, role, read, MessageType.BOSS_MESSAGE_TYPES, MessageType.USER_MESSAGE_TYPES, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -119,7 +126,7 @@ public class MessageService {
             return unreadCount(userId);
         }
         return messageRepository.countByUserIdAndEffectiveRoleAndReadFlagFalse(
-                userId, role, MessageType.BOSS_MESSAGE_TYPES);
+                userId, role, MessageType.BOSS_MESSAGE_TYPES, MessageType.USER_MESSAGE_TYPES);
     }
 
     /** 系统通知列表分页（按 type 过滤，如 SYSTEM_NOTICE） */

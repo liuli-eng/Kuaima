@@ -5,7 +5,7 @@
       <view class="user-header">
         <view class="avatar">👨</view>
         <view class="user-info" @click="go('/pages/worker/user-info')">
-          <text class="name">{{ profile.name || "晴时见禾｜零工" }} ›</text>
+          <text class="name">{{ profileName }} ›</text>
         </view>
         <view class="switch-btn" @click="go('/pages/worker/switch-identity')">
           ⇄ 我要招人
@@ -47,13 +47,23 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { request } from "@/api/http";
+import { getWorkerProfile } from "@/api/backend";
 
 const profile = ref({});
 const wallet = ref({ available: "0" });
+const profileName = computed(
+  () =>
+    profile.value.nickname ||
+    profile.value.name ||
+    profile.value.realName ||
+    profile.value.username ||
+    "未设置昵称｜零工",
+);
 const menus = [
   { key: "service", label: "联系客服", icon: "◉", color: "#1890ff" },
   { key: "rule", label: "平台规则", icon: "⚖", color: "#52c41a" },
@@ -63,15 +73,19 @@ const menus = [
   { key: "realname", label: "手机号认证", icon: "▯", color: "#52c41a" },
 ];
 
-onMounted(async () => {
+onShow(async () => {
   try {
-    const [result, walletResult] = await Promise.all([
-      request({ url: "/auth/me" }),
+    const [workerResult, authResult, walletResult] = await Promise.all([
+      getWorkerProfile().catch(() => null),
+      request({ url: "/auth/me" }).catch(() => null),
       request({ url: "/worker/wallet" }),
     ]);
-    if (result) {
-      profile.value = typeof result === "string" ? { name: result } : result;
-    }
+    const cached = uni.getStorageSync("userInfo") || {};
+    const worker =
+      typeof workerResult === "string" ? { nickname: workerResult } : workerResult || {};
+    const auth =
+      typeof authResult === "string" ? { name: authResult } : authResult || {};
+    profile.value = { ...cached, ...auth, ...worker };
     if (walletResult)
       wallet.value.available = (
         Number(walletResult.balance || 0) / 100

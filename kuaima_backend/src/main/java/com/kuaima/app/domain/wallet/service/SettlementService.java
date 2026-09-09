@@ -23,6 +23,7 @@ import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.message.constant.BizType;
 import com.kuaima.app.domain.message.constant.MessageType;
 import com.kuaima.app.domain.message.service.MessageService;
+import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
@@ -125,7 +126,7 @@ public class SettlementService {
         walletService.credit(s.getWorkerId(), s.getWage(), WalletService.BIZ_WAGE,
                 s.getId(), "工资结算 orderId=" + s.getOrderId() + " 天数=" + s.getWorkDays());
         // 结算到账：通知零工
-        messageService.sendToUser(s.getWorkerId(), MessageType.SETTLE_PAID, "工资已到账",
+        messageService.sendToUser(s.getWorkerId(), UserRole.USER, MessageType.SETTLE_PAID, "工资已到账",
                 "您的工资 " + fenToYuan(s.getWage()) + " 元已到账，可在钱包中查看或提现。",
                 BizType.SETTLE, s.getId());
         return s;

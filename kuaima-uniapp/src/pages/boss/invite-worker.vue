@@ -48,7 +48,16 @@
 
       <!-- 列表区域 -->
       <scroll-view scroll-y class="scroll-area">
+        <view v-if="loading" class="state-panel">正在加载最近合作记录…</view>
+        <view v-else-if="loadError" class="state-panel error-state">
+          <text>{{ loadError }}</text>
+          <button class="retry-btn" @click="loadWorkers">点击重试</button>
+        </view>
+        <view v-else-if="filteredWorkers.length === 0" class="state-panel">
+          {{ emptyStateText }}
+        </view>
         <view
+          v-else
           class="list-item"
           :class="{ selected: selectedWorkers.includes(worker.id) }"
           v-for="worker in filteredWorkers"
@@ -131,6 +140,8 @@ export default {
       selectedWorkers: [],
       orderId: "",
       loading: false,
+      loadError: "",
+      queuedTab: "",
       tabs: [
         { label: "最近合作", value: "recent" },
         { label: "我的收藏", value: "favorite" },
@@ -215,6 +226,12 @@ export default {
     };
   },
   computed: {
+    emptyStateText() {
+      if (this.searchText.trim()) return "暂无匹配零工";
+      if (this.currentTab === "recent") return "暂无合作记录";
+      if (this.currentTab === "favorite") return "暂无收藏人才";
+      return "暂无零工数据";
+    },
     filteredWorkers() {
       const keyword = this.searchText.trim().toLowerCase();
       if (!keyword) return this.workers;
@@ -235,36 +252,57 @@ export default {
     },
     async loadWorkers() {
       if (USE_MOCK) return;
+      if (this.loading) {
+        this.queuedTab = this.currentTab;
+        return;
+      }
+      const tab = this.currentTab;
       this.loading = true;
+      this.loadError = "";
       try {
-        const bossId = uni.getStorageSync("userId") || "";
         let result;
-        if (this.currentTab === "favorite")
-          result = await listFavoriteTalents(bossId);
-        else if (this.currentTab === "recent")
-          result = await listTalentHistory(bossId);
+        if (tab === "favorite")
+          result = await listFavoriteTalents(uni.getStorageSync("userId") || "");
+        else if (tab === "recent") result = await listTalentHistory();
         else
           result = await searchTalents({
             keyword: this.searchText,
             page: 0,
             size: 50,
           });
-        const rows = Array.isArray(result)
-          ? result
-          : result?.records || result?.data || [];
-        this.workers = rows.map((row) => normalizeWorker(row.worker || row));
+        const rows = tab === "recent"
+          ? (Array.isArray(result) ? result : [])
+          : (Array.isArray(result) ? result : result?.records || result?.data || []);
+        if (this.currentTab === tab)
+          this.workers = rows.map((row) => normalizeWorker(row.worker || row));
       } catch (error) {
-        this.workers = [];
-        uni.showToast({
-          title: error.message || "零工列表加载失败",
-          icon: "none",
-        });
+        if (this.currentTab === tab) {
+          this.workers = [];
+          if (error?.statusCode === 401 || error?.code === 401) {
+            this.loadError = "登录已失效，请重新登录";
+            uni.removeStorageSync("token");
+            uni.showToast({ title: this.loadError, icon: "none" });
+            setTimeout(() => uni.reLaunch({ url: "/pages/login/login?role=boss" }), 300);
+          } else if (error?.statusCode === 403 || error?.code === 403) {
+            this.loadError = "当前账号无权查看最近合作记录";
+            uni.showToast({ title: this.loadError, icon: "none" });
+          } else {
+            this.loadError = "最近合作记录加载失败，请稍后重试";
+            uni.showToast({ title: this.loadError, icon: "none" });
+          }
+        }
       } finally {
         this.loading = false;
+        if (this.queuedTab && this.queuedTab !== tab) {
+          this.queuedTab = "";
+          this.$nextTick(() => this.loadWorkers());
+        } else {
+          this.queuedTab = "";
+        }
       }
     },
     onSearch() {
-      this.loadWorkers();
+      if (this.currentTab === "all") this.loadWorkers();
     },
     switchTab(tab) {
       this.currentTab = tab;
@@ -454,6 +492,38 @@ function normalizeWorker(worker = {}) {
   overflow-y: auto;
   background: #f7f8fa;
   padding-top: 4px;
+}
+
+.state-panel {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+}
+
+.error-state {
+  color: #d66;
+}
+
+.retry-btn {
+  margin: 0;
+  height: 34px;
+  padding: 0 18px;
+  border: 1px solid #ff6b35;
+  border-radius: 17px;
+  background: #fff;
+  color: #ff6b35;
+  font-size: 13px;
+  line-height: 32px;
+}
+
+.retry-btn::after {
+  border: 0;
 }
 
 .list-item {

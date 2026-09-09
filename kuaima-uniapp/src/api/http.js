@@ -46,7 +46,7 @@ function mockResponse(url, method = "GET", data) {
   return null;
 }
 
-export function request({ url, method = "GET", data, header = {} }) {
+export function request({ url, method = "GET", data, header = {}, skipUserIdHeader = false }) {
   if (USE_MOCK) return Promise.resolve(mockResponse(url, method, data));
   const token = uni.getStorageSync("token");
   const userId = uni.getStorageSync("userId") || "2001";
@@ -60,7 +60,7 @@ export function request({ url, method = "GET", data, header = {} }) {
       header: {
         ...header,
         Authorization: token ? `Bearer ${token}` : "",
-        "X-User-Id": userId,
+        ...(skipUserIdHeader ? {} : { "X-User-Id": userId }),
       },
       success(response) {
         const payload = response.data;
@@ -94,10 +94,6 @@ function resolveBackendUrl(url, userId, data) {
   if (url.startsWith("/worker/orders/apply/")) {
     const orderId = url.split("/").pop();
     return `/jobs/${orderId}/apply`;
-  }
-  if (url.startsWith("/worker/orders/")) return url.replace("/worker/orders/", "/boss/order/");
-  if (url === "/worker/orders" || url.startsWith("/worker/orders?")) {
-    return `/boss/user/items?userId=${encodeURIComponent(userId)}`;
   }
   if (url === "/worker/wallet" || url.startsWith("/worker/wallet?")) return `/wallet/${userId}`;
   if (url === "/worker/wallet/records") return `/wallet/${userId}/flows`;

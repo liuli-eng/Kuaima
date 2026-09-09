@@ -292,7 +292,7 @@ async function doLogin(phoneCode = "") {
 .role-select-view {
   padding: 18px 20px 24px;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #fff8d6 0%, #ffec99 100%);
+  background: #fff9d7;
 }
 .welcome-copy { text-align: center; margin-bottom: 22px; }
 .welcome-subtitle { display: block; font-size: 13px; font-weight: 500; color: #8b6f00; margin-bottom: 8px; }
@@ -315,30 +315,30 @@ async function doLogin(phoneCode = "") {
   width: auto;
   min-width: 0;
   min-height: 380px;
-  border: 2px solid transparent;
-  background: #f8e387;
+  border: 1.5px solid transparent;
+  background: #f0deba;
   border-radius: 14px;
   padding: 18px 14px 14px;
   margin: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   text-align: left;
   box-shadow: none;
   box-sizing: border-box;
   overflow: hidden;
 }
-.role-card.worker { background: #ffd93d; border-color: #ffbf00; }
-.role-card.boss { background: #f8e387; border-color: #e9c74c; }
+.role-card.worker { background: #f0deba; border-color: #ffbf00; }
+.role-card.boss { background: #f0deba; border-color: #e9c74c; }
 .role-card::after { border: none; }
 .role-card.worker.active {
-  border-color: #2f2d27;
-  background: #ffd93d;
+  border-color: #ff7743;
+  background: #ffe375;
   box-shadow: 0 10px 22px rgba(45, 34, 0, 0.35);
 }
 .role-card.boss.active {
-  border-color: #2f2d27;
-  background: #f8e387;
+  border-color: #ff7743;
+  background: #ffe375;
   box-shadow: 0 10px 22px rgba(45, 34, 0, 0.25);
 }
 .role-name, .role-desc {
@@ -349,6 +349,9 @@ async function doLogin(phoneCode = "") {
   font-weight: 900;
   color: #2d2200;
   margin-bottom: 12px;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  text-align: left;
 }
 .role-desc {
   width: 100%;
@@ -358,7 +361,8 @@ async function doLogin(phoneCode = "") {
   font-size: 13px;
   line-height: 34px;
   height: 34px;
-  margin-top: 6px;
+  margin-top: 0;
+  margin-bottom: 6px;
   border-radius: 12px;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -368,20 +372,21 @@ async function doLogin(phoneCode = "") {
   width: 100%;
   height: auto;
   margin-top: auto;
+  align-self: center;
   margin-bottom: -14px;
 }
 .selected-mark {
   position: absolute;
   top: -2px;
   right: -2px;
-  width: 38px;
-  height: 38px;
-  border-radius: 0 12px 0 12px;
-  background: #303036;
+  width: 34px;
+  height: 34px;
+  border-radius: 0 14px 0 14px;
+  background: #ff7743;
   color: #fff;
   text-align: center;
-  line-height: 38px;
-  font-size: 24px;
+  line-height: 34px;
+  font-size: 14px;
   font-weight: 800;
 }
 .bottom-action {
@@ -410,7 +415,7 @@ async function doLogin(phoneCode = "") {
 .role-cta {
   width: 100%;
   margin-top: 28px;
-  background: linear-gradient(135deg, #ffd93d 0%, #f5b700 100%);
+  background: #fdcd01;
   color: #4a3500;
   font-weight: 800;
   letter-spacing: 1px;

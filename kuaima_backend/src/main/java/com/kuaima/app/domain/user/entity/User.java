@@ -1,6 +1,8 @@
 package com.kuaima.app.domain.user.entity;
 
 
+import java.time.LocalDate;
+
 import com.alibaba.fastjson2.annotation.JSONField;
 import com.kuaima.app.domain.base.entity.BaseEntity;
 
@@ -126,4 +128,20 @@ public class User extends BaseEntity {
     /** 城市 */
     @Column(length = 50)
     private String city;
+
+    /** 出生日期（零工个人资料） */
+    @Column
+    private LocalDate birthday;
+
+    /** 工作年限（零工个人资料） */
+    @Column
+    private Integer workYears;
+
+    /** 是否接受夜班（零工个人资料） */
+    @Column
+    private Boolean acceptNightShift;
+
+    /** 个人简介（零工个人资料） */
+    @Column(length = 500)
+    private String introduction;
 }

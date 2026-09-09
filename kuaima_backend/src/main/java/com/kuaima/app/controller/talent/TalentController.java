@@ -22,7 +22,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
 
+import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.message.constant.BizType;
@@ -30,7 +32,9 @@ import com.kuaima.app.domain.message.service.MessageService;
 import com.kuaima.app.domain.talent.entity.TalentFavorite;
 import com.kuaima.app.domain.talent.repository.TalentFavoriteRepository;
 import com.kuaima.app.domain.user.entity.User;
+import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.security.model.LoginUser;
 
 /**
  * 老板端人才管理：搜索零工、收藏、历史合作、邀请、黑名单。
@@ -130,17 +134,32 @@ public class TalentController {
 
     /**
      * 历史合作零工：GET /talent/history?bossId=1
-     * 从该老板订单下的报名记录中提取去重零工。
+     * 以当前 JWT 老板为准；bossId 仅为旧前端兼容参数，不可跨老板查询。
+     * 仅返回已完成或已有已支付结算单的合作记录，按最近合作时间倒序。
      */
     @GetMapping("/history")
-    public Result<List<User>> listHistory(@RequestParam Long bossId) {
-        List<User> workers = itemRepository.findByBossIdJoinOrder(bossId).stream()
+    public Result<List<User>> listHistory(@RequestParam(required = false) Long bossId,
+                                          Authentication authentication) {
+        Long currentBossId = requireCurrentBossId(authentication);
+        if (bossId != null && !currentBossId.equals(bossId)) {
+            throw new ForbiddenBusinessException("无权查询其他老板的合作记录");
+        }
+        List<User> workers = itemRepository.findHistoryByBossId(currentBossId).stream()
                 .map(item -> userRepository.findById(item.getUserId()).orElse(null))
                 .filter(u -> u != null)
                 .collect(Collectors.collectingAndThen(
-                        Collectors.toMap(User::getId, u -> u, (a, b) -> a),
+                        Collectors.toMap(User::getId, u -> u, (a, b) -> a,
+                                java.util.LinkedHashMap::new),
                         m -> new ArrayList<>(m.values())));
         return Result.success(workers);
+    }
+
+    private Long requireCurrentBossId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof LoginUser loginUser
+                && UserRole.BOSS.equals(loginUser.role()) && loginUser.id() != null) {
+            return loginUser.id();
+        }
+        throw new ForbiddenBusinessException("当前登录账号不是有效的老板账号");
     }
 
     /**
@@ -161,7 +180,7 @@ public class TalentController {
         String bossName = boss != null && StringUtils.hasText(boss.getCompanyName())
                 ? boss.getCompanyName()
                 : (boss != null ? boss.getNickname() : "老板");
-        messageService.sendToUser(workerId, "BOSS_INVITE", "招聘邀请",
+        messageService.sendToUser(workerId, UserRole.USER, "BOSS_INVITE", "招聘邀请",
                 bossName + " 邀请您加入他们的岗位，快去看看吧！",
                 BizType.ORDER, orderId);
         Map<String, Object> result = new HashMap<>();

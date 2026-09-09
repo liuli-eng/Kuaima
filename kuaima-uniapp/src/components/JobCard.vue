@@ -1,46 +1,8 @@
 <template>
   <view class="job-card" @click="$emit('select', job)">
-    <view v-if="job.salaryType === 'MONTHLY'" class="monthly-card">
-      <view class="monthly-main"
-        ><view class="monthly-meta"
-          ><text>{{
-            job.interview || `${job.startTime || "明天"}-${job.endTime || ""}`
-          }}</text
-          ><text class="monthly-tag">试工</text
-          ><text class="monthly-distance">{{
-            job.distance || "徐泾镇 9.4km"
-          }}</text></view
-        ><text class="monthly-title">{{ job.title }}</text
-        ><view class="tags"
-          ><text
-            v-for="tag in tags"
-            :key="tag.text"
-            class="tag"
-            :class="tag.type"
-            >{{ tag.text }}</text
-          ></view
-        ><view class="monthly-footer"
-          ><view
-            ><text class="monthly-salary"
-              >月薪:{{ job.monthlySalary || job.unitPrice }}</text
-            ><text class="monthly-plus">+</text
-            ><text class="monthly-note"
-              >(试工: {{ job.trialSalary || 180 }}元/天)</text
-            ></view
-          ><button
-            class="apply monthly-apply"
-            @click.stop="$emit('apply', job)"
-          >
-            我要试工
-          </button></view
-        ></view
-      ><view class="monthly-thumb"
-        >{{ job.thumbnail || "🍽️" }}<text>▶</text></view
-      >
-    </view>
-    <view v-else class="card-head">
+    <view class="card-head">
       <view class="head-main">
-        <text v-if="job.tagText" class="job-type">{{ job.tagText }}</text>
+        <text v-if="typeLabel" class="job-type">{{ typeLabel }}</text>
         <text class="job-title">{{ job.shortTitle || job.title }}</text>
         <view v-if="tags.length" class="tags">
           <text
@@ -69,7 +31,7 @@
       </view>
     </view>
 
-    <view v-if="job.salaryType !== 'MONTHLY'" class="info-grid">
+    <view class="info-grid">
       <view class="info-item">
         <text class="info-icon">▣</text>
         <text class="info-label">招聘岗位：</text>
@@ -85,7 +47,7 @@
       <view class="info-item">
         <text class="info-icon">⌖</text>
         <text class="info-label">工作地点：</text>
-        <text class="info-value">{{ job.address || "待确认" }}</text>
+        <text class="info-value">{{ displayAddress }}</text>
       </view>
       <view class="info-item wage-row">
         <text class="info-icon">￥</text>
@@ -135,12 +97,32 @@ const wageUnit = computed(() => {
 
 const actionText = computed(() => {
   if (props.job.salaryType === "PRESS") return "报名面试";
-  if (props.job.salaryType === "MONTHLY") return "我要试工";
+  if (props.job.salaryType === "MONTHLY") return "立即报名";
   return "抢新单";
 });
 
+const typeLabel = computed(() => {
+  if (props.job.salaryType === "MONTHLY") return "月结";
+  if (props.job.salaryType === "PRESS") return "压薪日结";
+  return props.job.tagText || "";
+});
+
+const displayAddress = computed(() => {
+  const address =
+    props.job.address ||
+    props.job.workAddress ||
+    props.job.locationName ||
+    props.job.location ||
+    props.job.detailAddress ||
+    "地点待定";
+  const distance = props.job.distanceKm;
+  return distance !== undefined && distance !== null && distance !== ""
+    ? `${address} ${distance}km`
+    : address;
+});
+
 const tags = computed(() => {
-  if (props.job.tagText) {
+  if (["MONTHLY", "PRESS"].includes(props.job.salaryType) || props.job.tagText) {
     return [];
   }
 
@@ -324,87 +306,5 @@ const tags = computed(() => {
 .wage-row,
 .wage-row .info-icon {
   color: #ff6b35;
-}
-.monthly-card {
-  display: flex;
-  gap: 20rpx;
-}
-.monthly-main {
-  flex: 1;
-  min-width: 0;
-}
-.monthly-meta {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  color: #666;
-  font-size: 22rpx;
-}
-.monthly-tag {
-  padding: 6rpx 16rpx;
-  border-radius: 18rpx;
-  background: #e6f4ff;
-  color: #1890ff;
-}
-.monthly-distance {
-  margin-left: auto;
-  color: #999;
-}
-.monthly-title {
-  display: block;
-  margin: 16rpx 0;
-  color: #333;
-  font-size: 34rpx;
-  font-weight: 700;
-}
-.monthly-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12rpx;
-  margin-top: 24rpx;
-}
-.monthly-salary {
-  color: #ff6b35;
-  font-size: 34rpx;
-  font-weight: 800;
-}
-.monthly-plus {
-  color: #333;
-  font-size: 26rpx;
-}
-.monthly-note {
-  display: block;
-  margin-top: 6rpx;
-  color: #999;
-  font-size: 21rpx;
-}
-.monthly-apply {
-  flex-shrink: 0;
-}
-.monthly-thumb {
-  position: relative;
-  width: 112rpx;
-  height: 112rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: 20rpx;
-  background: #fff0d5;
-  font-size: 46rpx;
-}
-.monthly-thumb text {
-  position: absolute;
-  right: 4rpx;
-  bottom: 4rpx;
-  width: 34rpx;
-  height: 34rpx;
-  border-radius: 50%;
-  background: #665d4f;
-  color: #fff;
-  text-align: center;
-  line-height: 34rpx;
-  font-size: 16rpx;
 }
 </style>

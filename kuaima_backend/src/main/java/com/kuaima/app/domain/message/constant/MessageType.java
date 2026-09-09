@@ -47,6 +47,17 @@ public final class MessageType {
             ITEM_CANCEL,
             ITEM_WORK_CONFIRM);
 
+    /** 只应出现在零工身份收件箱的业务消息。 */
+    public static final List<String> USER_MESSAGE_TYPES = List.of(
+            ORDER_PUBLISH,
+            ORDER_HIRE,
+            ORDER_APPLY_REJECT,
+            ORDER_START_REMIND,
+            ORDER_CANCEL,
+            SETTLE_PAID,
+            WITHDRAW_FAIL,
+            BOSS_INVITE);
+
     private MessageType() {
     }
 }

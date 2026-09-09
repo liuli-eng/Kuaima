@@ -333,6 +333,13 @@ function normalizeJob(item) {
       item.headcount ?? item.recruitCount ?? item.needCount ?? item.orderNum,
     hiredCount:
       item.hiredCount ?? item.applyCount ?? item.currentApplyCount ?? 0,
+    address:
+      item.address ||
+      item.workAddress ||
+      item.locationName ||
+      item.location ||
+      item.detailAddress ||
+      "",
   };
 }
 

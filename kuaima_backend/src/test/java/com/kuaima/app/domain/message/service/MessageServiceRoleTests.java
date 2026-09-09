@@ -52,11 +52,30 @@ class MessageServiceRoleTests {
     }
 
     @Test
+    void sendToUser_shouldKeepExplicitUserRoleAfterAccountSwitchesToBoss() {
+        User account = new User();
+        account.setId(30L);
+        account.setRole(UserRole.BOSS);
+        when(userRepository.findById(30L)).thenReturn(Optional.of(account));
+        when(messageRepository.save(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.sendToUser(30L, UserRole.USER, MessageType.ORDER_HIRE,
+                "录用通知", "录用内容", "item", 23L);
+
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(messageRepository).save(captor.capture());
+        assertEquals(UserRole.USER, captor.getValue().getRole());
+        assertEquals(MessageType.ORDER_HIRE, captor.getValue().getType());
+    }
+
+    @Test
     void userList_shouldUseEffectiveRoleQueryThatExcludesBossMessageTypes() {
         service.list(30L, UserRole.USER, null, 0, 20);
 
         verify(messageRepository).findByUserIdAndEffectiveRole(
                 eq(30L), eq(UserRole.USER), eq(MessageType.BOSS_MESSAGE_TYPES),
+                eq(MessageType.USER_MESSAGE_TYPES),
                 org.mockito.ArgumentMatchers.any(Pageable.class));
     }
 }

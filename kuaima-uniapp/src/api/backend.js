@@ -126,6 +126,22 @@ export function listWorkerItems(userId) {
   });
 }
 
+/** 当前登录零工的个人资料，身份由 JWT 获取。 */
+export function getWorkerProfile() {
+  return request({ url: "/worker/profile" });
+}
+
+export function updateWorkerProfile(data = {}) {
+  return request({ url: "/worker/profile", method: "PUT", data });
+}
+
+/** 零工订单聚合列表，岗位信息由后端一次返回。 */
+export function listWorkerOrders(params = {}) {
+  return request({
+    url: `/worker/orders?${query({ page: 0, size: 20, ...params })}`,
+  });
+}
+
 export function listOrderItems(orderId) {
   return request({ url: `/boss/order/${orderId}/items` });
 }
@@ -377,8 +393,9 @@ export function unfavoriteTalent(id) {
   return request({ url: `/talent/favorites/${id}`, method: "DELETE" });
 }
 
-export function listTalentHistory(bossId) {
-  return request({ url: `/talent/history?${query({ bossId })}` });
+export function listTalentHistory() {
+  // 后端从当前老板 JWT 识别归属，不再传 bossId，也不使用 X-User-Id 作为查询依据。
+  return request({ url: "/talent/history", skipUserIdHeader: true });
 }
 
 export function inviteTalent(data) {

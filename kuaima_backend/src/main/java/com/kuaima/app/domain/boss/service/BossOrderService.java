@@ -309,7 +309,7 @@ public class BossOrderService {
         }
         // 取消招工：通知该订单所有受影响报名者
         if (!canceledUserIds.isEmpty()) {
-            messageService.sendToList(canceledUserIds, MessageType.ORDER_CANCEL, "招工已取消",
+            messageService.sendToList(canceledUserIds, UserRole.USER, MessageType.ORDER_CANCEL, "招工已取消",
                     "很抱歉，您报名的「" + order.getOrderTitle() + "」岗位已取消招工。",
                     BizType.ORDER, order.getId());
         }
@@ -330,7 +330,7 @@ public class BossOrderService {
                 .map(BaseOrderItem::getUserId)
                 .distinct()
                 .toList();
-        messageService.sendToList(userIds, MessageType.ORDER_START_REMIND, "岗位即将开始",
+        messageService.sendToList(userIds, UserRole.USER, MessageType.ORDER_START_REMIND, "岗位即将开始",
                 "您报名的「" + order.getOrderTitle() + "」" + order.getPostion() + "岗位即将开始，请提前做好准备准时到岗！",
                 BizType.ORDER, order.getId());
     }
@@ -386,7 +386,7 @@ public class BossOrderService {
                     content, BizType.ITEM, saved.getId());
         }
         if (!manualReview) {
-            messageService.sendToUser(userId, MessageType.ORDER_HIRE, "报名已自动通过",
+            messageService.sendToUser(userId, UserRole.USER, MessageType.ORDER_HIRE, "报名已自动通过",
                     "您报名的「" + order.getOrderTitle() + "」岗位已自动通过，请按时到岗。",
                     BizType.ITEM, saved.getId());
             long hiredAfterApply = hiredCount + 1;
@@ -423,7 +423,7 @@ public class BossOrderService {
                 orderRepository.save(order);
             }
         }
-        messageService.sendToUser(item.getUserId(), MessageType.ORDER_HIRE, "录用通知",
+        messageService.sendToUser(item.getUserId(), UserRole.USER, MessageType.ORDER_HIRE, "录用通知",
                 "恭喜您！您已被「" + order.getOrderTitle() + "」" + order.getPostion() + "岗位录用（"
                         + order.getSalary() + "元/天），请准时到岗。",
                 BizType.ITEM, item.getId());
@@ -445,7 +445,7 @@ public class BossOrderService {
         item.setCancelReason(StringUtils.hasText(reason) ? reason.trim() : null);
         item.setCancelDate(Date.valueOf(LocalDate.now()));
         BaseOrderItem saved = itemRepository.save(item);
-        messageService.sendToUser(item.getUserId(), MessageType.ORDER_APPLY_REJECT, "报名审核未通过",
+        messageService.sendToUser(item.getUserId(), UserRole.USER, MessageType.ORDER_APPLY_REJECT, "报名审核未通过",
                 "您报名的「" + order.getOrderTitle() + "」岗位未通过审核"
                         + (StringUtils.hasText(reason) ? "，原因：" + reason.trim() : ""),
                 BizType.ITEM, item.getId());

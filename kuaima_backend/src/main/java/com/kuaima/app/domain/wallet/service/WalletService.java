@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kuaima.app.domain.message.constant.BizType;
 import com.kuaima.app.domain.message.constant.MessageType;
 import com.kuaima.app.domain.message.service.MessageService;
+import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.wallet.constant.WithDrawStatus;
 import com.kuaima.app.domain.wallet.entity.Wallet;
 import com.kuaima.app.domain.wallet.entity.WalletFlow;
@@ -146,7 +147,7 @@ public class WalletService {
         saveFlow(draw.getUserId(), DIR_INCOME, BIZ_WITHDRAW_REFUND, draw.getAmount(),
                 wallet.getBalance(), draw.getId(), "提现失败退回");
         // 打款失败：通知零工"已退回"
-        messageService.sendToUser(draw.getUserId(), MessageType.WITHDRAW_FAIL, "提现打款失败",
+        messageService.sendToUser(draw.getUserId(), UserRole.USER, MessageType.WITHDRAW_FAIL, "提现打款失败",
                 "您申请的提现 " + fenToYuan(draw.getAmount()) + " 元打款失败"
                         + (reason == null || reason.isBlank() ? "" : "（" + reason + "）")
                         + "，金额已退回钱包。",

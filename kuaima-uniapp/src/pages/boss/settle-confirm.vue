@@ -9,7 +9,7 @@
       <view class="nav-right"></view>
     </view>
 
-    <scroll-view scroll-y class="content-area" style="flex:1;overflow-y:auto;padding-bottom:80px;">
+    <scroll-view scroll-y class="content-area">
       <!-- 付款金额 -->
       <view class="amount-card">
         <text class="amount-label">付款金额</text>
@@ -96,7 +96,7 @@
     </scroll-view>
 
     <!-- 底部按钮 -->
-    <view style="background:#fff;padding:12px 16px;border-top:1px solid #f0f0f0;">
+    <view class="bottom-bar">
       <button class="confirm-btn" :disabled="!selectedAccount" @click="submitSettle">确认付款{{ selectedAccount ? ` ¥${finalAmount.toFixed(2)}` : '' }}</button>
     </view>
   </view>
@@ -190,9 +190,18 @@ export default {
 }
 
 .content-area {
+  flex: 1;
   min-height: 0;
   height: 0;
   box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.bottom-bar {
+  flex-shrink: 0;
+  background: #fff;
+  padding: 12px 16px;
+  border-top: 1px solid #f0f0f0;
 }
 
 .amount-label {
