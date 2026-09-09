@@ -68,6 +68,7 @@ public class AuthController {
 
     @Operation(summary = "微信小程序登录", description = "小程序端 wx.login() 获取 code，后端调用微信 jscode2session 换取 openid；用户不存在时按所选身份自动注册，老用户以本次选择的身份为准直接切换。若传入 phoneCode，后端调用微信 getuserphonenumber 换取手机号并保存")
     @PostMapping("/wechat/login")
+    @Transactional
     public Result<Map<String, Object>> wechatLogin(@RequestBody WechatLoginDto dto) {
         if (dto == null || !StringUtils.hasText(dto.getCode())) {
             return Result.error(400, "微信 code 不能为空");
@@ -88,8 +89,8 @@ public class AuthController {
         // 按 openid 查找用户，不存在则按所选身份自动注册
         User user = userRepository.findByOpenid(info.openid()).orElseGet(() -> {
             User newUser = new User();
-            // 微信用户无密码，生成不可登录的随机密码；username 用 wx_ 前缀保证唯一
-            newUser.setUsername("wx_" + info.openid().substring(Math.max(0, info.openid().length() - 16)));
+            // 微信用户无密码，生成不可登录的随机密码；完整 openid 避免仅截取后 16 位造成用户名碰撞
+            newUser.setUsername("wx_" + info.openid());
             newUser.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
             newUser.setRole(role);
             newUser.setOpenid(info.openid());

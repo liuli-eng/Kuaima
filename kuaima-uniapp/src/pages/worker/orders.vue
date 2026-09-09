@@ -64,28 +64,15 @@
           ><text class="wage"
             >¥{{ order.amount }} <text> {{ order.unit }}</text></text
           ><view class="actions"
-            ><button class="detail" @click="open(order)">查看详情</button
             ><button
-              v-if="order.status === 'applied'"
+              v-if="order.canCancel"
               class="cancel"
+              :disabled="operatingIds.includes(order.id)"
               @click="cancel(order)"
             >
-              取消报名
+              {{ operatingIds.includes(order.id) ? "取消中" : "取消报名" }}
             </button>
-            <button
-              v-if="order.status === 'hired'"
-              class="cancel"
-              @click="updateStatus(order, 'work')"
-            >
-              确认到岗
-            </button>
-            <button
-              v-if="order.status === 'arrived'"
-              class="cancel"
-              @click="updateStatus(order, 'finish')"
-            >
-              确认完工
-            </button></view
+            <button class="detail" @click="open(order)">详情</button></view
           ></view
         >
       </view>
@@ -101,8 +88,7 @@
 import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
-import { request } from "@/api/http";
-import { listWorkerOrders } from "@/api/backend";
+import { cancelOrderItem, listWorkerOrders } from "@/api/backend";
 const types = [
   { key: "day", label: "日结" },
   { key: "press", label: "压薪日结" },
@@ -120,6 +106,7 @@ const orderType = ref("day"),
   date = ref("all"),
   status = ref("all");
 const mock = ref([]);
+const operatingIds = ref([]);
 const filtered = computed(() =>
   mock.value.filter(
     (i) =>
@@ -151,38 +138,24 @@ function cancel(o) {
     title: "取消报名",
     content: "确定取消本次报名吗？",
     success: async ({ confirm }) => {
-      if (confirm) {
-        try {
-          await request({ url: `/boss/item/${o.id}/cancel`, method: "PUT" });
-          o.status = "cancelled";
-          o.statusText = "取消报名";
-          uni.showToast({ title: "已取消报名", icon: "success" });
-        } catch (e) {
-          uni.showToast({ title: e.message || "取消失败", icon: "none" });
-        }
+      if (!confirm || operatingIds.value.includes(o.id)) return;
+      operatingIds.value.push(o.id);
+      try {
+        await cancelOrderItem(o.id, "零工主动取消报名");
+        o.status = "cancelled";
+        o.statusText = "取消报名";
+        o.canCancel = false;
+        uni.showToast({ title: "已取消报名", icon: "success" });
+      } catch (e) {
+        uni.showToast({ title: e.message || "取消失败", icon: "none" });
+      } finally {
+        operatingIds.value = operatingIds.value.filter((id) => id !== o.id);
       }
     },
   });
 }
-async function updateStatus(order, action) {
-  try {
-    await request({ url: `/boss/item/${order.id}/${action}`, method: "PUT" });
-    order.status = action === "work" ? "arrived" : "done";
-    order.statusText = action === "work" ? "已到岗" : "已完成";
-    uni.showToast({ title: order.statusText, icon: "success" });
-  } catch (e) {
-    uni.showToast({ title: e.message || "操作失败", icon: "none" });
-  }
-}
 function normalizeOrder(item) {
-  const statusMap = {
-    已报名: "applied",
-    已录用: "hired",
-    已到岗: "arrived",
-    已完成: "done",
-    取消招工: "cancelled",
-    取消报名: "cancelled",
-  };
+  const statusMeta = normalizeOrderStatus(item);
   const hourlyMatch = String(item.tags || "").match(/时薪:([\d.]+)/);
   const pieceMatch = String(item.tags || "").match(/计件单价:([\d.]+)/);
   const pieceUnitMatch = String(item.tags || "").match(/计件单位:([^,]+)/);
@@ -226,9 +199,36 @@ function normalizeOrder(item) {
         : item.type === "month"
           ? "元/月"
           : "元/天",
-    status: statusMap[item.status] || "applied",
-    statusText: item.status || "已报名",
+    status: statusMeta.key,
+    statusText: statusMeta.text,
+    canCancel: statusMeta.canCancel,
     date: normalizeDateKey(item.workDate || item.startTime),
+  };
+}
+
+function normalizeOrderStatus(item) {
+  const rawStatus = item.statusText || item.itemStatus || item.status || "";
+  const normalized = String(rawStatus).trim().toUpperCase();
+  const statusMap = {
+    APPLIED: { key: "applied", text: "已报名", canCancel: true },
+    已报名: { key: "applied", text: "已报名", canCancel: true },
+    HIRED: { key: "hired", text: "已录用", canCancel: true },
+    已录用: { key: "hired", text: "已录用", canCancel: true },
+    ARRIVED: { key: "arrived", text: "已到岗", canCancel: false },
+    已到岗: { key: "arrived", text: "已到岗", canCancel: false },
+    COMPLETED: { key: "done", text: "已完成", canCancel: false },
+    SETTLED: { key: "done", text: "已完成", canCancel: false },
+    已完成: { key: "done", text: "已完成", canCancel: false },
+    CANCELLED: { key: "cancelled", text: "取消报名", canCancel: false },
+    取消报名: { key: "cancelled", text: "取消报名", canCancel: false },
+    取消招工: { key: "cancelled", text: "取消招工", canCancel: false },
+  };
+  const meta = statusMap[normalized] || statusMap[rawStatus];
+  if (meta) return meta;
+  return {
+    key: "unknown",
+    text: rawStatus || "状态未知",
+    canCancel: false,
   };
 }
 
@@ -399,6 +399,11 @@ function toDateKey(date) {
   background: #e8f5e9;
   color: #4caf50;
 }
+.cancelled,
+.unknown {
+  background: #f5f5f5;
+  color: #999;
+}
 .tags {
   display: flex;
   gap: 12rpx;
@@ -463,6 +468,9 @@ function toDateKey(date) {
   line-height: 64rpx;
   border-radius: 34rpx;
   font-size: 23rpx;
+}
+.actions button[disabled] {
+  opacity: 0.55;
 }
 .detail {
   background: #eb8a59;

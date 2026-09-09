@@ -1,105 +1,81 @@
 <template>
   <view class="container">
     <scroll-view scroll-y class="scroll-area">
-      <!-- 顶部导航 -->
-      <view
-        class="top-bar"
-        :style="{
-          paddingTop: `${statusBarHeight + 12}px`,
-          paddingRight: `${menuSafeRight}px`,
-        }"
-      >
-        <view class="brand-tag">快马日结</view>
-      </view>
-
-      <!-- Hero区域 -->
-      <view class="hero-section">
-        <text class="hero-title">招临时工</text>
-        <text class="hero-subtitle">像叫网约车一样省心</text>
-        <text class="hero-mascot" aria-hidden="true">🐴</text>
-      </view>
-
-      <!-- 信息条 -->
-      <view class="info-bar">
-        <view class="info-item">
-          <text style="color: #ff6b35">📍</text>
-          <text>松江</text>
+      <view class="top-header-area">
+        <view
+          class="top-bar"
+          :style="{
+            paddingTop: `${statusBarHeight + 8}px`,
+            paddingRight: `${menuSafeRight}px`,
+          }"
+        >
+          <view class="brand-tag">快马日结</view>
+          <!-- #ifndef MP-WEIXIN -->
+          <view class="window-controls">
+            <text class="window-btn">•••</text>
+            <view class="window-divider" />
+            <text class="window-btn">●</text>
+          </view>
+          <!-- #endif -->
         </view>
-        <view class="info-right" @click="navigateTo('service-chat')">
-          <text style="color: #ff6b35">🎧</text>
-          <text>在线客服</text>
+        <view class="hero-banner" @click="navigateTo('select-job')">
+          <view class="hero-banner-icon">
+            <image class="icon-svg" src="/static/icons/boss-home/trend.svg" mode="aspectFit" />
+          </view>
+          <text class="hero-banner-title"><text class="accent">旺季到</text> 工价涨</text>
+          <text class="hero-banner-subtitle">两招教你快速招工！</text>
         </view>
       </view>
-      <view class="info-highlight-bar">
-        <text class="text-sm" style="color: #8b4513">
-          附近有<text class="info-highlight">{{ nearbyWorkers }}位零工</text>
-          最快<text class="info-highlight">{{ fastestMinutes }}分钟内</text>接单
-        </text>
-      </view>
 
-      <!-- 每天日结区域 -->
-      <view class="publish-section">
-        <text class="section-title">每天日结</text>
-        <text class="section-subtitle">每天完工 当面结清报酬</text>
-        <view class="publish-entry" @click="navigateTo('select-job')">
-          <view class="publish-entry-deco" />
-          <text class="publish-entry-title">立即发布招工信息</text>
-          <view class="publish-entry-btn">
-            <text>发布招工</text>
+      <view class="employer-card">
+        <view class="employer-card-deco" />
+        <view class="employer-top">
+          <view class="employer-location">
+            <image class="inline-icon location-icon" src="/static/icons/boss-home/location.svg" mode="aspectFit" /><text>松江</text>
+          </view>
+          <view
+            class="employer-service"
+            @click="navigateTo('service-chat')"
+          >
+            <image class="inline-icon service-icon" src="/static/icons/boss-home/headset.svg" mode="aspectFit" /><text>在线客服</text>
+          </view>
+        </view>
+        <view class="employer-main">
+          <view class="employer-stat">
+            <text class="stat-line"
+              >附近有<text class="employer-stat-num">{{ nearbyWorkers }}</text
+              ><text class="employer-stat-text">位零工</text></text
+            >
+            <text class="employer-stat-sub">最快{{ fastestMinutes }}分钟内接单</text>
+          </view>
+        </view>
+        <view class="employer-cta-wrap" @click="navigateTo('select-job')">
+          <view class="employer-cta-btn">
+            {{ publishChecking ? "资格校验中" : "去发布招工" }}
           </view>
         </view>
       </view>
 
-      <!-- 同行老板们区域 -->
       <view class="peer-section">
-        <!-- 顶部横幅 -->
-        <view class="peer-banner">
-          <text class="peer-title">同行老板们</text>
-          <text class="peer-title-sub">都在用快马日结招工</text>
-        </view>
-
-        <!-- 4个特性卡片 -->
         <view class="peer-features">
-          <view class="peer-feature">
-            <text class="peer-feature-icon">⚡</text>
-            <view class="peer-feature-title">
-              <text>⚡</text>
-              <text>到岗快</text>
+          <view
+            v-for="item in peerFeatures"
+            :key="item.title"
+            class="peer-feature"
+          >
+            <view class="peer-feature-icon" :class="item.theme">
+              <image v-if="item.icon === 'bolt'" class="feature-svg" src="/static/icons/boss-home/bolt.svg" mode="aspectFit" />
+              <image v-else-if="item.icon === 'wrench'" class="feature-svg" src="/static/icons/boss-home/wrench.svg" mode="aspectFit" />
+              <image v-else-if="item.icon === 'user-check'" class="feature-svg" src="/static/icons/boss-home/user-check.svg" mode="aspectFit" />
+              <image v-else class="feature-svg" src="/static/icons/boss-home/coins.svg" mode="aspectFit" />
             </view>
-            <text class="peer-feature-desc"
-              >3000万临时工在线接单，最快3分钟接单，20分钟到岗</text
-            >
+            <text class="peer-feature-title">{{ item.title }}</text>
+            <text class="peer-feature-desc">{{ item.description }}</text>
           </view>
-          <view class="peer-feature">
-            <text class="peer-feature-icon">🔧</text>
-            <view class="peer-feature-title">
-              <text>🔧</text>
-              <text>熟练工</text>
-            </view>
-            <text class="peer-feature-desc"
-              >工厂、电商、餐饮、酒店、仓储、物流等都在平台招临时工熟手</text
-            >
-          </view>
-          <view class="peer-feature">
-            <text class="peer-feature-icon">👤</text>
-            <view class="peer-feature-title">
-              <text>👤</text>
-              <text>人靠谱</text>
-            </view>
-            <text class="peer-feature-desc"
-              >零工实名接单，信用分机制筛选，零工星级评定帮您招靠谱临时工</text
-            >
-          </view>
-          <view class="peer-feature">
-            <text class="peer-feature-icon">💰</text>
-            <view class="peer-feature-title">
-              <text>💰</text>
-              <text>更省钱</text>
-            </view>
-            <text class="peer-feature-desc"
-              >临时工成本比正式工低30%，熟练临时工效率成本更优</text
-            >
-          </view>
+        </view>
+        <view class="bottom-slogan">
+          <text class="slogan-title">快 马 日 结</text>
+          <text class="slogan-desc">专业日结零工招工平台</text>
         </view>
       </view>
 
@@ -109,19 +85,19 @@
     <!-- 底部TabBar -->
     <view class="tab-bar">
       <view class="tab-item active" @click="switchTab('home')">
-        <view class="tab-icon-wrap"><text class="tab-icon">⌂</text></view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-home/house.svg" mode="aspectFit" /></view>
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" @click="switchTab('order')">
-        <view class="tab-icon-wrap"><text class="tab-icon">▣</text></view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-home/calendar.svg" mode="aspectFit" /></view>
         <text class="tab-label">招工订单</text>
       </view>
       <view class="tab-item" @click="switchTab('message')">
-        <view class="tab-icon-wrap"><text class="tab-icon">●</text></view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-home/comment.svg" mode="aspectFit" /></view>
         <text class="tab-label">消息</text>
       </view>
       <view class="tab-item" @click="switchTab('profile')">
-        <view class="tab-icon-wrap"><text class="tab-icon">☺</text></view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-home/smile.svg" mode="aspectFit" /></view>
         <text class="tab-label">我的</text>
       </view>
     </view>
@@ -157,8 +133,36 @@ export default {
   data() {
     return {
       ...getSafeArea(),
-      nearbyWorkers: 0,
-      fastestMinutes: 0,
+      peerFeatures: [
+        {
+          icon: "bolt",
+          theme: "orange",
+          title: "到岗快",
+          description: "3000万临时工在线接单，最快3分钟接单，20分钟到岗",
+        },
+        {
+          icon: "wrench",
+          theme: "green",
+          title: "熟练工",
+          description:
+            "工厂、电商、餐饮、酒店、仓储、物流等都在平台招临时工熟手",
+        },
+        {
+          icon: "user-check",
+          theme: "blue",
+          title: "人靠谱",
+          description:
+            "零工实名接单，信用分机制筛选，零工星级评定帮您招靠谱临时工",
+        },
+        {
+          icon: "coins",
+          theme: "yellow",
+          title: "更省钱",
+          description: "临时工成本比正式工低30%，熟练临时工效率成本更优",
+        },
+      ],
+      nearbyWorkers: 2326,
+      fastestMinutes: 3,
       statsLoading: false,
       publishChecking: false,
     };
@@ -173,23 +177,24 @@ export default {
         const result = await getBossStats(
           uni.getStorageSync("userId") || "2001",
         );
-        this.nearbyWorkers = Number(
+        const nearbyWorkers = Number(
           result?.nearbyWorkers ??
             result?.workerCount ??
-            result?.availableWorkers ??
-            0,
+            result?.availableWorkers,
         );
-        this.fastestMinutes = Number(
+        const fastestMinutes = Number(
           result?.fastestMinutes ??
             result?.estimatedMinutes ??
-            result?.expectedMinutes ??
-            0,
+            result?.expectedMinutes,
         );
+        if (Number.isFinite(nearbyWorkers) && nearbyWorkers > 0) {
+          this.nearbyWorkers = nearbyWorkers;
+        }
+        if (Number.isFinite(fastestMinutes) && fastestMinutes > 0) {
+          this.fastestMinutes = fastestMinutes;
+        }
       } catch (error) {
-        uni.showToast({
-          title: error.message || "首页统计加载失败",
-          icon: "none",
-        });
+        console.warn("老板首页统计加载失败，使用默认展示数据", error);
       } finally {
         this.statsLoading = false;
       }
@@ -347,6 +352,30 @@ export default {
   pointer-events: none;
 }
 
+.flow-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(139, 69, 19, 0.06);
+}
+
+.flow-item {
+  color: #d2691e;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.flow-arrow {
+  color: #ffb380;
+  font-size: 20px;
+  line-height: 1;
+}
+
 .info-bar {
   display: flex;
   padding: 16px;
@@ -369,10 +398,19 @@ export default {
   color: #8b4513;
 }
 
+.info-icon {
+  color: #ff6b35;
+}
+
 .info-highlight-bar {
   padding: 0 16px;
   margin-top: -8px;
   margin-bottom: 8px;
+}
+
+.nearby-summary {
+  color: #8b4513;
+  font-size: 14px;
 }
 
 .info-highlight {
@@ -402,59 +440,55 @@ export default {
   letter-spacing: 0.5px;
 }
 
-.publish-entry {
-  box-sizing: border-box;
-  position: relative;
-  overflow: hidden;
+.publish-cards {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 18px;
-  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
-  border-radius: 20px;
-  padding: 26px 24px;
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(255, 107, 53, 0.28);
+  gap: 12px;
 }
 
-.publish-entry:active {
+.publish-card {
+  box-sizing: border-box;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: 16px;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.2);
+}
+
+.publish-card:active {
+  opacity: 0.88;
   transform: scale(0.98);
 }
 
-.publish-entry-deco {
-  position: absolute;
-  top: -40px;
-  right: -34px;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
+.publish-card.green {
+  background: linear-gradient(135deg, #52c41a, #73d13d);
+  box-shadow: 0 6px 16px rgba(82, 196, 26, 0.2);
 }
 
-.publish-entry-title {
-  position: relative;
-  z-index: 1;
+.card-days {
   display: block;
-  color: #fff;
-  text-align: center;
-  font-size: 24px;
+  margin: 12px 0 4px;
+  font-size: 36px;
   font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: 2px;
 }
 
-.publish-entry-btn {
-  position: relative;
-  z-index: 1;
-  padding: 15px;
-  border-radius: 30px;
-  background: #fff;
-  color: #ff6b35;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+.card-label {
+  display: block;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.card-btn {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .peer-section {
@@ -467,6 +501,11 @@ export default {
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 16px;
+}
+
+.peer-banner-content {
+  position: relative;
+  z-index: 1;
 }
 
 .peer-title {
@@ -582,7 +621,46 @@ export default {
   box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
 }
 
-.text-sm {
-  font-size: 14px;
-}
+/* 与老板端原型保持一致的首页视觉层 */
+.container { background: #f7f7f7; color: #2c1810; }
+.scroll-area { background: #f7f7f7; }
+.top-header-area { padding: 8px 16px 14px; background: linear-gradient(180deg, #ffd8c4 0%, #ffe8d8 52%, #fff5ea 100%); }
+.top-bar { min-height: 42px; padding: 0 0 10px 0; justify-content: space-between; }
+.brand-tag { padding: 7px 15px; border-radius: 20px; background: linear-gradient(135deg,#ffe082,#ffd54f); color: #3e2723; font-size: 15px; font-weight: 800; letter-spacing: 1px; box-shadow: 0 2px 6px rgba(255,193,7,.25); }
+.window-controls { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,.75); box-shadow: 0 2px 6px rgba(0,0,0,.06); }
+.window-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: #5d4037; font-size: 12px; }
+.window-divider { width: 1px; height: 12px; background: rgba(93,64,55,.2); }
+.hero-banner { position: relative; min-height: 76px; padding: 4px 4px 8px; }
+.hero-banner-title { display: block; position: relative; z-index: 1; color: #2c1810; font-size: 24px; font-weight: 800; line-height: 1.2; }
+.hero-banner-title .accent { color: #ff5722; }
+.hero-banner-subtitle { display: block; position: relative; z-index: 1; margin-top: 6px; color: #5d4037; font-size: 14px; font-weight: 500; }
+.hero-banner-icon { position: absolute; right: 18px; top: 50%; width: 54px; height: 54px; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; border-radius: 16px; background: linear-gradient(135deg,#ff7043,#ff5722); color: #fff; font-size: 30px; font-weight: 700; box-shadow: 0 4px 12px rgba(255,87,34,.28); }
+.icon-svg { width: 28px; height: 28px; }
+.employer-card { position: relative; overflow: hidden; margin: 16px 16px 0; padding: 16px 18px 18px; border-radius: 18px; background: linear-gradient(135deg,#fff3c4,#ffe8a0); box-shadow: 0 4px 14px rgba(255,193,7,.18); }
+.employer-card-deco { position: absolute; right: -30px; top: -30px; width: 100px; height: 100px; border-radius: 50%; background: rgba(255,255,255,.25); }
+.employer-top,.employer-main,.employer-cta-wrap { position: relative; z-index: 1; }
+.employer-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.employer-location { display: flex; align-items: center; gap: 6px; color: #5d4037; font-size: 14px; font-weight: 500; }
+.location-icon,.service-icon { color: #ff7043; }
+.inline-icon { width: 16px; height: 16px; flex: 0 0 16px; }
+.employer-service { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; background: #fff; color: #5d4037; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+.stat-line { display: block; color: #3e2723; font-size: 15px; font-weight: 600; }
+.employer-stat-num { margin: 0 3px; color: #ff5722; font-size: 22px; font-weight: 800; }
+.employer-stat-sub { display: block; margin-top: 4px; color: #8d6e63; font-size: 12px; }
+.employer-cta-wrap { margin-top: 14px; }
+.employer-cta-btn { padding: 14px; border: 2px solid #ff7043; border-radius: 7px; background: #fff; color: #000; text-align: center; font-size: 17px; font-weight: 700; letter-spacing: 4px; }
+.peer-section { padding: 18px 16px 20px; }
+.peer-features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: transparent; }
+.peer-feature { padding: 16px 14px; border: 1px solid rgba(255,112,67,.06); border-radius: 14px; background: #fff; box-shadow: 0 2px 10px rgba(44,24,16,.04); }
+.peer-feature-icon { width: 36px; height: 36px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 18px; }
+.peer-feature-icon.orange { background: #fff4e6; color: #ff7043; }.peer-feature-icon.green { background: #e8f5e9; color: #66bb6a; }.peer-feature-icon.blue { background: #e3f2fd; color: #42a5f5; }.peer-feature-icon.yellow { background: #fff8e1; color: #ffa726; }
+.feature-svg { width: 20px; height: 20px; }
+.peer-feature-title { display: block; margin-bottom: 6px; color: #2c1810; font-size: 14px; font-weight: 600; }
+.peer-feature-desc { color: #6b4423; font-size: 12px; line-height: 1.6; opacity: .85; }
+.bottom-slogan { padding: 24px 16px; text-align: center; }
+.slogan-title { display: block; color: #ffe4cc; font-size: 32px; font-weight: 800; letter-spacing: 6px; }
+.slogan-desc { display: block; margin-top: 8px; color: #d4b896; font-size: 13px; }
+.tab-svg { width: 22px; height: 22px; opacity: .55; }
+.tab-item.active .tab-svg { opacity: 1; }
+
 </style>

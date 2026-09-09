@@ -56,14 +56,16 @@ import { getWorkerProfile } from "@/api/backend";
 
 const profile = ref({});
 const wallet = ref({ available: "0" });
-const profileName = computed(
-  () =>
+const profileName = computed(() => {
+  const name =
     profile.value.nickname ||
     profile.value.name ||
     profile.value.realName ||
     profile.value.username ||
-    "未设置昵称｜零工",
-);
+    "未设置昵称";
+
+  return name.includes("零工") ? name : `${name}｜零工`;
+});
 const menus = [
   { key: "service", label: "联系客服", icon: "◉", color: "#1890ff" },
   { key: "rule", label: "平台规则", icon: "⚖", color: "#52c41a" },

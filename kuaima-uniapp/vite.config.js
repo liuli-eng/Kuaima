@@ -15,8 +15,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        // http://192.168.2.88:8080
-        target: 'http://8.148.144.146/api',
+        target: 'https://ke.taifang.xyz/api',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
