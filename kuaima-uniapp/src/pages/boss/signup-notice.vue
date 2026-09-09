@@ -9,7 +9,7 @@
         <text>⋯</text>
       </view>
     </view>
-    <scroll-view scroll-y class="scroll-area">
+    <scroll-view scroll-y class="scroll-area" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refreshList">
       <view class="stats-card">
         <view class="stat-item">
           <text class="stat-num">{{ stats.pending }}</text>
@@ -24,7 +24,9 @@
           <text class="stat-label">已拒绝</text>
         </view>
       </view>
-      <view class="apply-item" v-for="(item, index) in applies" :key="index">
+      <view v-if="loading" class="page-state">报名通知加载中…</view>
+      <view v-else-if="loadError" class="page-state error" @click="loadApplies">加载失败，点击重试</view>
+      <view class="apply-item" v-for="item in applies" :key="item.messageId || item.id" @click="openApply(item)">
         <view class="apply-header">
           <view class="apply-avatar" :style="{ background: item.avatarBg }">{{ item.initial }}</view>
           <view class="apply-info">
@@ -33,26 +35,37 @@
           </view>
         </view>
         <text class="apply-job">应聘岗位：<text style="font-weight:600;">{{ item.job }}</text> · {{ item.date }} · {{ item.count }}人</text>
-        <view class="apply-actions">
-          <button class="btn-approve" @click="approve(item)">通过</button>
-          <button class="btn-reject" @click="reject(item)">拒绝</button>
+        <view class="apply-actions" v-if="item.status === 'pending'">
+          <button class="btn-approve" :disabled="operatingId === item.id" @click.stop="approve(item)">通过</button>
+          <button class="btn-reject" :disabled="operatingId === item.id" @click.stop="reject(item)">拒绝</button>
         </view>
+        <text v-else class="apply-result">{{ item.status === 'approved' ? '已通过' : '已拒绝' }}</text>
       </view>
+      <view v-if="!loading && !loadError && !applies.length" class="page-state">暂无报名通知</view>
     </scroll-view>
   </view>
 </template>
 
 <script>
+import {
+  hireOrderItem,
+  listMessages,
+  listOrderItems,
+  listOrders,
+  readMessage,
+  rejectOrderItem,
+} from "@/api/backend";
+
 export default {
   data() {
     return {
       statusBarHeight: 0,
-      stats: { pending: 3, approved: 12, rejected: 2 },
-      applies: [
-        { initial: '赵', name: '赵师傅', tag: '熟练工', time: '2026-08-21 14:30', job: '电商分拣打包工', date: '8月22日 08:00', count: 3, avatarBg: 'linear-gradient(135deg, #52C41A, #73D13D)' },
-        { initial: '孙', name: '孙阿姨', tag: '新零工', time: '2026-08-21 11:20', job: '餐饮服务员', date: '8月22日 10:00', count: 2, avatarBg: 'linear-gradient(135deg, #1890FF, #40A9FF)' },
-        { initial: '周', name: '周师傅', tag: '熟练工', time: '2026-08-20 16:45', job: '快递搬运装卸工', date: '8月21日 07:00', count: 4, avatarBg: 'linear-gradient(135deg, #FA8C16, #FFC53D)' }
-      ]
+      stats: { pending: 0, approved: 0, rejected: 0 },
+      applies: [],
+      loading: false,
+      loadError: false,
+      refreshing: false,
+      operatingId: null,
     }
   },
   onLoad() {
@@ -61,12 +74,132 @@ export default {
       this.statusBarHeight = Number(info.statusBarHeight || 0)
     } catch (_) {}
   },
+  onShow() { this.loadApplies() },
   methods: {
     goBack() { uni.navigateBack() },
-    approve(item) { uni.showToast({ title: `已通过${item.name}`, icon: 'success' }) },
-    reject(item) { uni.showToast({ title: `已拒绝${item.name}`, icon: 'none' }) }
+    async loadApplies() {
+      if (this.loading) return;
+      const userId = uni.getStorageSync("userId");
+      if (!userId) return uni.showToast({ title: "请先登录", icon: "none" });
+      this.loading = !this.refreshing;
+      this.loadError = false;
+      try {
+        const [messageResult, orderResult] = await Promise.all([
+          listMessages(userId, { page: 0, size: 50, role: "BOSS" }),
+          listOrders({ page: 0, size: 100 }),
+        ]);
+        const messages = (Array.isArray(messageResult) ? messageResult : messageResult?.records || messageResult?.content || [])
+          .filter((message) => message.type === "ORDER_APPLY");
+        const orders = Array.isArray(orderResult) ? orderResult : orderResult?.records || orderResult?.content || [];
+        const groups = await Promise.all(orders.map((order) => listOrderItems(order.id).catch(() => [])));
+        const itemMap = new Map(groups.flat().map((item) => [String(item.id), item]));
+        const orderMap = new Map(orders.map((order) => [String(order.id), order]));
+        this.applies = messages.map((message) => normalizeApply(message, itemMap.get(String(message.bizId)), orderMap));
+        this.updateStats();
+      } catch (error) {
+        this.applies = [];
+        this.updateStats();
+        this.loadError = true;
+        uni.showToast({ title: error.message || "报名通知加载失败", icon: "none" });
+      } finally {
+        this.loading = false;
+        this.refreshing = false;
+      }
+    },
+    updateStats() {
+      this.stats = this.applies.reduce((result, item) => {
+        result[item.status] += 1;
+        return result;
+      }, { pending: 0, approved: 0, rejected: 0 });
+    },
+    refreshList() { this.refreshing = true; this.loadApplies() },
+    async markRead(item) {
+      if (!item.messageId || item.read) return true;
+      try {
+        await readMessage(item.messageId, uni.getStorageSync("userId"));
+        item.read = true;
+        return true;
+      } catch (error) {
+        uni.showToast({ title: error.message || "消息标记已读失败", icon: "none" });
+        return false;
+      }
+    },
+    async openApply(item) {
+      if (!(await this.markRead(item))) return;
+      uni.navigateTo({ url: `/pages/boss/applicant-info?id=${encodeURIComponent(item.id)}&messageId=${encodeURIComponent(item.messageId || "")}` });
+    },
+    async approve(item) {
+      if (this.operatingId) return;
+      this.operatingId = item.id;
+      try {
+        await hireOrderItem(item.id);
+        await this.markRead(item);
+        uni.showToast({ title: `已通过${item.name}`, icon: "success" });
+        await this.loadApplies();
+      } catch (error) {
+        uni.showToast({ title: error.message || "通过报名失败", icon: "none" });
+      } finally { this.operatingId = null; }
+    },
+    async reject(item) {
+      if (this.operatingId) return;
+      const reason = await inputRejectReason();
+      if (!reason) return;
+      this.operatingId = item.id;
+      try {
+        await rejectOrderItem(item.id, reason);
+        await this.markRead(item);
+        uni.showToast({ title: "已拒绝报名", icon: "success" });
+        await this.loadApplies();
+      } catch (error) {
+        uni.showToast({ title: error.message || "拒绝报名失败", icon: "none" });
+      } finally {
+        this.operatingId = null;
+      }
+    }
   }
 }
+
+function inputRejectReason() {
+  return new Promise((resolve) => {
+    uni.showModal({
+      title: "拒绝报名",
+      content: "",
+      editable: true,
+      placeholderText: "请输入拒绝原因",
+      confirmText: "确认拒绝",
+      success: ({ confirm, content }) => {
+        if (!confirm) return resolve("");
+        const reason = String(content || "").trim();
+        if (!reason) {
+          uni.showToast({ title: "请输入拒绝原因", icon: "none" });
+          return resolve("");
+        }
+        resolve(reason);
+      },
+      fail: () => resolve(""),
+    });
+  });
+}
+
+function normalizeApply(message = {}, item = {}, orderMap) {
+  const worker = item.user || item.worker || {};
+  const order = item.order || orderMap.get(String(item.orderId)) || {};
+  const name = worker.nickname || worker.realName || worker.name || (item.userId ? `零工${item.userId}` : "零工");
+  const status = mapApplyStatus(item.status);
+  return {
+    id: Number(message.bizId || item.id), messageId: message.id, read: isRead(message.readFlag), status,
+    initial: name.charAt(0), name, tag: worker.skills || (status === "pending" ? "待审核" : status === "approved" ? "已通过" : "已拒绝"),
+    time: formatDateTime(item.applyDate || message.createTime), job: order.orderTitle || order.postion || item.orderTitle || "招工岗位",
+    date: formatDateTime(order.startTime || item.workDate), count: Number(order.orderNum || 1), avatarBg: "linear-gradient(135deg, #FF6B35, #FF8C5A)",
+  };
+}
+function mapApplyStatus(status) {
+  if (["已录用", "已到岗", "已完成"].includes(status)) return "approved";
+  if (["取消报名", "拒绝", "已拒绝", "取消招工"].includes(status)) return "rejected";
+  return "pending";
+}
+function isRead(value) { return value === true || value === 1 || value === "已读" || value === "READ" }
+function formatDateTime(value) { return value ? String(value).replace("T", " ").slice(0, 16) : "时间待定" }
 </script>
 
 <style lang="scss" scoped>
@@ -93,4 +226,7 @@ export default {
 .btn-reject { flex:1; padding:10px; background:#fff; color:#666; border:1px solid #ddd; border-radius:8px; font-size:13px; font-weight:500; }
 .btn-approve, .btn-reject { margin:0; line-height:1.4; }
 .btn-approve::after, .btn-reject::after { border:none; }
+.page-state { padding:120rpx 32rpx; text-align:center; color:#999; font-size:26rpx; }
+.page-state.error { color:#FF6B35; }
+.apply-result { display:block; color:#999; font-size:24rpx; text-align:right; }
 </style>

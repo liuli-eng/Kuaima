@@ -32,7 +32,7 @@
             <text style="font-size:32px;color:white;">👤</text>
           </view>
           <view class="user-info-main">
-            <text class="user-name">晴时见禾 | 老板</text>
+            <text class="user-name">{{ profile.name }} | 老板</text>
             <text style="color:#999;font-size:12px;">›</text>
           </view>
           <view class="switch-btn" @click.stop="navigateTo('switch-account')">
@@ -48,10 +48,10 @@
           <text style="font-size:18px;">🏢</text>
         </view>
         <view class="cert-content">
-          <text class="cert-title">完成企业认证 解锁权益</text>
-          <text class="cert-desc">曝光加权·优先推荐熟练零工接单</text>
+          <text class="cert-title">{{ profile.enterpriseApproved ? '企业认证已通过' : '完成企业认证 解锁权益' }}</text>
+          <text class="cert-desc">{{ profile.enterpriseApproved ? '认证信息已生效' : '曝光加权·优先推荐熟练零工接单' }}</text>
         </view>
-        <text class="cert-btn">立即认证</text>
+        <text class="cert-btn">{{ profile.enterpriseApproved ? '查看认证' : '立即认证' }}</text>
       </view>
 
       <!-- 我的服务 -->
@@ -159,11 +159,40 @@
 </template>
 
 <script>
+import { getCurrentUser, getUser } from '@/api/backend'
+
 export default {
   data() {
-    return {}
+    return {
+      profile: {
+        name: '用户',
+        enterpriseApproved: false,
+      },
+    }
+  },
+  onShow() {
+    this.loadProfile()
   },
   methods: {
+    async loadProfile() {
+      try {
+        const userId = uni.getStorageSync('userId')
+        const [currentUser, user] = await Promise.all([
+          getCurrentUser().catch(() => null),
+          userId ? getUser(userId).catch(() => null) : Promise.resolve(null),
+        ])
+        const data = { ...(user || {}), ...(currentUser || {}) }
+        const cached = uni.getStorageSync('userInfo') || {}
+        const name = data.nickname || data.name || data.realName || cached.nickname || cached.name || '用户'
+        const enterpriseStatus = String(data.enterpriseStatus || '').toUpperCase()
+        this.profile = {
+          name,
+          enterpriseApproved: ['APPROVED', 'PASSED', '已通过', '已认证'].includes(enterpriseStatus),
+        }
+      } catch (_) {
+        // 保留安全默认值，避免接口失败影响页面渲染。
+      }
+    },
     navigateTo(pageName) {
       const bossPages = [
         'boss-employer', 'boss-home', 'boss-message', 'boss-order', 'boss-profile', 

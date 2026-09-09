@@ -139,6 +139,15 @@ public class BossController {
         return Result.success(bossOrderService.hireItem(id));
     }
 
+    /** 老板拒绝待审核报名。 */
+    @Operation(summary = "老板拒绝报名", description = "仅岗位所属老板可拒绝状态为「已报名」的记录，并通知零工")
+    @PutMapping("/item/{id}/reject")
+    public Result<BaseOrderItem> rejectItem(@PathVariable Long id,
+                                             @RequestParam(required = false) String reason,
+                                             Authentication authentication) {
+        return Result.success(bossOrderService.rejectItem(id, requireCurrentBossId(authentication), reason));
+    }
+
     /** 用户确认到岗 */
     @Operation(summary = "用户确认到岗", description = "仅「已录用」的记录可确认到岗，状态变为「已到岗」并记录到岗时间")
     @PutMapping("/item/{id}/work")

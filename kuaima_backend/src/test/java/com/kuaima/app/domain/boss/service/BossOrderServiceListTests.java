@@ -6,8 +6,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
+import java.sql.Date;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -25,24 +27,28 @@ import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.message.service.MessageService;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.wallet.constant.SettlementStatus;
+import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 
 class BossOrderServiceListTests {
 
     private BossOrderRespository orderRepository;
     private BaseOrderItemRespository itemRepository;
+    private SettlementRespository settlementRepository;
     private BossOrderService service;
 
     @BeforeEach
     void setUp() {
         orderRepository = mock(BossOrderRespository.class);
         itemRepository = mock(BaseOrderItemRespository.class);
+        settlementRepository = mock(SettlementRespository.class);
         service = new BossOrderService(
                 orderRepository,
                 itemRepository,
                 mock(UserRepository.class),
                 mock(MessageService.class),
-                mock(SettlementRespository.class));
+                settlementRepository);
     }
 
     @Test
@@ -145,6 +151,7 @@ class BossOrderServiceListTests {
         order.setId(22L);
         order.setCreateBy(51L);
         order.setOrderStatus(BossStatus.ORDER_RECRUIT_END);
+        order.setSalary(200);
         BaseOrderItem arriving = new BaseOrderItem();
         arriving.setId(32L);
         arriving.setOrderId(22L);
@@ -159,10 +166,76 @@ class BossOrderServiceListTests {
         when(itemRepository.findByOrderId(22L)).thenReturn(List.of(arriving, arrived));
         when(orderRepository.findById(22L)).thenReturn(java.util.Optional.of(order));
         when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(settlementRepository.existsByItemIdAndStatusIn(eq(32L), any())).thenReturn(false);
+        when(settlementRepository.existsByItemIdAndStatusIn(eq(33L), any())).thenReturn(false);
 
         service.confirmWork(32L);
 
         assertEquals(BossStatus.ORDER_PENDING_SETTLE, order.getOrderStatus());
         verify(orderRepository).save(order);
     }
+
+    @Test
+    void finishItem_shouldCreatePendingSettlementWhenOrderAlreadyPendingSettlement() {
+        BossOrder order = new BossOrder();
+        order.setId(26L);
+        order.setOrderStatus(BossStatus.ORDER_PENDING_SETTLE);
+        order.setSalary(200);
+        BaseOrderItem item = new BaseOrderItem();
+        item.setId(36L);
+        item.setOrderId(26L);
+        item.setUserId(46L);
+        item.setStatus(BossStatus.ITEM_ON_WORK);
+        item.setWorkDate(Date.valueOf(java.time.LocalDate.now()));
+        when(itemRepository.findById(36L)).thenReturn(java.util.Optional.of(item));
+        when(itemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemRepository.findByOrderId(26L)).thenReturn(List.of(item));
+        when(orderRepository.findById(26L)).thenReturn(java.util.Optional.of(order));
+        when(settlementRepository.existsByItemIdAndStatusIn(eq(36L), any())).thenReturn(false);
+        when(settlementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BaseOrderItem finished = service.finishItem(36L);
+
+        assertEquals(BossStatus.ITEM_FINISHED, finished.getStatus());
+        ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
+        verify(settlementRepository).save(captor.capture());
+        Settlement settlement = captor.getValue();
+        assertEquals(36L, settlement.getItemId());
+        assertEquals(26L, settlement.getOrderId());
+        assertEquals(46L, settlement.getWorkerId());
+        assertEquals(1, settlement.getWorkDays());
+        assertEquals(20_000L, settlement.getTotalAmount());
+        assertEquals(SettlementStatus.PENDING, settlement.getStatus());
+    }
+
+    @Test
+    void changeOrderStatus_shouldMarkHiredWorkersArrivedAndCreateSettlements() {
+        BossOrder order = new BossOrder();
+        order.setId(26L);
+        order.setOrderStatus(BossStatus.ORDER_RECRUIT_END);
+        order.setSalary(200);
+        BaseOrderItem hired = new BaseOrderItem();
+        hired.setId(37L);
+        hired.setOrderId(26L);
+        hired.setUserId(47L);
+        hired.setStatus(BossStatus.ITEM_HIRED);
+        when(orderRepository.findById(26L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemRepository.findByOrderId(26L)).thenReturn(List.of(hired));
+        when(settlementRepository.existsByItemIdAndStatusIn(eq(37L), any())).thenReturn(false);
+        when(settlementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BossOrder result = service.changeOrderStatus(26L, BossStatus.ORDER_PENDING_SETTLE);
+
+        assertEquals(BossStatus.ORDER_PENDING_SETTLE, result.getOrderStatus());
+        assertEquals(BossStatus.ITEM_ON_WORK, hired.getStatus());
+        assertEquals(Date.valueOf(java.time.LocalDate.now()), hired.getWorkDate());
+        verify(itemRepository).saveAll(List.of(hired));
+        ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertEquals(37L, captor.getValue().getItemId());
+        assertEquals(SettlementStatus.PENDING, captor.getValue().getStatus());
+        verify(itemRepository, times(2)).findByOrderId(26L);
+    }
+
 }

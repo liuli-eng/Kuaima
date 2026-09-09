@@ -165,6 +165,7 @@ import {
   hireOrderItem,
   confirmOrderItemWork,
   finishOrderItem,
+  readMessage,
 } from "@/api/backend";
 
 export default {
@@ -199,9 +200,11 @@ export default {
         4: "fa-snowflake",
         5: "fa-tools",
       },
+      targetItemId: "",
+      targetMessageId: "",
     };
   },
-  onLoad() {
+  onLoad(options = {}) {
     try {
       const info =
         typeof uni.getWindowInfo === "function"
@@ -209,6 +212,8 @@ export default {
           : uni.getSystemInfoSync();
       this.statusBarHeight = Number(info.statusBarHeight || 0);
     } catch (_) {}
+    this.targetItemId = options.id || options.itemId || "";
+    this.targetMessageId = options.messageId || "";
     this.loadApplicants();
   },
   computed: {
@@ -231,15 +236,15 @@ export default {
   methods: {
     async loadApplicants() {
       try {
-        const pages = getCurrentPages();
-        const options = pages[pages.length - 1]?.options || {};
         const result = await listOrders({ page: 0, size: 50 });
         let orders = Array.isArray(result) ? result : result?.records || [];
-        if (options.orderId) {
+        const pages = getCurrentPages();
+        const pageOptions = pages[pages.length - 1]?.options || {};
+        if (pageOptions.orderId) {
           orders = orders.filter(
-            (order) => String(order.id) === String(options.orderId),
+            (order) => String(order.id) === String(pageOptions.orderId),
           );
-          if (!orders.length) orders = [{ id: options.orderId }];
+          if (!orders.length) orders = [{ id: pageOptions.orderId }];
         }
         const orderMap = Object.fromEntries(
           orders.map((order) => [String(order.id), order]),
@@ -248,7 +253,11 @@ export default {
           orders.map((order) => listOrderItems(order.id).catch(() => [])),
         );
         const items = itemGroups.flat();
-        if (!items.length) {
+        const targetItemId = this.targetItemId;
+        const visibleItems = targetItemId
+          ? items.filter((item) => String(item.id) === String(targetItemId))
+          : items;
+        if (!visibleItems.length) {
           this.records = [];
           this.applicants = {};
           this.jobs = {};
@@ -261,7 +270,7 @@ export default {
           已完成: "completed",
           取消报名: "rejected",
         };
-        this.records = items.map((item, index) => {
+        this.records = visibleItems.map((item, index) => {
           const worker = item.user || item.worker || {};
           const order = orderMap[String(item.orderId)] || {};
           const applicantId = `api-${item.id || index}`;
@@ -344,6 +353,9 @@ export default {
         if (action === "accept") await hireOrderItem(id);
         else if (action === "arrive") await confirmOrderItemWork(id);
         else if (action === "complete") await finishOrderItem(id);
+        else if (action === "reject") {
+          return uni.showToast({ title: "后端暂未提供拒绝报名接口", icon: "none" });
+        }
       } catch (error) {
         return uni.showToast({
           title: error.message || "操作失败",
@@ -355,10 +367,19 @@ export default {
         icon: "success",
       });
 
+      if (action === "accept" && this.targetMessageId) {
+        try {
+          await readMessage(this.targetMessageId, uni.getStorageSync("userId"));
+        } catch (error) {
+          uni.showToast({ title: error.message || "消息标记已读失败", icon: "none" });
+        }
+      }
+
       if (action === "accept") record.status = "accepted";
       else if (action === "reject") record.status = "rejected";
       else if (action === "arrive") record.status = "arrived";
       else if (action === "complete") record.status = "completed";
+      await this.loadApplicants();
     },
   },
 };

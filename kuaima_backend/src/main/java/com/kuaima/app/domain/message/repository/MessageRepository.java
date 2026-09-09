@@ -27,6 +27,54 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     /** 某用户按已读/未读过滤分页 */
     Page<Message> findByUserIdAndReadFlagOrderByIdDesc(Long userId, boolean readFlag, Pageable pageable);
 
+    Page<Message> findByUserIdAndRoleOrderByIdDesc(Long userId, String role, Pageable pageable);
+
+    Page<Message> findByUserIdAndRoleAndReadFlagOrderByIdDesc(Long userId, String role,
+                                                               boolean readFlag, Pageable pageable);
+
+    long countByUserIdAndRoleAndReadFlagFalse(Long userId, String role);
+
+    /**
+     * 身份消息查询，同时兼容历史上将老板业务消息误写为 USER 的数据。
+     * BOSS 查询按 role=BOSS 或老板专属 type；USER 查询排除老板专属 type。
+     */
+    @Query("""
+            select m from Message m
+             where m.userId = :userId
+               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes))
+                 or (:role = 'USER' and m.role = 'USER' and m.type not in :bossTypes))
+             order by m.id desc
+            """)
+    Page<Message> findByUserIdAndEffectiveRole(@Param("userId") Long userId,
+                                                @Param("role") String role,
+                                                @Param("bossTypes") List<String> bossTypes,
+                                                Pageable pageable);
+
+    @Query("""
+            select m from Message m
+             where m.userId = :userId
+               and m.readFlag = :readFlag
+               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes))
+                 or (:role = 'USER' and m.role = 'USER' and m.type not in :bossTypes))
+             order by m.id desc
+            """)
+    Page<Message> findByUserIdAndEffectiveRoleAndReadFlag(@Param("userId") Long userId,
+                                                           @Param("role") String role,
+                                                           @Param("readFlag") boolean readFlag,
+                                                           @Param("bossTypes") List<String> bossTypes,
+                                                           Pageable pageable);
+
+    @Query("""
+            select count(m) from Message m
+             where m.userId = :userId
+               and m.readFlag = false
+               and ((:role = 'BOSS' and (m.role = 'BOSS' or m.type in :bossTypes))
+                 or (:role = 'USER' and m.role = 'USER' and m.type not in :bossTypes))
+            """)
+    long countByUserIdAndEffectiveRoleAndReadFlagFalse(@Param("userId") Long userId,
+                                                        @Param("role") String role,
+                                                        @Param("bossTypes") List<String> bossTypes);
+
     /** 某用户某类型消息分页（如系统通知 SYSTEM_NOTICE） */
     Page<Message> findByUserIdAndTypeOrderByIdDesc(Long userId, String type, Pageable pageable);
 

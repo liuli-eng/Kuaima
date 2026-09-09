@@ -43,10 +43,10 @@
               <text style="color:#FFA500;font-size:14px;">🛡</text>
               <text style="margin-left:4px;">实名认证</text>
             </view>
-            <text class="auth-desc">完成认证，找活找人更容易！</text>
+            <text class="auth-desc">{{ realnameDescription }}</text>
           </view>
         </view>
-        <view class="auth-btn" @click="navigateTo('realname')">立即实名 ›</view>
+        <view class="auth-btn" @click="navigateTo('realname')">{{ realnameAction }} ›</view>
       </view>
 
       <!-- 基本信息 -->
@@ -54,18 +54,19 @@
         <view class="form-row" @click="changeAvatar">
           <text class="form-label">头像</text>
           <view class="avatar-wrap">
-            <view class="avatar-img"></view>
+            <image v-if="userInfo.avatar" class="avatar-img" :src="userInfo.avatar" mode="aspectFill"></image>
+            <view v-else class="avatar-img"></view>
           </view>
           <text class="› form-arrow"></text>
         </view>
         <view class="form-row" @click="editName">
           <text class="form-label">姓名</text>
-          <text class="form-value">{{ userInfo.name }}</text>
+          <text class="form-value" :class="{ placeholder: !userInfo.name }">{{ userInfo.name || '未填写' }}</text>
           <text class="› form-arrow"></text>
         </view>
         <view class="form-row" @click="editPhone">
           <text class="form-label">手机号</text>
-          <text class="form-value">{{ userInfo.phone }}</text>
+          <text class="form-value" :class="{ placeholder: !userInfo.phone }">{{ userInfo.phone || '未绑定' }}</text>
           <text class="› form-arrow"></text>
         </view>
       </view>
@@ -75,17 +76,17 @@
       <view class="form-card">
         <view class="form-row" @click="navigateTo('enterprise-cert')">
           <text class="form-label">企业认证</text>
-          <text class="form-value placeholder">未认证</text>
+          <text class="form-value" :class="{ placeholder: userInfo.enterpriseStatusText === '未认证' }">{{ userInfo.enterpriseStatusText }}</text>
           <text class="› form-arrow"></text>
         </view>
         <view class="form-row" @click="editCompanyName">
           <text class="form-label">企业名称</text>
-          <text class="form-value placeholder">未填写</text>
+          <text class="form-value" :class="{ placeholder: !userInfo.companyName }">{{ userInfo.companyName || '未填写' }}</text>
           <text class="› form-arrow"></text>
         </view>
         <view class="form-row" @click="editCompanyAddress">
           <text class="form-label">企业地址</text>
-          <text class="form-value placeholder">未填写</text>
+          <text class="form-value placeholder">后端暂未支持</text>
           <text class="› form-arrow"></text>
         </view>
       </view>
@@ -109,16 +110,85 @@
 </template>
 
 <script>
+import { getCurrentUser, getUser, updateUser } from '@/api/backend'
+
 export default {
   data() {
     return {
+      loading: false,
+      saving: false,
       userInfo: {
-        name: '晴时见禾',
-        phone: '152******53'
+        id: '',
+        name: '',
+        phone: '',
+        avatar: '',
+        companyName: '',
+        enterpriseStatusText: '未认证',
+        realnameStatus: 'UNVERIFIED',
       }
     }
   },
+  onShow() {
+    this.loadUserInfo()
+  },
+  computed: {
+    realnameDescription() {
+      return {
+        APPROVED: '实名认证已通过',
+        PENDING: '实名认证正在审核中',
+        REJECTED: '实名认证未通过，请重新提交',
+        UNVERIFIED: '完成认证，找活找人更容易！',
+      }[this.userInfo.realnameStatus]
+    },
+    realnameAction() {
+      return {
+        APPROVED: '查看认证',
+        PENDING: '查看进度',
+        REJECTED: '重新认证',
+        UNVERIFIED: '立即实名',
+      }[this.userInfo.realnameStatus]
+    },
+  },
   methods: {
+    getUserId() {
+      return uni.getStorageSync('userId') || ''
+    },
+    async loadUserInfo() {
+      const userId = this.getUserId()
+      if (!userId) {
+        uni.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      this.loading = true
+      try {
+        const [currentUser, user] = await Promise.all([
+          getCurrentUser().catch(() => null),
+          getUser(userId).catch(() => null),
+        ])
+        if (!currentUser && !user) throw new Error('个人信息加载失败')
+        const profile = { ...(user || {}), ...(currentUser || {}) }
+        const cached = uni.getStorageSync('userInfo') || {}
+        const name = profile.nickname || profile.name || profile.realName || cached.nickname || cached.name || ''
+        const phone = profile.phone || profile.phoneNumber || cached.phone || cached.phoneNumber || ''
+        const realnameStatus = normalizeStatus(profile.realnameStatus || profile.certStatus || profile.certificationStatus)
+        const enterpriseStatus = normalizeStatus(profile.enterpriseStatus)
+        this.userInfo = {
+          ...this.userInfo,
+          id: profile.id || userId,
+          name,
+          phone,
+          avatar: profile.avatar || profile.avatarUrl || cached.avatar || cached.avatarUrl || '',
+          companyName: profile.companyName || '',
+          realnameStatus,
+          enterpriseStatusText: statusText(enterpriseStatus),
+        }
+        uni.setStorageSync('userInfo', { ...cached, ...profile, nickname: name, phone })
+      } catch (error) {
+        uni.showToast({ title: error.message || '个人信息加载失败', icon: 'none' })
+      } finally {
+        this.loading = false
+      }
+    },
     goBack() {
       uni.navigateBack()
     },
@@ -135,12 +205,7 @@ export default {
       uni.showToast({ title: '更多', icon: 'none' })
     },
     changeAvatar() {
-      uni.chooseImage({
-        count: 1,
-        success: () => {
-          uni.showToast({ title: '头像更换成功', icon: 'success' })
-        }
-      })
+      uni.showToast({ title: '暂缺头像上传接口', icon: 'none' })
     },
     editName() {
       uni.showModal({
@@ -148,20 +213,54 @@ export default {
         editable: true,
         placeholderText: this.userInfo.name,
         success: (res) => {
-          if (res.confirm && res.content) {
-            this.userInfo.name = res.content
+          if (res.confirm && res.content && !this.saving) {
+            this.saveUserField({ nickname: res.content.trim() }, 'name', res.content.trim())
           }
         }
       })
     },
     editPhone() {
-      uni.showToast({ title: '跳转到手机号修改页面', icon: 'none' })
+      uni.showModal({
+        title: '修改手机号',
+        editable: true,
+        placeholderText: this.userInfo.phone || '请输入手机号',
+        success: (res) => {
+          const phone = String(res.content || '').trim()
+          if (res.confirm && phone) {
+            if (!/^1\d{10}$/.test(phone)) return uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+            this.saveUserField({ phone }, 'phone', phone)
+          }
+        }
+      })
+    },
+    async saveUserField(payload, field, value) {
+      if (this.saving) return
+      this.saving = true
+      try {
+        await updateUser(this.userInfo.id || this.getUserId(), payload)
+        this.userInfo[field] = value
+        const cached = uni.getStorageSync('userInfo') || {}
+        uni.setStorageSync('userInfo', { ...cached, ...payload })
+        uni.showToast({ title: '保存成功', icon: 'success' })
+      } catch (error) {
+        uni.showToast({ title: error.message || '保存失败', icon: 'none' })
+      } finally {
+        this.saving = false
+      }
     },
     editCompanyName() {
-      uni.showToast({ title: '编辑企业名称', icon: 'none' })
+      uni.showModal({
+        title: '修改企业名称',
+        editable: true,
+        placeholderText: this.userInfo.companyName || '请输入企业名称',
+        success: (res) => {
+          const companyName = String(res.content || '').trim()
+          if (res.confirm && companyName) this.saveUserField({ companyName }, 'companyName', companyName)
+        }
+      })
     },
     editCompanyAddress() {
-      uni.showToast({ title: '编辑企业地址', icon: 'none' })
+      uni.showToast({ title: '后端暂未提供企业地址字段', icon: 'none' })
     },
     logout() {
       uni.showModal({
@@ -169,12 +268,29 @@ export default {
         content: '确定要退出登录吗？',
         success: (res) => {
           if (res.confirm) {
-            uni.reLaunch({ url: '/pages/boss/home' })
+            uni.removeStorageSync('token')
+            uni.removeStorageSync('userId')
+            uni.removeStorageSync('userInfo')
+            uni.removeStorageSync('role')
+            uni.removeStorageSync('currentRole')
+            uni.reLaunch({ url: '/pages/login/login' })
           }
         }
       })
     }
   }
+}
+
+function normalizeStatus(value) {
+  const status = String(value || '').toUpperCase()
+  if (['APPROVED', 'PASSED', '已通过', '通过', '已认证'].includes(status)) return 'APPROVED'
+  if (['PENDING', '审核中'].includes(status)) return 'PENDING'
+  if (['REJECTED', '已拒绝', '拒绝'].includes(status)) return 'REJECTED'
+  return 'UNVERIFIED'
+}
+
+function statusText(status) {
+  return { APPROVED: '已认证', PENDING: '审核中', REJECTED: '认证未通过', UNVERIFIED: '未认证' }[status] || '未认证'
 }
 </script>
 

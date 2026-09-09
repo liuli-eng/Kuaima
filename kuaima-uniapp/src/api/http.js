@@ -72,7 +72,11 @@ export function request({ url, method = "GET", data, header = {} }) {
           resolve(payload?.data ?? payload);
           return;
         }
-        reject(formatError(payload, `请求失败（${response.statusCode}）`));
+        const error = formatError(payload, `请求失败（${response.statusCode}）`);
+        error.statusCode = response.statusCode;
+        error.payload = payload;
+        error.code = payload?.code;
+        reject(error);
       },
       fail(error) {
         reject(formatError(error, "网络请求失败"));
@@ -82,18 +86,14 @@ export function request({ url, method = "GET", data, header = {} }) {
 }
 
 function resolveBackendUrl(url, userId, data) {
-  if (url.startsWith("/worker/jobs/")) return url.replace("/worker/jobs/", "/boss/order/");
+  if (url.startsWith("/worker/jobs/")) return url.replace("/worker/jobs/", "/jobs/");
   if (url === "/worker/jobs" || url.startsWith("/worker/jobs?")) {
     const query = url.includes("?") ? url.substring(url.indexOf("?")) : "?page=0&size=20";
-    return `/boss/order${query.replace("pageNo", "page").replace("pageSize", "size")}`;
+    return `/jobs${query.replace("pageNo", "page").replace("pageSize", "size")}`;
   }
   if (url.startsWith("/worker/orders/apply/")) {
     const orderId = url.split("/").pop();
-    const params = {
-      userId,
-      ...(data || {}),
-    };
-    return `/boss/order/${orderId}/apply?${toQuery(params)}`;
+    return `/jobs/${orderId}/apply`;
   }
   if (url.startsWith("/worker/orders/")) return url.replace("/worker/orders/", "/boss/order/");
   if (url === "/worker/orders" || url.startsWith("/worker/orders?")) {

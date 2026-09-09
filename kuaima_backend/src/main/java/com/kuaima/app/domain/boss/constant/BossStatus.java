@@ -24,6 +24,7 @@ public final class BossStatus {
     public static final String ITEM_ON_WORK = "已到岗";
     public static final String ITEM_FINISHED = "已完成";
     public static final String ITEM_CANCELED = "取消报名";
+    public static final String ITEM_REJECTED = "已拒绝";
 
     /** 订单被取消时，报名记录统一置为的状态 */
     public static final String ITEM_CANCEL_BY_BOSS = "取消招工";

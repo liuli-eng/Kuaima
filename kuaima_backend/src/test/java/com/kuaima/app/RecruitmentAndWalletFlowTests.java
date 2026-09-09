@@ -79,6 +79,7 @@ class RecruitmentAndWalletFlowTests {
         order.setOrderNum(5);
         order.setDuration(8);
         order.setSalary(300);
+        order.setSignMode("manual");
         order.setStartTime(new Date());
         order.setEndTime(new Date(System.currentTimeMillis() + 86_400_000L));
         BossOrder saved = bossOrderService.createOrder(order);

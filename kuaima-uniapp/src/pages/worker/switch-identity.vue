@@ -81,7 +81,8 @@ function finishSwitch(result = {}) {
   uni.setStorageSync("role", targetRole);
   uni.setStorageSync("currentRole", targetRole === "BOSS" ? "boss" : "worker");
   uni.showToast({
-    title: targetRole === "BOSS" ? "已切换为老板身份" : "已切换为零工身份",
+    // 微信小程序 toast 标题长度有限，控制在短文案内避免被截断。
+    title: targetRole === "BOSS" ? "已切换为老板" : "已切换为零工",
     icon: "success",
   });
   setTimeout(

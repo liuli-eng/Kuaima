@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kuaima.app.domain.message.entity.Message;
+import com.kuaima.app.domain.message.constant.MessageType;
 import com.kuaima.app.domain.message.repository.MessageRepository;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
@@ -33,6 +34,13 @@ public class MessageService {
     @Transactional
     public Message sendToUser(Long userId, String type, String title, String content,
             String bizType, Long bizId) {
+        return sendToUser(userId, null, type, title, content, bizType, bizId);
+    }
+
+    /** 发送给指定身份的用户；role 不为空时不再依赖用户当前切换身份。 */
+    @Transactional
+    public Message sendToUser(Long userId, String role, String type, String title, String content,
+            String bizType, Long bizId) {
         if (userId == null) {
             return null;
         }
@@ -40,7 +48,7 @@ public class MessageService {
         if (user == null) {
             return null;
         }
-        return messageRepository.save(build(user.getId(), user.getRole(), type, title, content, bizType, bizId));
+        return messageRepository.save(build(user.getId(), role != null ? role : user.getRole(), type, title, content, bizType, bizId));
     }
 
     /** 发给一组用户（已按 userId 去重），用户不存在自动跳过 */
@@ -88,6 +96,30 @@ public class MessageService {
             return messageRepository.findByUserIdOrderByIdDesc(userId, pageable);
         }
         return messageRepository.findByUserIdAndReadFlagOrderByIdDesc(userId, read, pageable);
+    }
+
+    /** 按接收者身份查询消息；role 为空时保持查询全部身份的兼容行为。 */
+    @Transactional(readOnly = true)
+    public Page<Message> list(Long userId, String role, Boolean read, int page, int size) {
+        if (role == null || role.isBlank()) {
+            return list(userId, read, page, size);
+        }
+        Pageable pageable = PageRequest.of(Math.max(page, 0), size);
+        if (read == null) {
+            return messageRepository.findByUserIdAndEffectiveRole(
+                    userId, role, MessageType.BOSS_MESSAGE_TYPES, pageable);
+        }
+        return messageRepository.findByUserIdAndEffectiveRoleAndReadFlag(
+                userId, role, read, MessageType.BOSS_MESSAGE_TYPES, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public long unreadCount(Long userId, String role) {
+        if (role == null || role.isBlank()) {
+            return unreadCount(userId);
+        }
+        return messageRepository.countByUserIdAndEffectiveRoleAndReadFlagFalse(
+                userId, role, MessageType.BOSS_MESSAGE_TYPES);
     }
 
     /** 系统通知列表分页（按 type 过滤，如 SYSTEM_NOTICE） */

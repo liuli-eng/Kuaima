@@ -15,75 +15,19 @@
       </view>
 
       <!-- 消息列表 -->
-      <view v-if="messages.length" class="message-list card-shadow">
-        <view v-for="message in messages" :key="message.id" class="message-item" @click="markMessageRead(message)">
-          <view class="message-icon icon-orange"><text class="message-icon-text">●</text></view>
+      <view v-if="loading" class="message-state">消息加载中…</view>
+      <view v-else-if="loadError" class="message-state error" @click="loadMessages">加载失败，点击重试</view>
+      <view v-else-if="messages.length" class="message-list card-shadow">
+        <view v-for="message in messages" :key="message.id" class="message-item" :class="{ unread: !isMessageRead(message) }" @click="handleMessageClick(message)">
+          <view class="message-icon" :class="message.type === 'ORDER_APPLY' ? 'icon-green' : 'icon-orange'"><text class="message-icon-text">{{ message.type === 'ORDER_APPLY' ? '＋' : '●' }}</text><view v-if="!isMessageRead(message)" class="badge-dot"></view></view>
           <view class="message-content">
-            <text class="message-title">{{ message.title || '系统通知' }}</text>
+            <text class="message-title">{{ message.title || (message.type === 'ORDER_APPLY' ? '有新的报名待审核' : '系统通知') }}</text>
             <text class="message-desc">{{ message.content || '暂无消息内容' }}</text>
           </view>
           <view class="message-action"><text>›</text></view>
         </view>
       </view>
-      <view v-else class="message-list card-shadow">
-        <!-- 企业认证提醒 -->
-        <view class="message-item" @click="handleCertClick">
-          <view class="message-icon icon-blue">
-            <text class="message-icon-text">▦</text>
-            <view class="badge-dot"></view>
-          </view>
-          <view class="message-content">
-            <text class="message-title">企业认证提醒</text>
-            <text class="message-desc">曝光加权·优先推荐熟练零工接单</text>
-          </view>
-          <view class="message-action">
-            <text class="action-btn-small" @click.stop="navigateTo('enterprise-cert')">立即认证</text>
-          </view>
-        </view>
-
-        <!-- 系统通知 -->
-        <view class="message-item" @click="navigateTo('system-notice')">
-          <view class="message-icon icon-orange">
-            <text class="message-icon-text">●</text>
-          </view>
-          <view class="message-content">
-            <text class="message-title">系统通知</text>
-            <text class="message-desc">消息内容</text>
-          </view>
-          <view class="message-action">
-            <text>›</text>
-          </view>
-        </view>
-
-        <!-- 报名通知 -->
-        <view class="message-item" @click="navigateTo('signup-notice')">
-          <view class="message-icon icon-green">
-            <text class="message-icon-text">＋</text>
-            <view class="badge-dot"></view>
-          </view>
-          <view class="message-content">
-            <text class="message-title">报名通知</text>
-            <text class="message-desc">有3位零工报名了您发布的岗位</text>
-          </view>
-          <view class="message-action">
-            <text>›</text>
-          </view>
-        </view>
-
-        <!-- 结算消息 -->
-        <view class="message-item" @click="navigateTo('settlement')">
-          <view class="message-icon icon-purple">
-            <text class="message-icon-text">¥</text>
-          </view>
-          <view class="message-content">
-            <text class="message-title">结算消息</text>
-            <text class="message-desc">昨日岗位工资已结算完成</text>
-          </view>
-          <view class="message-action">
-            <text>›</text>
-          </view>
-        </view>
-      </view>
+      <view v-else class="message-state">暂无消息</view>
 
       <!-- 查看历史消息 -->
       <view class="view-history">
@@ -131,7 +75,8 @@ export default {
       menuSafeRight: 16,
       messages: [],
       unreadCount: 0,
-      loading: false
+      loading: false,
+      loadError: false,
     }
   },
   onLoad() {
@@ -143,27 +88,47 @@ export default {
       if (menu?.left) this.menuSafeRight = Math.max(16, info.windowWidth - menu.left + 12)
       // #endif
     } catch (_) {}
+  },
+  onShow() {
     this.loadMessages()
   },
   methods: {
     async loadMessages() {
       if (this.loading) return
       this.loading = true
-      const userId = uni.getStorageSync('userId') || '2001'
+      this.loadError = false
+      const userId = uni.getStorageSync('userId')
+      if (!userId) { this.loading = false; return }
       try {
-        const [items, unread] = await Promise.all([listMessages(userId, { page: 0, size: 20 }), unreadMessages(userId)])
+        const [items, unread] = await Promise.all([listMessages(userId, { page: 0, size: 20, role: 'BOSS' }), unreadMessages(userId, 'BOSS')])
         const rows = Array.isArray(items) ? items : items?.records || []
         this.messages = rows
         this.unreadCount = Number(unread || 0)
-      } catch (_) {
-        // 接口不可用时保留原型演示消息
+      } catch (error) {
+        this.messages = []
+        this.loadError = true
+        uni.showToast({ title: error.message || '消息加载失败', icon: 'none' })
       } finally {
         this.loading = false
       }
     },
-    async markMessageRead(message) {
-      if (!message?.id || message.readFlag === '已读' || message.readFlag === true) return
-      try { await readMessage(message.id, uni.getStorageSync('userId') || '2001') } catch (_) {}
+    isMessageRead(message) {
+      return message?.readFlag === true || message?.readFlag === 1 || message?.readFlag === '已读' || message?.readFlag === 'READ'
+    },
+    async handleMessageClick(message) {
+      const userId = uni.getStorageSync('userId')
+      if (message?.id && userId && !this.isMessageRead(message)) {
+        try {
+          await readMessage(message.id, userId)
+          message.readFlag = true
+        } catch (error) {
+          return uni.showToast({ title: error.message || '消息标记已读失败', icon: 'none' })
+        }
+      }
+      if (message?.type === 'ORDER_APPLY' && message?.bizType === 'item' && message?.bizId) {
+        return uni.navigateTo({ url: '/pages/boss/signup-notice' })
+      }
+      this.navigateTo('system-notice')
     },
     navigateTo(pageName) {
       const bossPages = [
@@ -226,6 +191,24 @@ export default {
   box-sizing: border-box;
   overflow-y: auto;
   background: #FFF8E6;
+}
+
+.message-state {
+  margin: 24px 16px;
+  padding: 48px 20px;
+  border-radius: 12px;
+  background: #fff;
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+}
+
+.message-state.error {
+  color: #ff6b35;
+}
+
+.message-item.unread .message-title {
+  font-weight: 700;
 }
 
 .header-bar {

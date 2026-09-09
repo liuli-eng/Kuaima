@@ -64,6 +64,7 @@ onMounted(async () => {
       page: 0,
       size: 100,
       read: true,
+      role: "USER",
     });
     if (Array.isArray(result))
       list.value = result.map((item) => ({

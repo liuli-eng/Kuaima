@@ -1,5 +1,7 @@
 package com.kuaima.app.domain.message.constant;
 
+import java.util.List;
+
 /**
  * 站内消息类型常量。
  * 事件发生时写入接收者收件箱(sys_message)，接收者角色与文案见注释。
@@ -14,6 +16,9 @@ public final class MessageType {
 
     /** 零工被录用 -> 被录用者 USER */
     public static final String ORDER_HIRE = "ORDER_HIRE";
+
+    /** 老板拒绝报名 -> 被拒绝的零工 USER */
+    public static final String ORDER_APPLY_REJECT = "ORDER_APPLY_REJECT";
 
     /** 岗位快开始提醒 -> 该单已报名/已录用/已到岗 USER（预留，由前端/手动触发，暂不做定时） */
     public static final String ORDER_START_REMIND = "ORDER_START_REMIND";
@@ -35,6 +40,12 @@ public final class MessageType {
 
     /** 老板邀请零工 -> 被邀请者 USER */
     public static final String BOSS_INVITE = "BOSS_INVITE";
+
+    /** 只应出现在老板身份收件箱的业务消息。 */
+    public static final List<String> BOSS_MESSAGE_TYPES = List.of(
+            ORDER_APPLY,
+            ITEM_CANCEL,
+            ITEM_WORK_CONFIRM);
 
     private MessageType() {
     }

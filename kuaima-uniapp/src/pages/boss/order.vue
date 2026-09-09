@@ -715,6 +715,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  box-sizing: border-box;
 }
 
 .notice-icon,
@@ -725,9 +726,11 @@ export default {
 }
 
 .notice-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .filter-tabs-scroll {
@@ -799,6 +802,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 0 16px 12px;
 }
 
@@ -806,6 +810,8 @@ export default {
   font-size: 18px;
   font-weight: 700;
   color: #333;
+  flex: 1;
+  min-width: 0;
 }
 
 .filter-btn {
@@ -817,6 +823,8 @@ export default {
   border-radius: 16px;
   font-size: 12px;
   color: #666;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .filter-icon,
@@ -839,6 +847,8 @@ export default {
   color: white;
   font-weight: 500;
   box-shadow: 0 2px 8px rgba(255, 107, 53, 0.25);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* 招工卡片 */
@@ -857,18 +867,25 @@ export default {
   padding-bottom: 12px;
   border-bottom: 1px solid #f5f5f5;
   margin-bottom: 12px;
+  gap: 10px;
 }
 
 .job-title-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .job-title {
   font-size: 16px;
   font-weight: 700;
   color: #333;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .job-status {
@@ -877,6 +894,7 @@ export default {
   border-radius: 10px;
   font-weight: 500;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .status-recruiting {
@@ -902,7 +920,7 @@ export default {
 
 .job-info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px 16px;
   margin-bottom: 14px;
 }
@@ -910,6 +928,7 @@ export default {
 .info-item {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 6px;
   font-size: 12px;
   color: #666;
@@ -925,12 +944,18 @@ export default {
 .info-item .info-label {
   color: #999;
   font-size: 11px;
+  flex: 0 0 auto;
 }
 
 .info-item .info-value {
   color: #333;
   font-weight: 500;
   margin-left: 2px;
+  min-width: 0;
+  flex: 1;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .info-item.wage .info-value {
@@ -953,6 +978,7 @@ export default {
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid #f5f5f5;
+  min-width: 0;
 }
 
 .job-btn {
@@ -962,6 +988,7 @@ export default {
   font-weight: 500;
   border: 1px solid transparent;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .list-state,
@@ -1092,6 +1119,8 @@ export default {
   font-size: 13px;
   color: #999;
   margin-bottom: 16px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .modal-desc {
@@ -1100,6 +1129,7 @@ export default {
   color: #666;
   margin-bottom: 20px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .modal-actions {

@@ -134,6 +134,13 @@ export function hireOrderItem(id) {
   return request({ url: `/boss/item/${id}/hire`, method: "PUT" });
 }
 
+export function rejectOrderItem(id, reason) {
+  return request({
+    url: `/boss/item/${id}/reject?${query({ reason: String(reason || "").trim() })}`,
+    method: "PUT",
+  });
+}
+
 export function confirmOrderItemWork(id) {
   return request({ url: `/boss/item/${id}/work`, method: "PUT" });
 }
@@ -162,6 +169,10 @@ export function paySettlement(id) {
 
 export function listOrderSettlements(orderId) {
   return request({ url: `/settle/order/${orderId}` });
+}
+
+export function listBossPendingSettlements() {
+  return request({ url: "/boss/settlements/pending" });
 }
 
 export function getWallet(userId) {
@@ -200,8 +211,8 @@ export function listNotices(params = {}) {
   });
 }
 
-export function unreadMessages(userId) {
-  return request({ url: `/message/unread?userId=${userId}` });
+export function unreadMessages(userId, role) {
+  return request({ url: `/message/unread?${query({ userId, role })}` });
 }
 
 export function readMessage(id, userId) {

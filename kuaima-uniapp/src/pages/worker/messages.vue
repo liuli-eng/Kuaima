@@ -52,7 +52,7 @@ const messages = ref([]);
 
 onMounted(async () => {
   try {
-    const result = await listMessages(uni.getStorageSync("userId") || "2001");
+    const result = await listMessages(uni.getStorageSync("userId") || "2001", { role: "USER" });
     if (Array.isArray(result)) messages.value = result.map(normalizeMessage);
   } catch (_) {}
 });

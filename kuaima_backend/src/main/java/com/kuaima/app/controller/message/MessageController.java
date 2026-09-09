@@ -34,19 +34,30 @@ public class MessageController {
     /** 未读消息数（tab 红点角标） */
     @Operation(summary = "未读消息数", description = "返回当前用户的未读消息数（long），用于 tab 红点角标")
     @GetMapping("/unread")
-    public Result<Long> unread(@RequestParam Long userId) {
-        return Result.success(messageService.unreadCount(userId));
+    public Result<Long> unread(@RequestParam Long userId,
+                               @RequestParam(required = false) String role) {
+        return Result.success(messageService.unreadCount(userId, normalizeRole(role)));
     }
 
     /** 消息列表（分页，page 从 0 开始），read 传 true/false 可只看已读/未读 */
     @Operation(summary = "消息列表分页", description = "read 可选 true/false 只看已读/未读，不传返回全部；page 从 0 开始(默认 0)，size 默认 20。返回统一分页结构，最新在前。Message 字段含 userId、role、type、title、content、bizType、bizId、readFlag、readTime、createTime")
     @GetMapping("/list")
     public Result<List<Message>> list(@RequestParam Long userId,
+            @RequestParam(required = false) String role,
             @RequestParam(required = false) Boolean read,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<Message> result = messageService.list(userId, read, page, size);
+        Page<Message> result = messageService.list(userId, normalizeRole(role), read, page, size);
         return Result.success(result.getContent(), result.getNumber(), result.getTotalElements());
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) return null;
+        String normalized = role.trim().toUpperCase();
+        if (!"BOSS".equals(normalized) && !"USER".equals(normalized)) {
+            throw new IllegalArgumentException("role 只能是 BOSS 或 USER");
+        }
+        return normalized;
     }
 
     /** 单条标记已读 */

@@ -172,7 +172,11 @@ export default {
       uni.navigateTo({ url: `/pages/boss/${page}` })
     },
     viewJob() {
-      this.showTip = true
+      this.showTip = false
+      uni.redirectTo({
+        url: '/pages/boss/order',
+        fail: () => uni.reLaunch({ url: '/pages/boss/order' }),
+      })
     },
     closeTip() {
       this.showTip = false

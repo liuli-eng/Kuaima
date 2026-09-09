@@ -8,6 +8,9 @@
       <view class="nav-right"></view>
     </view>
     <scroll-view scroll-y class="scroll-area">
+      <view v-if="loading" class="page-state">待结算数据加载中…</view>
+      <view v-else-if="loadError" class="page-state error" @click="loadPendingSettlements">加载失败，点击重试</view>
+      <template v-else>
       <view class="summary-card">
         <view class="summary-header">
           <view><text class="summary-label">待结算总金额</text><text class="summary-amount">¥{{ totalAmount.toFixed(2) }}</text><text class="summary-desc">共{{ orders.length }}笔订单 · 涉及{{ totalWorkers }}位零工</text></view>
@@ -29,24 +32,23 @@
       </view>
       <view class="scroll-bottom-space"></view>
       <view class="empty-state" v-if="!orders.length"><text class="empty-icon">¥</text><text>暂无待结算订单</text></view>
+      </template>
     </scroll-view>
     <view class="bottom-bar"><view class="bar-info"><text class="bar-label">已选金额</text><text class="bar-amount">¥{{ selectedAmount.toFixed(2) }}</text><text class="bar-count">{{ selectedIds.length ? `已选${selectedIds.length}笔订单` : '未选择任何订单' }}</text></view><button class="settle-btn" :disabled="!selectedIds.length" @click="settleSelected">结算所选{{ selectedIds.length ? `（${selectedIds.length}笔）` : '' }}</button></view>
   </view>
 </template>
 
 <script>
+import { listBossPendingSettlements } from "@/api/backend";
+
 export default {
   data() {
     return {
       statusBarHeight: 0,
       selectedIds: [],
-      orders: [
-        { id: 1, job: '电商分拣打包工', date: '8月21日', workers: ['张师傅', '李师傅', '王师傅'], workerCount: 3, amount: 800, status: 'waiting', statusText: '待结算' },
-        { id: 2, job: '餐饮服务员', date: '8月20日', workers: ['陈师傅'], workerCount: 1, amount: 600, status: 'waiting', statusText: '待结算' },
-        { id: 3, job: '快递搬运装卸工', date: '8月19日', workers: ['刘师傅', '赵师傅'], workerCount: 2, amount: 700, status: 'partial', statusText: '部分结算' },
-        { id: 4, job: '冷库分拣员', date: '8月18日', workers: ['孙师傅'], workerCount: 1, amount: 900, status: 'waiting', statusText: '待结算' },
-        { id: 5, job: '装配工', date: '8月17日', workers: ['吴师傅'], workerCount: 1, amount: 600, status: 'waiting', statusText: '待结算' }
-      ]
+      orders: [],
+      loading: false,
+      loadError: false,
     }
   },
   computed: {
@@ -58,12 +60,53 @@ export default {
   onLoad() {
     try { const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync(); this.statusBarHeight = Number(info.statusBarHeight || 0) } catch (_) {}
   },
+  onShow() { this.loadPendingSettlements() },
   methods: {
     goBack() { uni.navigateBack() },
+    async loadPendingSettlements() {
+      if (this.loading) return;
+      this.loading = true;
+      this.loadError = false;
+      try {
+        const result = await listBossPendingSettlements();
+        const records = Array.isArray(result) ? result : result?.records || result?.content || [];
+        this.orders = records.map(normalizePendingOrder);
+        const validIds = new Set(this.orders.map((item) => item.id));
+        this.selectedIds = this.selectedIds.filter((id) => validIds.has(id));
+      } catch (error) {
+        this.orders = [];
+        this.selectedIds = [];
+        this.loadError = true;
+        uni.showToast({ title: error?.message || "待结算数据加载失败", icon: "none" });
+      } finally { this.loading = false; }
+    },
     toggleOrder(id) { const index = this.selectedIds.indexOf(id); if (index >= 0) this.selectedIds.splice(index, 1); else this.selectedIds.push(id) },
     toggleSelectAll() { this.selectedIds = this.allSelected ? [] : this.orders.map(item => item.id) },
-    settleSelected() { if (!this.selectedIds.length) return; uni.navigateTo({ url: `/pages/boss/settle-confirm?amount=${this.selectedAmount.toFixed(2)}&count=${this.selectedIds.length}&ids=${this.selectedIds.join(',')}` }) }
+    settleSelected() {
+      if (!this.selectedIds.length) return;
+      const selectedOrders = this.orders.filter((item) => this.selectedIds.includes(item.id));
+      const items = selectedOrders.flatMap((item) => item.items || []);
+      uni.setStorageSync("pendingSettlementSelection", {
+        orders: selectedOrders,
+        orderIds: selectedOrders.map((item) => item.orderId),
+        itemIds: items.map((item) => item.itemId).filter(Boolean),
+        settlementIds: items.map((item) => item.settlementId).filter(Boolean),
+        amount: this.selectedAmount,
+      });
+      uni.navigateTo({ url: `/pages/boss/settle-confirm?amount=${this.selectedAmount.toFixed(2)}&count=${this.selectedIds.length}&ids=${this.selectedIds.join(',')}` });
+    }
   }
+}
+
+function normalizePendingOrder(item = {}) {
+  const items = Array.isArray(item.items) ? item.items : [];
+  const amount = Number(item.amount ?? Number(item.amountFen || 0) / 100);
+  return { ...item, id: Number(item.orderId ?? item.id), orderId: Number(item.orderId ?? item.id), job: item.job || item.orderTitle || item.postion || "岗位", date: formatDate(item.date || item.workDate || item.startTime), workers: Array.isArray(item.workers) ? item.workers.filter(Boolean) : [], workerCount: Number(item.workerCount ?? items.length), amount: Number.isFinite(amount) ? amount : 0, status: item.status || "waiting", statusText: item.statusText || (item.status === "partial" ? "部分结算" : "待结算"), items };
+}
+
+function formatDate(value) {
+  const match = String(value || "").slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${Number(match[2])}月${Number(match[3])}日` : (value || "日期待定");
 }
 </script>
 
@@ -102,4 +145,6 @@ export default {
 .settle-btn::after { border:none; }
 .empty-state { text-align:center; padding:80px 40px; color:#999; font-size:14px; }
 .empty-icon { display:block; font-size:48px; color:#ddd; margin-bottom:12px; }
+.page-state { padding:100px 24px; color:#999; font-size:14px; text-align:center; }
+.page-state.error { color:#FF6B35; }
 </style>
