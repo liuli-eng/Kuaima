@@ -169,13 +169,19 @@ public class TalentController {
      */
     @PostMapping("/invite")
     @Transactional
-    public Result<Map<String, Object>> inviteWorker(@RequestBody Map<String, Long> body) {
-        Long bossId = body.get("bossId");
-        Long workerId = body.get("workerId");
-        Long orderId = body.get("orderId");
-        if (bossId == null || workerId == null) {
-            throw new IllegalArgumentException("bossId 和 workerId 不能为空");
+    public Result<Map<String, Object>> inviteWorker(@RequestBody Map<String, Object> body,
+                                                     Authentication authentication) {
+        Long currentBossId = requireCurrentBossId(authentication);
+        Long requestedBossId = toLong(body.get("bossId"), "bossId");
+        Long workerId = toLong(body.get("workerId"), "workerId");
+        Long orderId = toLong(body.get("orderId"), "orderId");
+        if (requestedBossId != null && !currentBossId.equals(requestedBossId)) {
+            throw new ForbiddenBusinessException("无权以其他老板身份邀请零工");
         }
+        if (workerId == null) {
+            throw new IllegalArgumentException("workerId 不能为空");
+        }
+        Long bossId = currentBossId;
         User boss = userRepository.findById(bossId).orElse(null);
         String bossName = boss != null && StringUtils.hasText(boss.getCompanyName())
                 ? boss.getCompanyName()
@@ -186,6 +192,20 @@ public class TalentController {
         Map<String, Object> result = new HashMap<>();
         result.put("invited", true);
         return Result.success(result);
+    }
+
+    private Long toLong(Object value, String fieldName) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.valueOf(value.toString());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(fieldName + " 必须是整数");
+        }
     }
 
     /**

@@ -33,36 +33,36 @@
 
     <view class="info-grid">
       <view class="info-item">
-        <text class="info-icon">▣</text>
+        <image class="info-icon" src="/static/icons/worker-home/briefcase-orange.svg" mode="aspectFit" />
         <text class="info-label">招聘岗位：</text>
         <text class="info-value">{{ job.displayTitle || job.title }}</text>
       </view>
       <view class="info-item">
-        <text class="info-icon">◷</text>
+        <image class="info-icon" src="/static/icons/worker-home/clock-orange.svg" mode="aspectFit" />
         <text class="info-label">工作时间：</text>
         <text class="info-value">
           {{ job.startTime || "--" }} ~ {{ job.endTime || "--" }}
         </text>
       </view>
       <view class="info-item">
-        <text class="info-icon">⌖</text>
+        <image class="info-icon" src="/static/icons/worker-home/location-dot-orange.svg" mode="aspectFit" />
         <text class="info-label">工作地点：</text>
         <text class="info-value">{{ displayAddress }}</text>
       </view>
       <view class="info-item wage-row">
-        <text class="info-icon">￥</text>
+        <image class="info-icon" src="/static/icons/worker-home/coins-orange.svg" mode="aspectFit" />
         <text class="info-label">报酬：</text>
         <text class="info-value"
           >{{ job.unitPrice ?? "--" }}{{ wageUnit }}</text
         >
       </view>
       <view class="info-item">
-        <text class="info-icon">☷</text>
+        <image class="info-icon" src="/static/icons/worker-home/users-orange.svg" mode="aspectFit" />
         <text class="info-label">招募人数：</text>
         <text class="info-value">{{ job.headcount ?? "--" }}人</text>
       </view>
       <view class="info-item">
-        <text class="info-icon">✓</text>
+        <image class="info-icon" src="/static/icons/worker-home/user-check-orange.svg" mode="aspectFit" />
         <text class="info-label">当前报名：</text>
         <text class="info-value">{{ job.hiredCount ?? 0 }}人</text>
       </view>
@@ -287,9 +287,8 @@ const tags = computed(() => {
 .info-icon {
   flex-shrink: 0;
   width: 24rpx;
+  height: 22rpx;
   margin-right: 6rpx;
-  color: #9ca3af;
-  font-size: 18rpx;
 }
 
 .info-label {

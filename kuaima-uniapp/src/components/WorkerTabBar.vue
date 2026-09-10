@@ -20,20 +20,46 @@
 
 <script setup>
 import { computed } from "vue";
+import homeIcon from "../../static/icons/worker-tabbar/house-gray.svg";
+import homeActiveIcon from "../../static/icons/worker-tabbar/house-white.svg";
+import ordersIcon from "../../static/icons/worker-tabbar/clipboard-list-gray.svg";
+import ordersActiveIcon from "../../static/icons/worker-tabbar/clipboard-list-white.svg";
+import messagesIcon from "../../static/icons/worker-tabbar/comment-dots-gray.svg";
+import messagesActiveIcon from "../../static/icons/worker-tabbar/comment-dots-white.svg";
+import profileIcon from "../../static/icons/worker-tabbar/face-smile-gray.svg";
+import profileActiveIcon from "../../static/icons/worker-tabbar/face-smile-white.svg";
 
 const props = defineProps({ current: { type: String, required: true } });
 
 const items = [
-  { key: "home", label: "抢日结", url: "/pages/worker/home", icon: "/static/icons/boss-profile/house-gray.svg", activeIcon: "/static/icons/boss-home/house.svg" },
-  { key: "orders", label: "接单", url: "/pages/worker/orders", icon: "/static/icons/worker-profile/clipboard-gray.svg", activeIcon: "/static/icons/worker-profile/clipboard-white.svg" },
+  {
+    key: "home",
+    label: "抢日结",
+    url: "/pages/worker/home",
+    icon: homeIcon,
+    activeIcon: homeActiveIcon,
+  },
+  {
+    key: "orders",
+    label: "接单",
+    url: "/pages/worker/orders",
+    icon: ordersIcon,
+    activeIcon: ordersActiveIcon,
+  },
   {
     key: "messages",
     label: "消息",
     url: "/pages/worker/messages",
-    icon: "/static/icons/boss-home/comment.svg",
-    activeIcon: "/static/icons/worker-profile/comment-white.svg",
+    icon: messagesIcon,
+    activeIcon: messagesActiveIcon,
   },
-  { key: "profile", label: "我的", url: "/pages/worker/profile", icon: "/static/icons/boss-home/smile.svg", activeIcon: "/static/icons/boss-profile/smile-active.svg" },
+  {
+    key: "profile",
+    label: "我的",
+    url: "/pages/worker/profile",
+    icon: profileIcon,
+    activeIcon: profileActiveIcon,
+  },
 ];
 
 const current = computed(() => props.current);

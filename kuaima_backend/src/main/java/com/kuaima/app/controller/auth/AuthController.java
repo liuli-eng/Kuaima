@@ -57,6 +57,7 @@ public class AuthController {
     private Map<String, Object> buildTokenResponse(User user) {
         String accessToken = jwtUtil.generateAccessToken(user.getUsername(), user.getRole(), user.getId());
         Map<String, Object> data = new HashMap<>();
+        data.put("needPhoneNumber", false);
         data.put("accessToken", accessToken);
         data.put("userId", user.getId());
         data.put("username", user.getUsername());
@@ -66,50 +67,93 @@ public class AuthController {
         return data;
     }
 
-    @Operation(summary = "微信小程序登录", description = "小程序端 wx.login() 获取 code，后端调用微信 jscode2session 换取 openid；用户不存在时按所选身份自动注册，老用户以本次选择的身份为准直接切换。若传入 phoneCode，后端调用微信 getuserphonenumber 换取手机号并保存")
+    @Operation(summary = "微信小程序登录", description = "首次用 code 换取 openid；新用户返回短期 registrationToken，之后用 registrationToken + phoneCode 完成注册，避免重复使用微信 code")
     @PostMapping("/wechat/login")
     @Transactional
     public Result<Map<String, Object>> wechatLogin(@RequestBody WechatLoginDto dto) {
-        if (dto == null || !StringUtils.hasText(dto.getCode())) {
-            return Result.error(400, "微信 code 不能为空");
+        if (dto == null || (!StringUtils.hasText(dto.getCode())
+                && !StringUtils.hasText(dto.getRegistrationToken()))) {
+            return Result.error(400, "微信 code 或注册凭证不能为空");
         }
         // 身份：缺省按员工(USER)处理，非法值报错
         String role = StringUtils.hasText(dto.getRole()) ? dto.getRole() : UserRole.USER;
         if (!UserRole.isValid(role)) {
             return Result.error(400, "身份不合法：仅支持 BOSS(老板) / USER(员工)");
         }
-        WechatUserInfo info = wechatService.loginByCode(dto.getCode());
+        boolean registrationContinuation = StringUtils.hasText(dto.getRegistrationToken());
+        final WechatUserInfo info;
+        if (registrationContinuation) {
+            if (!StringUtils.hasText(dto.getPhoneCode())) {
+                return Result.error(400, "手机号授权 code 不能为空");
+            }
+            try {
+                String openid = jwtUtil.getWechatRegistrationOpenid(dto.getRegistrationToken());
+                info = new WechatUserInfo(openid, null, null, null);
+            } catch (RuntimeException e) {
+                return Result.error(400, "注册凭证无效或已过期，请重新登录");
+            }
+        } else {
+            info = wechatService.loginByCode(dto.getCode());
+        }
         if (info.openid() == null) {
             return Result.error(401, "微信登录失败：未获取到 openid");
         }
-        // 手机号动态令牌非空时换取手机号
-        final String phone = StringUtils.hasText(dto.getPhoneCode())
-                ? wechatService.getPhoneNumber(dto.getPhoneCode())
-                : null;
-        // 按 openid 查找用户，不存在则按所选身份自动注册
-        User user = userRepository.findByOpenid(info.openid()).orElseGet(() -> {
+
+        // 新老用户只能由 openid 查询结果判断，不能用手机号是否为空判断。
+        User user = userRepository.findByOpenid(info.openid()).orElse(null);
+        if (user == null) {
+            if (!StringUtils.hasText(dto.getPhoneCode())) {
+                Map<String, Object> data = new HashMap<>();
+                data.put("needPhoneNumber", true);
+                data.put("registrationToken", jwtUtil.generateWechatRegistrationToken(info.openid()));
+                return Result.success(data);
+            }
+
+            final String phone;
+            try {
+                phone = wechatService.getPhoneNumber(dto.getPhoneCode());
+            } catch (RuntimeException e) {
+                return Result.error(400, "手机号授权失败");
+            }
+            if (!StringUtils.hasText(phone)) {
+                return Result.error(400, "手机号授权失败");
+            }
+
             User newUser = new User();
-            // 微信用户无密码，生成不可登录的随机密码；完整 openid 避免仅截取后 16 位造成用户名碰撞
-            newUser.setUsername("wx_" + info.openid());
+            newUser.setUsername(phone);
             newUser.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
             newUser.setRole(role);
             newUser.setOpenid(info.openid());
-            newUser.setNickname(info.nickname() != null ? info.nickname() : dto.getNickname());
+            String rawNickname = info.nickname() != null ? info.nickname() : dto.getNickname();
+            newUser.setNickname(StringUtils.hasText(rawNickname) ? rawNickname : "用户");
             newUser.setAvatar(info.avatar() != null ? info.avatar() : dto.getAvatar());
             newUser.setPhone(phone);
-            return userRepository.save(newUser);
-        });
+            user = userRepository.save(newUser);
+        } else if (registrationContinuation) {
+            // 注册流程的第二步必须真实校验手机号授权 code，不能只凭注册凭证登录已有账号。
+            try {
+                wechatService.getPhoneNumber(dto.getPhoneCode());
+            } catch (RuntimeException e) {
+                return Result.error(400, "手机号授权失败");
+            }
+        }
+
         // 老用户身份以本次选择为准，直接切换
         if (!role.equals(user.getRole())) {
             user.setRole(role);
-            userRepository.save(user);
-        }
-        // 老用户手机号为空时补全
-        if (phone != null && !phone.equals(user.getPhone())) {
-            user.setPhone(phone);
-            userRepository.save(user);
+            user = userRepository.save(user);
         }
         return Result.success(buildTokenResponse(user));
+    }
+
+    /**
+     * 退出登录：POST /auth/logout
+     * 当前使用无状态 JWT，服务端确认请求已通过鉴权；客户端收到响应后清除本地登录态。
+     */
+    @Operation(summary = "退出登录", description = "需携带有效 accessToken；服务端确认退出，客户端应清除本地 Token 和用户缓存")
+    @PostMapping("/logout")
+    public Result<Void> logout() {
+        return Result.success();
     }
 
     /**

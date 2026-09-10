@@ -109,11 +109,11 @@
         >
         <button
           class="confirm-btn"
-          :disabled="selectedWorkers.length === 0"
+          :disabled="selectedWorkers.length === 0 || inviting"
           @click="confirmSelect"
         >
-          确认邀请{{
-            selectedWorkers.length > 0
+          {{ inviting ? "处理中…" : "确认邀请" }}{{
+            selectedWorkers.length > 0 && !inviting
               ? " " + selectedWorkers.length + " 人"
               : ""
           }}
@@ -131,6 +131,7 @@ import {
   searchTalents,
 } from "@/api/backend";
 import { USE_MOCK } from "@/api/http";
+import { handleTokenInvalid } from "@/api/auth";
 
 export default {
   data() {
@@ -139,6 +140,7 @@ export default {
       currentTab: "recent",
       selectedWorkers: [],
       orderId: "",
+      inviting: false,
       loading: false,
       loadError: "",
       queuedTab: "",
@@ -244,6 +246,12 @@ export default {
   },
   onLoad(options) {
     this.orderId = options?.orderId || "";
+    if (!this.orderId) {
+      const pendingIds = uni.getStorageSync("pendingInviteWorkerIds");
+      this.selectedWorkers = Array.isArray(pendingIds)
+        ? pendingIds.map((id) => String(id))
+        : [];
+    }
     this.loadWorkers();
   },
   methods: {
@@ -280,9 +288,7 @@ export default {
           this.workers = [];
           if (error?.statusCode === 401 || error?.code === 401) {
             this.loadError = "登录已失效，请重新登录";
-            uni.removeStorageSync("token");
-            uni.showToast({ title: this.loadError, icon: "none" });
-            setTimeout(() => uni.reLaunch({ url: "/pages/login/login?role=boss" }), 300);
+            handleTokenInvalid({ role: "boss", toastTitle: this.loadError });
           } else if (error?.statusCode === 403 || error?.code === 403) {
             this.loadError = "当前账号无权查看最近合作记录";
             uni.showToast({ title: this.loadError, icon: "none" });
@@ -310,19 +316,24 @@ export default {
       this.loadWorkers();
     },
     toggleSelect(worker) {
-      const idx = this.selectedWorkers.indexOf(worker.id);
+      const workerId = String(worker.id);
+      const idx = this.selectedWorkers.indexOf(workerId);
       if (idx >= 0) {
         this.selectedWorkers.splice(idx, 1);
       } else {
-        this.selectedWorkers.push(worker.id);
+        this.selectedWorkers.push(workerId);
       }
     },
     async confirmSelect() {
-      if (this.selectedWorkers.length === 0) return;
+      if (this.selectedWorkers.length === 0 || this.inviting) return;
       if (!this.orderId) {
-        uni.showToast({ title: "请从具体岗位进入邀请", icon: "none" });
+        uni.setStorageSync("pendingInviteWorkerIds", this.selectedWorkers);
+        uni.$emit("inviteWorkersSelected", this.selectedWorkers);
+        uni.showToast({ title: `已选择 ${this.selectedWorkers.length} 人`, icon: "success" });
+        setTimeout(() => uni.navigateBack(), 500);
         return;
       }
+      this.inviting = true;
       try {
         await Promise.all(
           this.selectedWorkers.map((workerId) =>
@@ -340,6 +351,8 @@ export default {
         setTimeout(() => uni.navigateBack(), 800);
       } catch (error) {
         uni.showToast({ title: error.message || "邀请失败", icon: "none" });
+      } finally {
+        this.inviting = false;
       }
     },
   },
@@ -350,7 +363,7 @@ function normalizeWorker(worker = {}) {
     worker.nickname || worker.name || worker.username || "未命名零工";
   return {
     ...worker,
-    id: worker.id,
+    id: String(worker.id),
     initial: name.slice(0, 1),
     name,
     phone: worker.phone || "暂无手机号",

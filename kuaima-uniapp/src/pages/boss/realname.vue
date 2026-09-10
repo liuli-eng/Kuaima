@@ -33,16 +33,6 @@
         </view>
       </view>
 
-      <!-- 验证码输入框 -->
-      <view class="code-input-wrap">
-        <view 
-          class="code-box" 
-          :class="{ filled: code.length >= i, active: code.length === i - 1 }"
-          v-for="i in 6" 
-          :key="i"
-        >{{ code[i-1] || '' }}</view>
-      </view>
-
       <button class="verify-btn" :disabled="code.length !== 6 || verifying" @click="doVerify">{{ verifying ? '验证中...' : '确 认 验 证' }}</button>
 
       <!-- 提示 -->
@@ -370,36 +360,6 @@ export default {
 
 .verify-btn:disabled {
   opacity: 0.6;
-}
-
-.code-input-wrap {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-  justify-content: center;
-}
-
-.code-box {
-  width: 44px;
-  height: 52px;
-  background: #FAFAFA;
-  border: 1.5px solid #E0E0E0;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 600;
-  color: #333;
-}
-
-.code-box.filled {
-  border-color: #FF6B35;
-}
-
-.code-box.active {
-  border-color: #FF6B35;
-  box-shadow: 0 0 0 3px rgba(255,107,53,0.1);
 }
 
 .tip-box {

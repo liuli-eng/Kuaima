@@ -3,18 +3,18 @@
     <AppNavBar title="我的" />
     <scroll-view scroll-y class="content">
       <view class="user-header">
-        <view class="avatar"><image src="/static/icons/worker-profile/avatar.svg" mode="aspectFill" /></view>
+        <view class="avatar"><image :src="avatarIcon" mode="aspectFill" /></view>
         <view class="user-info" @click="go('/pages/worker/user-info')">
           <text class="name">{{ profileName }} <text class="chevron">›</text></text>
         </view>
         <view class="switch-btn" @click="go('/pages/worker/switch-identity')">
-          <image src="/static/icons/boss-profile/exchange.svg" mode="aspectFit" /> 我要招人
+          <image :src="exchangeIcon" mode="aspectFit" /> 我要招人
         </view>
       </view>
 
       <view class="wallet-card">
         <view class="wallet-left">
-          <image class="wallet-icon" src="/static/icons/worker-profile/coins.svg" mode="aspectFit" />
+          <image class="wallet-icon" :src="coinsIcon" mode="aspectFit" />
           <view>
             <text class="wallet-label">收入余额(元)</text>
             <text class="wallet-value">{{ wallet.available }}</text>
@@ -51,6 +51,15 @@ import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { request } from "@/api/http";
 import { getWorkerProfile } from "@/api/backend";
+import avatarIcon from "/static/icons/worker-profile/avatar.svg";
+import exchangeIcon from "/static/icons/boss-profile/exchange.svg";
+import coinsIcon from "/static/icons/worker-profile/coins.svg";
+import headsetIcon from "/static/icons/worker-profile/headset.svg";
+import balanceIcon from "/static/icons/worker-profile/balance.svg";
+import fileIcon from "/static/icons/worker-profile/file.svg";
+import userLockIcon from "/static/icons/worker-profile/user-lock.svg";
+import copyrightIcon from "/static/icons/worker-profile/copyright.svg";
+import mobileIcon from "/static/icons/boss-profile/mobile.svg";
 
 const profile = ref({});
 const wallet = ref({ available: "0" });
@@ -65,12 +74,12 @@ const profileName = computed(() => {
   return name.includes("零工") ? name : `${name}｜零工`;
 });
 const menus = [
-  { key: "service", label: "联系客服", icon: "/static/icons/worker-profile/headset.svg" },
-  { key: "rule", label: "平台规则", icon: "/static/icons/worker-profile/balance.svg" },
-  { key: "agreement", label: "用户服务协议", icon: "/static/icons/worker-profile/file.svg" },
-  { key: "privacy", label: "隐私协议", icon: "/static/icons/worker-profile/user-lock.svg" },
-  { key: "copyright", label: "知识产权规则", icon: "/static/icons/worker-profile/copyright.svg" },
-  { key: "realname", label: "手机号认证", icon: "/static/icons/boss-profile/mobile.svg" },
+  { key: "service", label: "联系客服", icon: headsetIcon },
+  { key: "rule", label: "平台规则", icon: balanceIcon },
+  { key: "agreement", label: "用户服务协议", icon: fileIcon },
+  { key: "privacy", label: "隐私协议", icon: userLockIcon },
+  { key: "copyright", label: "知识产权规则", icon: copyrightIcon },
+  { key: "realname", label: "手机号认证", icon: mobileIcon },
 ];
 
 onShow(async () => {

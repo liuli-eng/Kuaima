@@ -32,23 +32,6 @@
     </view>
 
     <scroll-view scroll-y class="content">
-      <!-- 实名认证Banner -->
-      <view class="auth-banner">
-        <view class="auth-left">
-          <view class="auth-icon">
-            <text style="font-size:20px;color:white;">🛡</text>
-          </view>
-          <view>
-            <view class="auth-title">
-              <text style="color:#FFA500;font-size:14px;">🛡</text>
-              <text style="margin-left:4px;">实名认证</text>
-            </view>
-            <text class="auth-desc">{{ realnameDescription }}</text>
-          </view>
-        </view>
-        <view class="auth-btn" @click="navigateTo('realname')">{{ realnameAction }} ›</view>
-      </view>
-
       <!-- 基本信息 -->
       <view class="form-card">
         <view class="form-row" @click="changeAvatar">
@@ -99,8 +82,12 @@
           <text class="form-value">切换账号登录</text>
           <text class="› form-arrow"></text>
         </view>
-        <view class="form-row" @click="logout">
-          <text class="form-label" style="color:#FF6B35;">退出登录</text>
+        <view
+          class="form-row"
+          :class="{ disabled: logoutLoading }"
+          @click="confirmLogout"
+        >
+          <text class="form-label" style="color:#FF6B35;">{{ logoutLoading ? '退出中…' : '退出登录' }}</text>
           <text class="form-value"></text>
           <text class="› form-arrow"></text>
         </view>
@@ -111,12 +98,14 @@
 
 <script>
 import { getCurrentUser, getUser, updateUser } from '@/api/backend'
+import { logout } from '@/api/auth'
 
 export default {
   data() {
     return {
       loading: false,
       saving: false,
+      logoutLoading: false,
       userInfo: {
         id: '',
         name: '',
@@ -124,31 +113,13 @@ export default {
         avatar: '',
         companyName: '',
         enterpriseStatusText: '未认证',
-        realnameStatus: 'UNVERIFIED',
       }
     }
   },
   onShow() {
     this.loadUserInfo()
   },
-  computed: {
-    realnameDescription() {
-      return {
-        APPROVED: '实名认证已通过',
-        PENDING: '实名认证正在审核中',
-        REJECTED: '实名认证未通过，请重新提交',
-        UNVERIFIED: '完成认证，找活找人更容易！',
-      }[this.userInfo.realnameStatus]
-    },
-    realnameAction() {
-      return {
-        APPROVED: '查看认证',
-        PENDING: '查看进度',
-        REJECTED: '重新认证',
-        UNVERIFIED: '立即实名',
-      }[this.userInfo.realnameStatus]
-    },
-  },
+
   methods: {
     getUserId() {
       return uni.getStorageSync('userId') || ''
@@ -170,7 +141,6 @@ export default {
         const cached = uni.getStorageSync('userInfo') || {}
         const name = profile.nickname || profile.name || profile.realName || cached.nickname || cached.name || ''
         const phone = profile.phone || profile.phoneNumber || cached.phone || cached.phoneNumber || ''
-        const realnameStatus = normalizeStatus(profile.realnameStatus || profile.certStatus || profile.certificationStatus)
         const enterpriseStatus = normalizeStatus(profile.enterpriseStatus)
         this.userInfo = {
           ...this.userInfo,
@@ -179,7 +149,6 @@ export default {
           phone,
           avatar: profile.avatar || profile.avatarUrl || cached.avatar || cached.avatarUrl || '',
           companyName: profile.companyName || '',
-          realnameStatus,
           enterpriseStatusText: statusText(enterpriseStatus),
         }
         uni.setStorageSync('userInfo', { ...cached, ...profile, nickname: name, phone })
@@ -262,18 +231,19 @@ export default {
     editCompanyAddress() {
       uni.showToast({ title: '后端暂未提供企业地址字段', icon: 'none' })
     },
-    logout() {
+    confirmLogout() {
+      if (this.logoutLoading) return
       uni.showModal({
         title: '提示',
         content: '确定要退出登录吗？',
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
-            uni.removeStorageSync('token')
-            uni.removeStorageSync('userId')
-            uni.removeStorageSync('userInfo')
-            uni.removeStorageSync('role')
-            uni.removeStorageSync('currentRole')
-            uni.reLaunch({ url: '/pages/login/login' })
+            this.logoutLoading = true
+            try {
+              await logout()
+            } finally {
+              this.logoutLoading = false
+            }
           }
         }
       })
@@ -374,57 +344,6 @@ function statusText(status) {
 .content {
   flex: 1;
   overflow-y: auto;
-}
-
-.auth-banner {
-  background: linear-gradient(135deg, #FFF8E6, #FFE4B5);
-  padding: 18px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.auth-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.auth-icon {
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(135deg, #FFD700, #FFA500);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.25);
-}
-
-.auth-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #333;
-  display: flex;
-  align-items: center;
-}
-
-.auth-desc {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-
-.auth-btn {
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
 .form-card {

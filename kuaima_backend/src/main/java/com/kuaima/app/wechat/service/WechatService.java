@@ -65,11 +65,13 @@ public class WechatService {
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             JSONObject resp = JSONObject.parseObject(response.body());
-            checkError(resp, "手机号换取失败");
+            checkError(resp, "手机号授权");
             JSONObject phoneInfo = resp.getJSONObject("phone_info");
             return phoneInfo != null ? phoneInfo.getString("phoneNumber") : null;
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("调用微信接口失败: " + e.getMessage(), e);
+            throw new IllegalArgumentException("调用微信接口失败，请稍后重试", e);
         }
     }
 
@@ -99,15 +101,26 @@ public class WechatService {
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             return JSONObject.parseObject(response.body());
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("调用微信接口失败: " + e.getMessage(), e);
+            throw new IllegalArgumentException("调用微信接口失败，请稍后重试", e);
         }
     }
 
     private void checkError(JSONObject json, String action) {
         Integer errcode = json.getInteger("errcode");
         if (errcode != null && errcode != 0) {
-            throw new RuntimeException(action + "，errcode=" + errcode + "，errmsg=" + json.getString("errmsg"));
+            String errmsg = json.getString("errmsg");
+            String message = switch (errcode) {
+                case 40029 -> "微信 code 无效，请重新登录";
+                case 40163 -> "登录凭证已失效，请重新登录";
+                case 40037, 41002 -> "手机号授权凭证无效，请重新授权";
+                case 40001, 40014 -> "微信 access_token 无效，请稍后重试";
+                case 42001, 42002, 42007 -> "微信接口调用频率超限，请稍后重试";
+                default -> action + "失败，请稍后重试";
+            };
+            throw new IllegalArgumentException(message);
         }
     }
 

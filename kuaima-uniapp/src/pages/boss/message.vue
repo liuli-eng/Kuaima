@@ -1,45 +1,47 @@
 <template>
   <view class="container">
-    <scroll-view scroll-y class="scroll-area">
-      <!-- 头部 -->
-      <view
-        class="header-bar"
-        :style="{
-          paddingTop: `${statusBarHeight + 12}px`,
-          paddingRight: `${menuSafeRight}px`
-        }"
-      >
-        <view class="title-row">
-          <text class="page-title">消息</text>
-        </view>
-      </view>
-
-      <!-- 消息列表 -->
-      <view v-if="loading" class="message-state">消息加载中…</view>
-      <view v-else-if="loadError" class="message-state error" @click="loadMessages">加载失败，点击重试</view>
-      <view v-else-if="messages.length" class="message-list card-shadow">
-        <view v-for="message in messages" :key="message.id" class="message-item" :class="{ unread: !isMessageRead(message) }" @click="handleMessageClick(message)">
-          <view class="message-icon" :class="message.type === 'ORDER_APPLY' ? 'icon-green' : 'icon-orange'"><text class="message-icon-text">{{ message.type === 'ORDER_APPLY' ? '＋' : '●' }}</text><view v-if="!isMessageRead(message)" class="badge-dot"></view></view>
-          <view class="message-content">
-            <text class="message-title">{{ message.title || (message.type === 'ORDER_APPLY' ? '有新的报名待审核' : '系统通知') }}</text>
-            <text class="message-desc">{{ message.content || '暂无消息内容' }}</text>
+    <scroll-view :scroll-y="showHistoryBtn" class="scroll-area" id="scrollArea">
+      <view id="scrollContent" class="scroll-content">
+        <!-- 头部 -->
+        <view
+          class="header-bar"
+          :style="{
+            paddingTop: `${statusBarHeight + 12}px`,
+            paddingRight: `${menuSafeRight}px`
+          }"
+        >
+          <view class="title-row">
+            <text class="page-title">消息</text>
           </view>
-          <view class="message-action"><text>›</text></view>
         </view>
-      </view>
-      <view v-else class="message-state">暂无消息</view>
 
-      <!-- 查看历史消息 -->
-      <view class="view-history">
-        <view class="history-btn" @click="navigateTo('history-message')">
-          <text>查看历史消息</text>
+        <!-- 消息列表 -->
+        <view v-if="loading" class="message-state">消息加载中…</view>
+        <view v-else-if="loadError" class="message-state error" @click="loadMessages">加载失败，点击重试</view>
+        <view v-else-if="messages.length" class="message-list card-shadow">
+          <view v-for="message in messages" :key="message.id" class="message-item" :class="{ unread: !isMessageRead(message) }" @click="handleMessageClick(message)">
+            <view class="message-icon" :class="message.type === 'ORDER_APPLY' ? 'icon-green' : 'icon-orange'"><text class="message-icon-text">{{ message.type === 'ORDER_APPLY' ? '＋' : '●' }}</text><view v-if="!isMessageRead(message)" class="badge-dot"></view></view>
+            <view class="message-content">
+              <text class="message-title">{{ message.title || (message.type === 'ORDER_APPLY' ? '有新的报名待审核' : '系统通知') }}</text>
+              <text class="message-desc">{{ message.content || '暂无消息内容' }}</text>
+            </view>
+            <view class="message-action"><text>›</text></view>
+          </view>
         </view>
-      </view>
+        <view v-else class="message-state">暂无消息</view>
 
-      <!-- 底部标语 -->
-      <view class="bottom-slogan">
-        <text class="slogan-title">招临时工 上快马日结</text>
-        <text class="slogan-desc">— 熟练工 上岗快 人靠谱 —</text>
+        <!-- 查看历史消息 -->
+        <view v-if="showHistoryBtn" class="view-history">
+          <view class="history-btn" @click="navigateTo('history-message')">
+            <text>查看历史消息</text>
+          </view>
+        </view>
+
+        <!-- 底部标语 -->
+        <view class="bottom-slogan">
+          <text class="slogan-title">招临时工 上快马日结</text>
+          <text class="slogan-desc">— 熟练工 上岗快 人靠谱 —</text>
+        </view>
       </view>
     </scroll-view>
 
@@ -101,6 +103,7 @@ export default {
       unreadCount: 0,
       loading: false,
       loadError: false,
+      showHistoryBtn: true,
     }
   },
   onLoad() {
@@ -113,10 +116,31 @@ export default {
       // #endif
     } catch (_) {}
   },
+  onReady() {
+    this.updateHistoryBtnVisibility()
+  },
   onShow() {
     this.loadMessages()
   },
   methods: {
+    updateHistoryBtnVisibility() {
+      this.$nextTick(() => {
+        const query = uni.createSelectorQuery().in(this)
+        query.select('#scrollArea').boundingClientRect()
+        query.select('#scrollContent').boundingClientRect()
+        query.select('#scrollArea').scrollOffset()
+        query.exec((res) => {
+          const area = res?.[0]
+          const content = res?.[1]
+          const scroll = res?.[2]
+          const areaHeight = area?.height
+          const contentHeight = content?.height
+          if (areaHeight === undefined || contentHeight === undefined) return
+          const overflow = contentHeight > areaHeight + 1
+          this.showHistoryBtn = overflow
+        })
+      })
+    },
     async loadMessages() {
       if (this.loading) return
       this.loading = true
@@ -134,6 +158,7 @@ export default {
         uni.showToast({ title: error.message || '消息加载失败', icon: 'none' })
       } finally {
         this.loading = false
+        this.updateHistoryBtnVisibility()
       }
     },
     isMessageRead(message) {
@@ -215,6 +240,11 @@ export default {
   box-sizing: border-box;
   overflow-y: auto;
   background: #FFF8E6;
+}
+
+.scroll-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .message-state {

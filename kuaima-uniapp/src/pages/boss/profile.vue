@@ -1,15 +1,5 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-      <view class="status-bar">
-        <text>19:53</text>
-        <view class="status-icons">
-          <image src="/static/icons/boss-profile/signal.svg" mode="aspectFit" />
-          <image src="/static/icons/boss-profile/wifi.svg" mode="aspectFit" />
-          <image src="/static/icons/boss-profile/battery.svg" mode="aspectFit" />
-      </view>
-    </view>
-
     <scroll-view scroll-y class="scroll-area">
       <!-- 顶部导航 -->
       <view class="top-header">
@@ -17,11 +7,11 @@
           <view class="brand-tag">快马日结</view>
           <view class="nav-icons">
             <view class="nav-icon-item">
-              <image src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" />
+              <image :src="ellipsisIcon" mode="aspectFit" />
             </view>
             <view class="nav-divider"></view>
             <view class="nav-icon-item">
-              <image src="/static/icons/boss-profile/dot.svg" mode="aspectFit" />
+              <image :src="dotIcon" mode="aspectFit" />
             </view>
           </view>
         </view>
@@ -29,14 +19,14 @@
         <!-- 用户信息 -->
         <view class="user-info" @click="navigateTo('personal-info')">
           <view class="user-avatar">
-            <image src="/static/icons/boss-profile/user.svg" mode="aspectFit" />
+            <image :src="userIcon" mode="aspectFit" />
           </view>
           <view class="user-info-main">
             <text class="user-name">{{ profile.name }} | 老板</text>
-            <image class="chevron-icon" src="/static/icons/boss-profile/chevron-right.svg" mode="aspectFit" />
+            <image class="chevron-icon" :src="chevronRightIcon" mode="aspectFit" />
           </view>
           <view class="switch-btn" @click.stop="navigateTo('switch-account')">
-            <image src="/static/icons/boss-profile/exchange.svg" mode="aspectFit" />
+            <image :src="exchangeIcon" mode="aspectFit" />
             <text>我要找工作</text>
           </view>
         </view>
@@ -45,7 +35,7 @@
       <!-- 企业认证Banner -->
       <view class="cert-banner card-shadow" @click="navigateTo('enterprise-cert')">
         <view class="cert-icon">
-          <image src="/static/icons/boss-profile/building.svg" mode="aspectFit" />
+          <image :src="buildingIcon" mode="aspectFit" />
         </view>
         <view class="cert-content">
           <text class="cert-title">{{ profile.enterpriseApproved ? '企业认证已通过' : '完成企业认证 解锁权益' }}</text>
@@ -59,13 +49,13 @@
       <view class="service-grid card-shadow">
         <view class="service-item" @click="navigateTo('suspend-settle')">
           <view class="service-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/pause.svg" mode="aspectFit" />
+            <image :src="pauseIcon" mode="aspectFit" />
           </view>
           <text class="service-label">待结算</text>
         </view>
         <view class="service-item" @click="navigateTo('payment-detail')">
           <view class="service-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/sack-dollar.svg" mode="aspectFit" />
+            <image :src="sackDollarIcon" mode="aspectFit" />
           </view>
           <text class="service-label">报酬支付明细</text>
         </view>
@@ -76,43 +66,43 @@
       <view class="other-grid card-shadow">
         <view class="other-item" @click="navigateTo('service-chat')">
           <view class="other-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/headset.svg" mode="aspectFit" />
+            <image :src="headsetIcon" mode="aspectFit" />
           </view>
           <text class="other-label">联系客服</text>
         </view>
         <view class="other-item" @click="navigateTo('realname')">
           <view class="other-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/mobile.svg" mode="aspectFit" />
+            <image :src="mobileIcon" mode="aspectFit" />
           </view>
           <text class="other-label">手机号认证</text>
         </view>
         <view class="other-item" @click="navigateTo('enterprise-cert')">
           <view class="other-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/building-columns.svg" mode="aspectFit" />
+            <image :src="buildingColumnsIcon" mode="aspectFit" />
           </view>
           <text class="other-label">企业认证</text>
         </view>
         <view class="other-item" @click="navigateTo('user-agreement')">
           <view class="other-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/file-lines.svg" mode="aspectFit" />
+            <image :src="fileLinesIcon" mode="aspectFit" />
           </view>
           <text class="other-label">用户服务协议</text>
         </view>
         <view class="other-item" @click="navigateTo('privacy')">
           <view class="other-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/lock.svg" mode="aspectFit" />
+            <image :src="lockIcon" mode="aspectFit" />
           </view>
           <text class="other-label">隐私协议</text>
         </view>
         <view class="other-item" @click="navigateTo('copyright')">
           <view class="other-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/book-open.svg" mode="aspectFit" />
+            <image :src="bookOpenIcon" mode="aspectFit" />
           </view>
           <text class="other-label">知识产权规则</text>
         </view>
         <view class="other-item" @click="navigateTo('rule')">
           <view class="other-icon" style="color: #FF6B35;">
-            <image src="/static/icons/boss-profile/clipboard-list.svg" mode="aspectFit" />
+            <image :src="clipboardListIcon" mode="aspectFit" />
           </view>
           <text class="other-label">平台规则</text>
         </view>
@@ -132,25 +122,25 @@
     <view class="tab-bar">
       <view class="tab-item" @click="switchTab('home')">
         <view class="tab-icon-wrap">
-          <image src="/static/icons/boss-tabbar/house-gray.svg" mode="aspectFit" />
+          <image :src="houseGrayIcon" mode="aspectFit" />
         </view>
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" @click="switchTab('order')">
         <view class="tab-icon-wrap">
-          <image src="/static/icons/boss-tabbar/calendar-check-gray.svg" mode="aspectFit" />
+          <image :src="calendarCheckGrayIcon" mode="aspectFit" />
         </view>
         <text class="tab-label">招工订单</text>
       </view>
       <view class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap">
-          <image src="/static/icons/boss-tabbar/comment-dots-gray.svg" mode="aspectFit" />
+          <image :src="commentDotsGrayIcon" mode="aspectFit" />
         </view>
         <text class="tab-label">消息</text>
       </view>
       <view class="tab-item active" @click="switchTab('profile')">
         <view class="tab-icon-wrap">
-          <image src="/static/icons/boss-tabbar/face-smile-white.svg" mode="aspectFit" />
+          <image :src="faceSmileWhiteIcon" mode="aspectFit" />
         </view>
         <text class="tab-label">我的</text>
       </view>
@@ -160,10 +150,48 @@
 
 <script>
 import { getCurrentUser, getUser } from '@/api/backend'
+import ellipsisIcon from '/static/icons/boss-profile/ellipsis.svg'
+import dotIcon from '/static/icons/boss-profile/dot.svg'
+import userIcon from '/static/icons/boss-profile/user.svg'
+import chevronRightIcon from '/static/icons/boss-profile/chevron-right.svg'
+import exchangeIcon from '/static/icons/boss-profile/exchange.svg'
+import buildingIcon from '/static/icons/boss-profile/building.svg'
+import pauseIcon from '/static/icons/boss-profile/pause.svg'
+import sackDollarIcon from '/static/icons/boss-profile/sack-dollar.svg'
+import headsetIcon from '/static/icons/boss-profile/headset.svg'
+import mobileIcon from '/static/icons/boss-profile/mobile.svg'
+import buildingColumnsIcon from '/static/icons/boss-profile/building-columns.svg'
+import fileLinesIcon from '/static/icons/boss-profile/file-lines.svg'
+import lockIcon from '/static/icons/boss-profile/lock.svg'
+import bookOpenIcon from '/static/icons/boss-profile/book-open.svg'
+import clipboardListIcon from '/static/icons/boss-profile/clipboard-list.svg'
+import houseGrayIcon from '/static/icons/boss-tabbar/house-gray.svg'
+import calendarCheckGrayIcon from '/static/icons/boss-tabbar/calendar-check-gray.svg'
+import commentDotsGrayIcon from '/static/icons/boss-tabbar/comment-dots-gray.svg'
+import faceSmileWhiteIcon from '/static/icons/boss-tabbar/face-smile-white.svg'
 
 export default {
   data() {
     return {
+      ellipsisIcon,
+      dotIcon,
+      userIcon,
+      chevronRightIcon,
+      exchangeIcon,
+      buildingIcon,
+      pauseIcon,
+      sackDollarIcon,
+      headsetIcon,
+      mobileIcon,
+      buildingColumnsIcon,
+      fileLinesIcon,
+      lockIcon,
+      bookOpenIcon,
+      clipboardListIcon,
+      houseGrayIcon,
+      calendarCheckGrayIcon,
+      commentDotsGrayIcon,
+      faceSmileWhiteIcon,
       profile: {
         name: '用户',
         enterpriseApproved: false,
@@ -204,13 +232,27 @@ export default {
         'signup-notice', 'invite-friend', 'service-chat', 'insurance', 'realname', 
         'personal-info'
       ]
-      
-      let url = `/pages/boss/${pageName}`
-      if (!bossPages.includes(pageName)) {
-        url = `/pages/${pageName}`
+      const sharedPageMap = {
+        'rule': '/pages/worker/rule',
+        'user-agreement': '/pages/worker/user-agreement',
+        'privacy': '/pages/worker/privacy',
+        'copyright': '/pages/worker/copyright'
       }
-      
-      uni.navigateTo({ url })
+      const url = bossPages.includes(pageName)
+        ? `/pages/boss/${pageName}`
+        : sharedPageMap[pageName]
+
+      if (!url) {
+        uni.showToast({ title: '页面暂未开放', icon: 'none' })
+        return
+      }
+
+      uni.navigateTo({
+        url,
+        fail: () => {
+          uni.showToast({ title: '页面打开失败，请重试', icon: 'none' })
+        }
+      })
     },
     switchTab(tab) {
       const tabPages = {

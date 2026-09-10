@@ -14,7 +14,7 @@
       <view class="tabs">
         <text class="tab-item" :class="{ active: currentTab === 'industry' }" @click="switchTab('industry')">请选择行业</text>
         <text class="tab-item" :class="{ active: currentTab === 'type' }" @click="switchTab('type')">请选择企业类型</text>
-        <text class="tab-item" :class="{ active: currentTab === 'job' }" @click="switchTab('job')">请选择工种(多选)</text>
+        <text class="tab-item" :class="{ active: currentTab === 'job' }" @click="switchTab('job')">请选择工种</text>
       </view>
 
       <!-- Tab内容 -->
@@ -61,7 +61,7 @@
               <text v-if="selectedJobIds.includes(job.id)" class="checkbox-icon">✓</text>
             </view>
           </view>
-          <view v-if="!loading && !loadError && selectedEnterpriseTypeIds.length" class="job-row add-job-row" @click="addCustomJob">
+          <view v-if="!loading && !loadError && selectedEnterpriseTypeId !== null" class="job-row add-job-row" @click="addCustomJob">
             <view class="job-info">
               <text class="job-name">其他工种</text>
               <text class="job-desc">点击添加新的工种</text>
@@ -107,7 +107,7 @@ export default {
       currentTab: "industry",
       industries: [],
       selectedIndustryId: null,
-      selectedEnterpriseTypeIds: [],
+      selectedEnterpriseTypeId: null,
       selectedJobIds: [],
       loading: false,
       loadError: "",
@@ -143,19 +143,19 @@ export default {
         : [];
       return types;
     },
-    selectedEnterpriseTypes() {
-      return this.currentEnterpriseTypes.filter((item) =>
-        this.selectedEnterpriseTypeIds.includes(item.id),
-      );
+    selectedEnterpriseType() {
+      return this.currentEnterpriseTypes.find(
+        (item) => item.id === this.selectedEnterpriseTypeId,
+      ) || null;
     },
     currentJobs() {
-      return this.selectedEnterpriseTypes.flatMap((enterprise) =>
-        (Array.isArray(enterprise.jobs) ? enterprise.jobs : []).map((job) => ({
-          ...job,
-          enterpriseTypeId: job.enterpriseTypeId ?? enterprise.id,
-          enterpriseTypeName: enterprise.name,
-        })),
-      );
+      if (!this.selectedEnterpriseType) return [];
+      const enterprise = this.selectedEnterpriseType;
+      return (Array.isArray(enterprise.jobs) ? enterprise.jobs : []).map((job) => ({
+        ...job,
+        enterpriseTypeId: job.enterpriseTypeId ?? enterprise.id,
+        enterpriseTypeName: enterprise.name,
+      }));
     },
     selectedJobs() {
       return this.currentJobs.filter((item) => this.selectedJobIds.includes(item.id));
@@ -163,7 +163,7 @@ export default {
     canNext() {
       if (this.currentTab === "industry") return Boolean(this.selectedIndustryId);
       if (this.currentTab === "type") {
-        return this.selectedEnterpriseTypeIds.length > 0;
+        return this.selectedEnterpriseTypeId !== null && this.selectedEnterpriseTypeId !== undefined;
       }
       return this.selectedJobIds.length > 0;
     },
@@ -201,10 +201,13 @@ export default {
         (item) => Number(item.id) === industryId,
       )?.id;
       const validTypeIds = new Set(this.currentEnterpriseTypes.map((item) => String(item.id)));
-      this.selectedEnterpriseTypeIds = (saved.enterpriseTypeIds || [])
-        .map(String)
-        .filter((id) => validTypeIds.has(id))
-        .map((id) => this.currentEnterpriseTypes.find((item) => String(item.id) === id)?.id);
+      const savedTypeId = Array.isArray(saved.enterpriseTypeIds)
+        ? saved.enterpriseTypeIds[0]
+        : saved.enterpriseTypeId;
+      const typeIdStr = savedTypeId !== undefined && savedTypeId !== null ? String(savedTypeId) : "";
+      this.selectedEnterpriseTypeId = typeIdStr && validTypeIds.has(typeIdStr)
+        ? this.currentEnterpriseTypes.find((item) => String(item.id) === typeIdStr)?.id ?? null
+        : null;
       const validJobIds = new Set(this.currentJobs.map((item) => String(item.id)));
       this.selectedJobIds = (saved.jobIds || [])
         .map(String)
@@ -216,14 +219,12 @@ export default {
     },
     switchTab(tab) {
       if (tab === "type" && !this.selectedIndustryId) return;
-      if (
-        tab === "job" && !this.selectedEnterpriseTypeIds.length
-      ) return;
+      if (tab === "job" && this.selectedEnterpriseTypeId === null) return;
       this.currentTab = tab;
     },
     selectIndustry(industry) {
       if (this.selectedIndustryId !== industry.id) {
-        this.selectedEnterpriseTypeIds = [];
+        this.selectedEnterpriseTypeId = null;
         this.selectedJobIds = [];
       }
       this.selectedIndustryId = industry.id;
@@ -258,7 +259,8 @@ export default {
               (item) => item.name === name || item.id === result?.id,
             );
             if (created) {
-              this.selectedEnterpriseTypeIds.push(created.id);
+              this.selectedEnterpriseTypeId = created.id;
+              this.selectedJobIds = [];
               this.currentTab = "type";
             }
             uni.showToast({ title: "企业类型已添加", icon: "success" });
@@ -274,24 +276,27 @@ export default {
       });
     },
     selectType(enterprise) {
-      const idx = this.selectedEnterpriseTypeIds.indexOf(enterprise.id);
-      if (idx >= 0) {
-        this.selectedEnterpriseTypeIds.splice(idx, 1);
-        const removedJobIds = new Set(
-          (enterprise.jobs || []).map((job) => String(job.id)),
-        );
-        this.selectedJobIds = this.selectedJobIds.filter(
-          (id) => !removedJobIds.has(String(id)),
-        );
+      if (this.selectedEnterpriseTypeId === enterprise.id) {
+        this.selectedEnterpriseTypeId = null;
+        this.selectedJobIds = [];
       } else {
-        this.selectedEnterpriseTypeIds.push(enterprise.id);
+        const current = this.currentEnterpriseTypes.find(
+          (item) => item.id === this.selectedEnterpriseTypeId,
+        );
+        const retainedIds = new Set(
+          (current?.jobs || []).map((job) => String(job.id)),
+        );
+        this.selectedJobIds = this.selectedJobIds.filter((id) =>
+          retainedIds.has(String(id)),
+        );
+        this.selectedEnterpriseTypeId = enterprise.id;
       }
     },
     isEnterpriseSelected(enterprise) {
-      return this.selectedEnterpriseTypeIds.includes(enterprise.id);
+      return this.selectedEnterpriseTypeId === enterprise.id;
     },
     async addCustomJob() {
-      if (!this.selectedIndustryId || !this.selectedEnterpriseTypeIds.length) return;
+      if (!this.selectedIndustryId || this.selectedEnterpriseTypeId === null) return;
       uni.showModal({
         title: "填写工种名称",
         editable: true,
@@ -311,19 +316,15 @@ export default {
               if (!descriptionResult.confirm) return;
               this.loading = true;
               try {
-                const createdJobs = [];
-                for (const enterpriseTypeId of this.selectedEnterpriseTypeIds) {
-                  const response = await createJobCategory({
-                    industryId: this.selectedIndustryId,
-                    enterpriseTypeId,
-                    name,
-                    description: String(descriptionResult.content || "").trim(),
-                  });
-                  if (response?.id) createdJobs.push(response.id);
-                }
+                const response = await createJobCategory({
+                  industryId: this.selectedIndustryId,
+                  enterpriseTypeId: this.selectedEnterpriseTypeId,
+                  name,
+                  description: String(descriptionResult.content || "").trim(),
+                });
                 await this.loadCategories();
-                const ids = createdJobs.length
-                  ? createdJobs
+                const ids = response?.id
+                  ? [response.id]
                   : this.currentJobs
                       .filter((job) => job.name === name)
                       .map((job) => job.id);
@@ -367,11 +368,14 @@ export default {
         this.currentTab = "job";
       } else {
         const selectedJobNames = this.selectedJobs.map((item) => item.name);
+        const enterpriseTypeIdArr = this.selectedEnterpriseTypeId !== null ? [this.selectedEnterpriseTypeId] : [];
+        const enterpriseTypeNames = this.selectedEnterpriseType ? [this.selectedEnterpriseType.name] : [];
         const data = {
           industryId: this.selectedIndustryId,
           industry: this.selectedIndustry?.name || "",
-          enterpriseTypeIds: [...this.selectedEnterpriseTypeIds],
-          enterpriseTypes: this.selectedEnterpriseTypes.map((item) => item.name),
+          enterpriseTypeId: this.selectedEnterpriseTypeId,
+          enterpriseTypeIds: enterpriseTypeIdArr,
+          enterpriseTypes: enterpriseTypeNames,
           jobIds: [...this.selectedJobIds],
           jobs: selectedJobNames,
         };
@@ -380,7 +384,7 @@ export default {
         const params = [
           `job=${encodeURIComponent(selectedJobNames.join("、"))}`,
           `industryId=${encodeURIComponent(this.selectedIndustryId)}`,
-          `enterpriseTypeIds=${encodeURIComponent(this.selectedEnterpriseTypeIds.join(","))}`,
+          `enterpriseTypeIds=${encodeURIComponent(enterpriseTypeIdArr.join(","))}`,
           `jobIds=${encodeURIComponent(this.selectedJobIds.join(","))}`,
         ];
         if (this.orderId) params.push(`id=${encodeURIComponent(this.orderId)}`);
@@ -406,6 +410,7 @@ export default {
 .page-bg {
   background: #fff;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -420,6 +425,7 @@ export default {
   box-sizing: content-box;
   position: relative;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -441,6 +447,7 @@ export default {
   display: flex;
   border-bottom: 2rpx solid #f0f0f0;
   margin: 32rpx 32rpx 0;
+  flex-shrink: 0;
 }
 
 .tab-item {
@@ -472,8 +479,11 @@ export default {
 
 .tab-content {
   flex: 1;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
   box-sizing: border-box;
-  padding: 0 32rpx 200rpx;
+  padding: 0 32rpx 24rpx;
 }
 
 .tab-pane {
@@ -605,10 +615,9 @@ export default {
 }
 
 .bottom-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  box-sizing: border-box;
+  width: 100%;
+  flex-shrink: 0;
   background: #fff;
   padding: 24rpx 32rpx;
   display: flex;

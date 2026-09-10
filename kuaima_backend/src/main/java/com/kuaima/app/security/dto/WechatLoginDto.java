@@ -7,8 +7,11 @@ import lombok.Setter;
 @Getter
 public class WechatLoginDto {
 
-    /** 前端从小程序 wx.login() 获取的 code（必填） */
+    /** 前端从小程序 wx.login() 获取的 code；首次登录时与 registrationToken 二选一 */
     private String code;
+
+    /** 新用户首次换取 openid 后由后端签发的短期注册凭证 */
+    private String registrationToken;
 
     /** 昵称（可选，通过微信头像昵称填写能力获取后由前端传入） */
     private String nickname;

@@ -24,6 +24,8 @@ import jakarta.persistence.EntityNotFoundException;
 @Tag(name = "规则公示", description = "对外公开的规则查询")
 public class RulePublicController {
 
+    private static final List<String> PUBLISHED_STATUSES = List.of("已发布", "published");
+
     private final RulesRepository rulesRepository;
 
     public RulePublicController(RulesRepository rulesRepository) {
@@ -33,11 +35,9 @@ public class RulePublicController {
     /** 规则列表：GET /rules?category=交易规则 */
     @GetMapping
     public Result<List<Rules>> listRules(@RequestParam(required = false) String category) {
-        List<Rules> all = rulesRepository.findAll();
-        List<Rules> published = all.stream()
-                .filter(r -> "已发布".equals(r.getStatus()))
-                .filter(r -> category == null || category.isEmpty() || category.equals(r.getCategory()))
-                .toList();
+        List<Rules> published = category == null || category.isBlank()
+                ? rulesRepository.findByStatusIn(PUBLISHED_STATUSES)
+                : rulesRepository.findByStatusInAndCategory(PUBLISHED_STATUSES, category);
         return Result.success(published);
     }
 

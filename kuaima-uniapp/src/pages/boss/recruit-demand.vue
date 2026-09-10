@@ -175,10 +175,14 @@
           >
             <text style="font-size: 14px; color: #333">邀请指定零工接单</text>
             <view
-              class="form-value placeholder"
+              class="form-value"
+              :class="{
+                placeholder: selectedInviteCount === 0,
+                selected: selectedInviteCount > 0,
+              }"
               style="flex: 1; justify-content: flex-end"
             >
-              <text>请选择</text>
+              <text>{{ selectedInviteCount > 0 ? `已选${selectedInviteCount}人` : "请选择" }}</text>
               <text class="› arrow"></text>
             </view>
           </view>
@@ -220,12 +224,14 @@ import {
   getCurrentUser,
   getOrder,
   getUser,
+  inviteTalent,
   updateOrder,
 } from "@/api/backend";
 import {
   checkBossPublishEligibility,
   redirectByPublishEligibility,
 } from "@/api/publish-eligibility";
+import { handleTokenInvalid } from "@/api/auth";
 
 export default {
   data() {
@@ -251,6 +257,7 @@ export default {
       },
       hasExplicitType: false,
       orderId: "",
+      selectedInviteCount: 0,
       workTimeVersion: 0,
       contactPhone: "暂无手机号",
       eligibilityReady: false,
@@ -285,11 +292,16 @@ export default {
     } catch (_) {}
     if (options?.job) this.jobName = decodeURIComponent(options.job);
     if (options?.id) this.orderId = options.id;
+    if (!this.orderId) {
+      uni.removeStorageSync("pendingInviteWorkerIds");
+      this.selectedInviteCount = 0;
+    }
     if (options?.type) {
       this.hasExplicitType = true;
       this.applyRecruitSettings({ type: options.type });
     }
     uni.$on("recruitSettingsSaved", this.applyRecruitSettings);
+    uni.$on("inviteWorkersSelected", this.applyInviteSelection);
     this.loadRecruitSettings();
     if (this.orderId) this.loadOrder(this.orderId);
     this.ensurePublishEligibility();
@@ -299,10 +311,12 @@ export default {
     this.ensurePublishEligibility();
     this.loadRecruitSettings();
     this.loadContactPhone();
+    this.loadInviteSelection();
     this.workTimeVersion += 1;
   },
   onUnload() {
     uni.$off("recruitSettingsSaved", this.applyRecruitSettings);
+    uni.$off("inviteWorkersSelected", this.applyInviteSelection);
   },
   methods: {
     async ensurePublishEligibility() {
@@ -310,8 +324,7 @@ export default {
       if (!uni.getStorageSync("token")) {
         if (!this._eligibilityRedirected) {
           this._eligibilityRedirected = true;
-          uni.showToast({ title: "请先登录", icon: "none" });
-          setTimeout(() => uni.reLaunch({ url: "/pages/login/login?role=boss" }), 200);
+          handleTokenInvalid({ role: "boss", toastTitle: "请先登录", clear: false });
         }
         return { canPublish: false, realnameStatus: "UNVERIFIED", enterpriseStatus: "UNVERIFIED", missing: ["REALNAME", "ENTERPRISE"] };
       }
@@ -379,6 +392,41 @@ export default {
           ? `?orderId=${encodeURIComponent(this.orderId)}`
           : "";
       uni.navigateTo({ url: `/pages/boss/${page}${query}` });
+    },
+    applyInviteSelection(workerIds = []) {
+      this.selectedInviteCount = Array.isArray(workerIds)
+        ? workerIds.length
+        : 0;
+    },
+    loadInviteSelection() {
+      if (this.orderId) {
+        this.selectedInviteCount = 0;
+        return;
+      }
+      this.applyInviteSelection(
+        uni.getStorageSync("pendingInviteWorkerIds") || [],
+      );
+    },
+    async invitePendingWorkers(orderId) {
+      const workerIds = uni.getStorageSync("pendingInviteWorkerIds");
+      if (!Array.isArray(workerIds) || workerIds.length === 0) {
+        return { invited: 0, failed: 0 };
+      }
+      const bossId = uni.getStorageSync("userId");
+      const results = await Promise.allSettled(
+        workerIds.map((workerId) =>
+          inviteTalent({ bossId, workerId: Number(workerId), orderId }),
+        ),
+      );
+      const failedIds = workerIds.filter(
+        (_, index) => results[index].status === "rejected",
+      );
+      uni.removeStorageSync("pendingInviteWorkerIds");
+      this.selectedInviteCount = 0;
+      return {
+        invited: workerIds.length - failedIds.length,
+        failed: failedIds.length,
+      };
     },
     loadRecruitSettings() {
       const saved = uni.getStorageSync("recruitSettings");
@@ -544,9 +592,23 @@ export default {
           settleNotify: this.recruitSettings.settleNotify,
         };
         const editing = Boolean(this.orderId);
-        if (editing) await updateOrder(this.orderId, payload);
-        else await createOrder(payload);
-        uni.showToast({ title: "发布成功", icon: "success" });
+        let invitationResult = { invited: 0, failed: 0 };
+        if (editing) {
+          await updateOrder(this.orderId, payload);
+        } else {
+          const createdOrder = await createOrder(payload);
+          const createdOrderId = createdOrder?.id || createdOrder?.orderId;
+          if (!createdOrderId) throw new Error("岗位创建成功但未返回岗位 ID");
+          invitationResult = await this.invitePendingWorkers(createdOrderId);
+        }
+        uni.showToast({
+          title: invitationResult.failed
+            ? `岗位已发布，${invitationResult.failed}人邀请失败`
+            : invitationResult.invited
+              ? `发布成功，已邀请${invitationResult.invited}人`
+              : "发布成功",
+          icon: invitationResult.failed ? "none" : "success",
+        });
         setTimeout(
           () =>
             editing
@@ -816,6 +878,11 @@ function formatLocalDate(date) {
 
 .form-value.placeholder {
   color: #bbb;
+}
+
+.form-value.selected {
+  color: #ff6b35;
+  font-weight: 500;
 }
 
 .form-value .arrow {

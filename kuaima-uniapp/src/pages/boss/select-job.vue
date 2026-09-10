@@ -215,7 +215,8 @@ function openService() {
 .hot-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 20rpx;
+  align-items: stretch;
+  justify-content: space-between;
 }
 .hot-item {
   display: flex;
@@ -223,7 +224,10 @@ function openService() {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: calc(50% - 10rpx);
+  flex: 0 0 48.5%;
+  width: 48.5%;
+  min-width: 0;
+  margin-bottom: 20rpx;
   padding: 32rpx 12rpx;
   border-radius: 20rpx;
   background: #f8f8f8;

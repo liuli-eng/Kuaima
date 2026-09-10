@@ -15,12 +15,22 @@
         ><text>黑名单管理</text><text>›</text></view
       ><view class="row danger" @click="go('/pages/worker/account-cancel')"
         ><text>注销账号</text><text>›</text></view
+      ><view
+        class="row danger"
+        :class="{ disabled: logoutLoading }"
+        @click="confirmLogout"
+        ><text>{{ logoutLoading ? "退出中…" : "退出登录" }}</text
+        ><text>›</text></view
       ></view
     ></view
   >
 </template>
 <script setup>
+import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
+import { logout } from "@/api/auth";
+
+const logoutLoading = ref(false);
 function go(url) {
   uni.navigateTo({ url });
 }
@@ -35,6 +45,22 @@ function clear() {
       if (confirm) {
         uni.removeStorageSync("workerIntent");
         uni.showToast({ title: "已清除", icon: "success" });
+      }
+    },
+  });
+}
+function confirmLogout() {
+  if (logoutLoading.value) return;
+  uni.showModal({
+    title: "提示",
+    content: "确定要退出登录吗？",
+    success: async ({ confirm }) => {
+      if (!confirm) return;
+      logoutLoading.value = true;
+      try {
+        await logout();
+      } finally {
+        logoutLoading.value = false;
       }
     },
   });
@@ -61,6 +87,12 @@ function clear() {
 }
 .row:last-child {
   border: 0;
+}
+.row.danger text:first-child {
+  color: #ff6b35;
+}
+.row.disabled {
+  opacity: 0.55;
 }
 .row text:last-child {
   font-size: 34rpx;

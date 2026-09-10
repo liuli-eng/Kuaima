@@ -26,7 +26,10 @@
         <view class="scroll-space"></view>
       </template>
     </scroll-view>
-    <view v-if="!loading && !loadError" class="bottom-bar"><button class="save-button" :disabled="saving" @click="saveProfile">{{ saving ? "保存中…" : "保存资料" }}</button></view>
+    <view v-if="!loading && !loadError" class="bottom-bar">
+      <button class="save-button" :disabled="saving" @click="saveProfile">{{ saving ? "保存中…" : "保存资料" }}</button>
+      <button class="logout-button" :disabled="logoutLoading || saving" @click="confirmLogout">{{ logoutLoading ? "退出中…" : "退出登录" }}</button>
+    </view>
   </view>
 </template>
 
@@ -34,9 +37,10 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { getWorkerProfile, updateWorkerProfile } from "@/api/backend";
+import { logout } from "@/api/auth";
 
 const genderOptions = ["男", "女", "保密"];
-const loading = ref(false), loadError = ref(false), saving = ref(false), phone = ref("");
+const loading = ref(false), loadError = ref(false), saving = ref(false), logoutLoading = ref(false), phone = ref("");
 const today = formatDate(new Date());
 const form = reactive({ avatar: "", nickname: "", gender: "", birthday: "", city: "", skills: "", workYears: "", acceptNightShift: false, introduction: "" });
 const genderIndex = computed(() => Math.max(0, genderOptions.indexOf(form.gender)));
@@ -85,6 +89,22 @@ async function saveProfile() {
   } catch (error) { uni.showToast({ title: error.message || "保存失败", icon: "none" }); }
   finally { saving.value = false; }
 }
+function confirmLogout() {
+  if (logoutLoading.value) return;
+  uni.showModal({
+    title: "提示",
+    content: "确定要退出登录吗？",
+    success: async ({ confirm }) => {
+      if (!confirm) return;
+      logoutLoading.value = true;
+      try {
+        await logout();
+      } finally {
+        logoutLoading.value = false;
+      }
+    },
+  });
+}
 function normalizeDate(value) { return value ? String(value).slice(0, 10) : ""; }
 function formatDate(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 </script>
@@ -113,8 +133,10 @@ function formatDate(date) { return `${date.getFullYear()}-${String(date.getMonth
 .intro { width: 100%; height: 180rpx; padding: 20rpx; border-radius: 16rpx; background: #f7f7f7; color: #555; font-size: 26rpx; box-sizing: border-box; }
 .count { position: absolute; right: 46rpx; bottom: 42rpx; color: #bbb; font-size: 21rpx; }
 .scroll-space { height: 32rpx; }
-.bottom-bar { flex-shrink: 0; padding: 18rpx 32rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #eee; background: #fff; }
-.save-button { height: 86rpx; margin: 0; border: 0; border-radius: 44rpx; background: linear-gradient(135deg, #ff6b35, #ff8c5a); color: #fff; font-size: 29rpx; font-weight: 600; line-height: 86rpx; }
-.save-button::after { border: 0; }
-.save-button[disabled] { opacity: .55; }
+.bottom-bar { flex-shrink: 0; padding: 18rpx 32rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid #eee; background: #fff; display: flex; flex-direction: column; gap: 16rpx; }
+.save-button, .logout-button { height: 86rpx; margin: 0; border: 0; border-radius: 44rpx; font-size: 29rpx; font-weight: 600; line-height: 86rpx; }
+.save-button::after, .logout-button::after { border: 0; }
+.save-button { background: linear-gradient(135deg, #ff6b35, #ff8c5a); color: #fff; }
+.logout-button { background: #fff; color: #ff4d4f; border: 2rpx solid #ffd5d5 !important; }
+.save-button[disabled], .logout-button[disabled] { opacity: .55; }
 </style>

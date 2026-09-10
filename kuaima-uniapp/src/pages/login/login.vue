@@ -6,7 +6,13 @@
       :style="{ paddingTop: `${statusBarHeight}px` }"
     >
       <view class="top-nav">
-        <button v-if="userRole" class="nav-back" @click="goBack">‹</button>
+        <button v-if="userRole" class="nav-back" @click="goBack">
+          <image
+            class="nav-back-icon"
+            src="/static/icons/login/chevron-left.svg"
+            mode="aspectFit"
+          />
+        </button>
         <view v-else class="nav-placeholder"></view>
         <view v-if="userRole" class="brand-tag">快马日结</view>
       </view>
@@ -21,7 +27,9 @@
             :class="{ active: selectedRole === 'worker' }"
             @click="selectedRole = 'worker'"
           >
-            <view v-if="selectedRole === 'worker'" class="selected-mark">✓</view>
+            <view v-if="selectedRole === 'worker'" class="selected-mark">
+              <image src="/static/icons/login/check-white.svg" mode="aspectFit" />
+            </view>
             <text class="role-name">零工找活</text>
             <text class="role-desc">真老板</text>
             <text class="role-desc">真工价</text>
@@ -37,7 +45,9 @@
             :class="{ active: selectedRole === 'boss' }"
             @click="selectedRole = 'boss'"
           >
-            <view v-if="selectedRole === 'boss'" class="selected-mark">✓</view>
+            <view v-if="selectedRole === 'boss'" class="selected-mark">
+              <image src="/static/icons/login/check-white.svg" mode="aspectFit" />
+            </view>
             <text class="role-name">老板招工</text>
             <text class="role-desc">熟练工</text>
             <text class="role-desc">上岗快</text>
@@ -60,12 +70,13 @@
           ><text class="hero-title">{{
             selectedRole === "boss" ? "千万老板的选择" : "3000万零工的选择"
           }}</text
-          ><text class="hero-subtitle"
-            >{{
-              selectedRole === "boss"
-                ? "近30%完单雇主招工效率提升"
-                : "近30%完单零工收入千元以上"
-            }}　ⓘ</text
+          ><view class="hero-subtitle"
+            ><text>近30%完单零工收入千元以上</text
+            ><image
+              class="hero-info-icon"
+              src="/static/icons/login/circle-info.svg"
+              mode="aspectFit"
+            /></view
           ><text class="mascot">{{
             selectedRole === "boss" ? "🐎" : "🐴"
           }}</text
@@ -76,20 +87,42 @@
           }}</text></view
         >
         <view class="mobile-login-card"
-          ><text class="login-title">手机号一键登录</text
+          ><text class="login-title">{{ phoneRequired ? "绑定手机号" : "手机号一键登录" }}</text
           >
           <!-- #ifdef MP-WEIXIN -->
           <button
+            v-if="phoneRequired || isLoginPrepareIncomplete"
             class="phone-input-btn"
             open-type="getPhoneNumber"
+            :disabled="loggingIn || preparingLogin"
             @getphonenumber="handlePhoneLogin"
           >
-            手机号快捷登录
+            {{
+              preparingLogin
+                ? "准备中…"
+                : loggingIn
+                  ? "授权注册中…"
+                  : phoneRequired
+                    ? "授权手机号并完成注册"
+                    : "手机号快捷登录"
+            }}
+          </button>
+          <button
+            v-else
+            class="phone-input-btn"
+            :disabled="loggingIn || preparingLogin"
+            @click="doLogin()"
+          >
+            {{ preparingLogin ? "准备中…" : loggingIn ? "登录中…" : "手机号快捷登录" }}
           </button>
           <!-- #endif -->
           <!-- #ifndef MP-WEIXIN -->
-          <button class="phone-input-btn" @click="doLogin()">
-            手机号快捷登录
+          <button
+            class="phone-input-btn"
+            :disabled="loggingIn"
+            @click="doLogin()"
+          >
+            {{ loggingIn ? "登录中…" : "手机号快捷登录" }}
           </button>
           <!-- #endif -->
           <text class="divider-line" @click="goBack">切换身份</text
@@ -99,7 +132,11 @@
               :class="{ checked: agreed }"
               @click="agreed = !agreed"
             >
-              {{ agreed ? "✓" : "" }}</view
+              <image
+                v-if="agreed"
+                src="/static/icons/login/check-white.svg"
+                mode="aspectFit"
+              /></view
             ><text
               >我已阅读、理解并同意
               <text class="link" @click="openAgreement('user-agreement')"
@@ -112,6 +149,9 @@
             ></view
           ><text v-if="errorMessage" class="error-message">{{
             errorMessage
+          }}</text
+          ><text v-else-if="flowMessage" class="flow-message">{{
+            flowMessage
           }}</text></view
         >
       </view>
@@ -121,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import SafeBottomAction from "@/components/SafeBottomAction.vue";
 import { wechatLogin, getCurrentUser } from "@/api/auth";
 import { USE_MOCK } from "@/api/http";
@@ -135,14 +175,33 @@ const userRole = ref(
 const selectedRole = ref(userRole.value || "worker");
 const agreed = ref(false);
 const errorMessage = ref("");
+const flowMessage = ref("");
+const phoneRequired = ref(false);
+const loggingIn = ref(false);
+const preparingLogin = ref(false);
+const registrationToken = ref("");
+const preparedLoginResult = ref(null);
+const isLoginPrepareIncomplete = computed(() => {
+  if (USE_MOCK) return false;
+  if (!userRole.value) return true;
+  if (preparingLogin.value) return false;
+  if (preparedLoginResult.value) return false;
+  if (registrationToken.value) return false;
+  return !!errorMessage.value;
+});
 
 function confirmRole() {
   userRole.value = selectedRole.value;
+  prepareWechatLogin();
 }
 function goBack() {
   userRole.value = "";
   agreed.value = false;
   errorMessage.value = "";
+  flowMessage.value = "";
+  phoneRequired.value = false;
+  registrationToken.value = "";
+  preparedLoginResult.value = null;
 }
 function openAgreement(page) {
   uni.showToast({
@@ -153,59 +212,78 @@ function openAgreement(page) {
 function handlePhoneLogin(event) {
   const phoneCode = event?.detail?.code;
   if (!phoneCode) {
-    errorMessage.value = "需要授权手机号后才能快捷登录";
+    flowMessage.value = "";
+    errorMessage.value = "需要授权手机号后才能完成注册";
     return;
   }
   doLogin(phoneCode);
 }
 
 async function doLogin(phoneCode = "") {
+  if (loggingIn.value) return;
   if (!agreed.value) {
+    flowMessage.value = "";
     errorMessage.value = "请先阅读并同意服务协议及隐私协议";
     return;
   }
   const role = selectedRole.value === "boss" ? "BOSS" : "USER";
   if (!USE_MOCK) {
-    // 后端目前只提供微信小程序登录，真实模式下不伪造 H5 登录态。
     // #ifdef MP-WEIXIN
+    loggingIn.value = true;
+    errorMessage.value = "";
+    flowMessage.value = "";
+    if (!phoneCode && preparedLoginResult.value) {
+      const result = preparedLoginResult.value;
+      preparedLoginResult.value = null;
+      registrationToken.value = "";
+      try {
+        await completeLogin(result);
+      } catch (e) {
+        errorMessage.value = e.message || "微信登录失败";
+        loggingIn.value = false;
+      }
+      return;
+    }
+    const performWechatLogin = async (code) => {
+      try {
+        const payload = phoneCode && registrationToken.value
+          ? { registrationToken: registrationToken.value, role, phoneCode }
+          : { code, role, ...(phoneCode ? { phoneCode } : {}) };
+        const result = await wechatLogin(payload);
+        if (result.needPhoneNumber === true) {
+          if (phoneCode) throw new Error("手机号绑定未完成，请重试");
+          phoneRequired.value = true;
+          flowMessage.value = "首次使用，请授权手机号完成注册";
+          registrationToken.value = result.registrationToken || "";
+          loggingIn.value = false;
+          return;
+        }
+        if (result.needPhoneNumber !== false) {
+          throw new Error("登录接口缺少 needPhoneNumber 字段");
+        }
+        phoneRequired.value = false;
+        registrationToken.value = "";
+        preparedLoginResult.value = null;
+        await completeLogin(result);
+      } catch (e) {
+        flowMessage.value = "";
+        errorMessage.value = e.message || "微信登录失败";
+        loggingIn.value = false;
+      }
+    };
+    if (phoneCode && registrationToken.value) {
+      await performWechatLogin("");
+      return;
+    }
     uni.login({
       provider: "weixin",
       success: async ({ code }) => {
-        try {
-          const result = await wechatLogin({
-            code,
-            role,
-            ...(phoneCode ? { phoneCode } : {}),
-          });
-          uni.setStorageSync("token", result.accessToken);
-          uni.setStorageSync("userId", String(result.userId));
-          uni.setStorageSync("role", result.role);
-          if (result.phone) uni.setStorageSync("userPhone", result.phone);
-          if (result.certStatus) {
-            uni.setStorageSync("workerCertStatus", result.certStatus);
-            uni.setStorageSync("certStatus", result.certStatus);
-          }
-          try {
-            const user = await getCurrentUser();
-            if (user && typeof user === "object") {
-              uni.setStorageSync("userInfo", user);
-              if (user.phone) uni.setStorageSync("userPhone", user.phone);
-              if (user.certStatus)
-                uni.setStorageSync("workerCertStatus", user.certStatus);
-            }
-          } catch (_) {}
-          uni.reLaunch({
-            url:
-              result.role === "BOSS"
-                ? "/pages/boss/home"
-                : "/pages/worker/home",
-          });
-        } catch (e) {
-          errorMessage.value = e.message || "微信登录失败";
-        }
+        await performWechatLogin(code);
       },
       fail: () => {
+        flowMessage.value = "";
         errorMessage.value = "无法获取微信登录凭证";
+        loggingIn.value = false;
       },
     });
     return;
@@ -221,6 +299,74 @@ async function doLogin(phoneCode = "") {
   uni.setStorageSync("userId", demoRole === "BOSS" ? "3001" : "2001");
   uni.reLaunch({
     url: demoRole === "BOSS" ? "/pages/boss/home" : "/pages/worker/home",
+  });
+}
+
+function prepareWechatLogin() {
+  if (USE_MOCK || !userRole.value || preparingLogin.value) return;
+  // #ifdef MP-WEIXIN
+  preparingLogin.value = true;
+  registrationToken.value = "";
+  preparedLoginResult.value = null;
+  phoneRequired.value = false;
+  errorMessage.value = "";
+  flowMessage.value = "";
+  const role = selectedRole.value === "boss" ? "BOSS" : "USER";
+  uni.login({
+    provider: "weixin",
+    success: async ({ code }) => {
+      try {
+        const result = await wechatLogin({ code, role });
+        if (result.needPhoneNumber === true) {
+          registrationToken.value = result.registrationToken || "";
+          phoneRequired.value = true;
+          return;
+        }
+        if (result.needPhoneNumber !== false) {
+          throw new Error("登录接口缺少 needPhoneNumber 字段");
+        }
+        phoneRequired.value = false;
+        preparedLoginResult.value = result;
+      } catch (e) {
+        errorMessage.value = e.message || "登录状态检查失败";
+      } finally {
+        preparingLogin.value = false;
+      }
+    },
+    fail: () => {
+      errorMessage.value = "无法获取微信登录凭证";
+      preparingLogin.value = false;
+    },
+  });
+  // #endif
+}
+
+onMounted(prepareWechatLogin);
+
+async function completeLogin(result) {
+  if (!result.accessToken || !result.userId || !result.role) {
+    throw new Error("登录接口返回数据不完整");
+  }
+  uni.setStorageSync("token", result.accessToken);
+  uni.setStorageSync("userId", String(result.userId));
+  uni.setStorageSync("role", result.role);
+  if (result.phone) uni.setStorageSync("userPhone", result.phone);
+  if (result.certStatus) {
+    uni.setStorageSync("workerCertStatus", result.certStatus);
+    uni.setStorageSync("certStatus", result.certStatus);
+  }
+  try {
+    const user = await getCurrentUser();
+    if (user && typeof user === "object") {
+      uni.setStorageSync("userInfo", user);
+      if (user.phone) uni.setStorageSync("userPhone", user.phone);
+      if (user.certStatus) {
+        uni.setStorageSync("workerCertStatus", user.certStatus);
+      }
+    }
+  } catch (_) {}
+  uni.reLaunch({
+    url: result.role === "BOSS" ? "/pages/boss/home" : "/pages/worker/home",
   });
 }
 </script>
@@ -265,10 +411,17 @@ async function doLogin(phoneCode = "") {
   border: 0;
   border-radius: 50%;
   background: #ffffffb3;
-  font-size: 30px;
-  line-height: 28px;
-  color: #555;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-back::after {
+  border: none;
+}
+.nav-back-icon {
+  width: 10px;
+  height: 16px;
 }
 .brand-tag {
   position: absolute;
@@ -278,16 +431,22 @@ async function doLogin(phoneCode = "") {
   padding: 8px 20px;
   border-radius: 24px;
   font-weight: 700;
+  font-size: 16px;
   color: #8b4513;
   box-shadow: 0 2px 10px #00000014;
   white-space: nowrap;
 }
-.role-select-view,
-.login-view {
+.role-select-view {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+.login-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: block;
+  background: transparent;
 }
 .role-select-view {
   padding: 18px 20px 24px;
@@ -383,11 +542,13 @@ async function doLogin(phoneCode = "") {
   height: 34px;
   border-radius: 0 14px 0 14px;
   background: #ff7743;
-  color: #fff;
-  text-align: center;
-  line-height: 34px;
-  font-size: 14px;
-  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.selected-mark image {
+  width: 12px;
+  height: 14px;
 }
 .bottom-action {
   margin-top: auto;
@@ -412,6 +573,9 @@ async function doLogin(phoneCode = "") {
 }
 .role-cta::after,
 .phone-input-btn::after { border: none; }
+.phone-input-btn[disabled] {
+  opacity: 0.65;
+}
 .role-cta {
   width: 100%;
   margin-top: 28px;
@@ -433,8 +597,16 @@ async function doLogin(phoneCode = "") {
   color: #8b4513;
 }
 .hero-subtitle {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-top: 8px;
+  margin-bottom: 0;
+}
+.hero-info-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 .hero-tagline {
   display: block;
@@ -445,17 +617,24 @@ async function doLogin(phoneCode = "") {
 }
 .mascot {
   position: absolute;
-  right: 12px;
-  top: 74px;
-  font-size: 96px;
-  opacity: 0.28;
+  right: 10px;
+  top: 60px;
+  font-size: 100px;
+  opacity: 0.3;
 }
 .mobile-login-card {
   margin-top: 32px;
   background: #fff;
   border-radius: 24px 24px 0 0;
   padding: 28px 24px 16px;
-  flex: 1;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+  flex: 0 0 auto !important;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.06);
 }
 .login-title {
   font-size: 24px;
@@ -465,7 +644,9 @@ async function doLogin(phoneCode = "") {
 }
 .phone-input-btn {
   width: 100%;
+  padding: 14px;
   background: linear-gradient(135deg, #2ecc71, #27ae60);
+  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.35);
 }
 .divider-line {
   display: block;
@@ -503,12 +684,21 @@ async function doLogin(phoneCode = "") {
   background: #ff6b35;
   border-color: #ff6b35;
 }
+.custom-checkbox image {
+  width: 8px;
+  height: 9px;
+}
 .link {
   color: #ff6b35;
   text-decoration: underline;
 }
 .error-message {
   color: #e34d59;
+  font-size: 12px;
+  margin-top: 12px;
+}
+.flow-message {
+  color: #8b6a45;
   font-size: 12px;
   margin-top: 12px;
 }

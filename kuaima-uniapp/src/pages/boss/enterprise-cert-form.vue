@@ -9,10 +9,20 @@
       }"
     >
       <view class="nav-back" @click="goBack">
-        <text>←</text>
+        <image
+          class="nav-back-icon"
+          src="/static/icons/enterprise-cert-form/arrow-left.svg"
+          mode="aspectFit"
+        />
       </view>
       <text class="nav-title">企业自招认证</text>
-      <view class="nav-placeholder" />
+      <view class="nav-right">
+        <image
+          class="nav-more-icon"
+          src="/static/icons/enterprise-cert-form/ellipsis.svg"
+          mode="aspectFit"
+        />
+      </view>
     </view>
 
     <scroll-view scroll-y class="scroll-area">
@@ -69,7 +79,10 @@
         <text class="form-title">上传营业执照</text>
         <view class="upload-area" @click="uploadLicense">
           <view class="upload-icon">
-            <text style="font-size: 36px; color: #ff6b35">☁</text>
+            <image
+              src="/static/icons/enterprise-cert-form/cloud-arrow-up.svg"
+              mode="aspectFit"
+            />
           </view>
           <text class="upload-text">{{
             licensePath ? "已选择营业执照" : "点击上传营业执照"
@@ -86,7 +99,13 @@
           class="agree-checkbox"
           :class="{ checked: agreed }"
           @click="toggleAgree"
-        ></view>
+        >
+          <image
+            v-if="agreed"
+            src="/static/icons/enterprise-cert-form/check.svg"
+            mode="aspectFit"
+          />
+        </view>
         <text class="agree-text">
           我已阅读并同意<text
             class="agree-link"
@@ -251,6 +270,11 @@ export default {
   font-size: 36rpx;
 }
 
+.nav-back-icon {
+  width: 34rpx;
+  height: 34rpx;
+}
+
 .nav-title {
   position: absolute;
   left: 50%;
@@ -261,9 +285,17 @@ export default {
   color: #333;
 }
 
-.nav-placeholder {
+.nav-right {
   width: 64rpx;
   height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-more-icon {
+  width: 30rpx;
+  height: 30rpx;
 }
 
 .scroll-area {
@@ -280,11 +312,13 @@ export default {
 }
 
 .cert-type-label {
+  display: block;
   font-size: 13px;
   color: #999;
 }
 
 .cert-type-value {
+  display: block;
   font-size: 15px;
   font-weight: 600;
   color: #333;
@@ -299,6 +333,7 @@ export default {
 }
 
 .form-title {
+  display: block;
   font-size: 15px;
   font-weight: 600;
   color: #333;
@@ -317,12 +352,14 @@ export default {
 }
 
 .form-label {
+  flex-shrink: 0;
   font-size: 14px;
   color: #333;
   width: 130px;
 }
 
 .form-input {
+  min-width: 0;
   flex: 1;
   border: none;
   outline: none;
@@ -343,7 +380,20 @@ export default {
   background: #fff8f5;
 }
 
+.upload-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+}
+
+.upload-icon image {
+  width: 44px;
+  height: 36px;
+}
+
 .upload-text {
+  display: block;
   font-size: 14px;
   color: #333;
   margin-top: 8px;
@@ -351,6 +401,10 @@ export default {
 }
 
 .upload-hint {
+  display: block;
+  max-width: 292px;
+  margin-left: auto;
+  margin-right: auto;
   font-size: 12px;
   color: #999;
   margin-top: 4px;
@@ -370,11 +424,20 @@ export default {
   border-radius: 3px;
   flex-shrink: 0;
   margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .agree-checkbox.checked {
   background: #ff6b35;
   border-color: #ff6b35;
+}
+
+.agree-checkbox image {
+  width: 11px;
+  height: 11px;
 }
 
 .agree-text {
@@ -388,8 +451,11 @@ export default {
 }
 
 .submit-btn {
+  box-sizing: border-box;
   width: calc(100% - 32px);
-  padding: 14px;
+  height: 48px;
+  padding: 0;
+  line-height: 48px;
   background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: #fff;
   border: none;

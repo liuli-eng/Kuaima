@@ -114,6 +114,7 @@
 <script>
 import { getOrder } from "@/api/backend";
 import { checkBossPublishEligibility } from "@/api/publish-eligibility";
+import { handleTokenInvalid } from "@/api/auth";
 
 function buildDateOptions() {
   const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -239,8 +240,7 @@ export default {
       if (!uni.getStorageSync("token")) {
         if (!this._eligibilityRedirected) {
           this._eligibilityRedirected = true;
-          uni.showToast({ title: "请先登录", icon: "none" });
-          setTimeout(() => uni.reLaunch({ url: "/pages/login/login?role=boss" }), 200);
+          handleTokenInvalid({ role: "boss", toastTitle: "请先登录", clear: false });
         }
         return { canPublish: false, realnameStatus: "UNVERIFIED", enterpriseStatus: "UNVERIFIED", missing: ["REALNAME", "ENTERPRISE"] };
       }

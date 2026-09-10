@@ -22,12 +22,34 @@
 
       <view class="tools">
         <view class="location" @click="chooseLocation">
-          <text class="location-icon">⌖</text>
+          <image
+            class="location-icon"
+            src="/static/icons/worker-home/location-dot-orange.svg"
+            mode="aspectFit"
+          />
           <text class="location-text">{{ location }}</text>
-          <text class="location-arrow">⌄</text>
+          <image
+            class="location-arrow"
+            src="/static/icons/worker-home/chevron-down-gray.svg"
+            mode="aspectFit"
+          />
         </view>
-        <view class="tool-btn" @click="showFilter">筛选⌄</view>
-        <view class="tool-btn" @click="search">⌕ 搜索</view>
+        <view class="tool-btn" @click="showFilter">
+          <text>筛选</text>
+          <image
+            class="tool-icon"
+            src="/static/icons/worker-home/chevron-down-dark-gray.svg"
+            mode="aspectFit"
+          />
+        </view>
+        <view class="tool-btn" @click="search">
+          <image
+            class="tool-icon"
+            src="/static/icons/worker-home/magnifying-glass-dark-gray.svg"
+            mode="aspectFit"
+          />
+          <text>搜索</text>
+        </view>
       </view>
 
       <view v-if="loading" class="state">正在加载岗位…</view>
@@ -56,9 +78,12 @@
       <view class="filter-panel" @click.stop>
         <view class="filter-head"
           ><text>筛选</text
-          ><text class="filter-close" @click="filterVisible = false"
-            >×</text
-          ></view
+          ><image
+            class="filter-close"
+            src="/static/icons/worker-home/xmark-gray.svg"
+            mode="aspectFit"
+            @click="filterVisible = false"
+          /></view
         >
         <scroll-view scroll-y class="filter-content"
           ><view
@@ -502,9 +527,8 @@ onMounted(() => {
 }
 
 .location-icon {
-  color: #ff6b35;
-  font-size: 22rpx;
-  line-height: 1;
+  width: 20rpx;
+  height: 24rpx;
   flex-shrink: 0;
 }
 
@@ -515,18 +539,27 @@ onMounted(() => {
 }
 
 .location-arrow {
-  color: #999;
-  font-size: 20rpx;
+  width: 18rpx;
+  height: 18rpx;
   flex-shrink: 0;
 }
 
 .tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
   background: #fff;
   border-radius: 28rpx;
   padding: 12rpx 24rpx;
   color: #666;
   font-size: 24rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.tool-icon {
+  width: 20rpx;
+  height: 20rpx;
+  flex-shrink: 0;
 }
 
 .jobs {
@@ -572,10 +605,8 @@ onMounted(() => {
   font-weight: 700;
 }
 .filter-close {
-  color: #697386;
-  font-size: 64rpx;
-  font-weight: 400;
-  line-height: 1;
+  width: 32rpx;
+  height: 40rpx;
 }
 .filter-content {
   height: calc(88vh - 220rpx);

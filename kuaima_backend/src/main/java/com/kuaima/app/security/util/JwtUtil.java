@@ -17,6 +17,9 @@ import io.jsonwebtoken.security.Keys;
 public class JwtUtil {
 
     public static final String TYPE_ACCESS = "access";
+    public static final String TYPE_WECHAT_REGISTRATION = "wechat_registration";
+
+    private static final long WECHAT_REGISTRATION_EXPIRATION = 5 * 60 * 1000L;
 
     private final SecretKey key;
     private final long accessExpiration;
@@ -41,6 +44,27 @@ public class JwtUtil {
             builder.claim("uid", uid);
         }
         return builder.compact();
+    }
+
+    /** 新微信用户完成手机号授权前使用的短期凭证。 */
+    public String generateWechatRegistrationToken(String openid) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(openid)
+                .claim("type", TYPE_WECHAT_REGISTRATION)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + WECHAT_REGISTRATION_EXPIRATION))
+                .signWith(key)
+                .compact();
+    }
+
+    public String getWechatRegistrationOpenid(String token) {
+        Claims claims = parseClaims(token);
+        Object type = claims.get("type");
+        if (!TYPE_WECHAT_REGISTRATION.equals(type == null ? null : type.toString())) {
+            throw new IllegalArgumentException("注册凭证类型无效");
+        }
+        return claims.getSubject();
     }
 
     public String getUsername(String token) {
