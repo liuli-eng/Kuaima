@@ -40,4 +40,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
                             @Param("status") String status,
                             @Param("keyword") String keyword,
                             Pageable pageable);
+
+    /** 按 角色/状态/企业认证状态/关键词 组合过滤分页查询（用于雇主列表企业认证筛选） */
+    @Query("""
+            select u from User u
+            where u.role = :role
+              and (:status is null or u.status = :status)
+              and (:enterpriseStatus is null or u.enterpriseStatus = :enterpriseStatus)
+              and ((:keyword is null) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%) or (u.companyName like %:keyword%))
+            """)
+    Page<User> searchBosses(@Param("role") String role,
+                            @Param("status") String status,
+                            @Param("enterpriseStatus") String enterpriseStatus,
+                            @Param("keyword") String keyword,
+                            Pageable pageable);
 }

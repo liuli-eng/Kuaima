@@ -35,18 +35,19 @@ public class AdminLogController {
         return principal instanceof LoginUser u ? u : null;
     }
 
-    @Operation(summary = "操作日志列表", description = "超级管理员/管理员可查看全部日志；其他角色仅可查看本人操作日志")
+    @Operation(summary = "操作日志列表", description = "仅超级管理员可查看全部日志；管理员及其他角色仅可查看本人操作日志")
     @GetMapping
     public Result<Page<AdminLog>> list(@RequestParam(required = false) String type,
                                        @RequestParam(defaultValue = "0") int page,
                                        @RequestParam(defaultValue = "20") int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         LoginUser u = currentLoginUser();
-        // 超级管理员 / 管理员：查看全部；其他角色：仅查看本人日志
-        boolean canSeeAll = u != null && ("SUPER_ADMIN".equals(u.role()) || "ADMIN".equals(u.role()));
+        // 仅超级管理员可查看全部；其他角色（含普通管理员）仅查看本人日志
+        // JWT 中角色带 ADMIN_ 前缀：ADMIN_SUPER_ADMIN / ADMIN_ADMIN / ADMIN_EDITOR / ADMIN_VIEWER
+        boolean isSuperAdmin = u != null && u.role() != null && u.role().endsWith("SUPER_ADMIN");
 
         Page<AdminLog> result;
-        if (canSeeAll) {
+        if (isSuperAdmin) {
             result = (type != null && !type.isEmpty())
                     ? repo.findByType(type, pageable)
                     : repo.findAll(pageable);

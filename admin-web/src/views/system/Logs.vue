@@ -14,6 +14,8 @@
           <el-option label="编辑" value="编辑" />
           <el-option label="删除" value="删除" />
           <el-option label="审核" value="审核" />
+          <el-option label="启用" value="启用" />
+          <el-option label="禁用" value="禁用" />
           <el-option label="重置密码" value="重置密码" />
         </el-select>
         <div class="date-picker-wrap" style="width: 240px;">

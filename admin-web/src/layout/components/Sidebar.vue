@@ -72,7 +72,8 @@ const menuGroups = [
     name: '用户管理',
     items: [
       { path: '/admin/workers', name: '零工管理', icon: 'fa-user', permKey: 'permUser.u1' },
-      { path: '/admin/bosses', name: '老板管理', icon: 'fa-building', permKey: 'permUser.u2' }
+      { path: '/admin/bosses', name: '老板管理', icon: 'fa-building', permKey: 'permUser.u2' },
+      { path: '/admin/enterprise-cert', name: '企业认证', icon: 'fa-id-card', permKey: 'permUser.u2' }
     ]
   },
   {
@@ -95,7 +96,6 @@ const menuGroups = [
     id: 'content',
     name: '内容管理',
     items: [
-      { path: '/admin/certification', name: '认证审核', icon: 'fa-id-card', badgeKey: 'certAudit', permKey: 'permContent.c1' },
       { path: '/admin/notices', name: '公告管理', icon: 'fa-bullhorn', permKey: 'permContent.c3' },
       { path: '/admin/rules', name: '规则管理', icon: 'fa-book', permKey: 'permContent.c4' },
       // { path: '/admin/banners', name: 'Banner管理', icon: 'fa-image', permKey: 'permContent.c2' }

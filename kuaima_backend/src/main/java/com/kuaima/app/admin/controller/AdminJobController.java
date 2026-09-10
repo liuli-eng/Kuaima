@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kuaima.app.admin.dto.BossOrderView;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.boss.entity.BossOrder;
+import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.service.BossOrderService;
 import com.kuaima.app.domain.user.entity.User;
@@ -38,13 +39,16 @@ public class AdminJobController {
     private final BossOrderRespository orderRepository;
     private final BossOrderService bossOrderService;
     private final UserRepository userRepository;
+    private final BaseOrderItemRespository orderItemRepository;
 
     public AdminJobController(BossOrderRespository orderRepository,
                               BossOrderService bossOrderService,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              BaseOrderItemRespository orderItemRepository) {
         this.orderRepository = orderRepository;
         this.bossOrderService = bossOrderService;
         this.userRepository = userRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     /** 招工列表（全部状态），批量填充雇主名称 */
@@ -73,6 +77,15 @@ public class AdminJobController {
             });
         }
 
+        // 批量查询报名人数
+        List<Long> orderIds = orders.stream().map(BossOrder::getId).toList();
+        Map<Long, Long> applyCounts = new HashMap<>();
+        if (!orderIds.isEmpty()) {
+            List<String> validStatuses = List.of("待确认", "已录用", "工作中", "已完成");
+            orderItemRepository.countByOrderIdsAndStatuses(orderIds, validStatuses)
+                    .forEach(row -> applyCounts.put((Long) row[0], (Long) row[1]));
+        }
+
         Page<BossOrderView> views = orders.map(order -> new BossOrderView(
                 order.getId(),
                 order.getOrderTitle(),
@@ -90,7 +103,8 @@ public class AdminJobController {
                 order.getTimestamp(),
                 order.getStartTime(),
                 order.getEndTime(),
-                order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主"
+                order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主",
+                applyCounts.getOrDefault(order.getId(), 0L)
         ));
 
         return Result.success(views, page, orders.getTotalElements());
@@ -123,5 +137,22 @@ public class AdminJobController {
     @PutMapping("/{id}/status")
     public Result<BossOrder> changeStatus(@PathVariable Long id, @RequestParam String target) {
         return Result.success(bossOrderService.changeOrderStatus(id, target));
+    }
+
+    /** 关闭招工（取消招工） */
+    @Operation(summary = "关闭招工", description = "将订单状态置为「取消招工」")
+    @PutMapping("/{id}/close")
+    public Result<BossOrder> close(@PathVariable Long id) {
+        return Result.success(bossOrderService.changeOrderStatus(id, "取消招工"));
+    }
+
+    /** 重新开启招工 */
+    @Operation(summary = "开启招工", description = "将订单状态置为「招工中」")
+    @PutMapping("/{id}/open")
+    public Result<BossOrder> open(@PathVariable Long id) {
+        BossOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("订单不存在: " + id));
+        order.setOrderStatus("招工中");
+        return Result.success(orderRepository.save(order));
     }
 }

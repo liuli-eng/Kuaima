@@ -217,7 +217,12 @@ const formatRealName = (v) => {
   return v || '-'
 }
 const isPhoneVerified = (row) => {
-  return row.certStatus === true || row.certStatus === 1 || row.certStatus === '已认证' || row.certStatus === 'VERIFIED'
+  return row.certStatus === true
+    || row.certStatus === 1
+    || row.certStatus === '已通过'
+    || row.certStatus === '已认证'
+    || row.certStatus === 'VERIFIED'
+    || row.certStatus === 'APPROVED'
 }
 const formatStatus = (s) => {
   if (s === 'NORMAL' || s === 1 || s === '正常') return '正常'

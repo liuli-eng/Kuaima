@@ -40,6 +40,12 @@ const routes = [
         component: () => import('@/views/user/Bosses.vue'),
         meta: { title: '老板管理', icon: 'fa-building', permKey: 'permUser.u2' }
       },
+      {
+        path: 'enterprise-cert',
+        name: 'EnterpriseCert',
+        component: () => import('@/views/user/EnterpriseCert.vue'),
+        meta: { title: '企业认证', icon: 'fa-id-card', permKey: 'permUser.u2' }
+      },
       // 招工管理
       {
         path: 'jobs',

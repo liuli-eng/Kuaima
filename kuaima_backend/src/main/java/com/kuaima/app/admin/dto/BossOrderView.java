@@ -20,6 +20,7 @@ public record BossOrderView(
         java.sql.Timestamp timestamp,
         java.util.Date startTime,
         java.util.Date endTime,
-        String employerName
+        String employerName,
+        Long currentApply
 ) {
 }

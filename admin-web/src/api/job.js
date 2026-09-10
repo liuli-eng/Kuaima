@@ -19,3 +19,13 @@ export function auditJobPass(id) {
 export function auditJobReject(id, reason) {
   return request.put(`/admin/jobs/${id}/audit/reject`, null, { params: { reason } })
 }
+
+// 关闭招工
+export function closeJob(id) {
+  return request.put(`/admin/jobs/${id}/close`)
+}
+
+// 开启招工
+export function openJob(id) {
+  return request.put(`/admin/jobs/${id}/open`)
+}

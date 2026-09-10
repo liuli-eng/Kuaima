@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.Result;
+import com.kuaima.app.domain.user.constant.CertificationStatus;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
@@ -48,15 +49,17 @@ public class AdminUserController {
     }
 
     /** 雇主列表 */
-    @Operation(summary = "雇主列表分页", description = "参数同零工列表，含 companyName 等企业字段")
+    @Operation(summary = "雇主列表分页", description = "参数：status(正常/冻结)、enterpriseStatus(UNVERIFIED/PENDING/APPROVED/REJECTED)、keyword(企业名/手机号模糊)、page、size")
     @GetMapping("/bosses")
     public Result<Page<User>> bosses(@RequestParam(required = false) String status,
+                                     @RequestParam(required = false) String enterpriseStatus,
                                      @RequestParam(required = false) String keyword,
                                      @RequestParam(defaultValue = "0") int page,
                                      @RequestParam(defaultValue = "10") int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         String kw = keyword != null && !keyword.isBlank() ? keyword : null;
-        Page<User> result = userRepository.searchByRole(UserRole.BOSS, status, kw, pageable);
+        String es = enterpriseStatus != null && !enterpriseStatus.isBlank() ? enterpriseStatus : null;
+        Page<User> result = userRepository.searchBosses(UserRole.BOSS, status, es, kw, pageable);
         return Result.success(result, page, result.getTotalElements());
     }
 
@@ -112,5 +115,29 @@ public class AdminUserController {
             });
         }
         return Result.success();
+    }
+
+    /** 企业认证审核通过 */
+    @Operation(summary = "企业认证审核通过", description = "将雇主 enterpriseStatus 置为 APPROVED、certStatus 置为「已通过」")
+    @PutMapping("/{id}/enterprise/pass")
+    public Result<User> enterprisePass(@PathVariable Long id) {
+        User u = userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
+        u.setEnterpriseStatus(CertificationStatus.APPROVED);
+        u.setCertStatus("已通过");
+        u.setCertType("ENTERPRISE");
+        return Result.success(userRepository.save(u));
+    }
+
+    /** 企业认证审核拒绝 */
+    @Operation(summary = "企业认证审核拒绝", description = "将雇主 enterpriseStatus 置为 REJECTED、certStatus 置为「已拒绝」")
+    @PutMapping("/{id}/enterprise/reject")
+    public Result<User> enterpriseReject(@PathVariable Long id) {
+        User u = userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
+        u.setEnterpriseStatus(CertificationStatus.REJECTED);
+        u.setCertStatus("已拒绝");
+        u.setCertType("ENTERPRISE");
+        return Result.success(userRepository.save(u));
     }
 }

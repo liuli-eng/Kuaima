@@ -20,7 +20,6 @@ import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.user.constant.UserRole;
-import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 
