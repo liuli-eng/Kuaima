@@ -7,9 +7,11 @@
       @click="go(item)"
     >
       <view class="icon-wrap"
-        ><view class="icon" :class="`icon-${item.key}`"
-          ><text v-if="item.key === 'messages'">•••</text></view
-        ></view
+        ><image
+          class="tab-icon-image"
+          :src="current === item.key ? item.activeIcon : item.icon"
+          mode="aspectFit"
+        /></view
       >
       <text>{{ item.label }}</text>
     </view>
@@ -22,14 +24,16 @@ import { computed } from "vue";
 const props = defineProps({ current: { type: String, required: true } });
 
 const items = [
-  { key: "home", label: "抢日结", url: "/pages/worker/home" },
-  { key: "orders", label: "接单", url: "/pages/worker/orders" },
+  { key: "home", label: "抢日结", url: "/pages/worker/home", icon: "/static/icons/boss-profile/house-gray.svg", activeIcon: "/static/icons/boss-home/house.svg" },
+  { key: "orders", label: "接单", url: "/pages/worker/orders", icon: "/static/icons/worker-profile/clipboard-gray.svg", activeIcon: "/static/icons/worker-profile/clipboard-white.svg" },
   {
     key: "messages",
     label: "消息",
     url: "/pages/worker/messages",
+    icon: "/static/icons/boss-home/comment.svg",
+    activeIcon: "/static/icons/worker-profile/comment-white.svg",
   },
-  { key: "profile", label: "我的", url: "/pages/worker/profile" },
+  { key: "profile", label: "我的", url: "/pages/worker/profile", icon: "/static/icons/boss-home/smile.svg", activeIcon: "/static/icons/boss-profile/smile-active.svg" },
 ];
 
 const current = computed(() => props.current);
@@ -86,99 +90,8 @@ function go(item) {
   box-shadow: 0 8rpx 20rpx rgba(255, 107, 53, 0.3);
 }
 
-.icon {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.tab-icon-image {
   width: 44rpx;
   height: 44rpx;
-  color: #999;
-  font-size: 34rpx;
-  line-height: 1;
-}
-
-.item.active .icon {
-  color: #fff;
-}
-.icon-home {
-  width: 30rpx;
-  height: 26rpx;
-  margin-top: 8rpx;
-  border: 4rpx solid currentColor;
-  border-top: 0;
-  border-radius: 3rpx;
-  box-sizing: border-box;
-}
-.icon-home::before {
-  content: "";
-  position: absolute;
-  left: 2rpx;
-  top: -12rpx;
-  width: 20rpx;
-  height: 20rpx;
-  border-top: 4rpx solid currentColor;
-  border-left: 4rpx solid currentColor;
-  transform: rotate(45deg);
-}
-.icon-orders {
-  border: 4rpx solid currentColor;
-  border-radius: 5rpx;
-  box-sizing: border-box;
-}
-.icon-orders::before {
-  content: "";
-  position: absolute;
-  left: 6rpx;
-  right: 6rpx;
-  top: 8rpx;
-  height: 3rpx;
-  background: currentColor;
-  box-shadow:
-    0 8rpx 0 currentColor,
-    0 16rpx 0 currentColor;
-}
-.icon-messages {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38rpx;
-  height: 30rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 16rpx;
-  box-sizing: border-box;
-  font-size: 18rpx;
-  line-height: 1;
-}
-.icon-messages::after {
-  content: "";
-  position: absolute;
-  left: 4rpx;
-  bottom: -7rpx;
-  width: 10rpx;
-  height: 10rpx;
-  border-left: 4rpx solid currentColor;
-  transform: skew(-28deg);
-}
-.icon-profile {
-  border: 4rpx solid currentColor;
-  border-radius: 50%;
-  box-sizing: border-box;
-}
-.icon-profile::before {
-  content: "••";
-  position: absolute;
-  left: 5rpx;
-  top: -3rpx;
-  letter-spacing: 4rpx;
-  font-size: 16rpx;
-}
-.icon-profile::after {
-  content: "⌣";
-  position: absolute;
-  left: 7rpx;
-  top: 10rpx;
-  font-size: 20rpx;
-  font-weight: 700;
 }
 </style>

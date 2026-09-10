@@ -85,19 +85,19 @@
     <!-- 底部TabBar -->
     <view class="tab-bar">
       <view class="tab-item active" @click="switchTab('home')">
-        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-home/house.svg" mode="aspectFit" /></view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/house-white.svg" mode="aspectFit" /></view>
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" @click="switchTab('order')">
-        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-home/calendar.svg" mode="aspectFit" /></view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/calendar-check-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">招工订单</text>
       </view>
       <view class="tab-item" @click="switchTab('message')">
-        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-home/comment.svg" mode="aspectFit" /></view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/comment-dots-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">消息</text>
       </view>
       <view class="tab-item" @click="switchTab('profile')">
-        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-home/smile.svg" mode="aspectFit" /></view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/face-smile-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">我的</text>
       </view>
     </view>

@@ -3,18 +3,18 @@
     <AppNavBar title="我的" />
     <scroll-view scroll-y class="content">
       <view class="user-header">
-        <view class="avatar">👨</view>
+        <view class="avatar"><image src="/static/icons/worker-profile/avatar.svg" mode="aspectFill" /></view>
         <view class="user-info" @click="go('/pages/worker/user-info')">
-          <text class="name">{{ profileName }} ›</text>
+          <text class="name">{{ profileName }} <text class="chevron">›</text></text>
         </view>
         <view class="switch-btn" @click="go('/pages/worker/switch-identity')">
-          ⇄ 我要招人
+          <image src="/static/icons/boss-profile/exchange.svg" mode="aspectFit" /> 我要招人
         </view>
       </view>
 
       <view class="wallet-card">
         <view class="wallet-left">
-          <text class="wallet-icon">¥</text>
+          <image class="wallet-icon" src="/static/icons/worker-profile/coins.svg" mode="aspectFit" />
           <view>
             <text class="wallet-label">收入余额(元)</text>
             <text class="wallet-value">{{ wallet.available }}</text>
@@ -33,9 +33,7 @@
           class="grid-item"
           @click="handle(item)"
         >
-          <text class="grid-icon" :style="{ color: item.color }">{{
-            item.icon
-          }}</text>
+          <image class="grid-icon" :src="item.icon" mode="aspectFit" />
           <text class="grid-label">{{ item.label }}</text>
           <text v-if="item.badge" class="badge">{{ item.badge }}</text>
         </view>
@@ -67,12 +65,12 @@ const profileName = computed(() => {
   return name.includes("零工") ? name : `${name}｜零工`;
 });
 const menus = [
-  { key: "service", label: "联系客服", icon: "◉", color: "#1890ff" },
-  { key: "rule", label: "平台规则", icon: "⚖", color: "#52c41a" },
-  { key: "agreement", label: "用户服务协议", icon: "▤", color: "#999" },
-  { key: "privacy", label: "隐私协议", icon: "♙", color: "#999" },
-  { key: "copyright", label: "知识产权规则", icon: "©", color: "#999" },
-  { key: "realname", label: "手机号认证", icon: "▯", color: "#52c41a" },
+  { key: "service", label: "联系客服", icon: "/static/icons/worker-profile/headset.svg" },
+  { key: "rule", label: "平台规则", icon: "/static/icons/worker-profile/balance.svg" },
+  { key: "agreement", label: "用户服务协议", icon: "/static/icons/worker-profile/file.svg" },
+  { key: "privacy", label: "隐私协议", icon: "/static/icons/worker-profile/user-lock.svg" },
+  { key: "copyright", label: "知识产权规则", icon: "/static/icons/worker-profile/copyright.svg" },
+  { key: "realname", label: "手机号认证", icon: "/static/icons/boss-profile/mobile.svg" },
 ];
 
 onShow(async () => {
@@ -276,4 +274,10 @@ function handle(item) {
   color: #fff;
   font-size: 18rpx;
 }
+.avatar image { width: 100%; height: 100%; }
+.name .chevron { color: #8b4513; font-size: 26rpx; }
+.switch-btn { display: flex; align-items: center; gap: 8rpx; }
+.switch-btn image { width: 28rpx; height: 28rpx; }
+.wallet-icon { width: 54rpx; height: 54rpx; }
+.grid-icon { width: 48rpx; height: 48rpx; margin: 0 auto; }
 </style>

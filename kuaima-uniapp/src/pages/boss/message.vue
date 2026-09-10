@@ -46,19 +46,43 @@
     <!-- 底部TabBar -->
     <view class="tab-bar">
       <view class="tab-item" @click="switchTab('home')">
-        <view class="tab-icon-wrap"><text class="tab-icon">⌂</text></view>
+        <view class="tab-icon-wrap">
+          <image
+            class="tab-icon-image"
+            src="/static/icons/boss-tabbar/house-gray.svg"
+            mode="aspectFit"
+          />
+        </view>
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" @click="switchTab('order')">
-        <view class="tab-icon-wrap"><text class="tab-icon">▣</text></view>
+        <view class="tab-icon-wrap">
+          <image
+            class="tab-icon-image"
+            src="/static/icons/boss-tabbar/calendar-check-gray.svg"
+            mode="aspectFit"
+          />
+        </view>
         <text class="tab-label">日结订单</text>
       </view>
       <view class="tab-item active" @click="switchTab('message')">
-        <view class="tab-icon-wrap"><text class="tab-icon">●</text></view>
+        <view class="tab-icon-wrap">
+          <image
+            class="tab-icon-image"
+            src="/static/icons/boss-tabbar/comment-dots-white.svg"
+            mode="aspectFit"
+          />
+        </view>
         <text class="tab-label">消息</text>
       </view>
       <view class="tab-item" @click="switchTab('profile')">
-        <view class="tab-icon-wrap"><text class="tab-icon">☺</text></view>
+        <view class="tab-icon-wrap">
+          <image
+            class="tab-icon-image"
+            src="/static/icons/boss-tabbar/face-smile-gray.svg"
+            mode="aspectFit"
+          />
+        </view>
         <text class="tab-label">我的</text>
       </view>
     </view>
@@ -420,8 +444,9 @@ export default {
   margin-bottom: 3px;
 }
 
-.tab-icon {
-  line-height: 1;
+.tab-icon-image {
+  width: 20px;
+  height: 20px;
 }
 
 .tab-item.active .tab-icon-wrap {
@@ -430,7 +455,13 @@ export default {
   border-radius: 50%;
   background: linear-gradient(135deg, #FF6B35, #FF8C5A);
   color: #fff;
+  margin-bottom: 2px;
   box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
+}
+
+.tab-item.active .tab-icon-image {
+  width: 21px;
+  height: 21px;
 }
 
 .tab-label {

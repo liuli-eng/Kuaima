@@ -1,12 +1,12 @@
 <template>
   <view class="container">
     <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
+      <view class="status-bar">
+        <text>19:53</text>
+        <view class="status-icons">
+          <image src="/static/icons/boss-profile/signal.svg" mode="aspectFit" />
+          <image src="/static/icons/boss-profile/wifi.svg" mode="aspectFit" />
+          <image src="/static/icons/boss-profile/battery.svg" mode="aspectFit" />
       </view>
     </view>
 
@@ -17,11 +17,11 @@
           <view class="brand-tag">快马日结</view>
           <view class="nav-icons">
             <view class="nav-icon-item">
-              <text>⋯</text>
+              <image src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" />
             </view>
             <view class="nav-divider"></view>
             <view class="nav-icon-item">
-              <text>●</text>
+              <image src="/static/icons/boss-profile/dot.svg" mode="aspectFit" />
             </view>
           </view>
         </view>
@@ -29,14 +29,14 @@
         <!-- 用户信息 -->
         <view class="user-info" @click="navigateTo('personal-info')">
           <view class="user-avatar">
-            <text style="font-size:32px;color:white;">👤</text>
+            <image src="/static/icons/boss-profile/user.svg" mode="aspectFit" />
           </view>
           <view class="user-info-main">
             <text class="user-name">{{ profile.name }} | 老板</text>
-            <text style="color:#999;font-size:12px;">›</text>
+            <image class="chevron-icon" src="/static/icons/boss-profile/chevron-right.svg" mode="aspectFit" />
           </view>
           <view class="switch-btn" @click.stop="navigateTo('switch-account')">
-            <text style="font-size:10px;">🔄</text>
+            <image src="/static/icons/boss-profile/exchange.svg" mode="aspectFit" />
             <text>我要找工作</text>
           </view>
         </view>
@@ -45,7 +45,7 @@
       <!-- 企业认证Banner -->
       <view class="cert-banner card-shadow" @click="navigateTo('enterprise-cert')">
         <view class="cert-icon">
-          <text style="font-size:18px;">🏢</text>
+          <image src="/static/icons/boss-profile/building.svg" mode="aspectFit" />
         </view>
         <view class="cert-content">
           <text class="cert-title">{{ profile.enterpriseApproved ? '企业认证已通过' : '完成企业认证 解锁权益' }}</text>
@@ -59,13 +59,13 @@
       <view class="service-grid card-shadow">
         <view class="service-item" @click="navigateTo('suspend-settle')">
           <view class="service-icon" style="color: #FF6B35;">
-            <text>⏸</text>
+            <image src="/static/icons/boss-profile/pause.svg" mode="aspectFit" />
           </view>
           <text class="service-label">待结算</text>
         </view>
         <view class="service-item" @click="navigateTo('payment-detail')">
           <view class="service-icon" style="color: #FF6B35;">
-            <text>💲</text>
+            <image src="/static/icons/boss-profile/sack-dollar.svg" mode="aspectFit" />
           </view>
           <text class="service-label">报酬支付明细</text>
         </view>
@@ -76,43 +76,43 @@
       <view class="other-grid card-shadow">
         <view class="other-item" @click="navigateTo('service-chat')">
           <view class="other-icon" style="color: #FF6B35;">
-            <text>🎧</text>
+            <image src="/static/icons/boss-profile/headset.svg" mode="aspectFit" />
           </view>
           <text class="other-label">联系客服</text>
         </view>
         <view class="other-item" @click="navigateTo('realname')">
           <view class="other-icon" style="color: #FF6B35;">
-            <text>📱</text>
+            <image src="/static/icons/boss-profile/mobile.svg" mode="aspectFit" />
           </view>
           <text class="other-label">手机号认证</text>
         </view>
         <view class="other-item" @click="navigateTo('enterprise-cert')">
           <view class="other-icon" style="color: #FF6B35;">
-            <text>🏛</text>
+            <image src="/static/icons/boss-profile/building-columns.svg" mode="aspectFit" />
           </view>
           <text class="other-label">企业认证</text>
         </view>
         <view class="other-item" @click="navigateTo('user-agreement')">
           <view class="other-icon" style="color: #FF6B35;">
-            <text>📄</text>
+            <image src="/static/icons/boss-profile/file-lines.svg" mode="aspectFit" />
           </view>
           <text class="other-label">用户服务协议</text>
         </view>
         <view class="other-item" @click="navigateTo('privacy')">
           <view class="other-icon" style="color: #FF6B35;">
-            <text>🔒</text>
+            <image src="/static/icons/boss-profile/lock.svg" mode="aspectFit" />
           </view>
           <text class="other-label">隐私协议</text>
         </view>
         <view class="other-item" @click="navigateTo('copyright')">
           <view class="other-icon" style="color: #FF6B35;">
-            <text>📖</text>
+            <image src="/static/icons/boss-profile/book-open.svg" mode="aspectFit" />
           </view>
           <text class="other-label">知识产权规则</text>
         </view>
         <view class="other-item" @click="navigateTo('rule')">
           <view class="other-icon" style="color: #FF6B35;">
-            <text>📋</text>
+            <image src="/static/icons/boss-profile/clipboard-list.svg" mode="aspectFit" />
           </view>
           <text class="other-label">平台规则</text>
         </view>
@@ -132,25 +132,25 @@
     <view class="tab-bar">
       <view class="tab-item" @click="switchTab('home')">
         <view class="tab-icon-wrap">
-          <text>🏠</text>
+          <image src="/static/icons/boss-tabbar/house-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" @click="switchTab('order')">
         <view class="tab-icon-wrap">
-          <text>📋</text>
+          <image src="/static/icons/boss-tabbar/calendar-check-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">招工订单</text>
       </view>
       <view class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap">
-          <text>💬</text>
+          <image src="/static/icons/boss-tabbar/comment-dots-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">消息</text>
       </view>
       <view class="tab-item active" @click="switchTab('profile')">
         <view class="tab-icon-wrap">
-          <text>😊</text>
+          <image src="/static/icons/boss-tabbar/face-smile-white.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">我的</text>
       </view>
@@ -527,4 +527,14 @@ export default {
   margin-bottom: 2px;
   box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
 }
+
+.status-icons image { width: 16px; height: 16px; }
+.nav-icon-item image { width: 16px; height: 16px; }
+.user-avatar image { width: 34px; height: 34px; }
+.chevron-icon { width: 12px; height: 12px; }
+.switch-btn image { width: 14px; height: 14px; }
+.cert-icon image { width: 21px; height: 21px; }
+.service-icon image, .other-icon image { width: 24px; height: 24px; }
+.tab-icon-wrap image { width: 22px; height: 22px; }
+.tab-item.active .tab-icon-wrap image { opacity: 1; }
 </style>

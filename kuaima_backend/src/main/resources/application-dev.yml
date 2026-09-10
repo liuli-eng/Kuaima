@@ -4,6 +4,12 @@ spring:
     username: root
     password: 11112222
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 10000
+      validation-timeout: 3000
+      keepalive-time: 30000
+      max-lifetime: 300000
+      connection-test-query: SELECT 1
   jpa:
     hibernate:
       ddl-auto: update
@@ -26,6 +32,9 @@ aliyun:
     access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
     sign-name: 快马日结
     template-code: SMS_470990050
+    # 开发环境使用固定验证码，生产环境配置必须保持 false
+    mock-enabled: true
+    mock-code: "000000"
     # 验证码有效期（秒）
     code-expiration: 300
     # 重发间隔限制（秒）

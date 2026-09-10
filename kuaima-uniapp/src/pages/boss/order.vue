@@ -189,25 +189,25 @@
     <view class="tab-bar">
       <view class="tab-item" @click="switchTab('home')">
         <view class="tab-icon-wrap">
-          <text class="tab-icon">⌂</text>
+          <image class="tab-svg" src="/static/icons/boss-tabbar/house-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item active" @click="switchTab('order')">
         <view class="tab-icon-wrap">
-          <text class="tab-icon">▣</text>
+          <image class="tab-svg" src="/static/icons/boss-tabbar/calendar-check-white.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">招工订单</text>
       </view>
       <view class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap">
-          <text class="tab-icon">●</text>
+          <image class="tab-svg" src="/static/icons/boss-tabbar/comment-dots-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">消息</text>
       </view>
       <view class="tab-item" @click="switchTab('profile')">
         <view class="tab-icon-wrap">
-          <text class="tab-icon">☺</text>
+          <image class="tab-svg" src="/static/icons/boss-tabbar/face-smile-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">我的</text>
       </view>
@@ -1080,6 +1080,11 @@ export default {
   color: white;
   margin-bottom: 2px;
   box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
+}
+
+.tab-svg {
+  width: 22px;
+  height: 22px;
 }
 
 /* 弹窗样式 */
