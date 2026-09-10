@@ -179,7 +179,8 @@ public class AdminDashboardController {
                         order.getTimestamp(),
                         order.getStartTime(),
                         order.getEndTime(),
-                        order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主"
+                        order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主",
+                        0L
                 ))
                 .collect(Collectors.toList());
 
