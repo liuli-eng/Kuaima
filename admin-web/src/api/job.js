@@ -29,3 +29,18 @@ export function closeJob(id) {
 export function openJob(id) {
   return request.put(`/admin/jobs/${id}/open`)
 }
+
+// 报名人员列表
+export function listApplicants(jobId) {
+  return request.get(`/admin/jobs/${jobId}/applicants`)
+}
+
+// 录用报名人员
+export function hireApplicant(itemId) {
+  return request.put(`/admin/jobs/item/${itemId}/hire`)
+}
+
+// 拒绝报名人员
+export function rejectApplicant(itemId, reason) {
+  return request.put(`/admin/jobs/item/${itemId}/reject`, null, { params: { reason } })
+}

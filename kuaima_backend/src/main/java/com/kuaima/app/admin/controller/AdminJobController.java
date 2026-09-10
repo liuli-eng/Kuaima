@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.admin.dto.BossOrderView;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
@@ -154,5 +155,62 @@ public class AdminJobController {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("订单不存在: " + id));
         order.setOrderStatus("招工中");
         return Result.success(orderRepository.save(order));
+    }
+
+    // ==================== 报名人员管理 ====================
+
+    /** 某订单的报名人员列表（带零工用户信息） */
+    @Operation(summary = "报名人员列表", description = "返回该订单下所有报名记录，附带零工用户名、手机号、认证状态")
+    @GetMapping("/{id}/applicants")
+    public Result<List<Map<String, Object>>> applicants(@PathVariable Long id) {
+        List<BaseOrderItem> items = orderItemRepository.findByOrderId(id);
+        Set<Long> userIds = items.stream().map(BaseOrderItem::getUserId).filter(uid -> uid != null && uid > 0).collect(Collectors.toSet());
+        Map<Long, User> userMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            userRepository.findAllById(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+        List<Map<String, Object>> result = items.stream().map(item -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", item.getId());
+            m.put("orderId", item.getOrderId());
+            m.put("userId", item.getUserId());
+            m.put("status", item.getStatus());
+            m.put("remark", item.getRemark());
+            m.put("applyDate", item.getApplyDate());
+            m.put("hireDate", item.getHireDate());
+            m.put("cancelDate", item.getCancelDate());
+            m.put("cancelReason", item.getCancelReason());
+            User u = userMap.get(item.getUserId());
+            if (u != null) {
+                m.put("username", u.getUsername());
+                m.put("nickname", u.getNickname());
+                m.put("phone", u.getPhone());
+                m.put("certStatus", u.getCertStatus());
+            }
+            return m;
+        }).collect(Collectors.toList());
+        return Result.success(result);
+    }
+
+    /** 管理员录用报名人员 */
+    @Operation(summary = "管理员录用", description = "将已报名的记录状态变为「已录用」并记录录用时间")
+    @PutMapping("/item/{itemId}/hire")
+    public Result<BaseOrderItem> hireItem(@PathVariable Long itemId) {
+        return Result.success(bossOrderService.hireItem(itemId));
+    }
+
+    /** 管理员拒绝报名人员 */
+    @Operation(summary = "管理员拒绝报名", description = "将已报名的记录状态变为「取消报名」并记录拒绝原因")
+    @PutMapping("/item/{itemId}/reject")
+    public Result<BaseOrderItem> rejectItem(@PathVariable Long itemId, @RequestParam(required = false) String reason) {
+        BaseOrderItem item = orderItemRepository.findById(itemId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("报名记录不存在: " + itemId));
+        if (!"已报名".equals(item.getStatus())) {
+            throw new IllegalStateException("仅已报名的记录可以拒绝");
+        }
+        item.setStatus("取消报名");
+        item.setCancelReason(reason);
+        item.setCancelDate(java.sql.Date.valueOf(java.time.LocalDate.now()));
+        return Result.success(orderItemRepository.save(item));
     }
 }

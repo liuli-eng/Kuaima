@@ -11,162 +11,154 @@
     </div>
 
     <div class="card">
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="待确认" name="pending">
-          <el-table :data="pagedPending" stripe>
-            <el-table-column label="用户" show-overflow-tooltip>
-              <template #default="{ row }">
-                <div class="user-cell">
-                  <span class="mini-avatar">{{ row.avatar }}</span>
-                  <div>
-                    <div style="font-weight: 500;">{{ row.name }}</div>
-                    <div class="text-muted" style="font-size: 12px;">{{ row.phone }}</div>
-                  </div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="realName" label="实名" show-overflow-tooltip>
-              <template #default="{ row }">
-                <el-tag v-if="row.realName === '已认证'" type="success" effect="light">已认证</el-tag>
-                <el-tag v-else type="info" effect="light">未认证</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="技能标签" show-overflow-tooltip>
-              <template #default="{ row }">
-                <el-tag v-for="skill in row.skills" :key="skill" size="small" type="warning" style="margin-right: 4px;">{{ skill }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="creditScore" label="信用分" show-overflow-tooltip />
-            <el-table-column prop="applyTime" label="报名时间" show-overflow-tooltip />
-            <el-table-column label="操作" width="200">
-              <template #default>
-                <el-button link type="primary" size="small">查看资料</el-button>
-                <el-button link type="success" size="small">录用</el-button>
-                <el-button link type="danger" size="small">拒绝</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div class="pagination">
-            <div class="pagination-info">共 {{ pendingList.length }} 条记录</div>
-            <el-pagination
-              v-model:current-page="pendingPage"
-              v-model:page-size="pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="pendingList.length"
-              layout="sizes, prev, pager, next, jumper"
-              background
-              @current-change="(p) => pendingPage = p"
-              @size-change="(s) => { pageSize = s; pendingPage = 1 }"
-            />
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane label="已录用" name="accepted">
-          <el-table :data="pagedAccepted" stripe>
-            <el-table-column label="用户" show-overflow-tooltip>
-              <template #default="{ row }">
-                <div class="user-cell">
-                  <span class="mini-avatar">{{ row.avatar }}</span>
-                  <div>
-                    <div style="font-weight: 500;">{{ row.name }}</div>
-                    <div class="text-muted" style="font-size: 12px;">{{ row.phone }}</div>
-                  </div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="creditScore" label="信用分" show-overflow-tooltip />
-            <el-table-column prop="acceptTime" label="录用时间" show-overflow-tooltip />
-            <el-table-column label="操作" width="120">
-              <template #default>
-                <el-button link type="primary" size="small">查看详情</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div class="pagination">
-            <div class="pagination-info">共 {{ acceptedList.length }} 条记录</div>
-            <el-pagination
-              v-model:current-page="acceptedPage"
-              v-model:page-size="pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="acceptedList.length"
-              layout="sizes, prev, pager, next, jumper"
-              background
-              @current-change="(p) => acceptedPage = p"
-              @size-change="(s) => { pageSize = s; acceptedPage = 1 }"
-            />
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane label="已拒绝" name="rejected">
-          <el-table :data="pagedRejected" stripe>
-            <el-table-column label="用户" show-overflow-tooltip>
-              <template #default="{ row }">
-                <div class="user-cell">
-                  <span class="mini-avatar">{{ row.avatar }}</span>
-                  <div>
-                    <div style="font-weight: 500;">{{ row.name }}</div>
-                    <div class="text-muted" style="font-size: 12px;">{{ row.phone }}</div>
-                  </div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="rejectReason" label="拒绝原因" show-overflow-tooltip />
-            <el-table-column prop="rejectTime" label="拒绝时间" show-overflow-tooltip />
-          </el-table>
-          <div class="pagination">
-            <div class="pagination-info">共 {{ rejectedList.length }} 条记录</div>
-            <el-pagination
-              v-model:current-page="rejectedPage"
-              v-model:page-size="pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="rejectedList.length"
-              layout="sizes, prev, pager, next, jumper"
-              background
-              @current-change="(p) => rejectedPage = p"
-              @size-change="(s) => { pageSize = s; rejectedPage = 1 }"
-            />
-          </div>
-        </el-tab-pane>
+      <el-tabs v-model="activeTab" @tab-change="onTabChange">
+        <el-tab-pane label="待确认" name="pending" />
+        <el-tab-pane label="已录用" name="hired" />
+        <el-tab-pane label="已到岗" name="working" />
+        <el-tab-pane label="已完成" name="finished" />
+        <el-tab-pane label="已拒绝" name="rejected" />
+        <el-tab-pane label="全部" name="all" />
       </el-tabs>
+
+      <el-table :data="filteredList" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
+        <el-table-column label="用户" show-overflow-tooltip>
+          <template #default="{ row }">
+            <div class="user-cell">
+              <span class="mini-avatar">{{ (row.nickname || row.username || '?').charAt(0) }}</span>
+              <div>
+                <div style="font-weight: 500;">{{ row.nickname || row.username || '-' }}</div>
+                <div class="text-muted" style="font-size: 12px;">{{ row.phone || '-' }}</div>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="实名认证" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.certStatus === '已通过' || row.certStatus === '已认证'" type="success" effect="light">手机号已验证</el-tag>
+            <el-tag v-else type="info" effect="light">手机号未验证</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="报名状态" width="100">
+          <template #default="{ row }">
+            <span :class="['status-badge', statusClass(row.status)]">{{ formatStatus(row.status) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="remark" label="报名备注" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.remark || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="报名时间" width="120" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatDate(row.applyDate) }}</template>
+        </el-table-column>
+        <el-table-column label="录用时间" width="120" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatDate(row.hireDate) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="160" fixed="right">
+          <template #default="{ row }">
+            <template v-if="row.status === '已报名'">
+              <el-button link type="success" size="small" @click="handleHire(row)">录用</el-button>
+              <el-button link type="danger" size="small" @click="handleReject(row)">拒绝</el-button>
+            </template>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination">
+        <div class="pagination-info">共 {{ filteredList.length }} 条记录</div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { listApplicants, hireApplicant, rejectApplicant } from '@/api/job'
 
 const router = useRouter()
 const route = useRoute()
-
 const activeTab = ref('pending')
-const pageSize = ref(10)
-const pendingPage = ref(1)
-const acceptedPage = ref(1)
-const rejectedPage = ref(1)
+const allApplicants = ref([])
 
-const pendingList = ref([
-  { name: '张建国', phone: '138****8888', avatar: '张', realName: '已认证', skills: ['装配', '电子'], creditScore: 85, applyTime: '2024-03-15 10:30' },
-  { name: '郑小龙', phone: '137****4444', avatar: '郑', realName: '已认证', skills: ['电子'], creditScore: 50, applyTime: '2024-03-15 10:45' }
-])
-
-const acceptedList = ref([
-  { name: '刘芳', phone: '135****7777', avatar: '刘', creditScore: 95, acceptTime: '2024-03-15 11:00' },
-  { name: '孙美玲', phone: '135****8888', avatar: '孙', creditScore: 82, acceptTime: '2024-03-15 11:15' }
-])
-
-const rejectedList = ref([
-  { name: '吴志强', phone: '136****1111', avatar: '吴', rejectReason: '信用分过低', rejectTime: '2024-03-14 16:00' }
-])
-
-const slicePage = (list, page, size) => {
-  const start = (page - 1) * size
-  return list.slice(start, start + size)
+const statusMap = {
+  'pending': '已报名',
+  'hired': '已录用',
+  'working': '已到岗',
+  'finished': '已完成',
+  'rejected': '取消报名',
 }
 
-const pagedPending = computed(() => slicePage(pendingList.value, pendingPage.value, pageSize.value))
-const pagedAccepted = computed(() => slicePage(acceptedList.value, acceptedPage.value, pageSize.value))
-const pagedRejected = computed(() => slicePage(rejectedList.value, rejectedPage.value, pageSize.value))
+const filteredList = computed(() => {
+  if (activeTab.value === 'all') return allApplicants.value
+  const target = statusMap[activeTab.value]
+  return allApplicants.value.filter(a => a.status === target)
+})
+
+const formatStatus = (s) => {
+  if (s === '已报名') return '待确认'
+  if (s === '已录用') return '已录用'
+  if (s === '已到岗') return '已到岗'
+  if (s === '已完成') return '已完成'
+  if (s === '取消报名') return '已拒绝'
+  return s || '-'
+}
+
+const statusClass = (s) => {
+  if (s === '已报名') return 'warning'
+  if (s === '已录用') return 'success'
+  if (s === '已到岗') return 'info'
+  if (s === '已完成') return 'success'
+  if (s === '取消报名') return 'default'
+  return 'default'
+}
+
+const formatDate = (d) => {
+  if (!d) return '-'
+  const s = String(d).replace('T', ' ')
+  return s.length > 10 ? s.substring(0, 10) : s
+}
+
+const loadData = async () => {
+  try {
+    const res = await listApplicants(route.params.id)
+    allApplicants.value = res.data || []
+  } catch (err) {
+    console.warn('[JobApplicants] 加载失败:', err.message)
+    allApplicants.value = []
+    ElMessage.error('加载报名人员失败')
+  }
+}
+
+const onTabChange = () => {}
+
+const handleHire = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定录用「${row.nickname || row.username || row.userId}」吗？`, '录用确认', { type: 'warning' })
+    await hireApplicant(row.id)
+    ElMessage.success('已录用')
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+
+const handleReject = async (row) => {
+  try {
+    const { value } = await ElMessageBox.prompt('请输入拒绝原因（可选）', '拒绝报名', {
+      type: 'warning',
+      inputPlaceholder: '拒绝原因',
+      inputValidator: () => true,
+    })
+    await rejectApplicant(row.id, value)
+    ElMessage.success('已拒绝')
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+
+onMounted(loadData)
 </script>
 
 <style scoped>
@@ -195,5 +187,13 @@ const pagedRejected = computed(() => slicePage(rejectedList.value, rejectedPage.
   align-items: center;
   justify-content: space-between;
   margin-top: 16px;
+  .pagination-info {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+}
+
+.text-muted {
+  color: var(--text-muted, #9CA3AF);
 }
 </style>

@@ -368,33 +368,17 @@ public class BossOrderService {
         BaseOrderItem item = new BaseOrderItem();
         item.setOrderId(orderId);
         item.setUserId(userId);
-        boolean manualReview = "manual".equalsIgnoreCase(order.getSignMode());
-        item.setStatus(manualReview ? BossStatus.ITEM_APPLIED : BossStatus.ITEM_HIRED);
+        // 统一走审核流程：抢单后一律为「已报名」，审核通过后才变为「已录用」
+        item.setStatus(BossStatus.ITEM_APPLIED);
         item.setRemark(remark);
         item.setTrialRequested(wantTrial);
         item.setApplyDate(Date.valueOf(LocalDate.now()));
-        if (!manualReview) {
-            item.setHireDate(Date.valueOf(LocalDate.now()));
-        }
         BaseOrderItem saved = itemRepository.save(item);
-        // 手动审核模式通知老板处理；自动通过模式仅按报名通知开关通知老板。
-        if (manualReview || !Boolean.FALSE.equals(order.getSignNotify())) {
-            String title = manualReview ? "有新的报名待审核" : "您有新的报名";
-            String content = userName(userId) + " 报名了您发布的「" + order.getOrderTitle() + "」"
-                    + order.getPostion() + "岗位" + (manualReview ? "，请及时审核报名信息" : "");
-            messageService.sendToUser(order.getCreateBy(), UserRole.BOSS, MessageType.ORDER_APPLY, title,
-                    content, BizType.ITEM, saved.getId());
-        }
-        if (!manualReview) {
-            messageService.sendToUser(userId, UserRole.USER, MessageType.ORDER_HIRE, "报名已自动通过",
-                    "您报名的「" + order.getOrderTitle() + "」岗位已自动通过，请按时到岗。",
-                    BizType.ITEM, saved.getId());
-            long hiredAfterApply = hiredCount + 1;
-            if (hiredAfterApply >= order.getOrderNum()) {
-                order.setOrderStatus(BossStatus.ORDER_RECRUIT_END);
-                orderRepository.save(order);
-            }
-        }
+        // 通知老板有新的报名待审核
+        String content = userName(userId) + " 报名了您发布的「" + order.getOrderTitle() + "」"
+                + order.getPostion() + "岗位，请及时审核报名信息";
+        messageService.sendToUser(order.getCreateBy(), UserRole.BOSS, MessageType.ORDER_APPLY, "有新的报名待审核",
+                content, BizType.ITEM, saved.getId());
         return saved;
     }
 
