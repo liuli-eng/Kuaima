@@ -2,7 +2,7 @@
   <div>
     <div class="page-header">
       <h1 class="page-title">规则管理</h1>
-      <p class="page-desc">平台规则公示、信用分、收费、交易、飞单管理规则</p>
+      <p class="page-desc">平台规则公示、收费、交易、知识产权管理规则</p>
     </div>
 
     <!-- 分类标签栏 -->
@@ -166,10 +166,9 @@ const currentViewRule = ref(null)
 const tabs = computed(() => {
   const map = {
     notice: '规则公示',
-    credit: '信用分规则',
     fee: '收费规则',
     trade: '交易规则',
-    private: '飞单认定与处理规则'
+    ip: '知识产权规则'
   }
   return Object.keys(map).map(key => ({
     key,
@@ -182,10 +181,9 @@ const tabs = computed(() => {
 
 const tabMeta = {
   notice: { icon: 'fa-bullhorn', gradient: 'linear-gradient(135deg,#3B82F6,#2563EB)' },
-  credit: { icon: 'fa-star', gradient: 'linear-gradient(135deg,#10B981,#059669)' },
   fee: { icon: 'fa-coins', gradient: 'linear-gradient(135deg,#F59E0B,#D97706)' },
   trade: { icon: 'fa-exchange-alt', gradient: 'linear-gradient(135deg,#8B5CF6,#6D28D9)' },
-  private: { icon: 'fa-ban', gradient: 'linear-gradient(135deg,#EF4444,#DC2626)' }
+  ip: { icon: 'fa-shield-alt', gradient: 'linear-gradient(135deg,#06B6D4,#0891B2)' }
 }
 
 const currentTabMeta = computed(() => tabMeta[currentTab.value] || tabMeta.notice)
@@ -276,12 +274,15 @@ const handleDelete = async (rule) => {
   }
 }
 
+// 已下线的规则类型（信用分、飞单认定）不在列表中展示
+const REMOVED_CATEGORIES = ['信用分规则', '飞单认定与处理规则', '信用评定']
+
 const loadData = async () => {
   try {
     const res = await listRules({ page: currentPage.value - 1, size: pageSize.value })
     const d = res.data
     const list = Array.isArray(d) ? d : (Array.isArray(res) ? res : [])
-    rules.value = list
+    rules.value = list.filter(r => !REMOVED_CATEGORIES.includes(r.category))
     total.value = res.total ?? d?.total ?? list.length
   } catch (e) {
     console.warn('[Rules] 加载失败:', e)

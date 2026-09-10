@@ -16,6 +16,9 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.kuaima.app.admin.repository.MessageTemplateRepository;
 import com.kuaima.app.admin.service.AdminLogService;
+import com.kuaima.app.domain.user.constant.UserRole;
+import com.kuaima.app.domain.user.entity.User;
+import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.security.model.LoginUser;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,7 +28,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * 操作日志拦截器：自动记录 /admin/** 下的所有写操作（POST/PUT/DELETE）。
  * - 登录接口（/admin/auth/login）由 AdminAuthController 自行记录，此处跳过。
  * - 日志查询接口（/admin/logs）跳过，避免递归。
- * - 操作对象 target 记录为菜单中文名称（如「公告管理 #5」），完整 URI 记录到 detail。
+ * - 操作对象 target 记录为菜单中文名称（含二级菜单，如「用户管理/零工管理 #5」），完整 URI 记录到 detail。
  * - 操作类型：登录/新建/编辑/删除/审核/启用/禁用/重置密码。
  */
 @Component
@@ -33,32 +36,32 @@ public class AdminLogInterceptor implements HandlerInterceptor {
 
     private final AdminLogService logService;
     private final MessageTemplateRepository templateRepository;
+    private final UserRepository userRepository;
 
     public AdminLogInterceptor(AdminLogService logService,
-                               MessageTemplateRepository templateRepository) {
+                               MessageTemplateRepository templateRepository,
+                               UserRepository userRepository) {
         this.logService = logService;
         this.templateRepository = templateRepository;
+        this.userRepository = userRepository;
     }
 
-    /** URI 前缀 → 菜单中文名称（按前缀从长到短匹配） */
+    /** URI 前缀 → 菜单中文名称（一级/二级，按前缀从长到短匹配） */
     private static final LinkedHashMap<String, String> MODULE_MAP = new LinkedHashMap<>();
     static {
-        MODULE_MAP.put("/admin/message-templates", "通知模板");
-        MODULE_MAP.put("/admin/admin-users", "权限管理");
-        MODULE_MAP.put("/admin/certifications", "认证审核");
-        MODULE_MAP.put("/admin/settlements", "结算管理");
-        MODULE_MAP.put("/admin/blacklists", "黑名单管理");
-        MODULE_MAP.put("/admin/quick-replies", "快捷回复");
-        MODULE_MAP.put("/admin/dashboard", "数据概览");
-        MODULE_MAP.put("/admin/notices", "公告管理");
-        MODULE_MAP.put("/admin/rules", "规则管理");
-        MODULE_MAP.put("/admin/banners", "Banner管理");
-        MODULE_MAP.put("/admin/settings", "系统设置");
-        MODULE_MAP.put("/admin/service", "客服管理");
-        MODULE_MAP.put("/admin/reports", "举报管理");
-        MODULE_MAP.put("/admin/orders", "用工订单");
-        MODULE_MAP.put("/admin/users", "用户管理");
-        MODULE_MAP.put("/admin/jobs", "招工管理");
+        MODULE_MAP.put("/admin/message-templates", "系统设置/通知模板");
+        MODULE_MAP.put("/admin/admin-users", "系统设置/权限管理");
+        MODULE_MAP.put("/admin/certifications", "内容管理/认证审核");
+        MODULE_MAP.put("/admin/settlements", "订单结算/结算管理");
+        MODULE_MAP.put("/admin/blacklists", "系统设置/黑名单管理");
+        MODULE_MAP.put("/admin/dashboard", "数据统计/数据概览");
+        MODULE_MAP.put("/admin/notices", "内容管理/公告管理");
+        MODULE_MAP.put("/admin/rules", "内容管理/规则管理");
+        MODULE_MAP.put("/admin/banners", "内容管理/Banner管理");
+        MODULE_MAP.put("/admin/settings", "系统管理/系统设置");
+        MODULE_MAP.put("/admin/service", "消息客服/客服管理");
+        MODULE_MAP.put("/admin/reports", "消息客服/举报处理");
+        MODULE_MAP.put("/admin/orders", "订单结算/用工订单");
         MODULE_MAP.put("/admin/auth", "后台登录");
     }
 
@@ -102,9 +105,29 @@ public class AdminLogInterceptor implements HandlerInterceptor {
         logService.record(operator, operatorId, type, target, ip, result, detail);
     }
 
-    /** 解析 URI 对应的菜单中文名称 */
+    /** 解析 URI 对应的菜单中文名称（一级/二级菜单） */
     private String resolveModule(String uri) {
-        // /admin/service/quick-replies、/admin/service/faqs 归入客服管理
+        // 用户管理：按被操作用户的角色细分二级菜单（企业认证接口固定归企业认证）
+        if (uri.startsWith("/admin/users")) {
+            if (uri.matches("^/admin/users/\\d+/enterprise/.*")) return "用户管理/企业认证";
+            String id = extractId(uri);
+            if (id != null) {
+                try {
+                    User u = userRepository.findById(Long.valueOf(id)).orElse(null);
+                    if (u != null) {
+                        return UserRole.BOSS.equals(u.getRole()) ? "用户管理/老板管理" : "用户管理/零工管理";
+                    }
+                } catch (Exception ignored) {
+                    // 查库失败时退回一级菜单
+                }
+            }
+            return "用户管理";
+        }
+        // 招工管理：审核接口归招工审核，其余归招工管理
+        if (uri.startsWith("/admin/jobs")) {
+            if (uri.matches("^/admin/jobs/\\d+/audit/.*")) return "招工管理/招工审核";
+            return "招工管理";
+        }
         for (Map.Entry<String, String> e : MODULE_MAP.entrySet()) {
             if (uri.startsWith(e.getKey())) return e.getValue();
         }

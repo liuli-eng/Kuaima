@@ -62,10 +62,14 @@
             <select class="form-input" v-model="roleValue" @change="onRoleChange(roleValue)" :disabled="roleSelectDisabled">
               <option v-for="r in visibleRoleOptions" :key="r.v" :value="r.v">{{ r.label }}</option>
             </select>
+            <div v-if="roleValue === 'custom'" style="margin-top:10px;">
+              <label class="form-label">自定义角色名称<span class="required">*</span></label>
+              <input type="text" class="form-input" v-model.trim="customRoleName" maxlength="20" :disabled="roleSelectDisabled" placeholder="请输入自定义角色名称，如：财务、客服主管">
+            </div>
             <div v-if="isSuperAdminEdit" class="super-admin-notice">
               <i class="fas fa-shield-alt"></i> 超级管理员角色和权限受系统保护，不可修改
             </div>
-            <div v-else-if="isEdit && !isOwnCreated" class="super-admin-notice">
+            <div v-else-if="isEdit && !canOperate" class="super-admin-notice">
               <i class="fas fa-lock"></i> 该账号由其他管理员创建，仅可编辑基本信息，角色/权限/状态不可修改
             </div>
           </div>
@@ -119,7 +123,7 @@
           <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
             <div class="status-row">
               <span class="status-row-label">账号状态</span>
-              <div class="toggle-switch" :class="{ active: form.status === '启用', disabled: isSuperAdminEdit || (isEdit && !isOwnCreated) }" @click="toggleStatus"></div>
+              <div class="toggle-switch" :class="{ active: form.status === '启用', disabled: isSuperAdminEdit || !canOperate }" @click="toggleStatus"></div>
             </div>
             <div class="status-row">
               <span class="status-row-label">允许登录</span>
@@ -187,8 +191,15 @@ const form = reactive({
 
 // 当前登录管理员 ID（来自 user store / localStorage）
 const currentAdminId = computed(() => Number(localStorage.getItem('admin_id') || 0))
-// 是否为当前管理员自己创建的账号（可改角色/权限/状态）
+// 当前登录账号是否为超级管理员（能看到所有账号就能操作所有账号）
+const currentIsSuperAdmin = computed(() => {
+  const role = localStorage.getItem('admin_role') || ''
+  return role === 'SUPER_ADMIN' || role === '超级管理员'
+})
+// 是否为当前管理员自己创建的账号
 const isOwnCreated = computed(() => isEdit.value && form.createdBy != null && Number(form.createdBy) === currentAdminId.value)
+// 是否可操作角色/权限/状态/密码：当前为超级管理员，或该账号是自己创建的
+const canOperate = computed(() => !isEdit.value || currentIsSuperAdmin.value || isOwnCreated.value)
 
 // ====== 角色 ======
 // 原型下拉框 6 种角色
@@ -203,14 +214,16 @@ const roleOptions = [
 const BACKEND_ROLE = { super: 'SUPER_ADMIN', admin: 'ADMIN', audit: 'EDITOR', viewer: 'VIEWER' }
 const ROLE_FROM_BACKEND = Object.fromEntries(Object.entries(BACKEND_ROLE).map(([k, v]) => [v, k]))
 const roleValue = ref('admin')
+// 自定义角色名称（roleValue === 'custom' 时手动输入，直接作为后端 role 存储）
+const customRoleName = ref('')
 // 超级管理员保护：编辑超级管理员时角色和权限不可修改
 const isSuperAdminEdit = computed(() => isEdit.value && roleValue.value === 'super')
 // 新建时下拉框不展示"超级管理员"选项（后端禁止新建超级管理员）
 const visibleRoleOptions = computed(() => isEdit.value ? roleOptions : roleOptions.filter(r => r.v !== 'super'))
-// 角色 select 是否禁用：编辑超级管理员 / 编辑非自建账号 时禁用
-const roleSelectDisabled = computed(() => isSuperAdminEdit.value || (isEdit.value && !isOwnCreated.value))
+// 角色 select 是否禁用：编辑超级管理员 / 无权操作 时禁用
+const roleSelectDisabled = computed(() => isSuperAdminEdit.value || !canOperate.value)
 // 权限树是否禁用：同上
-const permDisabled = computed(() => isSuperAdminEdit.value || (isEdit.value && !isOwnCreated.value))
+const permDisabled = computed(() => isSuperAdminEdit.value || !canOperate.value)
 
 // ====== 权限树 ======
 const modules = reactive([
@@ -277,6 +290,7 @@ const toggleAllModule = (m, checked) => {
 
 const onRoleChange = (v) => {
   roleValue.value = v
+  if (v !== 'custom') customRoleName.value = ''
   if (v === 'super') {
     // 原型：超级管理员自动全选并展开所有模块
     modules.forEach(m => {
@@ -337,7 +351,7 @@ const toggleStatus = () => {
     ElMessage.warning('超级管理员账号不可禁用')
     return
   }
-  if (isEdit.value && !isOwnCreated.value) {
+  if (!canOperate.value) {
     ElMessage.warning('仅可修改自己创建的账号的状态')
     return
   }
@@ -359,7 +373,13 @@ const loadDetail = async () => {
     form.lastLoginTime = d.lastLoginTime || ''
     form.createTime = d.createTime || ''
     form.createdBy = d.createdBy ?? null
-    roleValue.value = ROLE_FROM_BACKEND[d.role] || 'viewer'
+    if (d.role && !ROLE_FROM_BACKEND[d.role]) {
+      // 后端角色不在预设映射中：视为自定义角色，回显原始角色名
+      roleValue.value = 'custom'
+      customRoleName.value = d.role
+    } else {
+      roleValue.value = ROLE_FROM_BACKEND[d.role] || 'viewer'
+    }
     // 回显权限树
     if (d.permissions) {
       try {
@@ -398,8 +418,11 @@ const validate = () => {
   if (!form.phone) return '请输入手机号码'
   if (!/^1\d{10}$/.test(form.phone)) return '请输入正确的11位手机号'
   if (form.email && !/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(form.email)) return '请输入正确的邮箱地址'
-  // oper/custom 为原型预留角色，后端暂映射为 ADMIN
-  const role = BACKEND_ROLE[roleValue.value] || 'ADMIN'
+  // 自定义角色：校验手动输入的角色名（oper 为原型预留角色，后端映射为 ADMIN）
+  if (!isSuperAdminEdit.value && canOperate.value && roleValue.value === 'custom') {
+    if (!customRoleName.value) return '请输入自定义角色名称'
+    if (['SUPER_ADMIN', '超级管理员'].includes(customRoleName.value)) return '自定义角色名称不能为超级管理员'
+  }
   if (!isEdit.value) {
     if (!form.password) return '请设置登录密码'
     if (form.password.length < 8) return '密码至少8位'
@@ -423,14 +446,17 @@ const handleSave = async () => {
       remark: form.remark || null,
       avatar: form.avatar || null
     }
-    // 超级管理员 / 非自建账号：不提交 role/permissions/status（后端会拒绝，前端先过滤）
-    if (!isSuperAdminEdit.value && (!isEdit.value || isOwnCreated.value)) {
-      payload.role = BACKEND_ROLE[roleValue.value] || 'ADMIN'
+    // 超级管理员（被编辑对象）/ 无权操作：不提交 role/permissions/status（后端会拒绝，前端先过滤）
+    if (!isSuperAdminEdit.value && canOperate.value) {
+      // 自定义角色直接提交手动输入的角色名；其余角色走预设映射（oper 暂无映射，兜底 ADMIN）
+      payload.role = roleValue.value === 'custom'
+        ? customRoleName.value
+        : (BACKEND_ROLE[roleValue.value] || 'ADMIN')
       payload.permissions = JSON.stringify(collectPermissions())
       payload.status = form.status
     }
     if (isEdit.value) {
-      if (form.password) payload.password = form.password
+      if (form.password && canOperate.value) payload.password = form.password
       await updateAdminUser(route.query.id, payload)
       ElMessage.success('管理员信息保存成功！')
     } else {

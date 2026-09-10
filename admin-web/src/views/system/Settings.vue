@@ -1246,9 +1246,16 @@ const handleResetPassword = async (row) => {
   }
 }
 
-/** 是否可切换状态：自己创建的账号且非超级管理员 */
+/** 当前登录账号是否为超级管理员 */
+const currentIsSuperAdmin = () => {
+  const role = localStorage.getItem('admin_role') || ''
+  return role === 'SUPER_ADMIN' || role === '超级管理员'
+}
+
+/** 是否可切换状态：超级管理员可操作所有账号；普通管理员仅限自己创建的账号；超级管理员账号不可禁用 */
 const canToggleStatus = (u) => {
   if (u.role === 'SUPER_ADMIN') return false
+  if (currentIsSuperAdmin()) return true
   const currentId = Number(localStorage.getItem('admin_id') || 0)
   return u.createdBy != null && Number(u.createdBy) === currentId
 }

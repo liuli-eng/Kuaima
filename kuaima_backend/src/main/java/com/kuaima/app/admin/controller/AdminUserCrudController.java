@@ -51,6 +51,13 @@ public class AdminUserCrudController {
         return null;
     }
 
+    /** 当前登录账号是否为超级管理员 */
+    private boolean currentIsSuperAdmin() {
+        Long currentId = currentAdminId();
+        return currentId != null
+                && repo.findById(currentId).map(a -> "SUPER_ADMIN".equals(a.getRole())).orElse(false);
+    }
+
     @Operation(summary = "账号列表", description = "分页查询管理员账号列表，按 id 倒序；超级管理员返回全部，普通管理员仅返回自己的账号及自己创建的账号")
     @GetMapping
     public Result<Page<AdminUser>> list(@RequestParam(defaultValue = "0") int page,
@@ -93,17 +100,18 @@ public class AdminUserCrudController {
         return Result.success(repo.save(admin));
     }
 
-    @Operation(summary = "编辑账号", description = "编辑账号；超级管理员受系统保护不可修改角色/权限/状态；非自己创建的账号，仅可修改基本信息（姓名/电话/邮箱/备注/部门），不可修改角色、权限树、状态、密码")
+    @Operation(summary = "编辑账号", description = "编辑账号；超级管理员受系统保护不可修改角色/权限/状态；超级管理员可操作所有账号，普通管理员仅可操作自己创建的账号（角色/权限树/状态/密码）")
     @PutMapping("/{id}")
     public Result<AdminUser> update(@PathVariable Long id, @RequestBody AdminUser patch) {
         AdminUser existing = repo.findById(id).orElseThrow();
-        boolean isSuperAdmin = "SUPER_ADMIN".equals(existing.getRole());
+        boolean targetIsSuperAdmin = "SUPER_ADMIN".equals(existing.getRole());
         Long currentId = currentAdminId();
-        // 是否为当前管理员自己创建的账号（可改角色/权限/状态）
-        boolean isOwnCreated = currentId != null && currentId.equals(existing.getCreatedBy());
+        // 有权操作角色/权限/状态/密码：当前登录为超级管理员，或该账号是自己创建的
+        boolean canOperate = currentIsSuperAdmin()
+                || (currentId != null && currentId.equals(existing.getCreatedBy()));
 
         // 超级管理员保护：不允许修改角色、权限、状态
-        if (isSuperAdmin) {
+        if (targetIsSuperAdmin) {
             if (patch.getRole() != null && !patch.getRole().equals(existing.getRole())) {
                 return Result.error(403, "超级管理员角色不可修改");
             }
@@ -113,8 +121,8 @@ public class AdminUserCrudController {
             if (patch.getStatus() != null && !patch.getStatus().equals(existing.getStatus())) {
                 return Result.error(403, "超级管理员账号不可禁用");
             }
-        } else if (!isOwnCreated) {
-            // 非自己创建的账号：只能编辑基本信息，不能改角色/权限/状态/密码
+        } else if (!canOperate) {
+            // 非自己创建的账号（且当前不是超级管理员）：只能编辑基本信息
             if ((patch.getRole() != null && !patch.getRole().equals(existing.getRole()))
                     || (patch.getPermissions() != null && !patch.getPermissions().equals(existing.getPermissions()))
                     || (patch.getStatus() != null && !patch.getStatus().equals(existing.getStatus()))
@@ -125,14 +133,14 @@ public class AdminUserCrudController {
 
         if (patch.getName() != null) existing.setName(patch.getName());
         if (patch.getAvatar() != null) existing.setAvatar(patch.getAvatar());
-        if (patch.getRole() != null && !isSuperAdmin && isOwnCreated) existing.setRole(patch.getRole());
+        if (patch.getRole() != null && !targetIsSuperAdmin && canOperate) existing.setRole(patch.getRole());
         if (patch.getDept() != null) existing.setDept(patch.getDept());
         if (patch.getPhone() != null) existing.setPhone(patch.getPhone());
         if (patch.getEmail() != null) existing.setEmail(patch.getEmail());
         if (patch.getRemark() != null) existing.setRemark(patch.getRemark());
-        if (patch.getPermissions() != null && !isSuperAdmin && isOwnCreated) existing.setPermissions(patch.getPermissions());
-        if (patch.getStatus() != null && isOwnCreated) existing.setStatus(patch.getStatus());
-        if (patch.getPassword() != null && !patch.getPassword().isBlank() && isOwnCreated) {
+        if (patch.getPermissions() != null && !targetIsSuperAdmin && canOperate) existing.setPermissions(patch.getPermissions());
+        if (patch.getStatus() != null && canOperate) existing.setStatus(patch.getStatus());
+        if (patch.getPassword() != null && !patch.getPassword().isBlank() && canOperate) {
             existing.setPassword(passwordEncoder.encode(patch.getPassword()));
         }
         existing.setUpdateTime(LocalDateTime.now());
@@ -140,13 +148,14 @@ public class AdminUserCrudController {
     }
 
     /** 重置密码 */
-    @Operation(summary = "重置密码", description = "重置管理员密码；只能重置自己创建的账号的密码")
+    @Operation(summary = "重置密码", description = "重置管理员密码；超级管理员可重置所有账号，普通管理员只能重置自己创建的账号")
     @PutMapping("/{id}/reset-password")
     public Result<AdminUser> resetPassword(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         AdminUser existing = repo.findById(id).orElseThrow();
         Long currentId = currentAdminId();
-        boolean isOwnCreated = currentId != null && currentId.equals(existing.getCreatedBy());
-        if (!isOwnCreated) {
+        boolean canOperate = currentIsSuperAdmin()
+                || (currentId != null && currentId.equals(existing.getCreatedBy()));
+        if (!canOperate) {
             return Result.error(403, "只能重置自己创建的账号的密码");
         }
         String pwd = body.getOrDefault("newPassword", "123456");
@@ -155,7 +164,7 @@ public class AdminUserCrudController {
         return Result.success(repo.save(existing));
     }
 
-    @Operation(summary = "删除管理员", description = "删除管理员账号；超级管理员不可删除；只能删除自己创建的账号")
+    @Operation(summary = "删除管理员", description = "删除管理员账号；超级管理员账号不可删除；超级管理员可删除所有账号，普通管理员只能删除自己创建的账号")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         AdminUser existing = repo.findById(id).orElseThrow();
@@ -163,8 +172,9 @@ public class AdminUserCrudController {
             return Result.error(403, "超级管理员账号不可删除");
         }
         Long currentId = currentAdminId();
-        boolean isOwnCreated = currentId != null && currentId.equals(existing.getCreatedBy());
-        if (!isOwnCreated) {
+        boolean canOperate = currentIsSuperAdmin()
+                || (currentId != null && currentId.equals(existing.getCreatedBy()));
+        if (!canOperate) {
             return Result.error(403, "只能删除自己创建的账号");
         }
         repo.deleteById(id);

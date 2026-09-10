@@ -37,19 +37,9 @@
 
             <div style="margin-bottom: 18px;">
               <label class="form-label">规则类型 <span class="required">*</span></label>
-              <div class="type-selector">
-                <div
-                  v-for="t in typeOptions"
-                  :key="t.key"
-                  :class="['type-option', { selected: currentType === t.key }]"
-                  @click="selectType(t.key)"
-                >
-                  <div class="type-icon" :style="{ background: t.gradient }">
-                    <i :class="['fas', t.icon]"></i>
-                  </div>
-                  <div class="type-name">{{ t.name }}</div>
-                </div>
-              </div>
+              <el-select v-model="currentType" style="width: 240px;" @change="selectType">
+                <el-option v-for="t in typeOptions" :key="t.key" :label="t.name" :value="t.key" />
+              </el-select>
             </div>
 
             <div class="form-group">
@@ -272,18 +262,16 @@ const isEdit = computed(() => !!routeId.value)
 
 const typeCategoryMap = {
   notice: '规则公示',
-  credit: '信用分规则',
   fee: '收费规则',
   trade: '交易规则',
-  private: '飞单认定与处理规则'
+  ip: '知识产权规则'
 }
 
 const typeOptions = [
-  { key: 'notice', name: '规则公示', icon: 'fa-bullhorn', gradient: 'linear-gradient(135deg,#3B82F6,#2563EB)' },
-  { key: 'credit', name: '信用分规则', icon: 'fa-star', gradient: 'linear-gradient(135deg,#10B981,#059669)' },
-  { key: 'fee', name: '收费规则', icon: 'fa-coins', gradient: 'linear-gradient(135deg,#F59E0B,#D97706)' },
-  { key: 'trade', name: '交易规则', icon: 'fa-exchange-alt', gradient: 'linear-gradient(135deg,#8B5CF6,#6D28D9)' },
-  { key: 'private', name: '飞单认定', icon: 'fa-ban', gradient: 'linear-gradient(135deg,#EF4444,#DC2626)' }
+  { key: 'notice', name: '规则公示' },
+  { key: 'fee', name: '收费规则' },
+  { key: 'trade', name: '交易规则' },
+  { key: 'ip', name: '知识产权规则' }
 ]
 
 const tips = [
@@ -294,7 +282,8 @@ const tips = [
   '版本号规则：首次发布为v1.0，后续递增'
 ]
 
-const currentType = ref(routeTab.value)
+const initialType = typeCategoryMap[routeTab.value] ? routeTab.value : 'notice'
+const currentType = ref(initialType)
 const previewVisible = ref(false)
 const history = ref([])
 
@@ -302,7 +291,7 @@ const form = reactive({
   id: null,
   code: '',
   title: '',
-  category: typeCategoryMap[routeTab.value],
+  category: typeCategoryMap[initialType],
   version: 'v1.0',
   status: 'draft',
   content: '',
@@ -429,6 +418,10 @@ const loadExisting = async () => {
       })
       if (found.type && typeCategoryMap[found.type]) {
         currentType.value = found.type
+      } else if (found.category) {
+        // 后端数据无 type 字段时，按分类名称反查规则类型
+        const match = Object.entries(typeCategoryMap).find(([, label]) => label === found.category)
+        if (match) currentType.value = match[0]
       }
       history.value = [
         { icon: 'fa-plus', title: '创建规则', time: `由 ${form.creator || '管理员'} 创建` },
@@ -547,43 +540,6 @@ onMounted(loadExisting)
   font-size: 12px;
   color: var(--text-muted, #9CA3AF);
   margin-top: 6px;
-}
-
-.type-selector {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-}
-.type-option {
-  border: 2px solid var(--border, #E5E7EB);
-  border-radius: 8px;
-  padding: 14px 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: #fff;
-}
-.type-option:hover {
-  border-color: var(--primary, #FF6B35);
-}
-.type-option.selected {
-  border-color: var(--primary, #FF6B35);
-  background: #FFF8F3;
-}
-.type-option .type-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  margin: 0 auto 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 14px;
-}
-.type-option .type-name {
-  font-size: 12px;
-  font-weight: 500;
 }
 
 .rich-text-toolbar {
