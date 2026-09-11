@@ -596,11 +596,18 @@ export function completeTrainingTask(id) {
 }
 
 export function listRules(category) {
-  return request({ url: `/rules?${query({ category })}` });
+  return request({
+    url: "/rules",
+    method: "GET",
+    data: { category },
+  });
 }
 
 export function getRule(id) {
-  return request({ url: `/rules/${id}` });
+  return request({
+    url: `/rules/${encodeURIComponent(id)}`,
+    method: "GET",
+  });
 }
 
 export function listFaq(category) {

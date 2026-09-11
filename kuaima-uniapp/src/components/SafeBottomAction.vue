@@ -12,6 +12,11 @@ const bottomInset = uni.getSystemInfoSync().safeAreaInsets?.bottom || 0;
   box-sizing: border-box;
   padding-left: 32rpx;
   padding-right: 32rpx;
-  background: transparent;
+  background: #fff;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
 }
 </style>

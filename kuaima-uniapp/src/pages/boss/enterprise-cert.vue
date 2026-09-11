@@ -118,25 +118,40 @@ export default {
           getUser(userId),
           listCertifications(userId).catch(() => []),
         ]);
-        const list = Array.isArray(records) ? records : [];
-        const latest = list.find(
-          (item) =>
-            String(item.type || item.certType || "").includes("企业") ||
-            String(item.type || item.certType || "").toUpperCase() ===
-              "ENTERPRISE",
-        );
+        const list = Array.isArray(records)
+          ? records
+          : Array.isArray(records?.content)
+            ? records.content
+            : [];
+        const latest = list
+          .filter((item) => {
+            const type = String(item.type || item.certType || "");
+            return type.includes("企业") || type.toUpperCase() === "ENTERPRISE";
+          })
+          .sort((a, b) => {
+            const aTime = new Date(
+              a.updatedAt || a.updateTime || a.createdAt || a.createTime || 0,
+            ).getTime();
+            const bTime = new Date(
+              b.updatedAt || b.updateTime || b.createdAt || b.createTime || 0,
+            ).getTime();
+            return bTime - aTime || Number(b.id || 0) - Number(a.id || 0);
+          })[0];
+        // enterpriseStatus 是用户当前的企业认证汇总状态，审核通过后应优先于历史认证记录。
         const raw =
+          user?.enterpriseStatus ||
           latest?.status ||
+          latest?.certStatus ||
           (String(user?.certType || "").toUpperCase() === "ENTERPRISE"
             ? user?.certStatus
             : "");
-        const value = String(raw || "");
+        const value = String(raw || "").trim().toUpperCase();
         this.status =
-          value.includes("待") || value === "PENDING"
+          value.includes("待") || value.includes("审核中") || value === "PENDING"
             ? "pending"
-            : value.includes("通过") || value === "APPROVED"
+            : value.includes("通过") || value.includes("已认证") || ["APPROVED", "PASSED"].includes(value)
               ? "approved"
-              : value.includes("拒") || value === "REJECTED"
+              : value.includes("拒") || value.includes("未通过") || value === "REJECTED"
                 ? "rejected"
                 : "unverified";
         this.rejectReason = latest?.rejectReason || "";

@@ -1,108 +1,154 @@
 <template>
   <view class="page">
-    <AppNavBar title="岗位详情" :show-back="true" />
+    <view class="top-nav" :style="{ paddingTop: `${statusBarHeight}px` }">
+      <view class="nav-inner">
+        <button class="nav-back" @click="goBack">
+          <image :src="chevronLeftGrayIcon" mode="aspectFit" class="nav-back-icon" />
+        </button>
+        <text class="nav-title">任务详情</text>
+        <view class="nav-space" />
+      </view>
+    </view>
     <scroll-view scroll-y class="content">
-      <view v-if="loading" class="page-state">岗位详情加载中…</view>
-      <view v-else-if="loadError" class="page-state error" @click="loadDetail"
-        >加载失败，点击重试</view
-      >
+      <view v-if="loading" class="page-state">任务详情加载中…</view>
+      <view v-else-if="loadError" class="page-state error" @click="loadDetail">加载失败，点击重试</view>
       <template v-else>
-        <view class="salary-header"
-          ><view class="title-row"
-            ><text class="title">{{ job.title }}</text
-            ><text class="favorite" @click="toggleFavorite">{{
-              favorite ? "♥" : "♡"
-            }}</text></view
-          ><view class="tags"
-            ><text class="tag">{{ settlementLabel }}</text
-            ><text v-for="tag in jobTags" :key="tag" class="tag">{{
-              tag
-            }}</text></view
-          ><view class="salary-info"
-            ><view
-              ><text>预计时长</text
-              ><text class="value">{{ job.duration }}小时</text></view
-            ><view
-              ><text>预计收入</text
-              ><text class="value dark"
-                >{{ job.unitPrice }}{{ wageUnit }}</text
-              ></view
-            ></view
-          ></view
-        >
-        <view class="info-card"
-          ><view class="info-row"
-            ><text class="icon orange">◷</text
-            ><view class="info-main"
-              ><text class="label">任务时间</text
-              ><text class="info-value"
-                >{{ formatDateTime(job.startTime) }} -
-                {{ formatDateTime(job.endTime) }}</text
-              ></view
-            ></view
-          ><view class="info-row"
-            ><text class="icon blue">⌖</text
-            ><view class="info-main"
-              ><text class="label">任务地点</text
-              ><text class="info-value">{{ job.address || "地点待定" }}</text
-              ><text class="muted">详细地址以岗位发布信息为准</text></view
-            ><text class="route" @click="viewRoute">查看路线 ›</text></view
-          ></view
-        >
-        <view class="tabs"
-          ><text
+        <!-- 头部工资区域 -->
+        <view class="salary-header">
+          <view class="salary-title">{{ job.title }}</view>
+          <view class="tags">
+            <text class="tag">{{ settlementLabel }}</text>
+            <text v-for="tag in jobTags" :key="tag" class="tag">{{ tag }}</text>
+          </view>
+          <view class="salary-info">
+            <view class="salary-item">
+              <text class="salary-label">预计时长</text>
+              <text class="salary-value">{{ job.duration }}小时</text>
+            </view>
+            <view class="salary-item">
+              <text class="salary-label">预计日收入</text>
+              <text class="salary-value salary-value-gray">{{ job.unitPrice }}{{ wageUnit }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 任务信息卡片：任务时间 -->
+        <view class="info-card">
+          <view class="info-row">
+            <view class="info-icon icon-time">
+              <image :src="clockOrangeIcon" mode="aspectFit" class="info-icon-img" />
+            </view>
+            <view class="info-content">
+              <view class="info-label">任务时间</view>
+              <view class="info-value">{{ formatJobTimeRange(job.startTime, job.endTime) }}</view>
+            </view>
+          </view>
+          <view v-if="isTimeOutdated" class="outdated-tip-row">
+            <text class="outdated-tag">已过时 {{ outdatedDuration }}</text>
+          </view>
+        </view>
+
+        <!-- 任务信息卡片：任务地点 -->
+        <view class="info-card">
+          <view class="info-row">
+            <view class="info-icon icon-location">
+              <image :src="mapMarkerBlueIcon" mode="aspectFit" class="info-icon-img" />
+            </view>
+            <view class="info-content">
+              <view class="info-label">任务地点</view>
+              <view class="info-value">{{ job.address || "地点待定" }}</view>
+              <view class="distance-text">距当前位置直线{{ distanceKm }}公里</view>
+            </view>
+            <view class="info-link" @click="viewRoute">
+              <text>查看路线</text>
+              <image :src="chevronRightBlueIcon" mode="aspectFit" class="link-chevron" />
+            </view>
+          </view>
+          <view class="address-note">
+            <text>*接单后可查看详细门牌号</text>
+          </view>
+        </view>
+
+        <!-- 标签页 -->
+        <view class="tabs">
+          <view
             v-for="tab in tabs"
             :key="tab.key"
             :class="['tab', { active: activeTab === tab.key }]"
             @click="activeTab = tab.key"
-            >{{ tab.label }}</text
-          ></view
-        >
-        <view class="desc-card"
-          ><view class="desc-title"
-            ><text class="desc-icon">▤</text
-            >{{ tabs.find((i) => i.key === activeTab)?.label }}</view
-          ><text v-if="activeTab === 'desc'" class="desc">{{
-            job.orderContent || "雇主暂未填写岗位描述"
-          }}</text
-          ><view v-else-if="activeTab === 'notice'" class="list"
-            ><text v-if="job.orderRemark">{{ job.orderRemark }}</text
-            ><text v-if="job.tags">岗位标签：{{ job.tags }}</text
-            ><text>报名成功后请关注雇主审核结果</text></view
-          ><view v-else class="list"
-            ><text>发布者编号：{{ job.createBy || "--" }}</text
-            ><text>岗位状态：{{ job.orderStatus || "--" }}</text
-            ><text>发布时间：{{ job.date || "--" }}</text></view
-          ></view
-        >
-        <view v-if="!isRealname" class="realname"
-          ><text>完成实名认证后才能报名</text
-          ><text @click="goRealname">去认证 ›</text></view
-        >
+          >{{ tab.label }}</view>
+        </view>
+
+        <!-- 任务描述内容 -->
+        <view v-if="activeTab === 'desc'" class="desc-content">
+          <view class="desc-title">
+            <image :src="fileAltOrangeIcon" mode="aspectFit" class="desc-title-icon" />
+            <text>任务描述</text>
+          </view>
+          <view class="desc-text">
+            <text>{{ job.orderContent || "雇主暂未填写岗位描述" }}</text>
+          </view>
+        </view>
+
+        <!-- 报名须知 -->
+        <view v-else-if="activeTab === 'notice'" class="desc-content">
+          <view class="desc-title">
+            <image :src="exclamationCircleBlueIcon" mode="aspectFit" class="desc-title-icon" />
+            <text>报名须知</text>
+          </view>
+          <view class="desc-text">
+            <view class="desc-list">
+              <view v-for="(item, idx) in noticeList" :key="idx" class="desc-list-item"><text>{{ item }}</text></view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 雇主信息 -->
+        <view v-else class="desc-content">
+          <view class="desc-title">
+            <image :src="userGreenIcon" mode="aspectFit" class="desc-title-icon" />
+            <text>雇主信息</text>
+          </view>
+          <view class="desc-text">
+            <text>雇主名称：{{ job.employerName || job.createBy || "未发布" }}</text>
+            <text class="desc-row">完成订单：{{ job.orderCompletedCount || job.completedCount || "--" }}单</text>
+          </view>
+        </view>
+
+        <!-- 实名提示条 -->
+        <view v-if="!isRealname" class="realname-banner">
+          <view class="realname-text"><text>完成</text><strong>实名认证</strong><text>后才能报名</text></view>
+          <view class="realname-btn" @click="goRealname">
+            <text>实名认证</text>
+            <image :src="chevronRightOrangeIcon" mode="aspectFit" class="btn-chevron" />
+          </view>
+        </view>
+
       </template>
     </scroll-view>
-    <SafeBottomAction
-      ><view class="bottom-bar"
-        ><view class="bottom-link" @click="uni.navigateBack()"
-          ><text>⌂</text><text>首页</text></view
-        ><view class="bottom-link" @click="share"
-          ><text>♣</text><text>分享</text></view
-        ><button class="enroll" :disabled="applying || applied" @click="apply">
-          <text>{{
-            applied ? "已报名" : applying ? "报名中…" : "电话报名"
-          }}</text
-          ><text>剩{{ remainingCount }}个名额</text>
-        </button></view
-      ></SafeBottomAction
-    >
+    <view class="safe-bottom-action" :style="{ paddingBottom: `${bottomInset}px` }">
+      <view class="bottom-bar">
+        <view class="bottom-action" @click="goHome">
+          <image :src="houseGrayIcon" mode="aspectFit" class="bottom-icon" />
+          <text class="bottom-label">首页</text>
+        </view>
+        <view class="bottom-action" @click="share">
+          <image :src="shareAltGrayIcon" mode="aspectFit" class="bottom-icon" />
+          <text class="bottom-label">分享</text>
+        </view>
+        <button class="enroll-btn" :disabled="applying || applied || !isRealname" @click="apply">
+          <view class="enroll-info">
+            <view class="enroll-label">{{ applied ? "已报名" : applying ? "报名中…" : "电话报名" }}</view>
+            <view class="enroll-count">剩{{ remainingCount }}个名额</view>
+          </view>
+        </button>
+      </view>
+    </view>
   </view>
 </template>
 <script setup>
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
-import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
-import { request } from "@/api/http";
 import {
   checkFavoriteJob,
   favoriteJob,
@@ -112,8 +158,21 @@ import {
   recordJobBrowse,
   unfavoriteJob,
 } from "@/api/backend";
+import clockOrangeIcon from "/static/icons/worker-job-detail/clock-orange.svg";
+import mapMarkerBlueIcon from "/static/icons/worker-job-detail/map-marker-alt-blue.svg";
+import fileAltOrangeIcon from "/static/icons/worker-job-detail/file-alt-orange.svg";
+import exclamationCircleBlueIcon from "/static/icons/worker-job-detail/exclamation-circle-blue.svg";
+import userGreenIcon from "/static/icons/worker-job-detail/user-green.svg";
+import houseGrayIcon from "/static/icons/worker-job-detail/house-gray.svg";
+import shareAltGrayIcon from "/static/icons/worker-job-detail/share-alt-gray.svg";
+import chevronLeftGrayIcon from "/static/icons/worker-job-detail/chevron-left-gray.svg";
+import chevronRightBlueIcon from "/static/icons/worker-job-detail/chevron-right-blue.svg";
+import chevronRightOrangeIcon from "/static/icons/worker-job-detail/chevron-right-orange.svg";
+
+const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
+const bottomInset = uni.getSystemInfoSync().safeAreaInsets?.bottom || 0;
 const tabs = [
-  { key: "desc", label: "岗位描述" },
+  { key: "desc", label: "任务描述" },
   { key: "notice", label: "报名须知" },
   { key: "boss", label: "雇主信息" },
 ];
@@ -127,6 +186,40 @@ const loadError = ref(false);
 const appliedCount = ref(0);
 const isRealname = ref(uni.getStorageSync("workerRealname") === true);
 const job = ref({});
+const distanceKm = computed(() => {
+  const n = Number(job.value.distanceKm ?? job.value.distance ?? 0);
+  return n > 0 ? n.toFixed(1) : "0";
+});
+const isTimeOutdated = computed(() => {
+  if (!job.value.endTime) return false;
+  const t = new Date(String(job.value.endTime).replace("Z","")).getTime();
+  if (!t) return false;
+  return Date.now() > t;
+});
+const outdatedDuration = computed(() => {
+  if (!isTimeOutdated.value || !job.value.endTime) return "";
+  const diff = Date.now() - new Date(String(job.value.endTime).replace("Z","")).getTime();
+  if (diff <= 0) return "";
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const remainMins = mins % 60;
+  if (hours < 1) return `${mins}分钟`;
+  if (remainMins === 0) return `${hours}小时`;
+  return `${hours}小时${remainMins}分`;
+});
+const noticeList = computed(() => {
+  const list = [];
+  if (job.value.orderRemark) {
+    const parts = String(job.value.orderRemark).split(/[\n;；]/).map(s => s.trim()).filter(Boolean);
+    if (parts.length > 0) list.push(...parts);
+  }
+  list.push("需年满18周岁，身体健康");
+  list.push("需实名认证通过");
+  list.push("工作时间内不可擅自离岗");
+  list.push("完成工作内容后方可结算薪资");
+  list.push("如遇问题请及时联系雇主或客服");
+  return list;
+});
 const wageUnit = computed(() =>
   job.value.wageUnit
     ? job.value.wageUnit
@@ -146,7 +239,8 @@ const jobTags = computed(() =>
   String(job.value.tags || "")
     .split(",")
     .map((item) => item.trim())
-    .filter(Boolean),
+    .filter(Boolean)
+    .filter(tag => !tag.startsWith("时薪:") && !tag.startsWith("计件") && !tag.startsWith("月薪:") && !tag.startsWith("日薪:")),
 );
 const remainingCount = computed(() =>
   Math.max(0, Number(job.value.orderNum || 0) - appliedCount.value),
@@ -196,18 +290,61 @@ async function loadDetail() {
     loading.value = false;
   }
 }
-function formatDateTime(value) {
-  if (!value) return "时间待定";
-  return String(value).replace("T", " ").slice(0, 16);
+function parseDate(value) {
+  if (!value) return null;
+  const s = String(value).replace("Z", "").replace("T", " ");
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return null;
+  return d;
+}
+function pad2(n) { return n < 10 ? `0${n}` : `${n}`; }
+function relativeDayLabel(date) {
+  const now = new Date();
+  const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
+  const ny = now.getFullYear(), nm = now.getMonth(), nd = now.getDate();
+  const isSame = (yy, mm, dd) => y === yy && m === mm && d === dd;
+  if (isSame(ny, nm, nd)) return "今天";
+  const yest = new Date(ny, nm, nd - 1);
+  if (isSame(yest.getFullYear(), yest.getMonth(), yest.getDate())) return "昨天";
+  const tom = new Date(ny, nm, nd + 1);
+  if (isSame(tom.getFullYear(), tom.getMonth(), tom.getDate())) return "明天";
+  return "";
+}
+const weekLabels = ["周日","周一","周二","周三","周四","周五","周六"];
+function formatJobTimeRange(startValue, endValue) {
+  const start = parseDate(startValue);
+  const end = parseDate(endValue);
+  if (!start && !end) return "时间待定";
+  const base = start || end;
+  const dayLabel = relativeDayLabel(base);
+  const week = weekLabels[base.getDay()];
+  const datePart = dayLabel ? `${dayLabel} ${week}` : `${base.getMonth()+1}月${base.getDate()}日 ${week}`;
+  const hhmm = (d) => d ? `${pad2(d.getHours())}:${pad2(d.getMinutes())}` : "";
+  const startStr = hhmm(start);
+  const endStr = hhmm(end);
+  if (startStr && endStr) return `${datePart} ${startStr}-${endStr}`;
+  if (startStr) return `${datePart} ${startStr}`;
+  return datePart;
 }
 function goRealname() {
   uni.navigateTo({ url: "/pages/worker/realname" });
+}
+function goBack() {
+  uni.navigateBack();
 }
 function share() {
   uni.showToast({ title: "任务分享功能开发中", icon: "none" });
 }
 function viewRoute() {
   uni.showToast({ title: "路线功能开发中", icon: "none" });
+}
+function goHome() {
+  const pages = getCurrentPages();
+  if (pages.length > 1) {
+    uni.navigateBack();
+    return;
+  }
+  uni.switchTab({ url: "/pages/worker/home" });
 }
 async function toggleFavorite() {
   const userId = uni.getStorageSync("userId") || "2001";
@@ -266,18 +403,25 @@ function normalizeJob(item) {
         : item.wageUnit,
     address: item.address || item.workAddress || item.location || "地点待定",
     duration: item.duration ?? item.workHours ?? 0,
+    employerName: item.employerName || item.companyName || item.bossName,
+    orderCompletedCount: item.orderCompletedCount ?? item.completedOrderCount ?? item.orderDoneCount,
   };
 }
 </script>
 <style scoped>
 .page {
-  min-height: 100vh;
+  height: 100vh;
   background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .content {
-  height: calc(100vh - 176rpx);
-  padding-bottom: 40rpx;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   box-sizing: border-box;
+  background: #f5f5f5;
 }
 .page-state {
   padding: 160rpx 32rpx;
@@ -288,226 +432,351 @@ function normalizeJob(item) {
 .page-state.error {
   color: #e34d59;
 }
-.salary-header {
-  padding: 30rpx 24rpx 24rpx;
-  background: linear-gradient(135deg, #fff0d6, #ffe5b4);
+.top-nav {
+  background: #fff;
+  border-bottom: 1rpx solid #f0f0f0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 30;
 }
-.title-row,
-.salary-info,
-.info-row,
-.tabs,
-.bottom-bar {
+.nav-inner {
+  height: 104rpx;
+  padding: 16rpx 32rpx 24rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
 }
-.title {
+.nav-back {
+  width: 64rpx;
+  height: 64rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.nav-back::after {
+  border: 0;
+}
+.nav-back-icon {
+  width: 36rpx;
+  height: 36rpx;
+}
+.nav-title {
+  font-size: 34rpx;
+  font-weight: 600;
   color: #333;
-  font-size: 38rpx;
-  font-weight: 800;
 }
-.favorite {
-  color: #ff6b35;
-  font-size: 52rpx;
+.nav-space {
+  width: 64rpx;
+  height: 64rpx;
+}
+/* 头部工资区域 */
+.salary-header {
+  background: linear-gradient(135deg, #FFF4E6, #FFE4B5);
+  padding: 40rpx 32rpx;
+}
+.salary-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 16rpx;
 }
 .tags {
   display: flex;
-  gap: 12rpx;
-  margin: 18rpx 0;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
 }
 .tag {
-  padding: 8rpx 18rpx;
-  border-radius: 20rpx;
   background: #fff;
-  color: #777;
-  font-size: 22rpx;
+  color: #666;
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 24rpx;
 }
 .salary-info {
-  padding: 24rpx;
-  border-radius: 18rpx;
+  display: flex;
+  gap: 40rpx;
+  padding: 24rpx 32rpx;
   background: #fff;
+  border-radius: 24rpx;
+}
+.salary-item {
+  flex: 1;
   text-align: center;
 }
-.salary-info > view {
-  flex: 1;
-}
-.salary-info text {
-  display: block;
+.salary-label {
+  font-size: 24rpx;
   color: #999;
-  font-size: 22rpx;
+  margin-bottom: 8rpx;
+  display: block;
 }
-.salary-info .value {
-  margin-top: 8rpx;
-  color: #ff6b35;
-  font-size: 34rpx;
-  font-weight: 800;
+.salary-value {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #FF6B35;
 }
-.salary-info .dark {
+.salary-value-gray {
   color: #333;
 }
+/* 任务信息卡片 */
 .info-card {
-  margin: 16rpx 0 0;
-  padding: 22rpx 24rpx;
   background: #fff;
+  margin: 24rpx 32rpx;
+  border-radius: 24rpx;
+  padding: 32rpx;
 }
 .info-row {
-  align-items: flex-start;
-  padding: 10rpx 0;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
 }
-.icon {
+.info-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 58rpx;
-  height: 58rpx;
-  margin-right: 16rpx;
-  border-radius: 16rpx;
-  font-size: 30rpx;
+  flex-shrink: 0;
 }
-.orange {
-  background: #fff0e6;
-  color: #ff6b35;
+.icon-time {
+  background: #FFF0E6;
+  color: #FF6B35;
 }
-.blue {
-  background: #e6f4ff;
-  color: #1890ff;
+.icon-location {
+  background: #E6F4FF;
+  color: #1890FF;
 }
-.info-main {
+.info-icon-img {
+  width: 36rpx;
+  height: 36rpx;
+}
+.info-content {
   flex: 1;
+  min-width: 0;
 }
-.label,
-.info-value,
-.muted {
-  display: block;
-}
-.label {
+.info-label {
+  font-size: 24rpx;
   color: #999;
-  font-size: 22rpx;
+  margin-bottom: 8rpx;
 }
 .info-value {
-  margin-top: 7rpx;
+  font-size: 30rpx;
   color: #333;
-  font-size: 28rpx;
-  font-weight: 600;
+  font-weight: 500;
 }
-.muted {
+.distance-text {
   margin-top: 6rpx;
-  color: #aaa;
-  font-size: 20rpx;
-}
-.route {
-  color: #1890ff;
+  color: #ccc;
   font-size: 22rpx;
 }
+.info-link {
+  color: #1890FF;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  flex-shrink: 0;
+}
+.link-chevron {
+  width: 18rpx;
+  height: 28rpx;
+}
+.outdated-tip-row {
+  margin-top: 16rpx;
+  margin-left: 104rpx;
+}
+.outdated-tag {
+  color: #FF6B35;
+  font-size: 22rpx;
+  background: #FFF0E6;
+  padding: 6rpx 14rpx;
+  border-radius: 10rpx;
+}
+.address-note {
+  margin-top: 20rpx;
+  text-align: center;
+  color: #ccc;
+  font-size: 22rpx;
+}
+/* 标签页 */
 .tabs {
-  margin-top: 14rpx;
-  padding: 0 18rpx;
+  display: flex;
   background: #fff;
+  padding: 0 32rpx;
+  border-bottom: 1rpx solid #f5f5f5;
 }
 .tab {
-  position: relative;
   flex: 1;
-  padding: 24rpx 0;
   text-align: center;
+  padding: 28rpx 0;
+  font-size: 30rpx;
   color: #666;
-  font-size: 27rpx;
+  position: relative;
 }
 .tab.active {
-  color: #ff6b35;
-  font-weight: 700;
+  color: #FF6B35;
+  font-weight: 600;
 }
-.tab.active:after {
-  content: "";
+.tab.active::after {
+  content: '';
   position: absolute;
   bottom: 0;
   left: 50%;
-  width: 90rpx;
-  height: 5rpx;
   transform: translateX(-50%);
-  border-radius: 5rpx;
-  background: #ff6b35;
+  width: 48rpx;
+  height: 6rpx;
+  background: #FF6B35;
+  border-radius: 4rpx;
 }
-.desc-card {
-  margin: 18rpx 24rpx;
-  padding: 26rpx;
-  border-radius: 20rpx;
+/* 描述内容 */
+.desc-content {
   background: #fff;
+  margin: 24rpx 32rpx;
+  border-radius: 24rpx;
+  padding: 32rpx;
 }
 .desc-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 24rpx;
   display: flex;
   align-items: center;
-  color: #333;
-  font-size: 30rpx;
-  font-weight: 700;
+  gap: 12rpx;
 }
-.desc-icon {
-  margin-right: 12rpx;
-  color: #ff6b35;
+.desc-title-icon {
+  width: 32rpx;
+  height: 32rpx;
 }
-.desc {
-  display: block;
-  margin-top: 22rpx;
-  white-space: pre-line;
+.desc-text {
+  font-size: 28rpx;
   color: #666;
-  font-size: 26rpx;
   line-height: 1.9;
 }
-.list text {
+.desc-text .desc-row {
   display: block;
-  margin-top: 18rpx;
+  margin-top: 8rpx;
+}
+.desc-list {
+  padding: 0;
+}
+.desc-list-item {
+  font-size: 28rpx;
   color: #666;
-  font-size: 25rpx;
+  line-height: 1.9;
+  padding-left: 40rpx;
+  position: relative;
+  margin-bottom: 12rpx;
 }
-.realname {
+.desc-list-item::before {
+  content: '•';
+  position: absolute;
+  left: 12rpx;
+  color: #FF6B35;
+}
+/* 实名提示条 */
+.realname-banner {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin: 0 24rpx;
-  padding: 18rpx 20rpx;
-  border-radius: 14rpx;
-  background: #fff0d0;
-  color: #9a5b1e;
-  font-size: 23rpx;
+  background: linear-gradient(135deg, #FFF4E6, #FFE4B5);
+  padding: 28rpx 32rpx;
+  margin: 0 32rpx;
+  border-radius: 24rpx;
 }
-.realname text:last-child {
-  color: #1890ff;
+.realname-text {
+  font-size: 28rpx;
+  color: #8B4513;
+}
+.realname-text strong {
+  font-weight: 600;
+}
+.realname-btn {
+  color: #FF6B35;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.btn-chevron {
+  width: 24rpx;
+  height: 24rpx;
+}
+/* 底部操作栏 */
+.safe-bottom-action {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 32rpx;
+  background: #fff;
+  flex-shrink: 0;
+  z-index: 20;
 }
 .bottom-bar {
-  gap: 18rpx;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-top: 1rpx solid #f0f0f0;
+  gap: 20rpx;
 }
-.bottom-link {
+.bottom-action {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 70rpx;
+  padding: 0 16rpx;
+}
+.bottom-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+.bottom-label {
+  font-size: 22rpx;
   color: #666;
-  font-size: 20rpx;
+  margin-top: 4rpx;
 }
-.bottom-link text:first-child {
-  font-size: 40rpx;
-  line-height: 42rpx;
-}
-.enroll {
-  display: flex;
+.enroll-btn {
   flex: 1;
-  flex-direction: column;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #8B4513;
+  font-size: 34rpx;
+  font-weight: 700;
+  padding: 28rpx 48rpx;
+  border-radius: 56rpx;
+  border: none;
+  margin: 0 16rpx;
+  display: flex;
   align-items: center;
   justify-content: center;
-  height: 92rpx;
-  margin: 0;
-  border: 0;
-  border-radius: 48rpx;
-  background: linear-gradient(135deg, #ffd666, #f0ad3d);
-  color: #8b4513;
+  gap: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 165, 0, 0.3);
+  height: auto;
+  line-height: 1.2;
 }
-.enroll text:first-child {
-  font-size: 31rpx;
-  font-weight: 800;
-}
-.enroll text:last-child {
-  margin-top: 4rpx;
-  font-size: 22rpx;
-}
-.enroll[disabled] {
+.enroll-btn[disabled] {
   opacity: 0.65;
+}
+.enroll-btn::after {
+  border: 0;
+}
+.enroll-info {
+  text-align: center;
+  line-height: 1.3;
+}
+.enroll-label {
+  font-size: 34rpx;
+  font-weight: 700;
+}
+.enroll-count {
+  font-size: 22rpx;
+  color: #666;
+  margin-top: 4rpx;
 }
 </style>

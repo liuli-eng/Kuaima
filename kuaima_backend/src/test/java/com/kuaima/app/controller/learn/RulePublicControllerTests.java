@@ -45,6 +45,22 @@ class RulePublicControllerTests {
         verify(repository).findByStatusInAndCategory(PUBLISHED_STATUSES, "交易规则");
     }
 
+    @Test
+    void listRules_shouldMapNoticeEnumToExistingChineseCategories() {
+        RulesRepository repository = mock(RulesRepository.class);
+        RulePublicController controller = new RulePublicController(repository);
+        Rules notice = rule(1L, "published");
+        notice.setCategory("规则公示");
+        Rules credit = rule(2L, "published");
+        credit.setCategory("信用分规则");
+        when(repository.findByStatusIn(PUBLISHED_STATUSES)).thenReturn(List.of(notice, credit));
+
+        var result = controller.listRules("NOTICE");
+
+        assertEquals(List.of(notice), result.getData());
+        verify(repository).findByStatusIn(PUBLISHED_STATUSES);
+    }
+
     private Rules rule(Long id, String status) {
         Rules rule = new Rules();
         rule.setId(id);

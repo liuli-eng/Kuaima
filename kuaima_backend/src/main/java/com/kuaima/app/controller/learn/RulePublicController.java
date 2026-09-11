@@ -1,6 +1,5 @@
 package com.kuaima.app.controller.learn;
 
-import java.util.List;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -10,11 +9,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kuaima.app.common.Result;
 import com.kuaima.app.admin.entity.Rules;
 import com.kuaima.app.admin.repository.RulesRepository;
-import com.kuaima.app.common.Result;
 
-import jakarta.persistence.EntityNotFoundException;
 
 /**
  * 端侧公开规则中心（仅返回已发布规则）。
@@ -24,27 +22,26 @@ import jakarta.persistence.EntityNotFoundException;
 @Tag(name = "规则公示", description = "对外公开的规则查询")
 public class RulePublicController {
 
-    private static final List<String> PUBLISHED_STATUSES = List.of("已发布", "published");
+    private final RulePublicService rulePublicService;
 
-    private final RulesRepository rulesRepository;
-
-    public RulePublicController(RulesRepository rulesRepository) {
-        this.rulesRepository = rulesRepository;
+    public RulePublicController(RulePublicService rulePublicService) {
+        this.rulePublicService = rulePublicService;
     }
+
+    public RulePublicController(RulesRepository repository) {
+        this(new RulePublicService(repository));
+    }
+
 
     /** 规则列表：GET /rules?category=交易规则 */
     @GetMapping
-    public Result<List<Rules>> listRules(@RequestParam(required = false) String category) {
-        List<Rules> published = category == null || category.isBlank()
-                ? rulesRepository.findByStatusIn(PUBLISHED_STATUSES)
-                : rulesRepository.findByStatusInAndCategory(PUBLISHED_STATUSES, category);
-        return Result.success(published);
+    public Result<java.util.List<Rules>> listRules(@RequestParam(required = false) String category) {
+        return Result.success(rulePublicService.list(category));
     }
 
     /** 规则详情：GET /rules/{id} */
     @GetMapping("/{id}")
     public Result<Rules> getRule(@PathVariable Long id) {
-        return Result.success(rulesRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("规则不存在: " + id)));
+        return Result.success(rulePublicService.get(id));
     }
 }

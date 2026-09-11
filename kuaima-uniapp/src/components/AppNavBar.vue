@@ -19,6 +19,11 @@ const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 .nav {
   background: #fff;
   box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
 }
 .nav-inner {
   height: 88rpx;
