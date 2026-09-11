@@ -170,12 +170,16 @@ export default {
         try {
           await readMessage(message.id, userId)
           message.readFlag = true
+          this.unreadCount = Number(await unreadMessages(userId, 'BOSS') || 0)
         } catch (error) {
           return uni.showToast({ title: error.message || '消息标记已读失败', icon: 'none' })
         }
       }
-      if (message?.type === 'ORDER_APPLY' && message?.bizType === 'item' && message?.bizId) {
-        return uni.navigateTo({ url: '/pages/boss/signup-notice' })
+      if (message?.bizType && message?.bizId) {
+        const type = String(message.bizType).toUpperCase()
+        if (type.includes('ORDER') || type.includes('JOB') || type === 'ITEM') {
+          return uni.navigateTo({ url: `/pages/boss/order-detail?id=${encodeURIComponent(message.bizId)}` })
+        }
       }
       this.navigateTo('system-notice')
     },
@@ -227,7 +231,7 @@ export default {
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #F3F4F6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -239,7 +243,7 @@ export default {
   width: 100%;
   box-sizing: border-box;
   overflow-y: auto;
-  background: #FFF8E6;
+  background: #F3F4F6;
 }
 
 .scroll-content {

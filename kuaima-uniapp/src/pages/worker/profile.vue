@@ -1,13 +1,16 @@
 <template>
   <view class="page">
-    <AppNavBar title="我的" />
     <scroll-view scroll-y class="content">
+      <view class="header-nav" :style="{ paddingTop: `${statusBarHeight}px` }">
+        <text class="nav-title">我的</text>
+        <view class="nav-space" />
+      </view>
       <view class="user-header">
         <view class="avatar"><image :src="avatarIcon" mode="aspectFill" /></view>
         <view class="user-info" @click="go('/pages/worker/user-info')">
-          <text class="name">{{ profileName }} <text class="chevron">›</text></text>
+          <view class="name-row"><text class="name">{{ profileName }}</text><image :src="chevronRightIcon" mode="aspectFit" class="chevron" /></view>
         </view>
-        <view class="switch-btn" @click="go('/pages/worker/switch-identity')">
+        <view class="switch-btn" @click="go('/pages/worker/switch-identity?role=worker')">
           <image :src="exchangeIcon" mode="aspectFit" /> 我要招人
         </view>
       </view>
@@ -47,19 +50,21 @@
 <script setup>
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { request } from "@/api/http";
 import { getWorkerProfile } from "@/api/backend";
 import avatarIcon from "/static/icons/worker-profile/avatar.svg";
-import exchangeIcon from "/static/icons/boss-profile/exchange.svg";
-import coinsIcon from "/static/icons/worker-profile/coins.svg";
+import exchangeIcon from "/static/icons/worker-profile/exchange-orange.svg";
+import coinsIcon from "/static/icons/worker-profile/coins-orange.svg";
 import headsetIcon from "/static/icons/worker-profile/headset.svg";
 import balanceIcon from "/static/icons/worker-profile/balance.svg";
 import fileIcon from "/static/icons/worker-profile/file.svg";
 import userLockIcon from "/static/icons/worker-profile/user-lock.svg";
 import copyrightIcon from "/static/icons/worker-profile/copyright.svg";
-import mobileIcon from "/static/icons/boss-profile/mobile.svg";
+import mobileIcon from "/static/icons/worker-profile/mobile-orange.svg";
+import chevronRightIcon from "/static/icons/worker-profile/chevron-right-brown.svg";
+
+const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 
 const profile = ref({});
 const wallet = ref({ available: "0" });
@@ -131,20 +136,33 @@ function handle(item) {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #fff8e6;
+  background: #f7f7f7;
 }
 
 .content {
-  height: calc(100vh - 176rpx);
+  height: calc(100vh - 83px - env(safe-area-inset-bottom));
+  background: #f7f7f7;
   padding-bottom: 32rpx;
   box-sizing: border-box;
 }
 
+.header-nav {
+  min-height: 88rpx;
+  padding: 16rpx 32rpx 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  background: #ffd96f;
+}
+.nav-title { color: #333; font-size: 34rpx; font-weight: 600; }
+.nav-space { width: 64rpx; height: 64rpx; }
+
 .user-header {
   display: flex;
   align-items: center;
-  padding: 32rpx 36rpx;
-  background: linear-gradient(135deg, #ffd59e 0%, #ffa94d 100%);
+  padding: 32rpx;
+  background: #ffd96f;
   color: #fff;
 }
 
@@ -172,6 +190,7 @@ function handle(item) {
   overflow: hidden;
   font-size: 34rpx;
   font-weight: 700;
+  color: #8b4513;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -180,7 +199,8 @@ function handle(item) {
   flex-shrink: 0;
   padding: 18rpx 26rpx;
   border-radius: 36rpx;
-  background: rgba(255, 255, 255, 0.25);
+  background: #fff;
+  color: #ff6b35;
   font-size: 24rpx;
 }
 
@@ -188,9 +208,9 @@ function handle(item) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 24rpx;
-  min-height: 152rpx;
-  padding: 28rpx 30rpx;
+  margin: 0 24rpx 24rpx;
+  min-height: 132rpx;
+  padding: 32rpx;
   border-radius: 24rpx;
   background: #fff;
 }
@@ -284,7 +304,9 @@ function handle(item) {
   font-size: 18rpx;
 }
 .avatar image { width: 100%; height: 100%; }
-.name .chevron { color: #8b4513; font-size: 26rpx; }
+.name-row { display: flex; align-items: center; min-width: 0; }
+.name-row .name { min-width: 0; }
+.chevron { width: 16rpx; height: 24rpx; margin-left: 8rpx; flex-shrink: 0; }
 .switch-btn { display: flex; align-items: center; gap: 8rpx; }
 .switch-btn image { width: 28rpx; height: 28rpx; }
 .wallet-icon { width: 54rpx; height: 54rpx; }

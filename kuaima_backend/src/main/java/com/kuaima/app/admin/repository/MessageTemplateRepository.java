@@ -22,4 +22,6 @@ public interface MessageTemplateRepository extends JpaRepository<MessageTemplate
 
     /** 查找所有启用且定时发送的模板 */
     List<MessageTemplate> findByStatusAndSendWay(String status, String sendWay);
+
+    java.util.Optional<MessageTemplate> findFirstByEventAndStatusOrderByUpdateTimeDesc(String event, String status);
 }

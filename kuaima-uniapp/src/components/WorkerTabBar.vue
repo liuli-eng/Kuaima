@@ -78,7 +78,8 @@ function go(item) {
   right: 0;
   bottom: 0;
   display: flex;
-  height: 83px;
+  height: calc(83px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
   padding: 0 12rpx calc(20px + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.98);
   border-top: 0.5px solid rgba(0, 0, 0, 0.05);

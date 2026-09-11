@@ -25,7 +25,8 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { listNotices } from "@/api/backend";
+import { listSystemMessages, unreadMessages, readMessage } from "@/api/backend";
+import { handleTokenInvalid } from "@/api/auth";
 
 const notices = ref([]);
 const loading = ref(false);
@@ -33,10 +34,12 @@ const loading = ref(false);
 onMounted(async () => {
   loading.value = true;
   try {
-    const result = await listNotices({ scope: "零工" });
-    if (Array.isArray(result)) notices.value = result.map(normalizeNotice);
+    const userId = uni.getStorageSync("userId");
+    const result = await listSystemMessages(userId, { role: "WORKER" });
+    notices.value = (Array.isArray(result) ? result : []).map(normalizeNotice);
   } catch (error) {
     notices.value = [];
+    if (Number(error?.code || error?.statusCode) === 401) return handleTokenInvalid({ role: "worker" });
     uni.showToast({ title: error.message || "公告加载失败", icon: "none" });
   } finally {
     loading.value = false;
@@ -44,9 +47,21 @@ onMounted(async () => {
 });
 
 function open(item) {
+  if (item.id) readMessage(item.id, uni.getStorageSync("userId")).then(() => unreadMessages(uni.getStorageSync("userId"), "WORKER")).catch(() => {});
+  if (item.bizType && item.bizId) return openBusiness(item);
   uni.navigateTo({
     url: `/pages/worker/notification-detail?id=${item.id}&title=${encodeURIComponent(item.title)}&desc=${encodeURIComponent(item.content)}`,
   });
+}
+
+function openBusiness(item) {
+  const type = String(item.bizType).toUpperCase();
+  const url = type.includes("ORDER") || type.includes("JOB")
+    ? `/pages/worker/order-detail?id=${encodeURIComponent(item.bizId)}`
+    : type.includes("SETTLE") || type.includes("WALLET")
+      ? `/pages/worker/settlement-detail?id=${encodeURIComponent(item.bizId)}`
+      : `/pages/worker/notification-detail?id=${encodeURIComponent(item.id)}&title=${encodeURIComponent(item.title)}&desc=${encodeURIComponent(item.content)}`;
+  uni.navigateTo({ url });
 }
 
 function typeIcon(type) {

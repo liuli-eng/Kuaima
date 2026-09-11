@@ -277,6 +277,7 @@ export default {
           const jobId = `api-job-${item.orderId || index}`;
           this.applicants[applicantId] = {
             name:
+              item.nickname ||
               worker.nickname ||
               worker.name ||
               (item.userId ? `零工${item.userId}` : "零工"),

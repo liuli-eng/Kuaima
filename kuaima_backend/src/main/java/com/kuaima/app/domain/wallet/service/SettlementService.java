@@ -128,7 +128,7 @@ public class SettlementService {
         // 结算到账：通知零工
         messageService.sendToUser(s.getWorkerId(), UserRole.USER, MessageType.SETTLE_PAID, "工资已到账",
                 "您的工资 " + fenToYuan(s.getWage()) + " 元已到账，可在钱包中查看或提现。",
-                BizType.SETTLE, s.getId());
+                BizType.SETTLE, s.getId(), java.util.Map.of("wage", fenToYuan(s.getWage()), "orderId", s.getOrderId()));
         return s;
     }
 

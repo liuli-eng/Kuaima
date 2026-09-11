@@ -365,6 +365,7 @@ function normalizeJob(item) {
       item.location ||
       item.detailAddress ||
       "",
+    orderRemark: item.orderRemark || "",
   };
 }
 

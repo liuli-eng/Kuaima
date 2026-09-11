@@ -170,7 +170,7 @@ public class BossController {
     }
 
     /** 某订单的报名列表 */
-    @Operation(summary = "订单报名列表", description = "返回该订单下所有报名记录数组（BaseOrderItem）")
+    @Operation(summary = "订单报名列表", description = "返回该订单下所有报名记录数组，包含 userId 对应的 nickname（nickname 为非持久化展示字段）")
     @GetMapping("/order/{orderId}/items")
     public Result<List<BaseOrderItem>> listItemsByOrder(@PathVariable Long orderId) {
         return Result.success(bossOrderService.listItemsByOrder(orderId));

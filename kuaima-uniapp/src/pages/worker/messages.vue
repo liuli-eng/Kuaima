@@ -1,230 +1,96 @@
 <template>
   <view class="page">
-    <AppNavBar title="消息" :show-back="true" />
     <scroll-view scroll-y class="content">
-      <view class="top-actions">
-        <view class="entry" @click="go('/pages/worker/notification')">
-          <text class="entry-icon">📢</text>
-          <text class="entry-text">平台公告</text>
-          <text class="entry-arrow">›</text>
-        </view>
-        <view class="history" @click="go('/pages/worker/history-message')">
-          查看历史消息
-        </view>
+      <view class="page-heading" :style="{ paddingTop: `${statusBarHeight}px`, height: `calc(88rpx + ${statusBarHeight}px)` }">
+        <view class="heading-space" />
+        <text class="heading-title">消息</text>
+        <view class="heading-space" />
       </view>
+      <view class="heading-gap" />
 
-      <view class="cards">
-        <view
-          v-for="item in messages"
-          :key="item.id"
-          class="card"
-          @click="read(item)"
-        >
-          <view class="icon">{{ item.icon }}</view>
-          <view class="main">
-            <view class="head">
-              <text class="title">{{ item.title }}</text>
-              <text class="time">{{ item.time }}</text>
-            </view>
-            <text class="desc">{{ item.content }}</text>
+      <view class="entries">
+        <view class="entry system-entry" @click="go('/pages/worker/notification')">
+          <view class="entry-icon"><image :src="bellIcon" mode="aspectFit" /></view>
+          <view class="entry-main">
+            <text class="entry-title">系统通知</text>
+            <text class="entry-desc">消息内容</text>
           </view>
-          <text v-if="!item.read" class="dot" />
+        </view>
+        <view class="entry history-entry" @click="go('/pages/worker/history-message')">
+          <text class="history-title">查看历史消息</text>
         </view>
       </view>
 
       <view class="slogan">
-        <text class="big">找日结 上快马</text>
-        <text class="small">— 真老板 真工价 真日结 —</text>
+        <text class="slogan-big">找日结 上快马</text>
+        <text class="slogan-small">— 真老板 真工价 真日结 —</text>
       </view>
     </scroll-view>
-
     <WorkerTabBar current="messages" />
   </view>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
-import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
-import { listMessages, readMessage } from "@/api/backend";
+import bellIcon from "/static/icons/worker-messages/bell-orange.svg";
 
-const messages = ref([]);
-
-onMounted(async () => {
-  try {
-    const result = await listMessages(uni.getStorageSync("userId") || "2001", { role: "USER" });
-    if (Array.isArray(result)) messages.value = result.map(normalizeMessage);
-  } catch (_) {}
-});
+const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 
 function go(url) {
   uni.navigateTo({ url });
 }
-
-async function read(item) {
-  try {
-    await readMessage(item.id, uni.getStorageSync("userId") || "2001");
-  } catch (_) {}
-  item.read = true;
-  uni.showModal({
-    title: item.title,
-    content: item.content,
-    showCancel: false,
-  });
-}
-
-function normalizeMessage(item) {
-  return {
-    ...item,
-    icon:
-      item.bizType === "settle" ? "¥" : item.bizType === "order" ? "🔔" : "📣",
-    content: item.content || "",
-    time: formatMessageTime(item.createTime),
-    read: item.readFlag === true,
-  };
-}
-
-function formatMessageTime(value) {
-  if (!value) return "";
-  const match = String(value).match(/(?:T|\s)(\d{1,2}):(\d{2})/);
-  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : String(value);
-}
 </script>
 
 <style scoped>
-.page {
-  min-height: 100vh;
-  background: #f8f4ed;
-}
-
+.page { height: 100vh; overflow: hidden; background: #f7f7f7; }
 .content {
-  height: calc(100vh - 176rpx);
-  background: #fff8e6;
+  height: calc(100vh - 83px - env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: #f7f7f7;
 }
-
-.top-actions {
+.page-heading {
+  height: 88rpx;
+  padding: 0 32rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18rpx 22rpx 0;
+  box-sizing: border-box;
 }
-
+.heading-space { width: 64rpx; height: 64rpx; }
+.heading-title { color: #333; font-size: 36rpx; font-weight: 700; }
+.heading-gap { height: 16rpx; }
+.entries { padding: 32rpx; }
 .entry {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 20rpx;
-  border-radius: 24rpx;
   background: #fff;
+  border-radius: 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
 }
-
-.entry-icon {
-  font-size: 28rpx;
-}
-
-.entry-text {
-  font-size: 24rpx;
-  color: #ff6b35;
-  font-weight: 600;
-}
-
-.entry-arrow {
-  color: #ccc;
-  font-size: 24rpx;
-}
-
-.history {
-  color: #1890ff;
-  font-size: 23rpx;
-}
-
-.cards {
-  padding: 18rpx 22rpx 0;
-}
-
-.card {
-  position: relative;
+.system-entry {
+  min-height: 144rpx;
+  padding: 32rpx;
   display: flex;
   align-items: flex-start;
-  gap: 20rpx;
-  margin-bottom: 12rpx;
-  padding: 24rpx 22rpx;
-  border-radius: 16rpx;
-  background: #fff;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  gap: 24rpx;
 }
-
-.icon {
-  flex-shrink: 0;
-  width: 72rpx;
-  height: 72rpx;
+.system-entry:active, .history-entry:active { background: #f9f9f9; }
+.entry-icon {
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
-  background: #fff4e6;
-  color: #ff6b35;
-  text-align: center;
-  line-height: 72rpx;
-  font-size: 34rpx;
-}
-
-.main {
-  flex: 1;
-  min-width: 0;
-}
-
-.head {
+  background: #fff0e6;
   display: flex;
-  justify-content: space-between;
-  gap: 12rpx;
-}
-
-.title {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #333;
-}
-
-.time {
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  color: #aaa;
-  font-size: 20rpx;
 }
-
-.desc {
-  display: block;
-  margin-top: 10rpx;
-  color: #777;
-  font-size: 23rpx;
-  line-height: 1.6;
-}
-
-.dot {
-  position: absolute;
-  top: 18rpx;
-  right: 18rpx;
-  width: 14rpx;
-  height: 14rpx;
-  border-radius: 50%;
-  background: #ff4757;
-}
-
-.slogan {
-  padding: 54rpx 20rpx 24rpx;
-  text-align: center;
-}
-
-.big {
-  display: block;
-  color: #ddd;
-  font-size: 36rpx;
-  font-weight: 800;
-  letter-spacing: 4rpx;
-}
-
-.small {
-  display: block;
-  margin-top: 10rpx;
-  color: #c2c2c2;
-  font-size: 22rpx;
-}
+.entry-icon image { width: 40rpx; height: 44rpx; }
+.entry-main { flex: 1; min-width: 0; padding-top: 2rpx; }
+.entry-title { display: block; color: #333; font-size: 32rpx; font-weight: 600; margin-bottom: 8rpx; }
+.entry-desc { display: block; color: #777; font-size: 28rpx; line-height: 1.5; }
+.history-entry { margin-top: 24rpx; padding: 40rpx 32rpx; display: flex; align-items: center; justify-content: center; }
+.history-title { color: #333; font-size: 28rpx; font-weight: 500; }
+.slogan { padding: 64rpx 32rpx 32rpx; text-align: center; }
+.slogan-big { display: block; color: #d3d3d3; font-size: 48rpx; font-weight: 800; letter-spacing: 6rpx; }
+.slogan-small { display: block; margin-top: 16rpx; color: #aaa; font-size: 28rpx; }
 </style>

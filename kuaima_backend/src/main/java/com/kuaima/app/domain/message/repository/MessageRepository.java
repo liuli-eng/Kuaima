@@ -81,6 +81,10 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     /** 某用户某类型消息分页（如系统通知 SYSTEM_NOTICE） */
     Page<Message> findByUserIdAndTypeOrderByIdDesc(Long userId, String type, Pageable pageable);
 
+    Page<Message> findByUserIdAndRoleAndTypeOrderByIdDesc(Long userId, String role, String type, Pageable pageable);
+
+    Page<Message> findByUserIdAndRoleAndTypeAndReadFlagOrderByIdDesc(Long userId, String role, String type, boolean readFlag, Pageable pageable);
+
     /** 校验消息归属后取单条 */
     Optional<Message> findByIdAndUserId(Long id, Long userId);
 

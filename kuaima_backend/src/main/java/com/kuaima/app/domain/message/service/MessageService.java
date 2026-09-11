@@ -3,6 +3,7 @@ package com.kuaima.app.domain.message.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,19 +17,30 @@ import com.kuaima.app.domain.message.repository.MessageRepository;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.admin.entity.MessageTemplate;
+import com.kuaima.app.admin.repository.MessageTemplateRepository;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 站内消息中心：事件写入收件箱，支撑 未读数/列表/已读 接口（前端轮询）。
  * 消息写入与业务同事务，目标用户不存在时静默跳过，不影响主流程。
  */
 @Service
-@RequiredArgsConstructor
 public class MessageService {
 
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final MessageTemplateRepository messageTemplateRepository;
+
+    @Autowired
+    public MessageService(MessageRepository messageRepository, UserRepository userRepository,
+            MessageTemplateRepository messageTemplateRepository) {
+        this.messageRepository = messageRepository;
+        this.userRepository = userRepository;
+        this.messageTemplateRepository = messageTemplateRepository;
+    }
+
 
     /** 发送给单个用户（老板/零工均可），目标用户不存在时跳过并返回 null */
     @Transactional
@@ -41,6 +53,13 @@ public class MessageService {
     @Transactional
     public Message sendToUser(Long userId, String role, String type, String title, String content,
             String bizType, Long bizId) {
+        return sendToUser(userId, role, type, title, content, bizType, bizId, Map.of());
+    }
+
+    /** 使用 Web 模板发送并替换 {变量名} 占位符。 */
+    @Transactional
+    public Message sendToUser(Long userId, String role, String type, String title, String content,
+            String bizType, Long bizId, Map<String, ?> variables) {
         if (userId == null) {
             return null;
         }
@@ -48,7 +67,9 @@ public class MessageService {
         if (user == null) {
             return null;
         }
-        return messageRepository.save(build(user.getId(), role != null ? role : user.getRole(), type, title, content, bizType, bizId));
+        MessageTemplate template = messageTemplateRepository.findFirstByEventAndStatusOrderByUpdateTimeDesc(eventOf(type), "enabled").orElse(null);
+        return messageRepository.save(build(user.getId(), role != null ? role : user.getRole(), type,
+                render(templateTitle(template, title), variables), render(templateContent(template, content), variables), bizType, bizId));
     }
 
     /** 发给一组用户（已按 userId 去重），用户不存在自动跳过 */
@@ -62,6 +83,12 @@ public class MessageService {
     @Transactional
     public void sendToList(List<Long> userIds, String role, String type, String title, String content,
             String bizType, Long bizId) {
+        sendToList(userIds, role, type, title, content, bizType, bizId, Map.of());
+    }
+
+    @Transactional
+    public void sendToList(List<Long> userIds, String role, String type, String title, String content,
+            String bizType, Long bizId, Map<String, ?> variables) {
         if (userIds == null || userIds.isEmpty()) {
             return;
         }
@@ -69,7 +96,11 @@ public class MessageService {
         List<Message> messages = distinctIds.stream()
                 .map(id -> userRepository.findById(id).orElse(null))
                 .filter(u -> u != null)
-                .map(u -> build(u.getId(), role != null ? role : u.getRole(), type, title, content, bizType, bizId))
+                .map(u -> {
+                    MessageTemplate t = messageTemplateRepository.findFirstByEventAndStatusOrderByUpdateTimeDesc(eventOf(type), "enabled").orElse(null);
+                    return build(u.getId(), role != null ? role : u.getRole(), type,
+                            render(templateTitle(t, title), variables), render(templateContent(t, content), variables), bizType, bizId);
+                })
                 .toList();
         if (!messages.isEmpty()) {
             messageRepository.saveAll(messages);
@@ -79,12 +110,22 @@ public class MessageService {
     /** 广播给全部员工(USER)：岗位发布视为招聘广播（量大后可按城市/类型定向） */
     @Transactional
     public void broadcastToUsers(String type, String title, String content, String bizType, Long bizId) {
+        broadcastToUsers(type, title, content, bizType, bizId, Map.of());
+    }
+
+    @Transactional
+    public void broadcastToUsers(String type, String title, String content, String bizType, Long bizId,
+            Map<String, ?> variables) {
         List<User> users = userRepository.findByRole(UserRole.USER);
         if (users.isEmpty()) {
             return;
         }
         List<Message> messages = users.stream()
-                .map(u -> build(u.getId(), UserRole.USER, type, title, content, bizType, bizId))
+                .map(u -> {
+                    MessageTemplate t = messageTemplateRepository.findFirstByEventAndStatusOrderByUpdateTimeDesc(eventOf(type), "enabled").orElse(null);
+                    return build(u.getId(), UserRole.USER, type,
+                            render(templateTitle(t, title), variables), render(templateContent(t, content), variables), bizType, bizId);
+                })
                 .toList();
         messageRepository.saveAll(messages);
     }
@@ -136,6 +177,20 @@ public class MessageService {
         return messageRepository.findByUserIdAndTypeOrderByIdDesc(userId, type, pageable);
     }
 
+    @Transactional(readOnly = true)
+    public Page<Message> listSystem(Long userId, String role, Boolean read, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+        if (read == null) return messageRepository.findByUserIdAndRoleAndTypeOrderByIdDesc(userId, role, "SYSTEM_NOTICE", pageable);
+        return messageRepository.findByUserIdAndRoleAndTypeAndReadFlagOrderByIdDesc(userId, role, "SYSTEM_NOTICE", read, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Message> listByType(Long userId, String role, String type, Boolean read, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+        if (read == null) return messageRepository.findByUserIdAndRoleAndTypeOrderByIdDesc(userId, role, type, pageable);
+        return messageRepository.findByUserIdAndRoleAndTypeAndReadFlagOrderByIdDesc(userId, role, type, read, pageable);
+    }
+
     /** 消息详情：校验归属，不属于该用户返回 null */
     @Transactional(readOnly = true)
     public Message getById(Long userId, Long messageId) {
@@ -174,5 +229,39 @@ public class MessageService {
         message.setReadFlag(false);
         message.setCreateTime(LocalDateTime.now());
         return message;
+    }
+
+    private String eventOf(String type) {
+        return switch (type) {
+            case MessageType.ORDER_PUBLISH -> "order_publish";
+            case MessageType.ORDER_APPLY -> "order_apply";
+            case MessageType.ORDER_HIRE -> "order_hire";
+            case MessageType.ORDER_APPLY_REJECT -> "order_apply_reject";
+            case MessageType.ORDER_START_REMIND -> "order_start_remind";
+            case MessageType.ORDER_CANCEL -> "order_cancel";
+            case MessageType.ITEM_CANCEL -> "item_cancel";
+            case MessageType.ITEM_WORK_CONFIRM -> "item_work_confirm";
+            case MessageType.SETTLE_PAID -> "settlement";
+            case MessageType.WITHDRAW_FAIL -> "withdraw_fail";
+            case MessageType.BOSS_INVITE -> "boss_invite";
+            default -> type;
+        };
+    }
+
+    private String templateTitle(MessageTemplate template, String fallback) {
+        return template != null && template.getName() != null && !template.getName().isBlank() ? template.getName() : fallback;
+    }
+
+    private String templateContent(MessageTemplate template, String fallback) {
+        return template != null && template.getContent() != null && !template.getContent().isBlank() ? template.getContent() : fallback;
+    }
+
+    private String render(String text, Map<String, ?> variables) {
+        if (text == null || variables == null || variables.isEmpty()) return text;
+        String result = text;
+        for (var entry : variables.entrySet()) {
+            result = result.replace("{" + entry.getKey() + "}", String.valueOf(entry.getValue()));
+        }
+        return result;
     }
 }

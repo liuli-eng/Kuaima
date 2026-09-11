@@ -13,8 +13,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -38,7 +36,6 @@ import com.kuaima.app.domain.user.service.CertificationService;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
-import com.kuaima.app.security.model.LoginUser;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -121,12 +118,11 @@ public class BossOrderService {
             throw new IllegalStateException("仅待审核的订单可以审核通过");
         }
         order.setOrderStatus(BossStatus.ORDER_RECRUITING);
-        order.setAuditBy(currentAdminUsername());
-        order.setAuditTime(new java.util.Date());
         BossOrder saved = orderRepository.save(order);
         // 审核通过后，广播给全部员工
         messageService.broadcastToUsers(MessageType.ORDER_PUBLISH, "新岗位发布",
-                jobSummary(saved) + "，快来报名吧！", BizType.ORDER, saved.getId());
+                jobSummary(saved) + "，快来报名吧！", BizType.ORDER, saved.getId(),
+                java.util.Map.of("orderTitle", String.valueOf(saved.getOrderTitle()), "position", String.valueOf(saved.getPostion()), "salary", String.valueOf(saved.getSalary())));
         return saved;
     }
 
@@ -138,19 +134,8 @@ public class BossOrderService {
             throw new IllegalStateException("仅待审核的订单可以审核拒绝");
         }
         order.setOrderStatus(BossStatus.ORDER_AUDIT_REJECT);
-        order.setAuditBy(currentAdminUsername());
-        order.setAuditTime(new java.util.Date());
         order.setOrderRemark(StringUtils.hasText(reason) ? ("[审核拒绝] " + reason) : order.getOrderRemark());
         return orderRepository.save(order);
-    }
-
-    /** 获取当前登录管理员用户名 */
-    private String currentAdminUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof LoginUser u) {
-            return u.username();
-        }
-        return "system";
     }
 
     /** 修改订单，仅"待审核"或"招工中"状态可修改；传入字段非空才会更新 */
@@ -221,7 +206,11 @@ public class BossOrderService {
         }
         validateOrderCoordinates(order.getLongitude(), order.getLatitude());
         checkTimeRange(order.getStartTime(), order.getEndTime());
-        return orderRepository.save(order);
+        BossOrder saved = orderRepository.save(order);
+        if (update.getOrderNum() != null) {
+            reconcileOrderAfterHeadcountChange(saved);
+        }
+        return saved;
     }
 
     /** 订单详情 */
@@ -426,7 +415,7 @@ public class BossOrderService {
         messageService.sendToUser(item.getUserId(), UserRole.USER, MessageType.ORDER_HIRE, "录用通知",
                 "恭喜您！您已被「" + order.getOrderTitle() + "」" + order.getPostion() + "岗位录用（"
                         + order.getSalary() + "元/天），请准时到岗。",
-                BizType.ITEM, item.getId());
+                BizType.ITEM, item.getId(), java.util.Map.of("orderTitle", String.valueOf(order.getOrderTitle()), "position", String.valueOf(order.getPostion()), "salary", String.valueOf(order.getSalary())));
         return saved;
     }
 
@@ -528,7 +517,11 @@ public class BossOrderService {
 
     /** 某订单的报名列表 */
     public List<BaseOrderItem> listItemsByOrder(Long orderId) {
-        return itemRepository.findByOrderId(orderId);
+        return itemRepository.findByOrderId(orderId).stream().peek(item ->
+                item.setNickname(userRepository.findById(item.getUserId())
+                        .map(User::getNickname)
+                        .filter(StringUtils::hasText)
+                        .orElse(item.getUserId() == null ? "" : "零工#" + item.getUserId()))).toList();
     }
 
     /** 某用户报名的记录 */
@@ -685,6 +678,29 @@ public class BossOrderService {
             settlement.setTotalAmount(wage);
             settlement.setStatus(SettlementStatus.PENDING);
             settlementRespository.save(settlement);
+        }
+    }
+
+    /** 招工人数变更后，根据现有录用/到岗/完成人数重新推进订单并补建结算单。 */
+    private void reconcileOrderAfterHeadcountChange(BossOrder order) {
+        if (!BossStatus.ORDER_RECRUITING.equals(order.getOrderStatus())
+                || order.getOrderNum() == null || order.getOrderNum() <= 0) {
+            return;
+        }
+        List<BaseOrderItem> activeItems = itemRepository.findByOrderId(order.getId()).stream()
+                .filter(i -> BossStatus.ITEM_HIRED.equals(i.getStatus())
+                        || BossStatus.ITEM_ON_WORK.equals(i.getStatus())
+                        || BossStatus.ITEM_FINISHED.equals(i.getStatus()))
+                .toList();
+        if (activeItems.size() < order.getOrderNum()) {
+            return;
+        }
+        boolean allArrived = activeItems.stream().allMatch(i ->
+                BossStatus.ITEM_ON_WORK.equals(i.getStatus()) || BossStatus.ITEM_FINISHED.equals(i.getStatus()));
+        order.setOrderStatus(allArrived ? BossStatus.ORDER_PENDING_SETTLE : BossStatus.ORDER_RECRUIT_END);
+        orderRepository.save(order);
+        if (allArrived) {
+            createPendingSettlements(order);
         }
     }
 

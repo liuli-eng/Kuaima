@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.kuaima.app.common.Result;
 import com.kuaima.app.admin.entity.Rules;
@@ -24,9 +25,15 @@ public class RulePublicController {
 
     private final RulePublicService rulePublicService;
 
+    @Autowired
     public RulePublicController(RulePublicService rulePublicService) {
         this.rulePublicService = rulePublicService;
     }
+
+    public RulePublicController(RulesRepository repository) {
+        this(new RulePublicService(repository));
+    }
+
 
     /** 规则列表：GET /rules?category=交易规则 */
     @GetMapping

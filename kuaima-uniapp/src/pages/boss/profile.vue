@@ -1,19 +1,11 @@
 <template>
   <view class="container">
+    <view class="status-spacer" :style="{ height: `${statusBarHeight}px` }" />
     <scroll-view scroll-y class="scroll-area">
       <!-- 顶部导航 -->
       <view class="top-header">
         <view class="nav-bar">
           <view class="brand-tag">快马日结</view>
-          <view class="nav-icons">
-            <view class="nav-icon-item">
-              <image :src="ellipsisIcon" mode="aspectFit" />
-            </view>
-            <view class="nav-divider"></view>
-            <view class="nav-icon-item">
-              <image :src="dotIcon" mode="aspectFit" />
-            </view>
-          </view>
         </view>
 
         <!-- 用户信息 -->
@@ -132,6 +124,12 @@
         </view>
         <text class="tab-label">招工订单</text>
       </view>
+      <view class="tab-item" @click="switchTab('workbench')">
+        <view class="tab-icon-wrap">
+          <image :src="briefcaseGrayIcon" mode="aspectFit" />
+        </view>
+        <text class="tab-label">工作台</text>
+      </view>
       <view class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap">
           <image :src="commentDotsGrayIcon" mode="aspectFit" />
@@ -150,8 +148,6 @@
 
 <script>
 import { getCurrentUser, getUser } from '@/api/backend'
-import ellipsisIcon from '/static/icons/boss-profile/ellipsis.svg'
-import dotIcon from '/static/icons/boss-profile/dot.svg'
 import userIcon from '/static/icons/boss-profile/user.svg'
 import chevronRightIcon from '/static/icons/boss-profile/chevron-right.svg'
 import exchangeIcon from '/static/icons/boss-profile/exchange.svg'
@@ -167,14 +163,14 @@ import bookOpenIcon from '/static/icons/boss-profile/book-open.svg'
 import clipboardListIcon from '/static/icons/boss-profile/clipboard-list.svg'
 import houseGrayIcon from '/static/icons/boss-tabbar/house-gray.svg'
 import calendarCheckGrayIcon from '/static/icons/boss-tabbar/calendar-check-gray.svg'
+import briefcaseGrayIcon from '/static/icons/boss-tabbar/briefcase-gray.svg'
 import commentDotsGrayIcon from '/static/icons/boss-tabbar/comment-dots-gray.svg'
 import faceSmileWhiteIcon from '/static/icons/boss-tabbar/face-smile-white.svg'
 
 export default {
   data() {
     return {
-      ellipsisIcon,
-      dotIcon,
+      statusBarHeight: uni.getSystemInfoSync().statusBarHeight || 0,
       userIcon,
       chevronRightIcon,
       exchangeIcon,
@@ -190,6 +186,7 @@ export default {
       clipboardListIcon,
       houseGrayIcon,
       calendarCheckGrayIcon,
+      briefcaseGrayIcon,
       commentDotsGrayIcon,
       faceSmileWhiteIcon,
       profile: {
@@ -255,6 +252,10 @@ export default {
       })
     },
     switchTab(tab) {
+      if (tab === 'workbench') {
+        uni.showToast({ title: '工作台页面暂未开放', icon: 'none' })
+        return
+      }
       const tabPages = {
         'home': '/pages/boss/home',
         'order': '/pages/boss/order',
@@ -283,7 +284,7 @@ export default {
 .container {
   width: 100%;
   height: 100vh;
-  background: #FFF8E6;
+  background: #F3F4F6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -309,15 +310,21 @@ export default {
 .scroll-area {
   flex: 1;
   overflow-y: auto;
-  background: #FFF8E6;
+  background: #F3F4F6;
+}
+
+.status-spacer {
+  flex-shrink: 0;
+  background: #F7F7F7;
 }
 
 .top-header {
-  background: linear-gradient(180deg, #FFD59E 0%, #FFE4B5 100%);
+  background: #FFD96F;
   padding: 12px 16px 20px;
 }
 
 .nav-bar {
+  min-height: 36px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -330,30 +337,6 @@ export default {
   font-weight: 700;
   font-size: 14px;
   color: #8B4513;
-}
-
-.nav-icons {
-  display: flex;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(20px);
-  border-radius: 50px;
-  padding: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.nav-icon-item {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-divider {
-  width: 1px;
-  height: 16px;
-  background: #ddd;
-  margin: 0 4px;
 }
 
 .user-info {
@@ -519,6 +502,10 @@ export default {
   line-height: 1.8;
 }
 
+.footer-info text {
+  display: block;
+}
+
 /* TabBar样式 */
 .tab-bar {
   flex-shrink: 0;
@@ -571,7 +558,6 @@ export default {
 }
 
 .status-icons image { width: 16px; height: 16px; }
-.nav-icon-item image { width: 16px; height: 16px; }
 .user-avatar image { width: 34px; height: 34px; }
 .chevron-icon { width: 12px; height: 12px; }
 .switch-btn image { width: 14px; height: 14px; }

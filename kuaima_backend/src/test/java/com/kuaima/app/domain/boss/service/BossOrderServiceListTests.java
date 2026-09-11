@@ -209,6 +209,23 @@ class BossOrderServiceListTests {
     }
 
     @Test
+    void updateOrder_shouldReconcileFinishedApplicantWhenHeadcountReducedToOne() {
+        BossOrder order = new BossOrder(); order.setId(39L); order.setOrderStatus(BossStatus.ORDER_RECRUITING); order.setOrderNum(3); order.setSalary(200);
+        BaseOrderItem finished = new BaseOrderItem(); finished.setId(390L); finished.setOrderId(39L); finished.setUserId(99L); finished.setStatus(BossStatus.ITEM_FINISHED); finished.setWorkDate(Date.valueOf(java.time.LocalDate.now())); finished.setFinishDate(Date.valueOf(java.time.LocalDate.now()));
+        BossOrder update = new BossOrder(); update.setOrderNum(1);
+        when(orderRepository.findById(39L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemRepository.findByOrderId(39L)).thenReturn(List.of(finished));
+        when(settlementRepository.existsByItemIdAndStatusIn(eq(390L), any())).thenReturn(false);
+        when(settlementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BossOrder result = service.updateOrder(39L, update);
+
+        assertEquals(BossStatus.ORDER_PENDING_SETTLE, result.getOrderStatus());
+        verify(settlementRepository).save(any(Settlement.class));
+    }
+
+    @Test
     void changeOrderStatus_shouldMarkHiredWorkersArrivedAndCreateSettlements() {
         BossOrder order = new BossOrder();
         order.setId(26L);

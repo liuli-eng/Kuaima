@@ -38,7 +38,7 @@
 </template>
 
 <script>
-import { listNotices } from '@/api/backend'
+import { listSystemMessages } from '@/api/backend'
 
 export default {
   data() {
@@ -54,7 +54,7 @@ export default {
     async loadNotices() {
       this.loading = true
       try {
-        const result = await listNotices({ scope: '雇主' })
+        const result = await listSystemMessages(uni.getStorageSync('userId'), { role: 'BOSS' })
         if (Array.isArray(result)) {
           this.notices = result.map(this.normalizeNotice)
         }

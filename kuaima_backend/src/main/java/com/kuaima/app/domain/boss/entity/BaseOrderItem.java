@@ -7,6 +7,7 @@ import com.kuaima.app.domain.base.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -48,6 +49,10 @@ public class BaseOrderItem extends BaseEntity {
 
     @Column(comment = "取消原因")
     private String cancelReason;
+
+    /** 报名用户昵称（查询返回字段，不落库）。 */
+    @Transient
+    private String nickname;
 
 
 }

@@ -652,7 +652,7 @@ export default {
 .container {
   width: 100%;
   height: 100vh;
-  background: #fff8e6;
+  background: #F3F4F6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -661,7 +661,7 @@ export default {
 .scroll-area {
   flex: 1;
   overflow-y: auto;
-  background: #fff8e6;
+  background: #F3F4F6;
 }
 
 .header-bar {

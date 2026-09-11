@@ -346,6 +346,7 @@ export function createJobCategory(data = {}) {
 export function listBossAddresses(userId) {
   return request({ url: `/boss/addresses?${query({ userId })}` });
 }
+export function searchBossAddresses(userId, keyword) { return request({ url: `/boss/addresses/search?${query({ userId, keyword })}` }); }
 
 export function createBossAddress(data) {
   return request({ url: "/boss/addresses", method: "POST", data });
@@ -354,6 +355,8 @@ export function createBossAddress(data) {
 export function deleteBossAddress(id) {
   return request({ url: `/boss/addresses/${id}`, method: "DELETE" });
 }
+export function updateBossAddress(id, data) { return request({ url: `/boss/addresses/${encodeURIComponent(id)}`, method: "PUT", data }); }
+export function useBossAddress(id) { return request({ url: `/boss/addresses/${encodeURIComponent(id)}/use`, method: "PUT" }); }
 
 export function setDefaultBossAddress(id) {
   return request({ url: `/boss/addresses/${id}/default`, method: "PUT" });

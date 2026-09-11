@@ -122,29 +122,36 @@ const displayAddress = computed(() => {
 });
 
 const tags = computed(() => {
-  if (["MONTHLY", "PRESS"].includes(props.job.salaryType) || props.job.tagText) {
-    return [];
-  }
-
   const list = [];
+  if (!["MONTHLY", "PRESS"].includes(props.job.salaryType) && !props.job.tagText) {
+    if (props.job.insurance) {
+      list.push({ text: "保障", type: "blue" });
+    } else if (props.job.salaryType === "DAY") {
+      list.push({ text: "日结", type: "green" });
+    }
 
-  if (props.job.insurance) {
-    list.push({ text: "保障", type: "blue" });
-  } else if (props.job.salaryType === "DAY") {
-    list.push({ text: "日结", type: "green" });
+    if (props.job.duration) {
+      list.push({ text: `${props.job.duration}小时`, type: "" });
+    }
+
+    if (props.job.skillText) {
+      list.push({ text: props.job.skillText, type: "blue" });
+    }
+
+    if (props.job.ageLimit) {
+      list.push({ text: props.job.ageLimit, type: "orange" });
+    }
   }
 
-  if (props.job.duration) {
-    list.push({ text: `${props.job.duration}小时`, type: "" });
-  }
-
-  if (props.job.skillText) {
-    list.push({ text: props.job.skillText, type: "blue" });
-  }
-
-  if (props.job.ageLimit) {
-    list.push({ text: props.job.ageLimit, type: "orange" });
-  }
+  String(props.job.orderRemark || "")
+    .split(/[、,，;；\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .forEach((text) => {
+      if (!list.some((item) => item.text === text)) {
+        list.push({ text, type: "orange" });
+      }
+    });
 
   return list;
 });

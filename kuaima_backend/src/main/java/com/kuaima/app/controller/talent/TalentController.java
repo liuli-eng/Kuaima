@@ -188,7 +188,7 @@ public class TalentController {
                 : (boss != null ? boss.getNickname() : "老板");
         messageService.sendToUser(workerId, UserRole.USER, "BOSS_INVITE", "招聘邀请",
                 bossName + " 邀请您加入他们的岗位，快去看看吧！",
-                BizType.ORDER, orderId);
+                BizType.ORDER, orderId, java.util.Map.of("bossName", bossName, "orderId", orderId == null ? "" : orderId));
         Map<String, Object> result = new HashMap<>();
         result.put("invited", true);
         return Result.success(result);

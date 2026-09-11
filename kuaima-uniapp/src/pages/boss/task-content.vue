@@ -93,14 +93,17 @@
 
         <!-- 经验要求 -->
         <view class="section-card">
-          <text class="field-label">经验要求</text>
+          <view class="field-label">
+            <text>经验要求</text>
+            <text style="font-size: 12px; color: #999; font-weight: 400">单选</text>
+          </view>
           <view class="tag-group">
             <text
               class="tag-item"
               :class="{ selected: exp.includes(tag) }"
               v-for="tag in expTags"
               :key="tag"
-              @click="toggleTag('exp', tag)"
+              @click="selectExperience(tag)"
               >{{ tag }}</text
             >
           </view>
@@ -183,7 +186,7 @@ export default {
         ? String(saved.benefits).split("、").filter(Boolean)
         : this.benefits;
       this.exp = saved.exp
-        ? String(saved.exp).split("、").filter(Boolean)
+        ? String(saved.exp).split("、").filter(Boolean).slice(0, 1)
         : this.exp;
       this.requirements = saved.requirements
         ? String(saved.requirements).split("、").filter(Boolean)
@@ -218,6 +221,10 @@ export default {
       } else {
         arr.push(tag);
       }
+    },
+    selectExperience(tag) {
+      // 经验要求只能选择一个选项；再次点击当前选项可取消选择。
+      this.exp = this.exp[0] === tag ? [] : [tag];
     },
     saveContent() {
       const data = {

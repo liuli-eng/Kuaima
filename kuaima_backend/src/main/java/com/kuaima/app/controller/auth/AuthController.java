@@ -125,7 +125,7 @@ public class AuthController {
             newUser.setRole(role);
             newUser.setOpenid(info.openid());
             String rawNickname = info.nickname() != null ? info.nickname() : dto.getNickname();
-            newUser.setNickname(StringUtils.hasText(rawNickname) ? rawNickname : "用户");
+            newUser.setNickname(StringUtils.hasText(rawNickname) ? rawNickname : nextDefaultNickname(role));
             newUser.setAvatar(info.avatar() != null ? info.avatar() : dto.getAvatar());
             newUser.setPhone(phone);
             user = userRepository.save(newUser);
@@ -144,6 +144,20 @@ public class AuthController {
             user = userRepository.save(user);
         }
         return Result.success(buildTokenResponse(user));
+    }
+
+    /** 为未提供昵称的新用户生成按身份递增的默认昵称。 */
+    private synchronized String nextDefaultNickname(String role) {
+        String prefix = UserRole.BOSS.equals(role) ? "老板" : "零工";
+        int max = userRepository.findByRole(role).stream()
+                .map(User::getNickname)
+                .filter(StringUtils::hasText)
+                .filter(n -> n.startsWith(prefix))
+                .map(n -> n.substring(prefix.length()))
+                .filter(s -> s.matches("\\d+"))
+                .mapToInt(Integer::parseInt)
+                .max().orElse(0);
+        return prefix + String.format("%02d", max + 1);
     }
 
     /**
