@@ -180,7 +180,10 @@ public class AdminDashboardController {
                         order.getStartTime(),
                         order.getEndTime(),
                         order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主",
-                        0L
+                        0L,
+                        order.getAuditBy(),
+                        order.getAuditTime(),
+                        null
                 ))
                 .collect(Collectors.toList());
 

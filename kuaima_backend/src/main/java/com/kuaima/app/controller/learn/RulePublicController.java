@@ -28,11 +28,6 @@ public class RulePublicController {
         this.rulePublicService = rulePublicService;
     }
 
-    public RulePublicController(RulesRepository repository) {
-        this(new RulePublicService(repository));
-    }
-
-
     /** 规则列表：GET /rules?category=交易规则 */
     @GetMapping
     public Result<java.util.List<Rules>> listRules(@RequestParam(required = false) String category) {

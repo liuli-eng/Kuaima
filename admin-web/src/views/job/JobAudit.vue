@@ -11,16 +11,18 @@
         <el-input v-model="searchKeyword" placeholder="搜索招工名称/雇主" clearable style="width: 240px;" prefix-icon="Search" />
         <el-select v-model="statusFilter" placeholder="审核状态" clearable style="width: 120px;">
           <el-option label="待审核" value="待审核" />
-          <el-option label="已通过" value="已通过" />
-          <el-option label="已拒绝" value="已拒绝" />
+          <el-option label="已通过" value="招工中" />
+          <el-option label="已拒绝" value="审核拒绝" />
         </el-select>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
       </div>
 
       <el-table :data="auditData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column prop="id" label="招工ID" show-overflow-tooltip />
-        <el-table-column prop="type" label="工种" show-overflow-tooltip />
+        <el-table-column prop="id" label="审核ID" show-overflow-tooltip />
+        <el-table-column label="工种" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.jobCategoryName || row.postion || row.type || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="employer" label="雇主" show-overflow-tooltip />
         <el-table-column prop="price" label="工价" show-overflow-tooltip>
           <template #default="{ row }">
@@ -28,14 +30,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="count" label="招聘人数" show-overflow-tooltip />
-        <el-table-column label="风险标签" show-overflow-tooltip>
-          <template #default="{ row }">
-            <el-tag v-if="row.risk" type="danger" effect="light" style="margin-right: 4px;">价格偏低</el-tag>
-            <el-tag v-if="row.risk2" type="warning" effect="light">信息不完整</el-tag>
-            <span v-if="!row.risk && !row.risk2" class="text-muted">无风险</span>
-          </template>
-        </el-table-column>
         <el-table-column prop="time" label="提交时间" show-overflow-tooltip />
+        <el-table-column prop="auditBy" label="审核人" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.auditBy || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="auditTime" label="审核时间" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatTime(row.auditTime) }}</template>
+        </el-table-column>
         <el-table-column label="状态" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['status-badge', row.statusClass]">{{ row.status }}</span>
@@ -71,8 +72,8 @@
     <el-dialog v-model="detailVisible" title="审核详情" width="700px">
       <div v-if="currentItem">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="招工ID">{{ currentItem.id }}</el-descriptions-item>
-          <el-descriptions-item label="工种">{{ currentItem.type }}</el-descriptions-item>
+          <el-descriptions-item label="审核ID">{{ currentItem.id }}</el-descriptions-item>
+          <el-descriptions-item label="工种">{{ currentItem.jobCategoryName || currentItem.postion || currentItem.type || '-' }}</el-descriptions-item>
           <el-descriptions-item label="雇主">{{ currentItem.employer }}</el-descriptions-item>
           <el-descriptions-item label="工价">{{ currentItem.price }}</el-descriptions-item>
           <el-descriptions-item label="招聘人数">{{ currentItem.count }}</el-descriptions-item>
@@ -175,11 +176,30 @@ const statusClassMap = {
   '审核拒绝': 'danger',
 }
 
+const formatTime = (t) => {
+  if (!t) return '-'
+  // fastjson2 序列化 Date 为毫秒时间戳（数字）
+  if (typeof t === 'number') {
+    const d = new Date(t)
+    if (isNaN(d.getTime())) return '-'
+    const Y = d.getFullYear()
+    const M = String(d.getMonth() + 1).padStart(2, '0')
+    const D = String(d.getDate()).padStart(2, '0')
+    const h = String(d.getHours()).padStart(2, '0')
+    const m = String(d.getMinutes()).padStart(2, '0')
+    return `${Y}-${M}-${D} ${h}:${m}`
+  }
+  const s = String(t).replace('T', ' ')
+  return s.length > 16 ? s.substring(0, 16) : s
+}
+
 const normalizeAudit = (item) => {
   const statusVal = item.orderStatus ?? item.status ?? '未知'
   return {
     id: item.id,
     type: item.type ?? item.postion,
+    postion: item.postion,
+    jobCategoryName: item.jobCategoryName,
     employer: item.employerName ?? item.employer ?? '未知雇主',
     price: item.salary ?? item.price,
     count: item.orderNum ?? item.count,
@@ -187,8 +207,8 @@ const normalizeAudit = (item) => {
     time: item.timestamp ?? item.time,
     status: statusVal,
     statusClass: statusClassMap[statusVal] ?? 'default',
-    risk: item.risk ?? false,
-    risk2: item.incomplete ?? item.risk2 ?? false,
+    auditBy: item.auditBy,
+    auditTime: item.auditTime,
   }
 }
 

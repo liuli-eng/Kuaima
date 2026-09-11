@@ -133,7 +133,7 @@
         <span v-if="currentViewRule.updateTime"><i class="fas fa-clock"></i> {{ currentViewRule.updateTime }}</span>
         <span :class="['status-badge', statusClass(currentViewRule.status)]">{{ statusLabel(currentViewRule.status) }}</span>
       </div>
-      <div class="preview-content">{{ currentViewRule?.content }}</div>
+      <div class="preview-content" v-html="currentViewRule?.content"></div>
       <template #footer>
         <button class="btn btn-outline" @click="viewVisible = false">关闭</button>
         <button class="btn btn-primary" @click="editFromView">
@@ -277,13 +277,28 @@ const handleDelete = async (rule) => {
 // 已下线的规则类型（信用分、飞单认定）不在列表中展示
 const REMOVED_CATEGORIES = ['信用分规则', '飞单认定与处理规则', '信用评定']
 
+// 分类映射
+const CATEGORY_MAP = {
+  notice: '规则公示',
+  fee: '收费规则',
+  trade: '交易规则',
+  ip: '知识产权规则'
+}
+
 const loadData = async () => {
   try {
     const res = await listRules({ page: currentPage.value - 1, size: pageSize.value })
     const d = res.data
     const list = Array.isArray(d) ? d : (Array.isArray(res) ? res : [])
-    rules.value = list.filter(r => !REMOVED_CATEGORIES.includes(r.category))
-    total.value = res.total ?? d?.total ?? list.length
+    const filtered = list.filter(r => {
+      // 去掉已下线的分类
+      if (REMOVED_CATEGORIES.includes(r.category)) return false
+      // 按当前选中的 tab 分类过滤
+      const targetCategory = CATEGORY_MAP[currentTab.value]
+      return r.type === currentTab.value || r.category === targetCategory
+    })
+    rules.value = filtered
+    total.value = filtered.length
   } catch (e) {
     console.warn('[Rules] 加载失败:', e)
     rules.value = []

@@ -48,13 +48,17 @@
             <el-tag :type="statusTagType(row.enterpriseStatus)" effect="light">{{ formatStatus(row.enterpriseStatus) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button>
-            <template v-if="row.enterpriseStatus === 'PENDING' || row.enterpriseStatus === '待审核'">
-              <el-button link type="success" size="small" @click="handlePass(row)">通过</el-button>
-              <el-button link type="danger" size="small" @click="handleReject(row)">拒绝</el-button>
-            </template>
+            <div class="action-cell">
+              <el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button>
+              <template v-if="row.enterpriseStatus === 'PENDING' || row.enterpriseStatus === '待审核'">
+                <el-button link type="success" size="small" @click="handlePass(row)">通过</el-button>
+                <el-button link type="danger" size="small" @click="handleReject(row)">拒绝</el-button>
+              </template>
+              <el-button v-if="row.status === '正常' || row.status === 'NORMAL' || row.status === 1" link type="warning" size="small" @click="handleFreeze(row)">冻结</el-button>
+              <el-button v-else link type="success" size="small" @click="handleUnfreeze(row)">解冻</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -133,7 +137,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listBosses, enterprisePass, enterpriseReject } from '@/api/user'
+import { listBosses, enterprisePass, enterpriseReject, freezeUser, unfreezeUser } from '@/api/user'
 
 const searchKeyword = ref('')
 const statusFilter = ref('')
@@ -255,6 +259,28 @@ const handleReject = async (row) => {
   }
 }
 
+const handleFreeze = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要冻结「${row.companyName || row.id}」吗？`, '提示', { type: 'warning' })
+    await freezeUser(row.id)
+    ElMessage.success('冻结成功')
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+
+const handleUnfreeze = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要解冻「${row.companyName || row.id}」吗？`, '提示', { type: 'warning' })
+    await unfreezeUser(row.id)
+    ElMessage.success('解冻成功')
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+
 onMounted(loadData)
 </script>
 
@@ -329,5 +355,20 @@ onMounted(loadData)
 .action-buttons {
   display: flex; flex-direction: column; gap: 10px;
   padding-top: 16px; border-top: 1px solid var(--border);
+}
+
+.action-cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.action-cell .el-button {
+  margin-left: 0;
+  margin-right: 8px;
+  padding: 0;
+}
+.action-cell .el-button:last-child {
+  margin-right: 0;
 }
 </style>

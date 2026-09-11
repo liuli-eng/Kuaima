@@ -84,21 +84,20 @@
         </el-table-column>
         <el-table-column prop="orders" label="完成订单" show-overflow-tooltip>
           <template #default="{ row }">
-            <span>{{ row.orders ?? '-' }}</span>
+            <span>{{ row.completedOrders ?? 0 }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="registerTime" label="注册时间" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span :class="['status-badge', (row.status === '正常' || row.status === 'NORMAL' || row.status === 1) ? 'success' : 'danger']">{{ formatStatus(row.status) }}</span>
-          </template>
+        <el-table-column prop="registerTime" label="注册时间" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatDateTime(row.registerTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small">详情</el-button>
-            <el-button link type="warning" size="small" v-if="isNormal(row.status)" @click="handleFreeze(row)">冻结</el-button>
-            <el-button link type="success" size="small" v-else @click="handleUnfreeze(row)">解冻</el-button>
-            <el-button link type="danger" size="small">重置密码</el-button>
+            <div class="action-cell">
+              <el-button link type="primary" size="small" @click="handleDetail(row)">显示</el-button>
+              <el-button link type="warning" size="small" v-if="isNormal(row.status)" @click="handleFreeze(row)">冻结</el-button>
+              <el-button link type="success" size="small" v-else @click="handleUnfreeze(row)">解冻</el-button>
+              <el-button link type="danger" size="small">重置密码</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -117,13 +116,127 @@
         />
       </div>
     </div>
+
+    <!-- 零工详情弹窗 -->
+    <el-dialog v-model="detailVisible" width="680px" :show-close="false" class="worker-detail-dialog" v-loading="detailLoading">
+      <div class="detail-dialog-header">
+        <span class="detail-dialog-title">零工详情</span>
+        <div class="detail-dialog-close" @click="detailVisible = false"><i class="fas fa-times"></i></div>
+      </div>
+      <div class="detail-dialog-body" v-if="detailData.id">
+        <!-- 头像区域 -->
+        <div class="detail-avatar-section">
+          <div class="detail-avatar" :style="{ background: getAvatarColor(detailData.nickname || detailData.username) }">{{ getAvatarLetter(detailData.nickname || detailData.realName || detailData.username) }}</div>
+          <div class="detail-basic-info">
+            <h3>{{ detailData.nickname || detailData.realName || detailData.username || '-' }}</h3>
+            <p><i class="fas fa-mobile-alt"></i> <span>{{ detailData.phone || '-' }}</span></p>
+            <p>
+              <i class="fas fa-id-card"></i>
+              <span :style="{ color: detailData.realnameStatus === 'APPROVED' ? 'var(--success)' : 'var(--text-muted)' }">
+                {{ formatRealnameStatus(detailData.realnameStatus) }}
+              </span>
+            </p>
+            <div style="margin-top: 8px;">
+              <span :class="['status-badge', isNormal(detailData.status) ? 'success' : 'danger']">
+                {{ formatStatus(detailData.status) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="detail-section-title">基本信息</div>
+        <div class="detail-info-grid" style="margin-bottom: 20px;">
+          <div class="detail-info-item">
+            <span class="detail-info-label">零工ID</span>
+            <span class="detail-info-value">{{ detailData.id }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">性别</span>
+            <span class="detail-info-value">{{ formatGender(detailData.gender) }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">年龄</span>
+            <span class="detail-info-value">{{ detailData.age || '-' }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">城市</span>
+            <span class="detail-info-value">{{ detailData.city || '-' }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">注册时间</span>
+            <span class="detail-info-value">{{ formatDateTimeFull(detailData.date) }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">最近活跃</span>
+            <span class="detail-info-value">{{ formatDateTimeFull(detailData.timestamp) }}</span>
+          </div>
+        </div>
+
+        <!-- 技能与数据 -->
+        <div class="detail-section-title">技能与数据</div>
+        <div class="detail-info-grid" style="margin-bottom: 20px;">
+          <div class="detail-info-item" style="grid-column: span 2;">
+            <span class="detail-info-label">技能标签</span>
+            <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+              <template v-if="detailData.skills">
+                <span v-for="s in String(detailData.skills).split(',')" :key="s" class="detail-tag detail-tag-blue">{{ s.trim() }}</span>
+              </template>
+              <span v-else class="text-muted">-</span>
+            </div>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">完成订单</span>
+            <span class="detail-info-value">{{ detailData.completedOrders ?? 0 }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">信用分</span>
+            <span class="detail-info-value" :style="{ color: getCreditColor(detailData.creditScore) }">{{ detailData.creditScore ?? '-' }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">钱包余额</span>
+            <span class="detail-info-value">{{ detailData.balance != null ? `¥${(detailData.balance / 100).toFixed(2)}` : '-' }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">工作年限</span>
+            <span class="detail-info-value">{{ detailData.workYears != null ? `${detailData.workYears}年` : '-' }}</span>
+          </div>
+        </div>
+
+        <!-- 账户状态 -->
+        <div class="detail-section-title">账户状态</div>
+        <div class="detail-info-grid">
+          <div class="detail-info-item">
+            <span class="detail-info-label">实名状态</span>
+            <span class="detail-info-value" :style="{ color: detailData.realnameStatus === 'APPROVED' ? 'var(--success)' : 'inherit' }">
+              {{ formatRealnameStatus(detailData.realnameStatus) }}
+            </span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">账户状态</span>
+            <span class="detail-info-value" :style="{ color: isNormal(detailData.status) ? 'var(--success)' : '#EF4444' }">
+              {{ formatStatus(detailData.status) }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="detail-dialog-footer">
+        <button class="btn btn-outline" @click="detailVisible = false">关闭</button>
+        <button v-if="isNormal(detailData.status)" class="btn btn-danger" @click="handleFreeze(detailData); detailVisible = false">
+          <i class="fas fa-ban"></i> 冻结账户
+        </button>
+        <button v-else class="btn btn-success" @click="handleUnfreeze(detailData); detailVisible = false">
+          <i class="fas fa-lock-open"></i> 解冻账户
+        </button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listWorkers, freezeUser, unfreezeUser } from '@/api/user'
+import { listWorkers, getUser, freezeUser, unfreezeUser } from '@/api/user'
 
 const searchKeyword = ref('')
 const statusFilter = ref('')
@@ -138,6 +251,11 @@ const tableData = ref([])
 // 统计数据
 const stats = ref({ total: '-', normal: '-', frozen: '-', certified: '-' })
 
+// 详情弹窗
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detailData = ref({})
+
 // 加载统计
 const loadStats = async () => {
   try {
@@ -149,7 +267,6 @@ const loadStats = async () => {
     stats.value.total = allRes.total ?? 0
     stats.value.normal = normalRes.total ?? 0
     stats.value.frozen = frozenRes.total ?? 0
-    // 已认证：加载全量数据客户端过滤（数据量不大时可行）
     const allDataRes = await listWorkers({ page: 0, size: 1000 })
     const d = allDataRes.data
     const list = Array.isArray(d) ? d : (d?.content || [])
@@ -159,29 +276,52 @@ const loadStats = async () => {
   }
 }
 
-// 后端 Worker 真实字段：id, username, nickname, phone, role, status, age, gender, certStatus, creditScore, skills, timestamp
+// 后端 Worker 真实字段
 const normalizeWorker = (item) => {
   return {
     ...item,
     name: item.username || item.phone,
     nickname: item.nickname || '',
-    registerTime: item.timestamp,
-    // status 后端返回 "正常"/"冻结" 或枚举值，formatStatus 已做兼容
-    // orders 后端暂无此字段，显示占位
+    registerTime: item.date || item.timestamp,
   }
 }
 
-// 加载数据
+const formatDateTime = (t) => {
+  if (!t) return '-'
+  if (typeof t === 'number') {
+    const d = new Date(t)
+    return isNaN(d.getTime()) ? '-' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  const s = String(t)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  return s.replace('T', ' ').substring(0, 10)
+}
+
+const formatDateTimeFull = (t) => {
+  if (!t || t === 0) return '-'
+  if (typeof t === 'number') {
+    const d = new Date(t)
+    if (isNaN(d.getTime())) return '-'
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const h = String(d.getHours()).padStart(2, '0')
+    const min = String(d.getMinutes()).padStart(2, '0')
+    return `${y}-${m}-${day} ${h}:${min}`
+  }
+  const s = String(t).replace('T', ' ')
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  return s.length > 16 ? s.substring(0, 16) : s
+}
+
 const loadData = async () => {
   try {
     const result = await listWorkers({
       keyword: searchKeyword.value || undefined,
       status: statusFilter.value || undefined,
-      page: currentPage.value - 1, // API 0-based
+      page: currentPage.value - 1,
       size: pageSize.value
     })
-    // 后端统一 Result：{ code, data, total, page }
-    // data 可能是 Spring Data Page { content } 或 { list } 或数组
     const d = result.data
     tableData.value = (Array.isArray(d) ? d : (d?.content || d?.list || [])).map(normalizeWorker)
     total.value = result.total ?? d?.totalElements ?? d?.total ?? 0
@@ -193,12 +333,12 @@ const loadData = async () => {
 }
 
 const getCreditColor = (score) => {
+  if (!score) return 'inherit'
   if (score >= 80) return '#10B981'
   if (score >= 60) return '#F59E0B'
   return '#EF4444'
 }
 
-// 兼容后端不同字段/类型
 const getAvatarColor = (name) => {
   const palette = ['#FF6B35', '#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#64748B']
   const idx = (name || '').length % palette.length
@@ -211,11 +351,6 @@ const normalizeSkills = (skills) => {
   if (typeof skills === 'string') return skills.split(',').filter(Boolean)
   return []
 }
-const formatRealName = (v) => {
-  if (v === true || v === 1 || v === '已认证') return '已认证'
-  if (v === false || v === 0 || v === '未认证') return '未认证'
-  return v || '-'
-}
 const isPhoneVerified = (row) => {
   return row.certStatus === true
     || row.certStatus === 1
@@ -224,12 +359,24 @@ const isPhoneVerified = (row) => {
     || row.certStatus === 'VERIFIED'
     || row.certStatus === 'APPROVED'
 }
+const isNormal = (s) => s === '正常' || s === 'NORMAL' || s === 1
+
 const formatStatus = (s) => {
   if (s === 'NORMAL' || s === 1 || s === '正常') return '正常'
   if (s === 'FROZEN' || s === 0 || s === '冻结') return '冻结'
   return s || '-'
 }
-const isNormal = (s) => s === '正常' || s === 'NORMAL' || s === 1
+const formatRealnameStatus = (s) => {
+  if (s === 'APPROVED') return '已认证'
+  if (s === 'PENDING') return '待审核'
+  if (s === 'REJECTED') return '已拒绝'
+  return '未认证'
+}
+const formatGender = (g) => {
+  if (g === '男' || g === 'male' || g === 'M') return '男'
+  if (g === '女' || g === 'female' || g === 'F') return '女'
+  return g || '-'
+}
 
 const handleSearch = () => {
   currentPage.value = 1
@@ -240,10 +387,6 @@ const handleReset = () => {
   statusFilter.value = ''
   dateRange.value = []
   currentPage.value = 1
-  loadData()
-}
-const handlePageChange = (page) => {
-  currentPage.value = page
   loadData()
 }
 
@@ -258,10 +401,26 @@ const onPageChange = (page) => {
   loadData()
 }
 
+// 详情弹窗
+const handleDetail = async (row) => {
+  detailVisible.value = true
+  detailLoading.value = true
+  detailData.value = {}
+  try {
+    const res = await getUser(row.id)
+    detailData.value = res.data || res || {}
+  } catch (e) {
+    ElMessage.error('加载详情失败')
+    console.warn('[Workers] 加载详情失败:', e)
+  } finally {
+    detailLoading.value = false
+  }
+}
+
 // 冻结 / 解冻
 const handleFreeze = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定要冻结用户 ${row.name || row.id} 吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`确定要冻结用户 ${row.name || row.nickname || row.id} 吗？`, '提示', { type: 'warning' })
     await freezeUser(row.id)
     ElMessage.success('冻结成功')
     loadData()
@@ -272,7 +431,7 @@ const handleFreeze = async (row) => {
 }
 const handleUnfreeze = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定要解冻用户 ${row.name || row.id} 吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`确定要解冻用户 ${row.name || row.nickname || row.id} 吗？`, '提示', { type: 'warning' })
     await unfreezeUser(row.id)
     ElMessage.success('解冻成功')
     loadData()
@@ -303,6 +462,22 @@ onMounted(() => {
   gap: 10px;
 }
 
+/* 操作按钮强制一行排列 */
+.action-cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.action-cell .el-button {
+  margin-left: 0;
+  margin-right: 8px;
+  padding: 0;
+}
+.action-cell .el-button:last-child {
+  margin-right: 0;
+}
+
 .mini-avatar {
   width: 36px;
   height: 36px;
@@ -316,27 +491,188 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.credit-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  
-  .credit-score {
-    font-weight: 600;
-    min-width: 36px;
-    text-align: right;
-  }
-}
-
 .pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 16px;
-  
-  .pagination-info {
-    font-size: 13px;
-    color: var(--text-secondary);
-  }
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ====== 详情弹窗样式 ====== */
+.worker-detail-dialog :deep(.el-dialog__header) {
+  display: none;
+}
+.worker-detail-dialog :deep(.el-dialog__body) {
+  padding: 0;
+}
+.worker-detail-dialog :deep(.el-dialog__footer) {
+  display: none;
+}
+
+.detail-dialog-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border, #E5E7EB);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.detail-dialog-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+.detail-dialog-close {
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-muted, #9CA3AF);
+}
+.detail-dialog-close:hover {
+  background: #F3F4F6;
+  color: var(--text-primary);
+}
+
+.detail-dialog-body {
+  padding: 24px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.detail-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.detail-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+.detail-basic-info h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+}
+.detail-basic-info p {
+  margin: 3px 0;
+  font-size: 13px;
+  color: var(--text-secondary, #6B7280);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.detail-basic-info p i {
+  color: var(--text-muted, #9CA3AF);
+  width: 16px;
+  text-align: center;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1F2937);
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 3px solid var(--primary, #FF6B35);
+}
+
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+}
+.detail-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border, #E5E7EB);
+}
+.detail-info-item:nth-child(odd) {
+  padding-right: 24px;
+}
+.detail-info-item:nth-child(even) {
+  padding-left: 24px;
+  border-left: 1px solid var(--border, #E5E7EB);
+}
+.detail-info-label {
+  font-size: 12px;
+  color: var(--text-muted, #9CA3AF);
+}
+.detail-info-value {
+  font-size: 14px;
+  color: var(--text-primary, #1F2937);
+  font-weight: 500;
+}
+
+.text-muted {
+  color: var(--text-muted, #9CA3AF);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-badge.success {
+  background: #ECFDF5;
+  color: #059669;
+}
+.status-badge.danger {
+  background: #FEF2F2;
+  color: #DC2626;
+}
+
+.detail-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #F3F4F6;
+  color: #6B7280;
+}
+.detail-tag-blue {
+  background: #DBEAFE;
+  color: #2563EB;
+}
+
+.detail-dialog-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border, #E5E7EB);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-success {
+  background: #10B981;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn-success:hover {
+  opacity: 0.9;
 }
 </style>

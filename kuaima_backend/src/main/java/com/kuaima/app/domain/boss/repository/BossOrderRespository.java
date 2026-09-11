@@ -1,5 +1,6 @@
 package com.kuaima.app.domain.boss.repository;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -64,5 +65,14 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, Jp
                            @Param("type") String type,
                            @Param("duration") Integer duration,
                            Pageable pageable);
+
+    /** 按老板批量统计招工数 */
+    @Query("""
+            select o.createBy, count(o)
+            from BossOrder o
+            where o.createBy in :createByIds
+            group by o.createBy
+            """)
+    List<Object[]> countByCreateByIds(@Param("createByIds") Collection<Long> createByIds);
 
 }

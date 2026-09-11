@@ -3,6 +3,11 @@ package com.kuaima.app.admin.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -13,7 +18,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
+import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.user.constant.CertificationStatus;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
@@ -30,28 +39,48 @@ import jakarta.persistence.EntityNotFoundException;
 public class AdminUserController {
 
     private final UserRepository userRepository;
+    private final BaseOrderItemRespository orderItemRepository;
+    private final BossOrderRespository bossOrderRepository;
 
-    public AdminUserController(UserRepository userRepository) {
+    public AdminUserController(UserRepository userRepository,
+                               BaseOrderItemRespository orderItemRepository,
+                               BossOrderRespository bossOrderRepository) {
         this.userRepository = userRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.bossOrderRepository = bossOrderRepository;
     }
 
-    /** 零工列表 */
-    @Operation(summary = "零工列表分页", description = "参数：status(正常/冻结)、keyword(昵称/手机号模糊)、page(默认 0)、size(默认 10)。返回 User，不含 password")
+    /** 零工列表（附加 completedOrders 已完成订单数） */
+    @Operation(summary = "零工列表分页", description = "参数：status(正常/冻结)、keyword(昵称/手机号模糊)、page(默认 0)、size(默认 10)。返回 User，不含 password，附加 completedOrders")
     @GetMapping("/workers")
-    public Result<Page<User>> workers(@RequestParam(required = false) String status,
-                                      @RequestParam(required = false) String keyword,
-                                      @RequestParam(defaultValue = "0") int page,
-                                      @RequestParam(defaultValue = "10") int size) {
+    public Result<Page<JSONObject>> workers(@RequestParam(required = false) String status,
+                                            @RequestParam(required = false) String keyword,
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(defaultValue = "10") int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         String kw = keyword != null && !keyword.isBlank() ? keyword : null;
         Page<User> result = userRepository.searchByRole(UserRole.USER, status, kw, pageable);
-        return Result.success(result, page, result.getTotalElements());
+
+        // 批量统计零工已完成订单数
+        Set<Long> userIds = result.stream().map(User::getId).collect(Collectors.toSet());
+        Map<Long, Long> completedMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            orderItemRepository.countCompletedByUserIds(userIds)
+                    .forEach(row -> completedMap.put((Long) row[0], (Long) row[1]));
+        }
+
+        Page<JSONObject> views = result.map(u -> {
+            JSONObject obj = (JSONObject) JSON.toJSON(u);
+            obj.put("completedOrders", completedMap.getOrDefault(u.getId(), 0L));
+            return obj;
+        });
+        return Result.success(views, page, result.getTotalElements());
     }
 
-    /** 雇主列表 */
-    @Operation(summary = "雇主列表分页", description = "参数：status(正常/冻结)、enterpriseStatus(UNVERIFIED/PENDING/APPROVED/REJECTED)、keyword(企业名/手机号模糊)、page、size")
+    /** 雇主列表（附加 jobsCount 招工数，使用 fastjson 序列化确保 password 不泄露） */
+    @Operation(summary = "雇主列表分页", description = "参数：status(正常/冻结)、enterpriseStatus(UNVERIFIED/PENDING/APPROVED/REJECTED)、keyword(企业名/手机号模糊)、page、size。附加 jobsCount")
     @GetMapping("/bosses")
-    public Result<Page<User>> bosses(@RequestParam(required = false) String status,
+    public Result<Page<JSONObject>> bosses(@RequestParam(required = false) String status,
                                      @RequestParam(required = false) String enterpriseStatus,
                                      @RequestParam(required = false) String keyword,
                                      @RequestParam(defaultValue = "0") int page,
@@ -60,15 +89,38 @@ public class AdminUserController {
         String kw = keyword != null && !keyword.isBlank() ? keyword : null;
         String es = enterpriseStatus != null && !enterpriseStatus.isBlank() ? enterpriseStatus : null;
         Page<User> result = userRepository.searchBosses(UserRole.BOSS, status, es, kw, pageable);
-        return Result.success(result, page, result.getTotalElements());
+
+        // 批量统计每个老板的招工数
+        Set<Long> bossIds = result.stream().map(User::getId).collect(Collectors.toSet());
+        Map<Long, Long> jobsMap = new HashMap<>();
+        if (!bossIds.isEmpty()) {
+            bossOrderRepository.countByCreateByIds(bossIds)
+                    .forEach(row -> jobsMap.put((Long) row[0], (Long) row[1]));
+        }
+
+        Page<JSONObject> views = result.map(u -> {
+            JSONObject obj = (JSONObject) JSON.toJSON(u);
+            obj.put("jobsCount", jobsMap.getOrDefault(u.getId(), 0L));
+            return obj;
+        });
+        return Result.success(views, page, result.getTotalElements());
     }
 
     /** 用户详情 */
     @Operation(summary = "用户详情", description = "按 id 查询用户完整信息，用户不存在返回 404")
     @GetMapping("/{id}")
-    public Result<User> get(@PathVariable Long id) {
-        return Result.success(userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id)));
+    public Result<JSONObject> get(@PathVariable Long id) {
+        User u = userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
+        JSONObject obj = (JSONObject) JSON.toJSON(u);
+        obj.remove("password");
+        // 附加完成订单数
+        Map<Long, Long> completedMap = new HashMap<>();
+        Set<Long> uid = Set.of(id);
+        orderItemRepository.countCompletedByUserIds(uid)
+                .forEach(row -> completedMap.put((Long) row[0], (Long) row[1]));
+        obj.put("completedOrders", completedMap.getOrDefault(id, 0L));
+        return Result.success(obj);
     }
 
     /** 冻结 */

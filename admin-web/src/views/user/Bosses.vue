@@ -70,7 +70,11 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="industry" label="行业类型" show-overflow-tooltip />
+        <el-table-column prop="industry" label="行业类型" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span>{{ row.industry || '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="联系人" show-overflow-tooltip>
           <template #default="{ row }">
             <div>
@@ -79,14 +83,9 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="jobs" label="招工数" show-overflow-tooltip>
+        <el-table-column prop="jobsCount" label="招工数" show-overflow-tooltip>
           <template #default="{ row }">
-            <span>{{ row.jobs ?? '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="信用分" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span style="font-weight: 600; color: var(--primary);">{{ row.creditScore || '-' }}</span>
+            <span>{{ row.jobsCount ?? 0 }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="certStatus" label="认证状态" show-overflow-tooltip>
@@ -94,15 +93,9 @@
             <el-tag :type="(row.certStatus === '已认证' || row.certStatus === 'VERIFIED' || row.certStatus === 2) ? 'success' : 'warning'" effect="light">{{ formatCertStatus(row.certStatus) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span :class="['status-badge', isNormal(row.status) ? 'success' : 'danger']">{{ formatStatus(row.status) }}</span>
-          </template>
-        </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small">详情</el-button>
-            <el-button link type="primary" size="small">资质</el-button>
+            <el-button link type="primary" size="small" @click="handleDetail(row)">详情</el-button>
             <el-button link type="warning" size="small" v-if="isNormal(row.status)" @click="handleFreeze(row)">冻结</el-button>
             <el-button link type="success" size="small" v-else @click="handleUnfreeze(row)">解冻</el-button>
           </template>
@@ -128,8 +121,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listBosses, freezeUser, unfreezeUser } from '@/api/user'
+
+const router = useRouter()
 
 const searchKeyword = ref('')
 const certFilter = ref('')
@@ -202,12 +198,11 @@ const formatCertStatus = (s) => {
   if (s === 'REJECTED' || s === 0 || s === '已拒绝') return '已拒绝'
   return s || '-'
 }
-const formatStatus = (s) => {
-  if (s === 'NORMAL' || s === 1 || s === '正常') return '正常'
-  if (s === 'FROZEN' || s === 0 || s === '冻结') return '冻结'
-  return s || '-'
-}
 const isNormal = (s) => s === '正常' || s === 'NORMAL' || s === 1
+
+const handleDetail = (row) => {
+  router.push(`/admin/bosses/detail/${row.id}`)
+}
 
 const handleSearch = () => {
   currentPage.value = 1

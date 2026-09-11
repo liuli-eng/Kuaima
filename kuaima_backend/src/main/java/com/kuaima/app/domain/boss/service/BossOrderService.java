@@ -13,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -36,6 +38,7 @@ import com.kuaima.app.domain.user.service.CertificationService;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
+import com.kuaima.app.security.model.LoginUser;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -118,6 +121,8 @@ public class BossOrderService {
             throw new IllegalStateException("仅待审核的订单可以审核通过");
         }
         order.setOrderStatus(BossStatus.ORDER_RECRUITING);
+        order.setAuditBy(currentAdminUsername());
+        order.setAuditTime(new java.util.Date());
         BossOrder saved = orderRepository.save(order);
         // 审核通过后，广播给全部员工
         messageService.broadcastToUsers(MessageType.ORDER_PUBLISH, "新岗位发布",
@@ -133,8 +138,19 @@ public class BossOrderService {
             throw new IllegalStateException("仅待审核的订单可以审核拒绝");
         }
         order.setOrderStatus(BossStatus.ORDER_AUDIT_REJECT);
+        order.setAuditBy(currentAdminUsername());
+        order.setAuditTime(new java.util.Date());
         order.setOrderRemark(StringUtils.hasText(reason) ? ("[审核拒绝] " + reason) : order.getOrderRemark());
         return orderRepository.save(order);
+    }
+
+    /** 获取当前登录管理员用户名 */
+    private String currentAdminUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof LoginUser u) {
+            return u.username();
+        }
+        return "system";
     }
 
     /** 修改订单，仅"待审核"或"招工中"状态可修改；传入字段非空才会更新 */

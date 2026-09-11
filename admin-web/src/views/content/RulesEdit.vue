@@ -35,13 +35,6 @@
               <span class="section-num">1</span> 基本信息
             </div>
 
-            <div style="margin-bottom: 18px;">
-              <label class="form-label">规则类型 <span class="required">*</span></label>
-              <el-select v-model="currentType" style="width: 240px;" @change="selectType">
-                <el-option v-for="t in typeOptions" :key="t.key" :label="t.name" :value="t.key" />
-              </el-select>
-            </div>
-
             <div class="form-group">
               <div>
                 <label class="form-label">规则名称 <span class="required">*</span></label>
@@ -51,6 +44,16 @@
                 <label class="form-label">版本号</label>
                 <el-input v-model="form.version" placeholder="如：v1.0" style="width: 160px;" />
               </div>
+            </div>
+
+            <div style="margin-bottom: 18px;">
+              <label class="form-label">规则类型 <span class="required">*</span></label>
+              <el-select v-model="currentType" style="width: 240px;" @change="selectType">
+                <el-option v-for="t in typeOptions" :key="t.key" :label="t.name" :value="t.key" />
+              </el-select>
+            </div>
+
+            <div class="form-group">
               <div>
                 <label class="form-label">规则分类</label>
                 <el-input v-model="form.category" placeholder="自动生成或手动填写" />
@@ -77,35 +80,33 @@
             <div class="full-width">
               <label class="form-label">规则详细内容 <span class="required">*</span></label>
               <div class="rich-text-toolbar">
-                <select class="toolbar-select">
-                  <option>正文</option>
-                  <option>标题1</option>
-                  <option>标题2</option>
-                  <option>标题3</option>
+                <select class="toolbar-select" @change="execBlock($event.target.value); $event.target.selectedIndex = 0">
+                  <option value="p">正文</option>
+                  <option value="h1">标题1</option>
+                  <option value="h2">标题2</option>
+                  <option value="h3">标题3</option>
                 </select>
                 <span class="divider"></span>
-                <button type="button" title="加粗"><i class="fas fa-bold"></i></button>
-                <button type="button" title="斜体"><i class="fas fa-italic"></i></button>
-                <button type="button" title="下划线"><i class="fas fa-underline"></i></button>
+                <button type="button" title="加粗" @click="exec('bold')"><i class="fas fa-bold"></i></button>
+                <button type="button" title="斜体" @click="exec('italic')"><i class="fas fa-italic"></i></button>
+                <button type="button" title="下划线" @click="exec('underline')"><i class="fas fa-underline"></i></button>
                 <span class="divider"></span>
-                <button type="button" title="无序列表"><i class="fas fa-list-ul"></i></button>
-                <button type="button" title="有序列表"><i class="fas fa-list-ol"></i></button>
-                <button type="button" title="引用"><i class="fas fa-quote-left"></i></button>
+                <button type="button" title="无序列表" @click="exec('insertUnorderedList')"><i class="fas fa-list-ul"></i></button>
+                <button type="button" title="有序列表" @click="exec('insertOrderedList')"><i class="fas fa-list-ol"></i></button>
+                <button type="button" title="引用" @click="exec('formatBlock', 'blockquote')"><i class="fas fa-quote-left"></i></button>
                 <span class="divider"></span>
-                <button type="button" title="超链接"><i class="fas fa-link"></i></button>
-                <button type="button" title="图片"><i class="fas fa-image"></i></button>
+                <button type="button" title="超链接" @click="insertLink"><i class="fas fa-link"></i></button>
                 <span class="divider"></span>
-                <button type="button" title="撤销"><i class="fas fa-undo"></i></button>
-                <button type="button" title="重做"><i class="fas fa-redo"></i></button>
+                <button type="button" title="撤销" @click="exec('undo')"><i class="fas fa-undo"></i></button>
+                <button type="button" title="重做" @click="exec('redo')"><i class="fas fa-redo"></i></button>
               </div>
-              <el-input
-                v-model="form.content"
-                type="textarea"
-                :rows="14"
-                placeholder="请输入规则详细内容..."
-                resize="vertical"
+              <div
+                ref="editorRef"
                 class="content-editor"
-              />
+                contenteditable="true"
+                @input="onEditorInput"
+                v-html="form.content"
+              ></div>
               <div class="form-hint">支持多段落、列表、加粗等格式。内容会展示给所有相关用户查看。</div>
             </div>
           </div>
@@ -239,7 +240,7 @@
         <span><i class="fas fa-code-branch" style="color: var(--primary);"></i> {{ form.version || 'v1.0' }}</span>
         <span :class="['status-badge', statusBadgeClass]">{{ statusLabel(form.status) }}</span>
       </div>
-      <div class="preview-content">{{ form.content || '(暂无内容)' }}</div>
+      <div class="preview-content" v-html="form.content || '(暂无内容)'"></div>
       <template #footer>
         <button class="btn btn-outline" @click="previewVisible = false">关闭</button>
       </template>
@@ -248,7 +249,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref, onMounted } from 'vue'
+import { reactive, computed, ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listRules, createRules, updateRules } from '@/api/content'
@@ -286,6 +287,26 @@ const initialType = typeCategoryMap[routeTab.value] ? routeTab.value : 'notice'
 const currentType = ref(initialType)
 const previewVisible = ref(false)
 const history = ref([])
+const editorRef = ref(null)
+
+// 富文本编辑器命令
+const exec = (command, value = null) => {
+  document.execCommand(command, false, value)
+  editorRef.value?.focus()
+}
+const execBlock = (tag) => {
+  document.execCommand('formatBlock', false, tag)
+  editorRef.value?.focus()
+}
+const insertLink = () => {
+  const url = window.prompt('请输入链接地址：')
+  if (url) exec('createLink', url)
+}
+const onEditorInput = () => {
+  if (editorRef.value) {
+    form.content = editorRef.value.innerHTML
+  }
+}
 
 const form = reactive({
   id: null,
@@ -428,6 +449,11 @@ const loadExisting = async () => {
         ...(found.updateTime ? [{ icon: 'fa-edit', title: '修改内容', time: form.updateTime }] : []),
         ...(found.status === 'published' ? [{ icon: 'fa-check-circle', title: '发布上线', time: form.updateTime }] : [])
       ]
+      // 编辑器回显
+      await nextTick()
+      if (editorRef.value) {
+        editorRef.value.innerHTML = form.content || ''
+      }
     }
   } catch (e) {
     console.warn('[RulesEdit] 加载失败:', e)
@@ -582,12 +608,34 @@ onMounted(loadExisting)
   background: #fff;
   cursor: pointer;
 }
-.content-editor :deep(.el-textarea__inner) {
-  min-height: 300px !important;
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
+.content-editor {
+  min-height: 300px;
+  border: 1px solid var(--border, #E5E7EB);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 12px 16px;
   line-height: 1.7;
+  font-size: 14px;
+  outline: none;
+  overflow-y: auto;
+  background: #fff;
 }
+.content-editor:empty::before {
+  content: '请输入规则详细内容...';
+  color: var(--text-muted, #9CA3AF);
+}
+.content-editor :deep(h1) { font-size: 20px; font-weight: 700; margin: 12px 0 8px; }
+.content-editor :deep(h2) { font-size: 18px; font-weight: 600; margin: 10px 0 6px; }
+.content-editor :deep(h3) { font-size: 16px; font-weight: 600; margin: 8px 0 4px; }
+.content-editor :deep(blockquote) {
+  border-left: 3px solid var(--border, #E5E7EB);
+  padding-left: 12px;
+  color: var(--text-secondary, #6B7280);
+  margin: 8px 0;
+}
+.content-editor :deep(ul),
+.content-editor :deep(ol) { padding-left: 24px; margin: 8px 0; }
+.content-editor :deep(a) { color: var(--primary, #FF6B35); text-decoration: underline; }
 
 .status-badge {
   display: inline-flex;

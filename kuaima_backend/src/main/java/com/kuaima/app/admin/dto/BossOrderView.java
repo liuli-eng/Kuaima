@@ -21,6 +21,9 @@ public record BossOrderView(
         java.util.Date startTime,
         java.util.Date endTime,
         String employerName,
-        Long currentApply
+        Long currentApply,
+        String auditBy,
+        java.util.Date auditTime,
+        String jobCategoryName
 ) {
 }

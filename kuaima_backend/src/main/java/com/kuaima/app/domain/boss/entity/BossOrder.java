@@ -96,6 +96,12 @@ public class BossOrder extends BaseEntity {
     @Column(name = "settle_notify", comment = "结算通知")
     private Boolean settleNotify;
 
+    @Column(length = 50, comment = "审核人（管理员用户名）")
+    private String auditBy;
+
+    @Column(comment = "审核时间")
+    private Date auditTime;
+
     /** 列表展示用：有效报名数，不落库 */
     @Transient
     private Long currentApply;

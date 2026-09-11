@@ -41,6 +41,12 @@ const routes = [
         meta: { title: '老板管理', icon: 'fa-building', permKey: 'permUser.u2' }
       },
       {
+        path: 'bosses/detail/:id',
+        name: 'BossDetail',
+        component: () => import('@/views/user/BossDetail.vue'),
+        meta: { title: '老板详情', icon: 'fa-eye', hidden: true, permKey: 'permUser.u2' }
+      },
+      {
         path: 'enterprise-cert',
         name: 'EnterpriseCert',
         component: () => import('@/views/user/EnterpriseCert.vue'),
@@ -83,6 +89,12 @@ const routes = [
         name: 'Settlement',
         component: () => import('@/views/order/Settlement.vue'),
         meta: { title: '结算管理', icon: 'fa-coins', permKey: 'permOrder.o3' }
+      },
+      {
+        path: 'settlement/detail/:id',
+        name: 'SettlementDetail',
+        component: () => import('@/views/order/SettlementDetail.vue'),
+        meta: { title: '结算详情', icon: 'fa-eye', hidden: true, permKey: 'permOrder.o3' }
       },
       // 内容管理
       {

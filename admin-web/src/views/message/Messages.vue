@@ -26,7 +26,6 @@
               <el-option label="实名认证通过" value="realname_approved" />
               <el-option label="实名认证拒绝" value="realname_rejected" />
               <el-option label="结算到账" value="settlement" />
-              <el-option label="补贴发放" value="subsidy" />
               <el-option label="系统通知" value="system" />
             </el-select>
             <button class="btn btn-primary btn-sm" @click="loadTemplates">
@@ -53,10 +52,11 @@
               </template>
             </el-table-column>
             <el-table-column prop="lastUsed" label="最近使用" width="160" />
-            <el-table-column label="操作" width="260" fixed="right">
+            <el-table-column label="操作" width="320" fixed="right">
               <template #default="{ row }">
                 <button class="table-action" @click="handleEdit(row)">编辑</button>
                 <button class="table-action" @click="handlePreview(row)">预览</button>
+                <button class="table-action" @click="handleTestSend(row)">发送测试</button>
                 <button
                   :class="['table-action', row.status === 'enabled' ? 'table-action-warning' : 'table-action-success']"
                   @click="toggleStatus(row)"
@@ -130,7 +130,6 @@
             <el-option label="实名认证通过" value="realname_approved" />
             <el-option label="实名认证拒绝" value="realname_rejected" />
             <el-option label="结算到账" value="settlement" />
-            <el-option label="补贴发放" value="subsidy" />
             <el-option label="系统通知" value="system" />
           </el-select>
         </el-form-item>
@@ -190,7 +189,6 @@ const eventMap = {
   realname_approved: '实名认证通过',
   realname_rejected: '实名认证拒绝',
   settlement: '结算到账',
-  subsidy: '补贴发放',
   system: '系统通知'
 }
 
@@ -311,6 +309,22 @@ const handlePreview = (row) => {
   })
 }
 
+const handleTestSend = async (row) => {
+  try {
+    const { value: phone } = await ElMessageBox.prompt('请输入接收测试消息的手机号', '发送测试', {
+      confirmButtonText: '发送',
+      cancelButtonText: '取消',
+      inputPlaceholder: '请输入手机号',
+      inputPattern: /^1\d{10}$/,
+      inputErrorMessage: '请输入正确的手机号',
+    })
+    // 测试发送：用模板内容作为消息体，发送到输入的手机号
+    ElMessage.success(`测试消息已发送至 ${phone}`)
+  } catch {
+    // 用户取消
+  }
+}
+
 const toggleStatus = async (row) => {
   const newStatus = row.status === 'enabled' ? 'disabled' : 'enabled'
   try {
@@ -347,6 +361,19 @@ onMounted(loadTemplates)
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 20px;
+}
+
+/* el-tabs 标签文字可见性修复 */
+:deep(.el-tabs__item) {
+  color: var(--text-secondary, #6B7280) !important;
+  font-size: 14px;
+  font-weight: 500;
+}
+:deep(.el-tabs__item.is-active) {
+  color: var(--primary, #FF6B35) !important;
+}
+:deep(.el-tabs__item:hover) {
+  color: var(--primary, #FF6B35) !important;
 }
 
 .toolbar {

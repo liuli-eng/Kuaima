@@ -19,7 +19,8 @@ class RulePublicControllerTests {
     @Test
     void listRules_shouldReturnChineseAndWebPublishedStatuses() {
         RulesRepository repository = mock(RulesRepository.class);
-        RulePublicController controller = new RulePublicController(repository);
+        RulePublicService service = new RulePublicService(repository);
+        RulePublicController controller = new RulePublicController(service);
         Rules chinesePublished = rule(1L, "已发布");
         Rules webPublished = rule(2L, "published");
         when(repository.findByStatusIn(PUBLISHED_STATUSES))
@@ -34,7 +35,8 @@ class RulePublicControllerTests {
     @Test
     void listRules_shouldApplyCategoryWithBothPublishedStatuses() {
         RulesRepository repository = mock(RulesRepository.class);
-        RulePublicController controller = new RulePublicController(repository);
+        RulePublicService service = new RulePublicService(repository);
+        RulePublicController controller = new RulePublicController(service);
         Rules published = rule(2L, "published");
         when(repository.findByStatusInAndCategory(PUBLISHED_STATUSES, "交易规则"))
                 .thenReturn(List.of(published));
@@ -48,7 +50,8 @@ class RulePublicControllerTests {
     @Test
     void listRules_shouldMapNoticeEnumToExistingChineseCategories() {
         RulesRepository repository = mock(RulesRepository.class);
-        RulePublicController controller = new RulePublicController(repository);
+        RulePublicService service = new RulePublicService(repository);
+        RulePublicController controller = new RulePublicController(service);
         Rules notice = rule(1L, "published");
         notice.setCategory("规则公示");
         Rules credit = rule(2L, "published");

@@ -411,73 +411,6 @@
           </div>
         </el-tab-pane>
 
-        <!-- ============ Tab 4: 通知设置 ============ -->
-        <el-tab-pane name="notice">
-          <template #label>
-            <span class="tab-label">
-              <i class="fas fa-bell"></i> 通知设置
-            </span>
-          </template>
-
-          <!-- 短信通知模板 -->
-          <div class="settings-section-title">
-            <i class="fas fa-sms"></i> 短信通知模板
-            <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="onAddTemplate('短信')">
-              <!-- <i class="fas fa-plus"></i> -->
-               添加模板
-            </button>
-          </div>
-
-          <div
-            v-for="tpl in smsTemplates"
-            :key="tpl.title"
-            class="template-card"
-          >
-            <div class="template-header">
-              <div class="template-title">
-                <i class="fas fa-mobile-alt" style="color:var(--primary);"></i>
-                {{ tpl.title }}
-                <span class="tag tag-blue">短信</span>
-              </div>
-              <a class="card-action" @click="onEditTemplate(tpl.type, tpl.id)">编辑</a>
-            </div>
-            <div class="template-content">{{ tpl.content }}</div>
-            <div class="template-actions">
-              <button class="btn btn-sm btn-outline" @click="onPreviewTemplate(tpl)">预览</button>
-              <button class="btn btn-sm btn-outline" @click="onSendTest(tpl)">发送测试</button>
-            </div>
-          </div>
-
-          <!-- 站内信模板 -->
-          <div class="settings-section-title" style="margin-top:28px;">
-            <i class="fas fa-envelope-open"></i> 站内信模板
-            <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="onAddTemplate('站内信')">
-              <!-- <i class="fas fa-plus"></i> -->
-               添加模板
-            </button>
-          </div>
-
-          <div
-            v-for="tpl in inSiteTemplates"
-            :key="tpl.title"
-            class="template-card"
-          >
-            <div class="template-header">
-              <div class="template-title">
-                <i class="fas fa-envelope" style="color:var(--secondary);"></i>
-                {{ tpl.title }}
-                <span class="tag tag-green">站内信</span>
-              </div>
-              <a class="card-action" @click="onEditTemplate(tpl.type, tpl.id)">编辑</a>
-            </div>
-            <div class="template-content">{{ tpl.content }}</div>
-            <div class="template-actions">
-              <button class="btn btn-sm btn-outline" @click="onPreviewTemplate(tpl)">预览</button>
-              <button class="btn btn-sm btn-outline" @click="onPublish(tpl.title)">发布</button>
-            </div>
-          </div>
-        </el-tab-pane>
-
       </el-tabs>
     </div>
 
@@ -584,200 +517,6 @@
       </template>
     </el-dialog>
 
-    <!-- 模板预览右侧抽屉 -->
-    <el-drawer
-      v-model="showPreviewDialog"
-      direction="rtl"
-      size="440px"
-      :with-header="false"
-      class="preview-drawer-wrapper"
-    >
-      <div class="pd-header">
-        <div>
-          <div class="pd-title"><i class="fas fa-eye"></i> 模板预览</div>
-          <div class="pd-sub">
-            <span class="tag" :class="previewType === 'sms' ? 'tag-blue' : 'tag-green'">
-              {{ previewType === 'sms' ? '短信' : '站内信' }}
-            </span>
-            <span>{{ previewTpl?.title }}</span>
-          </div>
-        </div>
-        <button class="pd-close" @click="showPreviewDialog = false" title="关闭">
-          <i class="fas fa-xmark"></i>
-        </button>
-      </div>
-
-      <div class="pd-body">
-        <!-- 手机预览 -->
-        <div class="pd-section pd-section-phone">
-          <div class="pd-section-title">
-            <i class="fas fa-mobile-screen"></i> 用户端效果
-            <span class="pd-hint">变量为示例数据</span>
-          </div>
-          <div class="pd-phone">
-            <div class="pd-phone-screen">
-              <div class="pd-phone-island"></div>
-              <div class="pd-phone-bar">
-                <span>9:41</span>
-                <span><i class="fas fa-signal"></i><i class="fas fa-wifi"></i><i class="fas fa-battery-full"></i></span>
-              </div>
-              <div class="pd-phone-head">{{ previewType === 'sms' ? '信息' : '通知' }}</div>
-              <div class="pd-phone-body">
-                <!-- 短信气泡 -->
-                <div v-if="previewType === 'sms'" class="pd-sms">
-                  <div class="pd-sms-avatar"><i class="fas fa-comment-sms"></i></div>
-                  <div class="pd-sms-main">
-                    <div class="pd-sms-top">
-                      <span class="pd-sms-name">快马日结</span>
-                      <span class="pd-sms-time">刚刚</span>
-                    </div>
-                    <div class="pd-sms-bubble" v-html="previewTpl ? renderContent(previewTpl.content, true) : ''"></div>
-                  </div>
-                </div>
-                <!-- 站内信通知卡片 -->
-                <div v-else class="pd-notice">
-                  <div class="pd-notice-head">
-                    <div class="pd-notice-icon"><i class="fas fa-bell"></i></div>
-                    <div>
-                      <div class="pd-notice-app">快马日结</div>
-                      <div class="pd-notice-now">现在</div>
-                    </div>
-                  </div>
-                  <div class="pd-notice-title">{{ previewTpl?.title }}</div>
-                  <div class="pd-notice-text" v-html="previewTpl ? renderContent(previewTpl.content, true) : ''"></div>
-                  <div class="pd-notice-foot">点击查看详情</div>
-                </div>
-              </div>
-              <div class="pd-phone-home"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 原始模板 -->
-        <div class="pd-section">
-          <div class="pd-section-title"><i class="fas fa-code"></i> 原始模板内容</div>
-          <div class="pd-raw" v-html="previewTpl ? renderContent(previewTpl.content, false) : ''"></div>
-        </div>
-
-        <!-- 变量示例 -->
-        <div class="pd-section">
-          <div class="pd-section-title"><i class="fas fa-list-ul"></i> 变量示例值</div>
-          <div>
-            <div v-for="key in previewTpl ? getTemplateVars(previewTpl.content) : []" :key="key" class="pd-var-row">
-              <code class="pd-var-code">{{ '{' + key + '}' }}</code>
-              <span class="pd-var-val">{{ sampleValues[key] || '--' }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="pd-footer">
-        <button class="btn btn-outline" @click="showPreviewDialog = false">关闭</button>
-        <button class="btn btn-outline" @click="showPreviewDialog = false; onEditTemplate(previewType, previewTpl?.id)">
-          <i class="fas fa-edit"></i> 编辑模板
-        </button>
-        <button class="btn btn-primary" @click="showPreviewDialog = false; onSendTest(previewTpl)">
-          <i class="fas fa-paper-plane"></i> 发送测试
-        </button>
-      </div>
-    </el-drawer>
-
-    <!-- 发送测试右侧抽屉 -->
-    <el-drawer
-      v-model="showTestDialog"
-      direction="rtl"
-      size="440px"
-      :with-header="false"
-      class="preview-drawer-wrapper test-drawer-wrapper"
-    >
-      <div class="pd-header">
-        <div>
-          <div class="pd-title"><i class="fas fa-paper-plane"></i> 发送测试</div>
-          <div class="pd-sub">
-            <span class="tag" :class="testType === 'sms' ? 'tag-blue' : 'tag-green'">
-              {{ testType === 'sms' ? '短信' : '站内信' }}
-            </span>
-            <span>{{ testTpl?.title }}</span>
-          </div>
-        </div>
-        <button class="pd-close" @click="showTestDialog = false" title="关闭">
-          <i class="fas fa-xmark"></i>
-        </button>
-      </div>
-
-      <!-- 表单视图 -->
-      <div v-if="!testSuccess" class="pd-body">
-        <div class="pd-section">
-          <div class="pd-section-title"><i class="fas fa-mobile-screen-button"></i> 接收设置</div>
-          <div class="td-field">
-            <label class="td-label">
-              {{ testType === 'sms' ? '接收手机号' : '接收账号手机号' }}
-              <span class="required">*</span>
-            </label>
-            <el-input
-              v-model="testReceiver"
-              :placeholder="testType === 'sms' ? '请输入接收测试短信的11位手机号' : '请输入接收测试站内信账号的手机号'"
-              maxlength="11"
-              class="td-el-input"
-            />
-            <div class="td-hint">
-              {{ testType === 'sms'
-                ? '测试短信将通过运营商通道真实下发至该手机号，请注意控制发送频次。'
-                : '站内信将推送至该手机号注册的APP账号，请确认账号已注册快马日结。' }}
-            </div>
-          </div>
-        </div>
-
-        <div class="pd-section">
-          <div class="pd-section-title">
-            <i class="fas fa-comment-dots"></i> 发送内容
-            <span class="pd-hint">变量为示例数据</span>
-          </div>
-          <div class="td-content-preview" v-html="testTpl ? renderContent(testTpl.content, true) : ''"></div>
-          <div class="td-content-meta">
-            <span v-if="testType === 'sms'">短信签名将自动追加：【快马日结】</span>
-            <span>不计入正式发送量</span>
-          </div>
-        </div>
-
-        <div class="pd-section">
-          <div class="pd-section-title"><i class="fas fa-circle-info"></i> 测试说明</div>
-          <div class="td-tip"><i class="fas fa-check-circle"></i><span>测试消息用于验证模板内容与变量替换效果，不触发真实业务流程。</span></div>
-          <div class="td-tip"><i class="fas fa-check-circle"></i><span>同一管理员账号每天最多发送 10 条测试消息，请勿频繁发送。</span></div>
-          <div class="td-tip"><i class="fas fa-check-circle"></i>
-            <span v-if="testType === 'sms'">短信按运营商标准计费，签名【快马日结】将自动追加在内容开头。</span>
-            <span v-else>站内信测试将下发至该手机号注册的 APP 账号，未注册账号无法接收。</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 成功视图 -->
-      <div v-else class="pd-body">
-        <div class="td-success">
-          <div class="td-success-icon"><i class="fas fa-check"></i></div>
-          <div class="td-success-title">测试消息发送成功</div>
-          <div class="td-success-desc">
-            <b>【{{ testType === 'sms' ? '短信' : '站内信' }}】{{ testTpl?.title }}</b> 已发送至 <b>{{ testSentReceiver }}</b><br>
-            请注意查收，如长时间未收到请检查通道状态或联系客服。
-          </div>
-        </div>
-      </div>
-
-      <div class="pd-footer">
-        <template v-if="!testSuccess">
-          <button class="btn btn-outline" @click="showTestDialog = false">取消</button>
-          <button class="btn btn-primary" @click="submitTest">
-            <i class="fas fa-paper-plane"></i> 发送测试
-          </button>
-        </template>
-        <template v-else>
-          <button class="btn btn-outline" @click="showTestDialog = false">关闭</button>
-          <button class="btn btn-primary" @click="resetTest">
-            <i class="fas fa-redo"></i> 再发一条
-          </button>
-        </template>
-      </div>
-    </el-drawer>
   </div>
 </template>
 
@@ -785,8 +524,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, testSendTemplate, uploadFile, resetAdminPassword, updateAdminUser } from '@/api/system'
-import { listMessageTemplates } from '@/api/content'
+import { getSettingsByCategory, saveSetting, getBankAccount, saveBankAccount, getWalletAccount, saveWalletAccount, uploadFile, resetAdminPassword, updateAdminUser } from '@/api/system'
 import request from '@/api/request'
 
 const router = useRouter()
@@ -999,26 +737,6 @@ const rulesForm = reactive({
 })
 
 const adminUsers = ref([])
-
-const smsTemplates = ref([])
-const inSiteTemplates = ref([])
-
-const loadTemplates = async () => {
-  try {
-    const res = await listMessageTemplates()
-    const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
-    smsTemplates.value = list
-      .filter(t => t.channel === 'sms')
-      .map(t => ({ type: 'sms', id: t.id, title: t.name, content: t.content }))
-    inSiteTemplates.value = list
-      .filter(t => t.channel === 'inapp' || t.channel === 'both')
-      .map(t => ({ type: 'message', id: t.id, title: t.name, content: t.content }))
-  } catch (e) {
-    console.warn('[Settings] 加载模板失败:', e)
-    smsTemplates.value = []
-    inSiteTemplates.value = []
-  }
-}
 
 // ====== Helpers ======
 const roleClass = (role) => {
@@ -1281,112 +999,6 @@ const handleToggleStatus = async (u) => {
   }
 }
 
-const onAddTemplate = (type) => {
-  const tplType = type === 'sms' || type === '短信' ? 'sms' : 'message'
-  router.push(`/admin/template-edit?type=${tplType}`)
-}
-
-const onEditTemplate = (type, id) => {
-  const tplType = type === 'sms' || type === '短信' ? 'sms' : 'message'
-  if (id) {
-    router.push(`/admin/template-edit?type=${tplType}&id=${id}`)
-  } else {
-    router.push(`/admin/template-edit?type=${tplType}`)
-  }
-}
-
-// ====== 模板预览 & 发送测试 ======
-const sampleValues = {
-  '用户名': '张师傅',
-  '订单编号': 'DD202609010012',
-  '时间': '2026-09-06 08:00',
-  '地点': '深圳市南山区科技园',
-  '金额': '280.00',
-  '审核类型': '实名认证',
-  '审核结果': '审核通过',
-  '积分': '10',
-  '次数': '3'
-}
-
-/** 渲染模板内容，highlight=true 时用示例值替换并高亮 */
-const renderContent = (content, highlight) => {
-  return content.replace(/\{([^}]+)\}/g, (match, key) => {
-    if (highlight) {
-      return `<span class="pd-hl">${sampleValues[key] || match}</span>`
-    }
-    return `<code>${match}</code>`
-  })
-}
-
-/** 提取模板中的所有变量名 */
-const getTemplateVars = (content) => {
-  const vars = []
-  const reg = /\{([^}]+)\}/g
-  let m
-  while ((m = reg.exec(content)) !== null) {
-    if (vars.indexOf(m[1]) < 0) vars.push(m[1])
-  }
-  return vars
-}
-
-// 预览弹窗状态
-const showPreviewDialog = ref(false)
-const previewTpl = ref(null)
-const previewType = ref('sms')
-
-const onPreviewTemplate = (tpl) => {
-  previewTpl.value = tpl
-  previewType.value = tpl.type || 'sms'
-  showPreviewDialog.value = true
-}
-
-// 发送测试弹窗状态
-const showTestDialog = ref(false)
-const testTpl = ref(null)
-const testType = ref('sms')
-const testReceiver = ref('')
-const testSuccess = ref(false)
-const testSentReceiver = ref('')
-
-const onSendTest = (tpl) => {
-  testTpl.value = tpl
-  testType.value = tpl.type || 'sms'
-  testReceiver.value = ''
-  testSuccess.value = false
-  showTestDialog.value = true
-}
-
-const submitTest = async () => {
-  const receiver = testReceiver.value.trim()
-  if (!/^1[3-9]\d{9}$/.test(receiver)) {
-    ElMessage.warning('请输入正确的11位手机号')
-    return
-  }
-  try {
-    const renderedContent = testTpl.value ? testTpl.value.content.replace(/\{([^}]+)\}/g, (m, k) => sampleValues[k] || m) : ''
-    const res = await testSendTemplate({
-      type: testType.value,
-      templateTitle: testTpl.value?.title || '',
-      receiver,
-      content: renderedContent
-    })
-    const data = res.data || res
-    testSentReceiver.value = data.maskedReceiver || (receiver.substring(0, 3) + '****' + receiver.substring(7))
-    testSuccess.value = true
-  } catch (e) {
-    ElMessage.error(e.message || '发送测试失败，请重试')
-  }
-}
-
-const resetTest = () => {
-  testReceiver.value = ''
-  testSuccess.value = false
-}
-
-const onPublish = (name) => {
-  ElMessage.info('功能开发中')
-}
-
 onMounted(() => {
   if (route.query.tab) {
     activeTab.value = String(route.query.tab)
@@ -1396,15 +1008,11 @@ onMounted(() => {
   loadBankInfo()
   loadWalletInfo()
   loadAdminUsers()
-  loadTemplates()
 })
 
-// 从模板编辑页或管理员编辑页返回时刷新对应列表
+// 从管理员编辑页返回时刷新对应列表
 watch(() => route.query.tab, (newTab) => {
-  if (newTab === 'notice') {
-    activeTab.value = 'notice'
-    loadTemplates()
-  } else if (newTab === 'permission') {
+  if (newTab === 'permission') {
     activeTab.value = 'permission'
     loadAdminUsers()
   }

@@ -26,6 +26,8 @@ import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.service.BossOrderService;
+import com.kuaima.app.domain.jobcategory.entity.JobCategory;
+import com.kuaima.app.domain.jobcategory.repository.JobCategoryRepository;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 
@@ -41,15 +43,18 @@ public class AdminJobController {
     private final BossOrderService bossOrderService;
     private final UserRepository userRepository;
     private final BaseOrderItemRespository orderItemRepository;
+    private final JobCategoryRepository jobCategoryRepository;
 
     public AdminJobController(BossOrderRespository orderRepository,
                               BossOrderService bossOrderService,
                               UserRepository userRepository,
-                              BaseOrderItemRespository orderItemRepository) {
+                              BaseOrderItemRespository orderItemRepository,
+                              JobCategoryRepository jobCategoryRepository) {
         this.orderRepository = orderRepository;
         this.bossOrderService = bossOrderService;
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
+        this.jobCategoryRepository = jobCategoryRepository;
     }
 
     /** 招工列表（全部状态），批量填充雇主名称 */
@@ -87,6 +92,17 @@ public class AdminJobController {
                     .forEach(row -> applyCounts.put((Long) row[0], (Long) row[1]));
         }
 
+        // 批量查询工种中文名称
+        Set<Long> categoryIds = orders.stream()
+                .map(BossOrder::getJobCategoryId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toSet());
+        Map<Long, String> categoryNames = new HashMap<>();
+        if (!categoryIds.isEmpty()) {
+            jobCategoryRepository.findAllById(categoryIds).forEach(c ->
+                    categoryNames.put(c.getId(), c.getName()));
+        }
+
         Page<BossOrderView> views = orders.map(order -> new BossOrderView(
                 order.getId(),
                 order.getOrderTitle(),
@@ -105,7 +121,10 @@ public class AdminJobController {
                 order.getStartTime(),
                 order.getEndTime(),
                 order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主",
-                applyCounts.getOrDefault(order.getId(), 0L)
+                applyCounts.getOrDefault(order.getId(), 0L),
+                order.getAuditBy(),
+                order.getAuditTime(),
+                order.getJobCategoryId() != null ? categoryNames.getOrDefault(order.getJobCategoryId(), null) : null
         ));
 
         return Result.success(views, page, orders.getTotalElements());

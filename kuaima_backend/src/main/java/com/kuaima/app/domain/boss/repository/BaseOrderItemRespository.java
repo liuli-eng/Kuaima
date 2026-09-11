@@ -96,4 +96,13 @@ public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, L
             """)
     List<Object[]> countByOrderIdsAndStatuses(@Param("orderIds") Collection<Long> orderIds,
                                               @Param("statuses") Collection<String> statuses);
+
+    /** 按零工批量统计已完成订单数 */
+    @Query("""
+            select i.userId, count(i)
+            from BaseOrderItem i
+            where i.userId in :userIds and i.status = '已完成'
+            group by i.userId
+            """)
+    List<Object[]> countCompletedByUserIds(@Param("userIds") Collection<Long> userIds);
 }

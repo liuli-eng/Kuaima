@@ -105,22 +105,39 @@ const statusClassMap = {
   '结算失败': 'danger',
 }
 
+const formatTime = (t) => {
+  if (!t) return '-'
+  if (typeof t === 'number') {
+    const d = new Date(t)
+    if (isNaN(d.getTime())) return '-'
+    const Y = d.getFullYear()
+    const M = String(d.getMonth() + 1).padStart(2, '0')
+    const D = String(d.getDate()).padStart(2, '0')
+    return `${Y}-${M}-${D}`
+  }
+  const s = String(t).replace('T', ' ')
+  return s.length > 10 ? s.substring(0, 10) : s
+}
+
 const normalizeOrder = (item) => ({
-  id: item.id ?? item.orderNo,
-  employer: item.employer ?? item.employerName,
-  worker: item.worker ?? item.workerName,
-  job: item.job ?? item.jobTitle ?? item.jobName,
-  amount: item.amount ?? item.totalAmount,
-  status: item.status,
-  statusClass: item.statusClass ?? statusClassMap[item.status] ?? 'default',
-  startTime: item.startTime ?? item.workStartTime,
-  endTime: item.endTime ?? item.workEndTime,
+  id: item.id,
+  orderId: item.orderId,
+  employer: item.employerName || '-',
+  worker: item.workerName || '-',
+  job: item.jobTitle || item.postion || item.jobType || '-',
+  amount: item.amount ?? item.salary ?? '-',
+  status: item.status || '-',
+  statusClass: statusClassMap[item.status] ?? 'default',
+  startTime: formatTime(item.startTime),
+  endTime: formatTime(item.endTime),
 })
 
 const loadOrders = async () => {
   try {
     const res = await listOrders({
       status: statusFilter.value || undefined,
+      keyword: searchKeyword.value || undefined,
+      type: typeFilter.value || undefined,
       page: currentPage.value - 1,
       size: pageSize.value,
     })

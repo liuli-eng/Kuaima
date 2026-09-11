@@ -60,11 +60,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="time" label="时间" show-overflow-tooltip />
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small">详情</el-button>
-            <el-button v-if="row.status === '待结算'" link type="success" size="small" @click="handleSettlePay(row)">确认结算</el-button>
-            <el-button v-if="row.status === '结算失败'" link type="warning" size="small" @click="handleSettlePay(row)">重试</el-button>
+            <div class="action-cell">
+              <el-button link type="primary" size="small" @click="handleDetail(row)">详情</el-button>
+              <el-button v-if="row.status === '待结算'" link type="success" size="small" @click="handleSettlePay(row)">结算</el-button>
+              <el-button v-if="row.status === '结算失败'" link type="warning" size="small" @click="handleSettlePay(row)">重试</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -88,8 +90,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listSettlements, settlePay } from '@/api/settlement'
+
+const router = useRouter()
 
 const statusFilter = ref('')
 const methodFilter = ref('')
@@ -109,19 +114,37 @@ const statusClassMap = {
   '结算失败': 'danger',
 }
 
+const formatTime = (t) => {
+  if (!t) return '-'
+  if (typeof t === 'number') {
+    const d = new Date(t)
+    if (isNaN(d.getTime())) return '-'
+    const Y = d.getFullYear()
+    const M = String(d.getMonth() + 1).padStart(2, '0')
+    const D = String(d.getDate()).padStart(2, '0')
+    return `${Y}-${M}-${D}`
+  }
+  const s = String(t).replace('T', ' ')
+  return s.length > 10 ? s.substring(0, 10) : s
+}
+
 const normalizeSettlement = (item) => ({
-  id: item.id ?? item.settlementNo ?? item.settlementId,
-  orderId: item.orderId ?? item.orderNo,
-  employer: item.employer ?? item.employerName,
-  worker: item.worker ?? item.workerName,
-  amount: item.amount ?? item.totalAmount,
-  platformFee: item.platformFee ?? item.serviceFee,
-  actualAmount: item.actualAmount ?? item.payAmount,
+  id: item.id,
+  orderId: item.orderId,
+  employer: item.employerName || '-',
+  worker: item.workerName || '-',
+  amount: item.amount ?? '-',
+  platformFee: item.platformFee ?? '-',
+  actualAmount: item.actualAmount ?? '-',
   method: item.method ?? item.payMethod ?? '-',
-  status: item.status,
-  statusClass: item.statusClass ?? statusClassMap[item.status] ?? 'default',
-  time: item.time ?? item.settleTime ?? item.createdAt,
+  status: item.status || '-',
+  statusClass: statusClassMap[item.status] ?? 'default',
+  time: formatTime(item.time),
 })
+
+const handleDetail = (row) => {
+  router.push(`/admin/settlement/detail/${row.id}`)
+}
 
 const loadSettlements = async () => {
   try {
@@ -207,5 +230,20 @@ onMounted(loadSettlements)
   align-items: center;
   justify-content: space-between;
   margin-top: 16px;
+}
+
+.action-cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.action-cell .el-button {
+  margin-left: 0;
+  margin-right: 8px;
+  padding: 0;
+}
+.action-cell .el-button:last-child {
+  margin-right: 0;
 }
 </style>
