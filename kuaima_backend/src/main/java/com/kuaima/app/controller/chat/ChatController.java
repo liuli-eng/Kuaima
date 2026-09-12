@@ -2,6 +2,7 @@ package com.kuaima.app.controller.chat;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.data.domain.PageRequest;
@@ -39,6 +40,7 @@ public class ChatController {
     private final ChatMessageRepository chatMessageRepository;
 
     /** 发起会话：自动分配客服（当前固定 agentId=1） */
+    @Operation(summary = "发起会话", description = "body：{\"userId\":1}；若该用户已有未关闭(OPEN)会话则直接复用，否则新建会话并自动分配客服（当前固定 agentId=1，占位）")
     @PostMapping("/sessions")
     @Transactional
     public Result<ChatSession> startSession(@RequestBody StartSessionRequest req) {
@@ -57,12 +59,14 @@ public class ChatController {
     }
 
     /** 获取用户会话列表 */
+    @Operation(summary = "获取用户会话列表", description = "按用户 id 查询全部会话，按创建时间倒序；userId 必填")
     @GetMapping("/sessions")
     public Result<List<ChatSession>> userSessions(@RequestParam Long userId) {
         return Result.success(chatSessionRepository.findByUserIdOrderByTimestampDesc(userId));
     }
 
     /** 会话消息列表（分页，时间正序） */
+    @Operation(summary = "会话消息列表", description = "按会话 id 查询消息，时间正序，内存分页。参数：page(默认0)、size(默认50)；返回当页消息与总数")
     @GetMapping("/sessions/{id}/messages")
     public Result<List<ChatMessage>> messages(@PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
@@ -76,6 +80,7 @@ public class ChatController {
     }
 
     /** 发送消息（HTTP 降级，WebSocket 不可用时使用） */
+    @Operation(summary = "发送消息", description = "HTTP 降级通道（WebSocket 不可用时使用）。body：{\"fromId\":1,\"content\":\"文本\"}；以 USER 身份发送 TEXT 消息，并刷新会话时间戳")
     @PostMapping("/sessions/{id}/messages")
     @Transactional
     public Result<ChatMessage> sendMessage(@PathVariable Long id, @RequestBody SendMessageRequest req) {
@@ -97,6 +102,7 @@ public class ChatController {
     }
 
     /** 关闭会话 */
+    @Operation(summary = "关闭会话", description = "将指定会话状态置为 CLOSED；会话不存在返回错误提示")
     @PutMapping("/sessions/{id}/close")
     @Transactional
     public Result<ChatSession> closeSession(@PathVariable Long id) {

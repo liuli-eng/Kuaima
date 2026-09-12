@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class PointsController {
     }
 
     /** 积分余额：GET /points/{userId} */
+    @Operation(summary = "积分余额查询", description = "返回用户积分余额；账户不存在时自动创建余额为 0 的账户")
     @GetMapping("/{userId}")
     public Result<Map<String, Object>> getBalance(@PathVariable Long userId) {
         PointsAccount account = accountRepository.findByUserId(userId).orElseGet(() -> {
@@ -52,6 +54,7 @@ public class PointsController {
     }
 
     /** 积分明细分页：GET /points/{userId}/flows?page=0&size=20 */
+    @Operation(summary = "积分明细分页", description = "按用户 id 分页查询积分流水，按时间倒序。参数：page(默认0)、size(默认20,上限100)")
     @GetMapping("/{userId}/flows")
     public Result<List<PointsFlow>> listFlows(@PathVariable Long userId,
                                               @RequestParam(defaultValue = "0") int page,

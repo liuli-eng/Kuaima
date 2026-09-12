@@ -1,5 +1,6 @@
 package com.kuaima.app.controller.finance;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ public class StarLevelController {
     }
 
     /** 当前星级+进度：GET /star-level/{userId} */
+    @Operation(summary = "当前星级与进度", description = "返回用户星级与成长进度；首次查询不存在时自动创建 1 星 0 进度记录")
     @GetMapping("/{userId}")
     @Transactional
     public Result<UserStarLevel> getStarLevel(@PathVariable Long userId) {

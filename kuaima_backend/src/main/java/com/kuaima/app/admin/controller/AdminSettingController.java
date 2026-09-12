@@ -2,6 +2,7 @@ package com.kuaima.app.admin.controller;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,20 +35,24 @@ public class AdminSettingController {
         this.smsService = smsService;
     }
 
+    @Operation(summary = "设置列表", description = "返回全部平台参数设置，无分页")
     @GetMapping
     public Result<List<AdminSetting>> list() { return Result.success(repo.findAll()); }
 
+    @Operation(summary = "按分类查询设置", description = "按分类 category 返回该分类下全部设置项")
     @GetMapping("/category/{category}")
     public Result<List<AdminSetting>> byCategory(@PathVariable String category) {
         return Result.success(repo.findByCategory(category));
     }
 
+    @Operation(summary = "设置详情", description = "按 settingKey 查询单条设置；不存在抛出异常")
     @GetMapping("/{key}")
     public Result<AdminSetting> get(@PathVariable String key) {
         return Result.success(repo.findById(key).orElseThrow());
     }
 
     /** 保存/更新 设置 */
+    @Operation(summary = "保存/更新设置", description = "按 settingKey 保存或更新设置项，body 为 AdminSetting")
     @PutMapping("/{key}")
     public Result<AdminSetting> save(@PathVariable String key, @RequestBody AdminSetting setting) {
         setting.setSettingKey(key);
@@ -59,6 +64,7 @@ public class AdminSettingController {
     private static final String DEFAULT_BANK_INFO = "{\"bankName\":\"中国工商银行\",\"cardNumber\":\"6222 **** **** 8888\",\"holder\":\"快马日结科技有限公司\",\"branch\":\"北京海淀支行\",\"swiftCode\":\"ICBKCNBJ\",\"bankCode\":\"102100000458\",\"accountType\":\"对公账户\"}";
 
     /** 获取银行账户信息（返回 JSON 字符串，前端解析） */
+    @Operation(summary = "获取银行账户信息", description = "返回平台收款银行账户 JSON 字符串；未配置时返回默认工商银行信息")
     @GetMapping("/bank-account")
     public Result<String> getBankAccount() {
         String value = repo.findById(BANK_ACCOUNT_KEY)
@@ -68,6 +74,7 @@ public class AdminSettingController {
     }
 
     /** 保存银行账户信息（接收 JSON 字符串） */
+    @Operation(summary = "保存银行账户信息", description = "接收 JSON 字符串保存为平台收款银行账户，category=platform；异常返回错误提示")
     @PutMapping("/bank-account")
     public Result<String> saveBankAccount(@RequestBody String json) {
         try {
@@ -88,6 +95,7 @@ public class AdminSettingController {
     private static final String DEFAULT_WALLET_INFO = "{\"alipay\":{\"account\":\"kuaima@163.com\",\"holder\":\"快马日结科技有限公司\",\"isDefault\":true},\"wechat\":{\"account\":\"k_m_riji001\",\"holder\":\"快马日结科技有限公司\",\"isDefault\":false}}";
 
     /** 获取钱包账户信息（返回 JSON 字符串，前端解析） */
+    @Operation(summary = "获取钱包账户信息", description = "返回平台收款钱包账户 JSON 字符串（含支付宝/微信）；未配置时返回默认信息")
     @GetMapping("/wallet-account")
     public Result<String> getWalletAccount() {
         String value = repo.findById(WALLET_ACCOUNT_KEY)
@@ -97,6 +105,7 @@ public class AdminSettingController {
     }
 
     /** 保存钱包账户信息（接收 JSON 字符串） */
+    @Operation(summary = "保存钱包账户信息", description = "接收 JSON 字符串保存为平台收款钱包账户，category=platform；异常返回错误提示")
     @PutMapping("/wallet-account")
     public Result<String> saveWalletAccount(@RequestBody String json) {
         try {
@@ -119,6 +128,7 @@ public class AdminSettingController {
      * 请求体: JSON 字符串 { "type":"sms", "templateTitle":"...", "receiver":"...", "content":"..." }
      * 使用原始 String 接收，避免依赖 Jackson 反序列化
      */
+    @Operation(summary = "模板测试发送", description = "body 为 JSON 字符串：{type,templateTitle,receiver,content}；receiver 必须为 11 位手机号；type=sms 调用 SmsService 发送验证码，其他类型走站内信日志；返回脱敏手机号与发送时间")
     @PostMapping("/test-send")
     public Result<Map<String, Object>> testSend(@RequestBody String json) {
         String type = extractJsonField(json, "type", "sms");

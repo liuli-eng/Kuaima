@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.data.domain.Page;
@@ -40,6 +41,7 @@ public class CourseController {
     }
 
     /** 课程大厅分页列表：GET /courses?category=&page=0&size=20 */
+    @Operation(summary = "课程大厅分页列表", description = "分页查询课程。参数：category(可选，传入时按分类过滤)、page(默认0)、size(默认20,上限100)")
     @GetMapping
     public Result<List<Course>> listCourses(@RequestParam(required = false) String category,
                                             @RequestParam(defaultValue = "0") int page,
@@ -57,6 +59,7 @@ public class CourseController {
     }
 
     /** 课程详情（含视频列表）：GET /courses/{id} */
+    @Operation(summary = "课程详情", description = "返回课程详情与关联视频列表（按 sortOrder 升序）；课程不存在抛出 EntityNotFoundException")
     @GetMapping("/{id}")
     public Result<Map<String, Object>> getCourse(@PathVariable Long id) {
         Course course = courseRepository.findById(id)
@@ -69,6 +72,7 @@ public class CourseController {
     }
 
     /** 课程视频列表：GET /courses/{id}/videos */
+    @Operation(summary = "课程视频列表", description = "按课程 id 返回视频列表，按 sortOrder 升序")
     @GetMapping("/{id}/videos")
     public Result<List<CourseVideo>> listVideos(@PathVariable Long id) {
         return Result.success(videoRepository.findByCourseIdOrderBySortOrderAsc(id));

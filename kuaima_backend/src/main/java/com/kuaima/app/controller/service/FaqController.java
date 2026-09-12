@@ -2,6 +2,7 @@ package com.kuaima.app.controller.service;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +29,7 @@ public class FaqController {
     }
 
     /** 常见问题列表：GET /faq?category= */
+    @Operation(summary = "常见问题列表", description = "category 可选：传入时按分类返回（sortOrder 升序），否则返回全部 FAQ（含未启用）")
     @GetMapping
     public Result<List<Faq>> listFaq(@RequestParam(required = false) String category) {
         if (category != null && !category.isEmpty()) {

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,7 @@ public class ExamController {
     }
 
     /** 获取考试（含题目）：GET /exams/{courseId} */
+    @Operation(summary = "获取考试（含题目）", description = "按课程 id 查询考试与全部题目；该课程无考试时抛出 EntityNotFoundException")
     @GetMapping("/{courseId}")
     public Result<Map<String, Object>> getExam(@PathVariable Long courseId) {
         Exam exam = examRepository.findByCourseId(courseId)
@@ -59,6 +61,7 @@ public class ExamController {
     }
 
     /** 提交考试：POST /exams/{courseId}/submit  body: { "userId": 1, "answers": {"1":"A","2":"B"} } */
+    @Operation(summary = "提交考试", description = "body：{\"userId\":1,\"answers\":{\"题目id\":\"选项\"}}；userId 必填；服务端自动判分（按题目答案忽略大小写比对，累加题目分值），passScore 缺省 60；保存并返回考试结果（score、passed、takenAt）")
     @PostMapping("/{courseId}/submit")
     @Transactional
     public Result<ExamResult> submitExam(@PathVariable Long courseId, @RequestBody Map<String, Object> body) {
@@ -89,6 +92,7 @@ public class ExamController {
     }
 
     /** 考试结果：GET /exams/result?userId=1&examId=1 */
+    @Operation(summary = "考试结果查询", description = "按用户与考试 id 查询最近一次考试结果；无记录返回 null")
     @GetMapping("/result")
     public Result<ExamResult> getResult(@RequestParam Long userId, @RequestParam Long examId) {
         return Result.success(resultRepository.findFirstByUserIdAndExamIdOrderByIdDesc(userId, examId)

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,7 @@ public class InviteController {
     }
 
     /** 邀请码（首次自动生成）：GET /invite/code?userId=1 */
+    @Operation(summary = "获取邀请码", description = "返回用户专属邀请码；首次查询不存在时自动生成 8 位大写随机码")
     @GetMapping("/code")
     @Transactional
     public Result<Map<String, Object>> getCode(@RequestParam Long userId) {
@@ -52,6 +54,7 @@ public class InviteController {
     }
 
     /** 海报数据：GET /invite/poster?userId=1 */
+    @Operation(summary = "邀请海报数据", description = "返回邀请码、已邀请人数与海报地址（当前 posterUrl 为空占位）；邀请码不存在时自动生成")
     @GetMapping("/poster")
     @Transactional
     public Result<Map<String, Object>> getPoster(@RequestParam Long userId) {
@@ -70,6 +73,7 @@ public class InviteController {
     }
 
     /** 邀请记录：GET /invite/relations?userId=1 */
+    @Operation(summary = "邀请记录", description = "按邀请人 id 查询全部邀请关系记录；userId 必填")
     @GetMapping("/relations")
     public Result<List<InviteRelation>> listRelations(@RequestParam Long userId) {
         return Result.success(inviteRelationRepository.findByInviterId(userId));

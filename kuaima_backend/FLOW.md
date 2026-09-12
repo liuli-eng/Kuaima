@@ -9,21 +9,29 @@
 
 | 常量 | 值 | 说明 |
 | --- | --- | --- |
-| ORDER_RECRUITING | 招工中 | 发布后的初始状态，可报名、可修改 |
+| ORDER_DRAFT | 草稿 | 保存草稿（预留），非正式发布 |
+| ORDER_PENDING_AUDIT | 待审核 | **发布后的初始状态**，等待 admin 审核 |
+| ORDER_AUDIT_REJECT | 审核拒绝 | admin 审核拒绝，终态 |
+| ORDER_RECRUITING | 招工中 | admin 审核通过后进入，可报名、可修改 |
 | ORDER_RECRUIT_END | 招工结束 | 停止招工 |
 | ORDER_PENDING_SETTLE | 待结算 | 招工结束后的结算阶段 |
 | ORDER_COMPLETED | 已完成 | 结算完成，流程终点 |
-| ORDER_CANCELED | 取消招工 | 任意未完成状态可进入 |
+| ORDER_CANCELED | 取消招工 | 招工中 / 招工结束 / 待结算 可进入 |
 
 ```mermaid
 stateDiagram-v2
-    [*] --> 招工中: 老板发布订单
+    [*] --> 草稿: 保存草稿(预留)
+    [*] --> 待审核: 老板发布订单
+    待审核 --> 招工中: admin 审核通过
+    待审核 --> 审核拒绝: admin 审核拒绝(终态)
     招工中 --> 招工结束: 停止招工
     招工中 --> 取消招工: 老板取消
     招工结束 --> 待结算
     招工结束 --> 取消招工
     待结算 --> 已完成: 结算完成
     待结算 --> 取消招工
+    待审核 --> [*]: 删除订单
+    审核拒绝 --> [*]: 删除订单
     招工中 --> [*]: 删除订单
     取消招工 --> [*]: 删除订单
 ```
@@ -112,7 +120,7 @@ sequenceDiagram
     alt 校验不通过
         BE-->>MP: 400 + 具体错误提示
     else 校验通过
-        BE->>BE: 非月结类型清空 trialDuration<br/>初始状态置为「招工中」
+        BE->>BE: 非月结类型清空 trialDuration<br/>初始状态置为「待审核」
         BE->>DB: 保存订单
         DB-->>BE: 订单(id)
         BE-->>MP: 返回订单详情
@@ -120,8 +128,47 @@ sequenceDiagram
 ```
 
 > 类型枚举：`daily`(每天日结) / `heldBack`(压薪日结) / `month`(月结，唯一可填试工时间 `trialDuration`)。
+> 发布后订单状态为「待审核」，需 admin 审核通过后才变为「招工中」并对零工可见。
 
-### 3.2 修改订单（仅「招工中」可改）
+### 3.1a 后台审核（待审核 → 招工中 / 审核拒绝）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as 管理员
+    participant BE as AdminJobController/BossOrderService
+    participant DB as boss_order 表
+    participant MSG as 消息中心(sys_message)
+
+    A->>BE: GET /admin/jobs?status=待审核
+    BE->>DB: 查待审核订单列表
+    DB-->>A: 待审核订单列表(含 employerName)
+
+    alt 审核通过
+        A->>BE: PUT /admin/jobs/{id}/audit/pass
+        BE->>DB: 查订单，校验状态为「待审核」
+        alt 非待审核
+            BE-->>A: 400 仅待审核的订单可以审核通过
+        else 通过
+            BE->>DB: 状态 → 「招工中」
+            BE->>MSG: 广播 ORDER_PUBLISH 消息给全部 USER
+            BE-->>A: 返回更新后订单
+        end
+    else 审核拒绝
+        A->>BE: PUT /admin/jobs/{id}/audit/reject?reason=原因
+        BE->>DB: 查订单，校验状态为「待审核」
+        alt 非待审核
+            BE-->>A: 400 仅待审核的订单可以审核拒绝
+        else 拒绝
+            BE->>DB: 状态 → 「审核拒绝」(终态)<br/>原因追加到 orderRemark
+            BE-->>A: 返回更新后订单
+        end
+    end
+```
+
+> 审核通过后订单才对零工端可见（`GET /jobs` 仅返回「招工中」的公开岗位）。
+
+### 3.2 修改订单（仅「待审核」或「招工中」可改）
 
 ```mermaid
 sequenceDiagram
@@ -132,8 +179,8 @@ sequenceDiagram
 
     B->>BE: PUT /boss/order/{id} (传非空字段即更新)
     BE->>DB: 查订单
-    alt 订单非「招工中」
-        BE-->>B: 400 仅招工中的订单可以修改
+    alt 订单非「待审核」且非「招工中」
+        BE-->>B: 400 仅待审核或招工中的订单可以修改
     else 可修改
         Note over BE: 改为非月结时清空 trialDuration；<br/>月结且传了 trialDuration 才更新
         BE->>DB: 局部更新并保存
@@ -198,10 +245,10 @@ sequenceDiagram
     participant BE as BossOrderService
 
     B->>BE: DELETE /boss/order/{id}
-    alt 状态为「招工中」或「取消招工」
+    alt 状态为「待审核」/「审核拒绝」/「招工中」/「取消招工」
         BE-->>B: 删除成功
     else 其它状态
-        BE-->>B: 400 仅招工中或已取消的订单可以删除
+        BE-->>B: 400 该状态下的订单不可删除
     end
 ```
 
@@ -243,18 +290,21 @@ sequenceDiagram
 
 ## 4. 用户端（员工）
 
-### 4.1 浏览与筛选招工订单
+### 4.1 浏览与筛选招工订单（零工公开岗位）
+
+> 零工端通过 `/jobs` 端点浏览岗位，仅返回「招工中」状态的公开岗位（admin 审核通过后才会出现）。
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor E as 员工
     participant MP as 员工小程序端
-    participant BE as BossController
+    participant BE as JobController/BossOrderService
     participant DB as boss_order 表
 
     E->>MP: 进入「找活」首页 / 输入关键词 / 切换类型标签
-    MP->>BE: GET /boss/order?type=daily&status=招工中&title=关键字&page=0&size=10
+    MP->>BE: GET /jobs?type=daily&city=上海&salaryMin=&tag=&page=0&size=10
+    Note over BE: 内部固定 status=招工中，不按老板归属过滤
     BE->>DB: 动态条件过滤 + 分页查询(按 id 倒序)
     DB-->>BE: 订单分页数据
     BE-->>MP: 订单列表 + 总条数
@@ -263,15 +313,21 @@ sequenceDiagram
 
 ### 4.2 报名（月结订单可勾选「我要试工」）
 
+> 零工端通过 `/jobs/{orderId}/apply` 报名，**用户身份从 JWT 获取**（不接受前端传入 userId）。
+
 ```mermaid
 sequenceDiagram
     autonumber
     actor E as 员工
-    participant BE as BossOrderService
+    participant BE as JobController/BossOrderService
     participant DB as boss_order 表
     participant DB2 as boss_order_item 表
 
-    E->>BE: POST /boss/order/{orderId}/apply?userId=1&remark=备注&trial=true/false
+    E->>BE: POST /jobs/{orderId}/apply (body: {remark?, trial?})
+    Note over BE: 从 JWT 获取 userId，校验 role=USER
+    alt 当前登录账号不是零工
+        BE-->>E: 403 当前登录账号不是零工账号
+    end
     BE->>DB: 查订单
     alt 订单非「招工中」
         BE-->>E: 400 该订单当前不可报名
@@ -495,3 +551,266 @@ sequenceDiagram
     BE-->>E: 置为已读
     end
 ```
+
+---
+
+## 7. 老板端人才库管理
+
+> 老板搜索零工、收藏人才、查看历史合作、邀请零工、管理黑名单。接口前缀 `/talent`。
+
+### 7.1 搜索零工
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as 老板
+    participant BE as TalentController
+    participant DB as sys_user 表
+
+    B->>BE: GET /talent/search?keyword=张&skill=电焊&city=上海&page=0&size=20
+    BE->>DB: 按 role=USER + keyword 模糊匹配昵称/手机号/用户名
+    DB-->>BE: 分页结果
+    Note over BE: skill/city 在内存中二次过滤<br/>total 为当前页过滤后数量(非全局)
+    BE-->>B: 零工列表(含昵称/手机号/技能/城市)
+```
+
+### 7.2 收藏 / 取消收藏零工
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as 老板
+    participant BE as TalentController
+    participant DB as talent_favorite 表
+
+    B->>BE: POST /talent/favorites {bossId, workerId}
+    BE->>DB: 保存收藏记录
+    BE-->>B: 收藏成功
+
+    B->>BE: GET /talent/favorites?bossId=1
+    BE->>DB: 查收藏列表(含零工详情)
+    DB-->>BE: 收藏列表
+    BE-->>B: [{favoriteId, worker:{id, nickname, phone, skills}}]
+
+    B->>BE: DELETE /talent/favorites/{id}
+    BE->>DB: 删除收藏记录
+    BE-->>B: 取消成功
+```
+
+### 7.3 邀请零工
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as 老板
+    participant BE as TalentController
+    participant DB as sys_message 表
+
+    B->>BE: POST /talent/invite {bossId, workerId, orderId}
+    Note over BE: 校验当前登录老板身份，无权以其他老板身份邀请
+    BE->>DB: 创建站内消息(type=BOSS_INVITE)通知零工
+    BE-->>B: 邀请已发送
+```
+
+### 7.4 历史合作零工
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as 老板
+    participant BE as TalentController
+    participant DB as boss_order_item 表
+
+    B->>BE: GET /talent/history?bossId=1
+    BE->>DB: 查该老板所有订单的报名记录(BossOrder 关联 BaseOrderItem)
+    DB-->>BE: 历史合作零工列表
+    BE-->>B: 历史合作零工(去重)
+```
+
+---
+
+## 8. 客服聊天（WebSocket 实时通信）
+
+> 零工端(USER)与客服端(AGENT)双向实时消息推送。HTTP 降级接口保留用于 WebSocket 不可用场景。
+
+### 8.1 建立连接与消息收发
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as 零工
+    actor A as 客服
+    participant WS as WebSocket /ws/chat
+    participant BE as ChatController
+    participant DB as chat_session / chat_message 表
+
+    rect rgb(238, 245, 255)
+    Note over U,DB: 建立连接
+    U->>WS: ws://host/ws/chat?token={JWT}&userId=1&type=USER
+    WS->>WS: 校验 JWT，注册会话
+    WS-->>U: 连接成功
+    end
+
+    rect rgb(240, 255, 240)
+    Note over U,DB: 零工发消息
+    U->>WS: {type:MESSAGE, sessionId:1, content:"你好", contentType:TEXT}
+    WS->>DB: 持久化 chat_message(fromType=USER)
+    WS->>A: 推送 {type:MESSAGE, content:"你好", fromType:USER}
+    A->>A: 收到消息
+    end
+
+    rect rgb(255, 250, 235)
+    Note over U,DB: 客服回复
+    A->>WS: {type:MESSAGE, sessionId:1, content:"您好，请问有什么可以帮您？", contentType:TEXT}
+    WS->>DB: 持久化 chat_message(fromType=AGENT)
+    WS->>U: 推送 {type:MESSAGE, content:"您好...", fromType:AGENT}
+    end
+
+    rect rgb(245, 245, 255)
+    Note over U,DB: 正在输入 & 已读
+    U->>WS: {type:TYPING, sessionId:1}
+    WS->>A: 推送 {type:TYPING} (不持久化)
+    A->>WS: {type:READ, sessionId:1}
+    WS->>U: 推送 {type:READ} (不持久化)
+    end
+```
+
+### 8.2 HTTP 降级（WebSocket 不可用时）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as 零工
+    participant BE as ChatController
+    participant DB as chat_session / chat_message 表
+
+    U->>BE: POST /chat/sessions {userId:1}
+    alt 已有 OPEN 状态会话
+        BE-->>U: 返回已有会话
+    else 无 OPEN 会话
+        BE->>DB: 创建新会话(agentId=1, status=OPEN)
+        BE-->>U: 返回新会话
+    end
+
+    U->>BE: POST /chat/sessions/{sessionId}/messages {fromId:1, content:"你好"}
+    BE->>DB: 持久化消息 + 刷新会话时间戳
+    BE-->>U: 返回 ChatMessage
+
+    U->>BE: PUT /chat/sessions/{sessionId}/close
+    BE->>DB: 会话状态 → CLOSED
+    BE-->>U: 返回更新后会话
+```
+
+### 8.3 后台客服管理
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as 管理员
+    participant BE as AdminServiceController
+    participant DB as chat_session / quick_reply / faq 表
+
+    A->>BE: GET /admin/service/stats
+    BE-->>A: {openSessions, closedSessions, totalQuickReplies, totalFaqs}
+
+    A->>BE: GET /admin/service/sessions?status=OPEN
+    BE->>DB: 按状态过滤会话(时间倒序)
+    BE-->>A: 会话列表
+
+    A->>BE: POST /admin/service/sessions/{id}/messages {content:"回复内容"}
+    Note over BE: fromType 固定为 AGENT，fromId 固定为 1
+    BE->>DB: 持久化消息 + 推送给用户端
+    BE-->>A: 返回 ChatMessage
+
+    A->>BE: POST /admin/service/quick-replies {content, category, sortOrder}
+    BE->>DB: 新增快捷回复
+    BE-->>A: 返回 QuickReply
+```
+
+---
+
+## 9. 学习中心
+
+> 课程学习 → 考试答题 → 培训任务完成。接口前缀 `/courses`、`/exams`、`/training-tasks`。
+
+### 9.1 课程学习与考试流程
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor E as 零工
+    participant BE as CourseController/ExamController
+    participant DB as course / course_exam 表
+
+    rect rgb(238, 245, 255)
+    Note over E,DB: 浏览课程
+    E->>BE: GET /courses?category=安全培训&page=0&size=20
+    BE->>DB: 查已发布课程(分页)
+    BE-->>E: 课程列表(title/coverUrl/intro)
+
+    E->>BE: GET /courses/{id}
+    BE->>DB: 查课程 + 关联视频列表
+    BE-->>E: {course:{...}, videos:[{title, videoUrl, duration, sortOrder}]}
+    end
+
+    rect rgb(240, 255, 240)
+    Note over E,DB: 考试答题
+    E->>BE: GET /exams/{courseId}
+    BE->>DB: 查考试 + 关联题目列表
+    BE-->>E: {exam:{title, passScore}, questions:[{content, options, score}]}
+
+    E->>BE: POST /exams/{courseId}/submit {userId, answers:{"1":"A","2":"B"}}
+    Note over BE: 自动判分：逐题比对 answer 字段<br/>累加 score 得总分<br/>总分 >= passScore 则 passed=true
+    BE->>DB: 保存 ExamResult
+    BE-->>E: 返回 {score, passed}
+    end
+```
+
+### 9.2 培训任务流程
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as 管理员
+    actor E as 零工
+    participant BE as TrainingTaskController
+    participant DB as course_training_task 表
+
+    rect rgb(238, 245, 255)
+    Note over A,DB: 分配培训任务
+    A->>BE: POST /training-tasks {userId:1, courseId:2}
+    BE->>DB: 创建培训任务(status=待完成, dueDate=今天+7天)
+    BE-->>A: 任务创建成功
+    end
+
+    rect rgb(240, 255, 240)
+    Note over E,DB: 查看与完成
+    E->>BE: GET /training-tasks?userId=1
+    BE->>DB: 查该用户的培训任务
+    BE-->>E: 任务列表(courseId/status/dueDate)
+
+    E->>BE: PUT /training-tasks/{id}/complete
+    BE->>DB: 状态 → 已完成 + 记录 completedAt
+    BE-->>E: 任务完成
+    end
+```
+
+### 9.3 规则公示
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor E as 零工/老板
+    participant BE as RulePublicController
+    participant DB as rules 表
+
+    E->>BE: GET /rules?category=收费标准
+    BE->>DB: 查已发布规则(按 category 过滤)
+    BE-->>E: 规则列表(title/version/content)
+
+    E->>BE: GET /rules/{id}
+    BE->>DB: 查规则详情
+    BE-->>E: 规则完整信息
+```
+
+> 规则状态：`草稿` / `已发布`（对外可见）/ `已归档`。零工端仅能查看「已发布」状态的规则。

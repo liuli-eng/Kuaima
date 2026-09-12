@@ -3,6 +3,7 @@ package com.kuaima.app.controller.finance;
 import java.sql.Date;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,7 @@ public class CouponController {
     }
 
     /** 优惠券列表：GET /coupons?userId=1&status=UNUSED */
+    @Operation(summary = "优惠券列表", description = "按用户 id 查询优惠券；status 可选（如 UNUSED/USED），传入时按状态过滤")
     @GetMapping
     public Result<List<UserCoupon>> listCoupons(@RequestParam Long userId,
                                                 @RequestParam(required = false) String status) {
@@ -48,6 +50,7 @@ public class CouponController {
     }
 
     /** 领取优惠券：POST /coupons/{id}/claim?userId=1 */
+    @Operation(summary = "领取优惠券", description = "为用户领取指定优惠券，status=UNUSED；优惠券定义含 validDays 时按当前时间+有效天数计算过期时间；优惠券不存在抛出 EntityNotFoundException")
     @PostMapping("/{id}/claim")
     @Transactional
     public Result<UserCoupon> claimCoupon(@PathVariable Long id, @RequestParam Long userId) {

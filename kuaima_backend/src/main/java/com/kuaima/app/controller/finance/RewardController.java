@@ -3,6 +3,7 @@ package com.kuaima.app.controller.finance;
 import java.sql.Timestamp;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -49,12 +50,14 @@ public class RewardController {
     }
 
     /** 奖励列表：GET /rewards */
+    @Operation(summary = "奖励列表", description = "返回全部可兑换奖品，无分页")
     @GetMapping
     public Result<List<Reward>> listRewards() {
         return Result.success(rewardRepository.findAll());
     }
 
     /** 奖励详情：GET /rewards/{id} */
+    @Operation(summary = "奖励详情", description = "按 id 查询奖品；不存在抛出 EntityNotFoundException")
     @GetMapping("/{id}")
     public Result<Reward> getReward(@PathVariable Long id) {
         return Result.success(rewardRepository.findById(id)
@@ -62,6 +65,7 @@ public class RewardController {
     }
 
     /** 积分兑换：POST /rewards/{id}/exchange?userId=1 */
+    @Operation(summary = "积分兑换", description = "用积分兑换奖品：校验库存（不足报错）与积分余额（不足报错），扣减积分并记录流水（bizType=REWARD_EXCHANGE）、扣减库存、创建 status=PENDING 的兑换记录；userId 必填")
     @PostMapping("/{id}/exchange")
     @Transactional
     public Result<RewardExchange> exchange(@PathVariable Long id, @RequestParam Long userId) {
@@ -104,6 +108,7 @@ public class RewardController {
     }
 
     /** 兑换记录：GET /rewards/exchanges?userId=1 */
+    @Operation(summary = "兑换记录", description = "按用户 id 查询全部兑换记录；userId 必填")
     @GetMapping("/exchanges")
     public Result<List<RewardExchange>> listExchanges(@RequestParam Long userId) {
         return Result.success(exchangeRepository.findByUserId(userId));

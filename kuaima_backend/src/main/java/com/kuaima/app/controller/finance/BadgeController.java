@@ -2,6 +2,7 @@ package com.kuaima.app.controller.finance;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,12 +33,14 @@ public class BadgeController {
     }
 
     /** 勋章目录：GET /badges */
+    @Operation(summary = "勋章目录", description = "返回全部勋章定义，无分页")
     @GetMapping
     public Result<List<Badge>> listBadges() {
         return Result.success(badgeRepository.findAll());
     }
 
     /** 用户已获得勋章：GET /badges/user/{userId} */
+    @Operation(summary = "用户已获得勋章", description = "按用户 id 查询已获得的勋章列表")
     @GetMapping("/user/{userId}")
     public Result<List<UserBadge>> listUserBadges(@PathVariable Long userId) {
         return Result.success(userBadgeRepository.findByUserId(userId));

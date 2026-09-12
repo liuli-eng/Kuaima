@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.data.domain.Page;
@@ -63,6 +64,7 @@ public class TalentController {
      * 搜索零工：GET /talent/search?keyword=&skill=&city=&page=0&size=20
      * keyword 模糊匹配昵称/手机号/用户名；skill 匹配技能标签；city 匹配城市
      */
+    @Operation(summary = "搜索零工", description = "keyword 模糊匹配昵称/手机号/用户名；skill 对技能标签包含匹配；city 对城市包含匹配。参数：keyword(可选)、skill(可选)、city(可选)、page(默认0)、size(默认20,上限100)，按 id 倒序")
     @GetMapping("/search")
     public Result<List<User>> searchTalent(@RequestParam(required = false) String keyword,
                                             @RequestParam(required = false) String skill,
@@ -85,6 +87,7 @@ public class TalentController {
      * 收藏人才列表：GET /talent/favorites?bossId=1
      * 返回收藏记录关联的零工详情。
      */
+    @Operation(summary = "收藏人才列表", description = "返回指定老板的收藏记录，最新在前；每项含 favoriteId 与关联零工 worker 详情")
     @GetMapping("/favorites")
     public Result<List<Map<String, Object>>> listFavorites(@RequestParam Long bossId) {
         List<TalentFavorite> favorites = favoriteRepository.findByBossIdOrderByIdDesc(bossId);
@@ -102,6 +105,7 @@ public class TalentController {
      * 收藏零工：POST /talent/favorites
      * body: { "bossId": 1, "workerId": 2 }
      */
+    @Operation(summary = "收藏零工", description = "body：{\"bossId\":1,\"workerId\":2}，两者必填；零工不存在抛出参数异常；重复收藏返回 400 提示")
     @PostMapping("/favorites")
     @Transactional
     public Result<TalentFavorite> favoriteWorker(@RequestBody Map<String, Long> body) {
@@ -125,6 +129,7 @@ public class TalentController {
     /**
      * 取消收藏：DELETE /talent/favorites/{id}
      */
+    @Operation(summary = "取消收藏", description = "按收藏记录 id 删除，记录不存在时静默成功")
     @DeleteMapping("/favorites/{id}")
     @Transactional
     public Result<Void> unfavoriteWorker(@PathVariable Long id) {
@@ -137,6 +142,7 @@ public class TalentController {
      * 以当前 JWT 老板为准；bossId 仅为旧前端兼容参数，不可跨老板查询。
      * 仅返回已完成或已有已支付结算单的合作记录，按最近合作时间倒序。
      */
+    @Operation(summary = "历史合作零工", description = "以当前 JWT 老板为准；bossId 仅为旧前端兼容参数，与登录身份不一致返回 403；仅返回已完成或已有已支付结算单的合作记录，按最近合作时间倒序去重")
     @GetMapping("/history")
     public Result<List<User>> listHistory(@RequestParam(required = false) Long bossId,
                                           Authentication authentication) {
@@ -167,6 +173,7 @@ public class TalentController {
      * body: { "bossId": 1, "workerId": 2, "orderId": 3 }
      * 发送站内消息通知零工。
      */
+    @Operation(summary = "邀请零工", description = "body：{\"bossId\":1,\"workerId\":2,\"orderId\":3}；以当前 JWT 老板为准，bossId 与登录身份不一致返回 403，无权以其他老板身份邀请；workerId 必填，orderId 可选；发送站内消息（BOSS_INVITE）通知零工，消息内容使用企业名称或昵称")
     @PostMapping("/invite")
     @Transactional
     public Result<Map<String, Object>> inviteWorker(@RequestBody Map<String, Object> body,
@@ -212,6 +219,7 @@ public class TalentController {
      * 老板黑名单：GET /talent/blacklist?bossId=1
      * （当前复用 admin 黑名单或返回空列表，后续可扩展老板私有黑名单）
      */
+    @Operation(summary = "老板黑名单", description = "bossId 必填；当前实现返回空列表，预留老板私有黑名单扩展")
     @GetMapping("/blacklist")
     public Result<List<User>> listBlacklist(@RequestParam Long bossId) {
         return Result.success(new ArrayList<>());

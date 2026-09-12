@@ -1,5 +1,6 @@
 package com.kuaima.app.controller.chat;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +29,7 @@ public class NotificationSettingController {
     private final NotificationSettingRepository notificationSettingRepository;
 
     /** 获取通知设置（不存在则创建默认） */
+    @Operation(summary = "获取通知设置", description = "按用户 id 查询通知偏好；首次查询不存在时自动创建默认全开记录（订单/活动/系统通知、提示音、震动均开启）")
     @GetMapping("/{userId}")
     public Result<NotificationSetting> get(@PathVariable Long userId) {
         NotificationSetting setting = notificationSettingRepository.findByUserId(userId)
@@ -36,6 +38,7 @@ public class NotificationSettingController {
     }
 
     /** 更新通知设置（整体覆盖） */
+    @Operation(summary = "更新通知设置", description = "整体覆盖更新指定用户的通知偏好，字段：orderNotif、activityNotif、systemNotif、sound、vibrate；记录不存在时先初始化默认值再更新")
     @PutMapping("/{userId}")
     public Result<NotificationSetting> update(@PathVariable Long userId,
             @RequestBody NotificationSetting body) {

@@ -518,6 +518,16 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 
 **错误：** `400 仅申请中的提现单可以标记失败`
 
+### 11. 老板全部待结算订单
+
+`GET /boss/settlements/pending`
+
+按当前老板 JWT 返回全部岗位的待结算报名记录、零工、金额和结算状态。**不接受前端传入 userId/bossId**，身份从 JWT 获取。
+
+返回 `PendingSettlementOrder` 列表（含订单、报名记录、零工信息、工资金额、结算状态）。
+
+**错误：** `500 当前登录账号不是有效的老板账号`
+
 ### 实体补充
 
 **Wallet（表 `wallet`）**：`userId`（唯一）、`balance`（可用余额，分）
@@ -969,6 +979,41 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 
 返回：`{ "totalOrders": 10, "recruitingCount": 3, "applicantCount": 25, "settledAmount": 5000 }`
 
+### 12. 获取当前零工个人资料
+
+`GET /worker/profile`
+
+从 JWT 获取当前零工 ID，**不接收前端传入的 userId**。返回 `WorkerProfile`（含昵称、头像、手机号、城市、技能、信用分等）。
+
+**错误：** `403 当前登录账号不是零工身份`
+
+### 13. 修改当前零工个人资料
+
+`PUT /worker/profile`
+
+请求体 `UpdateWorkerProfileRequest`（字段可选）：`nickname`、`avatar`、`age`、`gender`、`city`、`skills`、`remark` 等。
+
+> 手机号为**只读字段**，修改手机号须通过手机号认证流程。
+
+返回更新后的 `WorkerProfile`。
+
+### 14. 零工订单列表（聚合查询）
+
+`GET /worker/orders?type=&status=&page=0&size=20`
+
+按当前 JWT 零工查询报名记录及岗位完整信息（**不接受前端传入 userId**）。返回 `WorkerOrder` 分页列表。
+
+**参数**：
+
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `type` | string | 否 | - | 按招工类型过滤：`daily`/`heldBack`/`month` |
+| `status` | string | 否 | - | 按报名状态过滤（如 `已报名`/`已录用`/`已到岗`/`已完成`） |
+| `page` | int | 否 | `0` | 页码，从 0 开始 |
+| `size` | int | 否 | `20` | 每页条数，限制 1~100 |
+
+**错误：** `403 当前登录账号不是零工账号`
+
 ---
 
 ## 八、老板端招工与人才
@@ -997,11 +1042,64 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 
 返回：`{ "totalOrders": 10, "recruitingCount": 3, "applicantCount": 25, "settledAmount": 5000 }`
 
-### 5. 工种分类
+### 5. 岗位分类树（公开）
 
-`GET /boss/job-categories`
+`GET /job-categories/tree`
 
-返回工种列表（`BossOrder.postion` distinct 值）：`[{ "name": "普工" }, { "name": "焊工" }]`
+返回启用的行业、企业类型和工种三级树，均按 `sortNo`、`id` 升序排列。免登录。
+
+返回 `IndustryItem` 列表（每个行业含 `enterpriseTypes`，每个企业类型含 `jobs`）。
+
+### 5a. 热门工种（公开）
+
+`GET /job-categories/hot`
+
+返回启用的热门工种快捷入口。免登录。
+
+### 5b. 搜索工种（公开）
+
+`GET /job-categories/search?keyword=&size=20`
+
+按工种名称或描述关键词模糊搜索。免登录。
+
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `keyword` | string | 是 | - | 搜索关键词 |
+| `size` | int | 否 | `20` | 返回条数，限制 1~100 |
+
+### 5c. 新增企业类型（老板）
+
+`POST /boss/job-categories/enterprise-types`
+
+在指定行业下新增企业类型；名称在同一行业内不可重复。身份从 JWT 获取，须为老板。
+
+**请求体** `CreateEnterpriseTypeRequest`：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `industryId` | long | 是 | 行业 ID |
+| `name` | string | 是 | 企业类型名称 |
+| `sortNo` | int | 否 | 排序号 |
+
+**错误：** `500 当前登录账号不是有效的老板账号`、`400 industryId 不能为空`
+
+### 5d. 新增工种（老板）
+
+`POST /boss/job-categories/jobs`
+
+在指定行业的企业类型下新增工种；同一企业类型内名称不可重复。身份从 JWT 获取，须为老板。
+
+**请求体** `CreateJobRequest`：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `industryId` | long | 是 | 行业 ID |
+| `enterpriseTypeId` | long | 是 | 企业类型 ID |
+| `name` | string | 是 | 工种名称 |
+| `description` | string | 否 | 工种描述 |
+| `sortNo` | int | 否 | 排序号 |
+
+**错误：** `500 当前登录账号不是有效的老板账号`、`400 industryId 和 enterpriseTypeId 不能为空`
 
 ### 6. 招工地址列表
 
@@ -1022,6 +1120,34 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 ### 9. 设默认地址
 
 `PUT /boss/addresses/{id}/default`
+
+先清空该老板其它默认标记，再置当前地址为默认；地址不存在或非本人返回错误。
+
+### 9a. 编辑地址
+
+`PUT /boss/addresses/{id}`
+
+按 id 局部更新（字段非空才覆盖：`name`/`detail`/`lat`/`lng`/`isDefault`）；`isDefault` 置 `true` 时先清空其它默认；地址不存在或非本人返回错误。
+
+### 9b. 获取默认地址
+
+`GET /boss/addresses/default?userId={id}`
+
+返回老板默认地址；未设置默认时 `data` 为 `null`。
+
+### 9c. 选择当前使用地址
+
+`PUT /boss/addresses/{id}/use`
+
+与默认地址语义统一：清空其它默认后置当前地址为默认（不另设 currentAddress 状态）。
+
+### 9d. 搜索我的地址
+
+`GET /boss/addresses/search?userId={id}&keyword={keyword}`
+
+在已保存地址中按名称/详情忽略大小写模糊匹配；`keyword` 必填；不代替地图 POI 搜索。
+
+**错误：** `400 keyword 不能为空`
 
 ### 10. 联系人列表
 
@@ -1090,6 +1216,39 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 ---
 
 ## 九、零工端岗位与订单
+
+### 1a. 零工公开岗位列表
+
+`GET /jobs`
+
+按类型、城市、薪资、标签等条件查询 **招工中** 的公开岗位（不按老板归属过滤）。查询参数同 `BossOrderQuery`（`type`/`city`/`salaryMin`/`salaryMax`/`tag`/`page`/`size` 等）。
+
+返回分页 `BossOrder` 列表（`page` 从 0 开始）。
+
+### 1b. 零工岗位详情
+
+`GET /jobs/{id}`
+
+查询招工中的公开岗位详情；岗位不存在或非「招工中」状态返回 404。
+
+**错误：** `404 岗位不存在: {id}`、`404 岗位不存在或已停止招工`
+
+### 1c. 零工报名岗位
+
+`POST /jobs/{orderId}/apply`
+
+当前登录零工报名公开岗位，**用户身份从 JWT 获取**（不接受前端传入 `userId`）。请求体可选。
+
+**请求体**（可选）：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `remark` | string | 否 | 报名备注 |
+| `trial` | boolean | 否 | “我要试工”标记，仅月结(`month`)订单可传 `true` |
+
+返回 `BaseOrderItem`。报名状态初始为 `已报名`。
+
+**错误：** `403 当前登录账号不是零工账号`、`400 该订单当前不可报名`、`400 您已报名过该订单`、`400 该订单已招满`、`400 仅月结订单可选择试工`
 
 ### 1. 高级筛选岗位
 

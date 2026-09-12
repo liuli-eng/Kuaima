@@ -2,6 +2,7 @@ package com.kuaima.app.controller.learn;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +29,7 @@ public class NoticePublicController {
     }
 
     /** 公告列表：GET /notices?scope=&page=0&size=20 */
+    @Operation(summary = "公告列表", description = "仅返回已发布公告，内存分页。参数：scope(可选，公告范围过滤)、page(默认0)、size(默认20,上限100)；返回当页数据与总数")
     @GetMapping
     public Result<List<Notice>> listNotices(@RequestParam(required = false) String scope,
                                             @RequestParam(defaultValue = "0") int page,

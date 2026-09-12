@@ -3,6 +3,7 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,14 +29,17 @@ public class BannerController {
 
     public BannerController(BannerRepository repo) { this.repo = repo; }
 
+    @Operation(summary = "Banner 列表", description = "返回全部 Banner，无分页")
     @GetMapping
     public Result<List<Banner>> list() { return Result.success(repo.findAll()); }
 
+    @Operation(summary = "Banner 详情", description = "按 id 查询 Banner；不存在抛出异常")
     @GetMapping("/{id}")
     public Result<Banner> get(@PathVariable Long id) {
         return Result.success(repo.findById(id).orElseThrow());
     }
 
+    @Operation(summary = "创建 Banner", description = "body 为 Banner 字段；自动填充 createTime/updateTime 为当前时间")
     @PostMapping
     public Result<Banner> create(@RequestBody Banner banner) {
         banner.setCreateTime(LocalDateTime.now());
@@ -43,6 +47,7 @@ public class BannerController {
         return Result.success(repo.save(banner));
     }
 
+    @Operation(summary = "更新 Banner", description = "按 id 局部更新（字段非空才覆盖：title/imageUrl/position/weight/linkUrl/status/startTime/endTime）；自动刷新 updateTime；不存在抛出异常")
     @PutMapping("/{id}")
     public Result<Banner> update(@PathVariable Long id, @RequestBody Banner banner) {
         Banner existing = repo.findById(id).orElseThrow();
@@ -58,6 +63,7 @@ public class BannerController {
         return Result.success(repo.save(existing));
     }
 
+    @Operation(summary = "删除 Banner", description = "按 id 删除 Banner")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         repo.deleteById(id);

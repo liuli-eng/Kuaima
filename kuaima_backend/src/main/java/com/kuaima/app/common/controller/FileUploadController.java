@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,12 +22,14 @@ import com.kuaima.app.common.Result;
 /** 文件上传接口 */
 @RestController
 @RequestMapping("/admin/upload")
+@Tag(name = "后台-文件上传", description = "图片文件上传")
 public class FileUploadController {
 
     @Value("${kuaima.upload.dir:./uploads/}")
     private String uploadDir;
 
     /** 上传图片：POST /admin/upload，form-data: file */
+    @Operation(summary = "上传图片", description = "form-data 字段 file；仅支持 image/* 类型，单文件不超过 2MB；按日期分目录存储，文件名随机生成；返回可访问 url 与 fileName")
     @PostMapping
     public Result<Map<String, String>> upload(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {

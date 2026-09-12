@@ -2,6 +2,7 @@ package com.kuaima.app.controller.finance;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ public class FinanceController {
     }
 
     /** 费用明细（支出方向）：GET /expenses?userId=1&page=0&size=20 */
+    @Operation(summary = "费用明细", description = "返回用户支出方向(outcome)钱包流水，按 id 倒序，内存分页。参数：userId(必填)、page(默认0)、size(默认20,上限100)")
     @GetMapping("/expenses")
     public Result<List<WalletFlow>> listExpenses(@RequestParam Long userId,
                                                 @RequestParam(defaultValue = "0") int page,
@@ -43,6 +45,7 @@ public class FinanceController {
     }
 
     /** 支付明细（收入方向）：GET /payments?userId=1&page=0&size=20 */
+    @Operation(summary = "支付明细", description = "返回用户收入方向(income)钱包流水，按 id 倒序，内存分页。参数：userId(必填)、page(默认0)、size(默认20,上限100)")
     @GetMapping("/payments")
     public Result<List<WalletFlow>> listPayments(@RequestParam Long userId,
                                                  @RequestParam(defaultValue = "0") int page,

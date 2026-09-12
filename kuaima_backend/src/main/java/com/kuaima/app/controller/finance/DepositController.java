@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -36,12 +37,14 @@ public class DepositController {
     }
 
     /** 押金记录：GET /deposits/{userId} */
+    @Operation(summary = "押金记录", description = "按用户 id 查询全部押金记录")
     @GetMapping("/{userId}")
     public Result<List<Deposit>> listDeposits(@PathVariable Long userId) {
         return Result.success(depositRepository.findByUserId(userId));
     }
 
     /** 缴纳押金：POST /deposits  body: { "userId": 1, "amount": 100.0 } */
+    @Operation(summary = "缴纳押金", description = "body：{\"userId\":1,\"amount\":100.0}；两者必填且 amount 须大于 0；创建即置 status=PAID 并记录支付时间")
     @PostMapping
     @Transactional
     public Result<Deposit> payDeposit(@RequestBody Map<String, Object> body) {
@@ -59,6 +62,7 @@ public class DepositController {
     }
 
     /** 申请退还：POST /deposits/{id}/refund */
+    @Operation(summary = "申请退还押金", description = "仅 PAID 状态可退，退还后置为 REFUNDED 并记录退款时间；押金单不存在抛出 EntityNotFoundException，状态不符抛出 IllegalStateException")
     @PostMapping("/{id}/refund")
     @Transactional
     public Result<Deposit> refundDeposit(@PathVariable Long id) {

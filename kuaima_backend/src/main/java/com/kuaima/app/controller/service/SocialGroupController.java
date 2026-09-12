@@ -2,6 +2,7 @@ package com.kuaima.app.controller.service;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,7 @@ public class SocialGroupController {
     }
 
     /** 社群列表：GET /social-groups */
+    @Operation(summary = "社群列表", description = "返回全部社群（含群二维码信息），无分页")
     @GetMapping
     public Result<List<SocialGroup>> listGroups() {
         return Result.success(socialGroupRepository.findAll());

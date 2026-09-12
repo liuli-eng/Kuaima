@@ -3,6 +3,7 @@ package com.kuaima.app.admin.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.data.domain.Page;
@@ -33,6 +34,7 @@ public class AdminMessageTemplateController {
     public AdminMessageTemplateController(MessageTemplateRepository repo) { this.repo = repo; }
 
     /** 列表（分页）：GET /admin/message-templates?status=&event=&page=&size= */
+    @Operation(summary = "消息模板列表", description = "分页查询。参数：status(可选)、event(可选)、page(默认0)、size(默认10)，按 updateTime 倒序；status 优先于 event")
     @GetMapping
     public Result<List<MessageTemplate>> list(
             @RequestParam(required = false) String status,
@@ -51,11 +53,13 @@ public class AdminMessageTemplateController {
         return Result.success(result.getContent(), page, result.getTotalElements());
     }
 
+    @Operation(summary = "消息模板详情", description = "按 id 查询模板；不存在抛出异常")
     @GetMapping("/{id}")
     public Result<MessageTemplate> get(@PathVariable Long id) {
         return Result.success(repo.findById(id).orElseThrow());
     }
 
+    @Operation(summary = "创建消息模板", description = "body 为 MessageTemplate 字段；自动填充 createTime/updateTime；缺省 status=enabled、channel=both、sendWay=即时、sendTime=全天、freqLimit=5；非定时方式清空 scheduledTime")
     @PostMapping
     public Result<MessageTemplate> create(@RequestBody MessageTemplate template) {
         LocalDateTime now = LocalDateTime.now();
@@ -83,6 +87,7 @@ public class AdminMessageTemplateController {
         return Result.success(repo.save(template));
     }
 
+    @Operation(summary = "更新消息模板", description = "按 id 局部更新（字段非空才覆盖）；自动刷新 updateTime；模板不存在抛出异常")
     @PutMapping("/{id}")
     public Result<MessageTemplate> update(@PathVariable Long id, @RequestBody MessageTemplate template) {
         MessageTemplate existing = repo.findById(id).orElseThrow();
@@ -101,6 +106,7 @@ public class AdminMessageTemplateController {
     }
 
     /** 启用/禁用：PUT /admin/message-templates/{id}/toggle */
+    @Operation(summary = "启用/禁用模板", description = "切换状态：enabled<->disabled；自动刷新 updateTime；模板不存在抛出异常")
     @PutMapping("/{id}/toggle")
     public Result<MessageTemplate> toggle(@PathVariable Long id) {
         MessageTemplate existing = repo.findById(id).orElseThrow();
@@ -110,6 +116,7 @@ public class AdminMessageTemplateController {
     }
 
     /** 标记最近使用：PUT /admin/message-templates/{id}/used */
+    @Operation(summary = "标记最近使用", description = "更新 lastUsed 为当前时间；模板不存在抛出异常")
     @PutMapping("/{id}/used")
     public Result<MessageTemplate> markUsed(@PathVariable Long id) {
         MessageTemplate existing = repo.findById(id).orElseThrow();
@@ -117,6 +124,7 @@ public class AdminMessageTemplateController {
         return Result.success(repo.save(existing));
     }
 
+    @Operation(summary = "删除消息模板", description = "按 id 删除模板")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         repo.deleteById(id);

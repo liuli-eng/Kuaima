@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -47,6 +48,7 @@ public class SubAccountController {
     }
 
     /** 子账号列表：GET /boss/sub-accounts?parentId=1 */
+    @Operation(summary = "子账号列表", description = "按父账号 id 查询全部子账号；parentId 必填")
     @GetMapping
     public Result<List<SubAccount>> listSubAccounts(@RequestParam Long parentId) {
         return Result.success(subAccountRepository.findByParentId(parentId));
@@ -57,6 +59,7 @@ public class SubAccountController {
      * body: { "parentId": 1, "username": "sub001", "nickname": "子账号", "phone": "138...", "role": "FINANCE" }
      * 若传入 userId 且该用户已存在，则直接绑定；否则新建 sys_user 记录。
      */
+    @Operation(summary = "创建子账号", description = "body：{\"parentId\":1,\"username\":\"sub001\",\"nickname\":\"子账号\",\"phone\":\"138...\",\"role\":\"FINANCE\"}；parentId 必填，role 缺省 OPERATOR；传入 userId 时绑定已有用户（不存在报错），否则新建 sys_user（username 缺省自动生成 sub_前缀 8 位随机码，重名报错，密码随机生成）")
     @PostMapping
     @Transactional
     public Result<SubAccount> createSubAccount(@RequestBody Map<String, Object> body) {
@@ -103,6 +106,7 @@ public class SubAccountController {
     }
 
     /** 删除子账号：DELETE /boss/sub-accounts/{id} */
+    @Operation(summary = "删除子账号", description = "删除子账号并同步冻结底层用户（status=冻结）；子账号不存在抛出参数异常")
     @DeleteMapping("/{id}")
     @Transactional
     public Result<Void> deleteSubAccount(@PathVariable Long id) {
@@ -118,6 +122,7 @@ public class SubAccountController {
     }
 
     /** 修改子账号角色：PUT /boss/sub-accounts/{id}/role?role=FINANCE */
+    @Operation(summary = "修改子账号角色", description = "更新子账号角色并同步底层用户 subRole；role 必填，子账号不存在抛出参数异常")
     @PutMapping("/{id}/role")
     @Transactional
     public Result<SubAccount> updateRole(@PathVariable Long id, @RequestParam String role) {

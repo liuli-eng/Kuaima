@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -36,12 +37,14 @@ public class InsuranceController {
     }
 
     /** 保险记录列表：GET /insurance?userId=1 */
+    @Operation(summary = "保险记录列表", description = "按用户 id 查询保险记录，按 id 倒序；userId 必填")
     @GetMapping
     public Result<List<Insurance>> listInsurance(@RequestParam Long userId) {
         return Result.success(insuranceRepository.findByUserIdOrderByIdDesc(userId));
     }
 
     /** 购买保险：POST /insurance */
+    @Operation(summary = "购买保险", description = "body：{\"userId\":1,\"userType\":\"WORKER\",\"orderId\":1,\"type\":\"意外险\",\"amount\":100,\"premium\":10}；字段均可选，缺省 userType=WORKER、type=意外险、amount/premium=0；创建即生效：status=ACTIVE，startTime=当前时间")
     @PostMapping
     @Transactional
     public Result<Insurance> buyInsurance(@RequestBody Map<String, Object> body) {
@@ -58,6 +61,7 @@ public class InsuranceController {
     }
 
     /** 保险详情：GET /insurance/{id} */
+    @Operation(summary = "保险详情", description = "按 id 查询保险记录；不存在抛出 EntityNotFoundException")
     @GetMapping("/{id}")
     public Result<Insurance> getInsurance(@PathVariable Long id) {
         return Result.success(insuranceRepository.findById(id)

@@ -1,6 +1,7 @@
 package com.kuaima.app.controller.learn;
 
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,12 +37,14 @@ public class RulePublicController {
 
 
     /** 规则列表：GET /rules?category=交易规则 */
+    @Operation(summary = "规则列表", description = "仅返回已发布规则；category 可选，传入时按分类过滤")
     @GetMapping
     public Result<java.util.List<Rules>> listRules(@RequestParam(required = false) String category) {
         return Result.success(rulePublicService.list(category));
     }
 
     /** 规则详情：GET /rules/{id} */
+    @Operation(summary = "规则详情", description = "按 id 查询规则详情")
     @GetMapping("/{id}")
     public Result<Rules> getRule(@PathVariable Long id) {
         return Result.success(rulePublicService.get(id));

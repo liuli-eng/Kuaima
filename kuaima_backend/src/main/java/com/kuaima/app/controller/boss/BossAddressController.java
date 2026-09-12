@@ -2,6 +2,7 @@ package com.kuaima.app.controller.boss;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ public class BossAddressController {
     private final BossAddressRepository bossAddressRepository;
 
     /** 某老板的全部地址（最新在前） */
+    @Operation(summary = "地址列表", description = "返回老板全部地址，最新在前；校验当前登录身份与 userId 一致")
     @GetMapping
     public Result<List<BossAddress>> list(@RequestParam Long userId, Authentication authentication) {
         requireOwner(userId, authentication);
@@ -43,6 +45,7 @@ public class BossAddressController {
     }
 
     /** 新增地址（body 为 BossAddress 字段，userId 必填） */
+    @Operation(summary = "新增地址", description = "body 为 BossAddress 字段，userId 必填且校验与登录身份一致；isDefault=true 时先清空该老板其它默认标记再保存")
     @PostMapping
     @Transactional
     public Result<BossAddress> create(@RequestBody BossAddress body, Authentication authentication) {
@@ -57,6 +60,7 @@ public class BossAddressController {
     }
 
     /** 编辑地址，仅允许所属老板修改。 */
+    @Operation(summary = "编辑地址", description = "按 id 局部更新（字段非空才覆盖：name/detail/lat/lng/isDefault）；isDefault 置 true 时先清空其它默认；地址不存在或非本人返回错误")
     @PutMapping("/{id}")
     @Transactional
     public Result<BossAddress> update(@PathVariable Long id, @RequestBody BossAddress body,
@@ -74,6 +78,7 @@ public class BossAddressController {
     }
 
     /** 删除地址 */
+    @Operation(summary = "删除地址", description = "按 id 删除地址；地址不存在或非本人返回错误")
     @DeleteMapping("/{id}")
     @Transactional
     public Result<Void> delete(@PathVariable Long id, Authentication authentication) {
@@ -82,6 +87,7 @@ public class BossAddressController {
         return Result.success();
     }
 
+    @Operation(summary = "获取默认地址", description = "返回老板默认地址；未设置默认时返回 null")
     @GetMapping("/default")
     public Result<BossAddress> getDefault(@RequestParam Long userId, Authentication authentication) {
         requireOwner(userId, authentication);
@@ -89,6 +95,7 @@ public class BossAddressController {
     }
 
     /** 选择当前使用地址：与现有默认地址语义统一，不增加第二套 currentAddress 状态。 */
+    @Operation(summary = "选择当前使用地址", description = "与默认地址语义统一：清空其它默认后置当前地址为默认")
     @PutMapping("/{id}/use")
     @Transactional
     public Result<BossAddress> use(@PathVariable Long id, Authentication authentication) {
@@ -99,6 +106,7 @@ public class BossAddressController {
     }
 
     /** 在老板已保存地址中按名称/详情搜索；不代替地图 POI 搜索。 */
+    @Operation(summary = "搜索我的地址", description = "在已保存地址中按名称/详情忽略大小写模糊匹配；keyword 必填；不代替地图 POI 搜索")
     @GetMapping("/search")
     public Result<List<BossAddress>> search(@RequestParam Long userId, @RequestParam String keyword,
                                             Authentication authentication) {
@@ -112,6 +120,7 @@ public class BossAddressController {
     }
 
     /** 设为默认：先清空该老板其它默认标记，再置当前为默认 */
+    @Operation(summary = "设为默认地址", description = "先清空该老板其它默认标记，再置当前地址为默认；地址不存在或非本人返回错误")
     @PutMapping("/{id}/default")
     @Transactional
     public Result<BossAddress> setDefault(@PathVariable Long id, Authentication authentication) {

@@ -2,6 +2,7 @@ package com.kuaima.app.controller.chat;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.data.domain.Page;
@@ -32,6 +33,7 @@ public class MissedCallController {
     private final MissedCallRepository missedCallRepository;
 
     /** 未接来电列表（按通话时间倒序分页） */
+    @Operation(summary = "未接来电列表", description = "按接收用户 id 查询未接来电，按通话时间倒序分页。参数：userId(必填)、page(默认0)、size(默认20)")
     @GetMapping
     public Result<List<MissedCall>> list(@RequestParam Long userId,
             @RequestParam(defaultValue = "0") int page,
@@ -42,6 +44,7 @@ public class MissedCallController {
     }
 
     /** 单条标记已读 */
+    @Operation(summary = "单条标记已读", description = "将指定未接来电记录标记为已读；记录不存在返回 404")
     @PutMapping("/{id}/read")
     @Transactional
     public Result<Boolean> read(@PathVariable Long id) {

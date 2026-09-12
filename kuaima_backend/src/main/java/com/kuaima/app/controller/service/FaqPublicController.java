@@ -2,6 +2,7 @@ package com.kuaima.app.controller.service;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +27,7 @@ public class FaqPublicController {
 
     private final FaqRepository faqRepository;
 
+    @Operation(summary = "已启用 FAQ 列表", description = "仅返回已启用的 FAQ，按 sortOrder 升序；category 可选，传入时按分类过滤（内存过滤）")
     @GetMapping
     public Result<List<Faq>> listEnabledFaqs(@RequestParam(required = false) String category) {
         List<Faq> list = faqRepository.findByEnabledTrueOrderBySortOrderAsc();

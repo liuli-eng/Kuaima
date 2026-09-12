@@ -4,6 +4,8 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -37,12 +39,14 @@ public class TrainingTaskController {
     }
 
     /** 某用户培训任务列表：GET /training-tasks?userId=1 */
+    @Operation(summary = "培训任务列表", description = "按用户 id 查询全部培训任务；userId 必填")
     @GetMapping
     public Result<List<TrainingTask>> listTasks(@RequestParam Long userId) {
         return Result.success(taskRepository.findByUserId(userId));
     }
 
     /** 分配培训任务：POST /training-tasks  body: { "userId": 1, "courseId": 2 } */
+    @Operation(summary = "分配培训任务", description = "body：{\"userId\":1,\"courseId\":2}，两者必填；创建即置 status=PENDING")
     @PostMapping
     @Transactional
     public Result<TrainingTask> assignTask(@RequestBody Map<String, Object> body) {
@@ -59,6 +63,7 @@ public class TrainingTaskController {
     }
 
     /** 完成培训任务：PUT /training-tasks/{id}/complete */
+    @Operation(summary = "完成培训任务", description = "将指定任务置为 COMPLETED 并记录完成时间；任务不存在抛出 EntityNotFoundException")
     @PutMapping("/{id}/complete")
     @Transactional
     public Result<TrainingTask> completeTask(@PathVariable Long id) {
