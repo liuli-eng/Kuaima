@@ -184,7 +184,7 @@ function inputRejectReason() {
 function normalizeApply(message = {}, item = {}, orderMap) {
   const worker = item.user || item.worker || {};
   const order = item.order || orderMap.get(String(item.orderId)) || {};
-  const name = worker.nickname || worker.realName || worker.name || (item.userId ? `零工${item.userId}` : "零工");
+  const name = item.nickname || item.realName || item.name || worker.nickname || worker.realName || worker.name || (item.userId ? `零工${item.userId}` : "零工");
   const status = mapApplyStatus(item.status);
   return {
     id: Number(message.bizId || item.id), messageId: message.id, read: isRead(message.readFlag), status,

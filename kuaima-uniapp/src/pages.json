@@ -306,6 +306,10 @@
     { "path": "pages/boss/location", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/message", "style": { "navigationStyle": "custom" } },
     {
+      "path": "pages/boss/history-message",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/boss/missed-call",
       "style": { "navigationStyle": "custom" }
     },

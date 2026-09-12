@@ -6,12 +6,21 @@
       <view class="top-header">
         <view class="nav-bar">
           <view class="brand-tag">快马日结</view>
+          <view class="nav-icons">
+            <view class="nav-icon-item">
+              <image :src="ellipsisIcon" mode="aspectFit" />
+            </view>
+            <view class="nav-divider"></view>
+            <view class="nav-icon-item">
+              <image :src="dotIcon" mode="aspectFit" />
+            </view>
+          </view>
         </view>
 
         <!-- 用户信息 -->
         <view class="user-info" @click="navigateTo('personal-info')">
           <view class="user-avatar">
-            <image :src="userIcon" mode="aspectFit" />
+            <image :src="profile.avatar || userIcon" mode="aspectFill" />
           </view>
           <view class="user-info-main">
             <text class="user-name">{{ profile.name }} | 老板</text>
@@ -126,7 +135,7 @@
       </view>
       <view class="tab-item" @click="switchTab('workbench')">
         <view class="tab-icon-wrap">
-          <image :src="briefcaseGrayIcon" mode="aspectFit" />
+          <image src="/static/icons/boss-tabbar/briefcase-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">工作台</text>
       </view>
@@ -148,7 +157,9 @@
 
 <script>
 import { getCurrentUser, getUser } from '@/api/backend'
-import userIcon from '/static/icons/boss-profile/user.svg'
+import ellipsisIcon from '/static/icons/boss-profile/ellipsis.svg'
+import dotIcon from '/static/icons/boss-profile/dot.svg'
+import userIcon from '/static/avatars/default-boss-avatar.png'
 import chevronRightIcon from '/static/icons/boss-profile/chevron-right.svg'
 import exchangeIcon from '/static/icons/boss-profile/exchange.svg'
 import buildingIcon from '/static/icons/boss-profile/building.svg'
@@ -163,7 +174,6 @@ import bookOpenIcon from '/static/icons/boss-profile/book-open.svg'
 import clipboardListIcon from '/static/icons/boss-profile/clipboard-list.svg'
 import houseGrayIcon from '/static/icons/boss-tabbar/house-gray.svg'
 import calendarCheckGrayIcon from '/static/icons/boss-tabbar/calendar-check-gray.svg'
-import briefcaseGrayIcon from '/static/icons/boss-tabbar/briefcase-gray.svg'
 import commentDotsGrayIcon from '/static/icons/boss-tabbar/comment-dots-gray.svg'
 import faceSmileWhiteIcon from '/static/icons/boss-tabbar/face-smile-white.svg'
 
@@ -171,6 +181,8 @@ export default {
   data() {
     return {
       statusBarHeight: uni.getSystemInfoSync().statusBarHeight || 0,
+      ellipsisIcon,
+      dotIcon,
       userIcon,
       chevronRightIcon,
       exchangeIcon,
@@ -186,11 +198,11 @@ export default {
       clipboardListIcon,
       houseGrayIcon,
       calendarCheckGrayIcon,
-      briefcaseGrayIcon,
       commentDotsGrayIcon,
       faceSmileWhiteIcon,
       profile: {
         name: '用户',
+        avatar: '',
         enterpriseApproved: false,
       },
     }
@@ -212,6 +224,7 @@ export default {
         const enterpriseStatus = String(data.enterpriseStatus || '').toUpperCase()
         this.profile = {
           name,
+          avatar: data.avatar || data.avatarUrl || cached.avatar || cached.avatarUrl || '',
           enterpriseApproved: ['APPROVED', 'PASSED', '已通过', '已认证'].includes(enterpriseStatus),
         }
       } catch (_) {
@@ -252,10 +265,8 @@ export default {
       })
     },
     switchTab(tab) {
-      if (tab === 'workbench') {
-        uni.showToast({ title: '工作台页面暂未开放', icon: 'none' })
-        return
-      }
+      if (tab === 'workbench')
+        return uni.showToast({ title: '工作台页面暂未开放', icon: 'none' })
       const tabPages = {
         'home': '/pages/boss/home',
         'order': '/pages/boss/order',
@@ -284,7 +295,7 @@ export default {
 .container {
   width: 100%;
   height: 100vh;
-  background: #F3F4F6;
+  background: #FFF8E6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -310,21 +321,20 @@ export default {
 .scroll-area {
   flex: 1;
   overflow-y: auto;
-  background: #F3F4F6;
+  background: #FFF8E6;
 }
 
 .status-spacer {
   flex-shrink: 0;
-  background: #F7F7F7;
+  background: #FFF8E6;
 }
 
 .top-header {
-  background: #FFD96F;
+  background: linear-gradient(180deg, #FFD59E 0%, #FFE4B5 100%);
   padding: 12px 16px 20px;
 }
 
 .nav-bar {
-  min-height: 36px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -337,6 +347,30 @@ export default {
   font-weight: 700;
   font-size: 14px;
   color: #8B4513;
+}
+
+.nav-icons {
+  display: flex;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  border-radius: 50px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.nav-icon-item {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-divider {
+  width: 1px;
+  height: 16px;
+  background: #ddd;
+  margin: 0 4px;
 }
 
 .user-info {
@@ -355,6 +389,7 @@ export default {
   justify-content: center;
   margin-right: 14px;
   border: 3px solid rgba(255,255,255,0.5);
+  overflow: hidden;
 }
 
 .user-info-main {
@@ -502,10 +537,6 @@ export default {
   line-height: 1.8;
 }
 
-.footer-info text {
-  display: block;
-}
-
 /* TabBar样式 */
 .tab-bar {
   flex-shrink: 0;
@@ -558,7 +589,8 @@ export default {
 }
 
 .status-icons image { width: 16px; height: 16px; }
-.user-avatar image { width: 34px; height: 34px; }
+.nav-icon-item image { width: 16px; height: 16px; }
+.user-avatar image { width: 100%; height: 100%; border-radius: 50%; display: block; }
 .chevron-icon { width: 12px; height: 12px; }
 .switch-btn image { width: 14px; height: 14px; }
 .cert-icon image { width: 21px; height: 21px; }

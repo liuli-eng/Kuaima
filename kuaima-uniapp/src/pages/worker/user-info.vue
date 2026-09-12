@@ -6,8 +6,7 @@
       <view v-else-if="loadError" class="page-state error" @click="loadProfile">加载失败，点击重试</view>
       <template v-else>
         <view class="avatar-section" @click="editAvatar">
-          <image v-if="form.avatar" class="avatar-image" :src="form.avatar" mode="aspectFill" />
-          <view v-else class="avatar">👤</view>
+          <image class="avatar-image" :src="form.avatar || defaultWorkerAvatar" mode="aspectFill" />
           <text class="avatar-tip">点击填写头像图片地址</text>
         </view>
         <view class="card">
@@ -38,6 +37,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { getWorkerProfile, updateWorkerProfile } from "@/api/backend";
 import { logout } from "@/api/auth";
+import defaultWorkerAvatar from "/static/avatars/default-worker-avatar.png";
 
 const genderOptions = ["男", "女", "保密"];
 const loading = ref(false), loadError = ref(false), saving = ref(false), logoutLoading = ref(false), phone = ref("");
@@ -115,8 +115,7 @@ function formatDate(date) { return `${date.getFullYear()}-${String(date.getMonth
 .page-state { padding: 220rpx 32rpx; text-align: center; color: #999; font-size: 26rpx; }
 .page-state.error { color: #ff6b35; }
 .avatar-section { padding: 42rpx 32rpx 32rpx; text-align: center; background: #fff; }
-.avatar, .avatar-image { width: 144rpx; height: 144rpx; margin: 0 auto 16rpx; border-radius: 50%; }
-.avatar { display: flex; align-items: center; justify-content: center; background: #ffe4b5; color: #ff6b35; font-size: 70rpx; }
+.avatar-image { width: 144rpx; height: 144rpx; margin: 0 auto 16rpx; border-radius: 50%; }
 .avatar-tip { color: #999; font-size: 23rpx; }
 .card { margin: 24rpx 32rpx 0; overflow: hidden; border-radius: 24rpx; background: #fff; }
 .row { display: flex; align-items: center; min-height: 100rpx; padding: 0 28rpx; border-bottom: 1rpx solid #f2f2f2; box-sizing: border-box; }

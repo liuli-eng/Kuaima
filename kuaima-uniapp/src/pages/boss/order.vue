@@ -199,6 +199,12 @@
         </view>
         <text class="tab-label">招工订单</text>
       </view>
+      <view class="tab-item" @click="switchTab('workbench')">
+        <view class="tab-icon-wrap">
+          <image class="tab-svg" src="/static/icons/boss-tabbar/briefcase-gray.svg" mode="aspectFit" />
+        </view>
+        <text class="tab-label">工作台</text>
+      </view>
       <view class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap">
           <image class="tab-svg" src="/static/icons/boss-tabbar/comment-dots-gray.svg" mode="aspectFit" />
@@ -583,6 +589,8 @@ export default {
       await this.loadOrders(true);
     },
     switchTab(tab) {
+      if (tab === "workbench")
+        return uni.showToast({ title: "工作台页面暂未开放", icon: "none" });
       const tabPages = {
         home: "/pages/boss/home",
         order: "/pages/boss/order",

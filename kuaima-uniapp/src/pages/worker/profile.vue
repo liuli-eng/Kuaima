@@ -1,16 +1,13 @@
 <template>
   <view class="page">
+    <AppNavBar title="我的" />
     <scroll-view scroll-y class="content">
-      <view class="header-nav" :style="{ paddingTop: `${statusBarHeight}px` }">
-        <text class="nav-title">我的</text>
-        <view class="nav-space" />
-      </view>
       <view class="user-header">
-        <view class="avatar"><image :src="avatarIcon" mode="aspectFill" /></view>
+        <view class="avatar"><image :src="profileAvatar" mode="aspectFill" /></view>
         <view class="user-info" @click="go('/pages/worker/user-info')">
-          <view class="name-row"><text class="name">{{ profileName }}</text><image :src="chevronRightIcon" mode="aspectFit" class="chevron" /></view>
+          <text class="name">{{ profileName }} <text class="chevron">›</text></text>
         </view>
-        <view class="switch-btn" @click="go('/pages/worker/switch-identity?role=worker')">
+        <view class="switch-btn" @click="go('/pages/worker/switch-identity')">
           <image :src="exchangeIcon" mode="aspectFit" /> 我要招人
         </view>
       </view>
@@ -50,24 +47,23 @@
 <script setup>
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { request } from "@/api/http";
 import { getWorkerProfile } from "@/api/backend";
-import avatarIcon from "/static/icons/worker-profile/avatar.svg";
-import exchangeIcon from "/static/icons/worker-profile/exchange-orange.svg";
-import coinsIcon from "/static/icons/worker-profile/coins-orange.svg";
+import defaultWorkerAvatar from "/static/avatars/default-worker-avatar.png";
+import exchangeIcon from "/static/icons/boss-profile/exchange.svg";
+import coinsIcon from "/static/icons/worker-profile/coins.svg";
 import headsetIcon from "/static/icons/worker-profile/headset.svg";
 import balanceIcon from "/static/icons/worker-profile/balance.svg";
 import fileIcon from "/static/icons/worker-profile/file.svg";
 import userLockIcon from "/static/icons/worker-profile/user-lock.svg";
 import copyrightIcon from "/static/icons/worker-profile/copyright.svg";
-import mobileIcon from "/static/icons/worker-profile/mobile-orange.svg";
-import chevronRightIcon from "/static/icons/worker-profile/chevron-right-brown.svg";
-
-const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
+import mobileIcon from "/static/icons/boss-profile/mobile.svg";
 
 const profile = ref({});
 const wallet = ref({ available: "0" });
+const profileAvatar = computed(() => profile.value.avatar || profile.value.avatarUrl || defaultWorkerAvatar);
 const profileName = computed(() => {
   const name =
     profile.value.nickname ||
@@ -136,41 +132,30 @@ function handle(item) {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #f7f7f7;
+  background: #fff8e6;
 }
 
 .content {
-  height: calc(100vh - 83px - env(safe-area-inset-bottom));
-  background: #f7f7f7;
+  height: calc(100vh - 176rpx);
   padding-bottom: 32rpx;
   box-sizing: border-box;
 }
 
-.header-nav {
-  min-height: 88rpx;
-  padding: 16rpx 32rpx 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-sizing: border-box;
-  background: #ffd96f;
-}
-.nav-title { color: #333; font-size: 34rpx; font-weight: 600; }
-.nav-space { width: 64rpx; height: 64rpx; }
-
 .user-header {
   display: flex;
   align-items: center;
-  padding: 32rpx;
-  background: #ffd96f;
+  padding: 32rpx 36rpx;
+  background: linear-gradient(135deg, #ffd59e 0%, #ffa94d 100%);
   color: #fff;
 }
 
 .avatar {
   width: 120rpx;
   height: 120rpx;
+  flex-shrink: 0;
   border: 4rpx solid rgba(255, 255, 255, 0.5);
   border-radius: 50%;
+  overflow: hidden;
   background: #fff;
   color: #ff6b35;
   text-align: center;
@@ -190,7 +175,6 @@ function handle(item) {
   overflow: hidden;
   font-size: 34rpx;
   font-weight: 700;
-  color: #8b4513;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -199,8 +183,7 @@ function handle(item) {
   flex-shrink: 0;
   padding: 18rpx 26rpx;
   border-radius: 36rpx;
-  background: #fff;
-  color: #ff6b35;
+  background: rgba(255, 255, 255, 0.25);
   font-size: 24rpx;
 }
 
@@ -208,9 +191,9 @@ function handle(item) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 24rpx 24rpx;
-  min-height: 132rpx;
-  padding: 32rpx;
+  margin: 24rpx;
+  min-height: 152rpx;
+  padding: 28rpx 30rpx;
   border-radius: 24rpx;
   background: #fff;
 }
@@ -303,10 +286,8 @@ function handle(item) {
   color: #fff;
   font-size: 18rpx;
 }
-.avatar image { width: 100%; height: 100%; }
-.name-row { display: flex; align-items: center; min-width: 0; }
-.name-row .name { min-width: 0; }
-.chevron { width: 16rpx; height: 24rpx; margin-left: 8rpx; flex-shrink: 0; }
+.avatar image { width: 100%; height: 100%; border-radius: 50%; display: block; }
+.name .chevron { color: #8b4513; font-size: 26rpx; }
 .switch-btn { display: flex; align-items: center; gap: 8rpx; }
 .switch-btn image { width: 28rpx; height: 28rpx; }
 .wallet-icon { width: 54rpx; height: 54rpx; }

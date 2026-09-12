@@ -1,21 +1,22 @@
 <template>
   <view class="page">
-    <view class="top-nav" :style="{ paddingTop: `${statusBarHeight}px` }">
-      <view class="nav-inner">
-        <button class="nav-back" @click="goBack">
-          <image :src="chevronLeftGrayIcon" mode="aspectFit" class="nav-back-icon" />
-        </button>
-        <text class="nav-title">任务详情</text>
-        <view class="nav-space" />
-      </view>
-    </view>
+    <AppNavBar title="任务详情" :show-back="true" />
     <scroll-view scroll-y class="content">
       <view v-if="loading" class="page-state">任务详情加载中…</view>
       <view v-else-if="loadError" class="page-state error" @click="loadDetail">加载失败，点击重试</view>
       <template v-else>
         <!-- 头部工资区域 -->
         <view class="salary-header">
-          <view class="salary-title">{{ job.title }}</view>
+          <view class="title-row">
+            <text class="title">{{ job.title }}</text>
+            <view class="favorite" @click="toggleFavorite">
+              <image
+                :src="favorite ? heartSolidOrangeIcon : heartOutlineGrayIcon"
+                mode="aspectFit"
+                class="favorite-icon"
+              />
+            </view>
+          </view>
           <view class="tags">
             <text class="tag">{{ settlementLabel }}</text>
             <text v-for="tag in jobTags" :key="tag" class="tag">{{ tag }}</text>
@@ -124,9 +125,10 @@
           </view>
         </view>
 
+        <view class="bottom-space" />
       </template>
     </scroll-view>
-    <view class="safe-bottom-action" :style="{ paddingBottom: `${bottomInset}px` }">
+    <SafeBottomAction>
       <view class="bottom-bar">
         <view class="bottom-action" @click="goHome">
           <image :src="houseGrayIcon" mode="aspectFit" class="bottom-icon" />
@@ -143,12 +145,14 @@
           </view>
         </button>
       </view>
-    </view>
+    </SafeBottomAction>
   </view>
 </template>
 <script setup>
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
+import AppNavBar from "@/components/AppNavBar.vue";
+import SafeBottomAction from "@/components/SafeBottomAction.vue";
 import {
   checkFavoriteJob,
   favoriteJob,
@@ -165,12 +169,11 @@ import exclamationCircleBlueIcon from "/static/icons/worker-job-detail/exclamati
 import userGreenIcon from "/static/icons/worker-job-detail/user-green.svg";
 import houseGrayIcon from "/static/icons/worker-job-detail/house-gray.svg";
 import shareAltGrayIcon from "/static/icons/worker-job-detail/share-alt-gray.svg";
-import chevronLeftGrayIcon from "/static/icons/worker-job-detail/chevron-left-gray.svg";
+import heartSolidOrangeIcon from "/static/icons/worker-job-detail/heart-solid-orange.svg";
+import heartOutlineGrayIcon from "/static/icons/worker-job-detail/heart-outline-gray.svg";
 import chevronRightBlueIcon from "/static/icons/worker-job-detail/chevron-right-blue.svg";
 import chevronRightOrangeIcon from "/static/icons/worker-job-detail/chevron-right-orange.svg";
 
-const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
-const bottomInset = uni.getSystemInfoSync().safeAreaInsets?.bottom || 0;
 const tabs = [
   { key: "desc", label: "任务描述" },
   { key: "notice", label: "报名须知" },
@@ -329,9 +332,6 @@ function formatJobTimeRange(startValue, endValue) {
 function goRealname() {
   uni.navigateTo({ url: "/pages/worker/realname" });
 }
-function goBack() {
-  uni.navigateBack();
-}
 function share() {
   uni.showToast({ title: "任务分享功能开发中", icon: "none" });
 }
@@ -410,16 +410,12 @@ function normalizeJob(item) {
 </script>
 <style scoped>
 .page {
-  height: 100vh;
+  min-height: 100vh;
   background: #f5f5f5;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 .content {
-  flex: 1;
-  min-height: 0;
-  height: auto;
+  height: 100vh;
+  padding-bottom: calc(220rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   background: #f5f5f5;
 }
@@ -432,60 +428,32 @@ function normalizeJob(item) {
 .page-state.error {
   color: #e34d59;
 }
-.top-nav {
-  background: #fff;
-  border-bottom: 1rpx solid #f0f0f0;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 30;
-}
-.nav-inner {
-  height: 104rpx;
-  padding: 16rpx 32rpx 24rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-sizing: border-box;
-}
-.nav-back {
-  width: 64rpx;
-  height: 64rpx;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-.nav-back::after {
-  border: 0;
-}
-.nav-back-icon {
-  width: 36rpx;
-  height: 36rpx;
-}
-.nav-title {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: #333;
-}
-.nav-space {
-  width: 64rpx;
-  height: 64rpx;
-}
 /* 头部工资区域 */
 .salary-header {
   background: linear-gradient(135deg, #FFF4E6, #FFE4B5);
   padding: 40rpx 32rpx;
 }
-.salary-title {
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+.title {
   font-size: 40rpx;
   font-weight: 700;
   color: #333;
-  margin-bottom: 16rpx;
+}
+.favorite {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.favorite-icon {
+  width: 48rpx;
+  height: 48rpx;
 }
 .tags {
   display: flex;
@@ -583,10 +551,6 @@ function normalizeJob(item) {
   align-items: center;
   gap: 4rpx;
   flex-shrink: 0;
-}
-.link-chevron {
-  width: 18rpx;
-  height: 28rpx;
 }
 .outdated-tip-row {
   margin-top: 16rpx;
@@ -710,20 +674,13 @@ function normalizeJob(item) {
   width: 24rpx;
   height: 24rpx;
 }
+.bottom-space { height: 160rpx; }
 /* 底部操作栏 */
-.safe-bottom-action {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0 32rpx;
-  background: #fff;
-  flex-shrink: 0;
-  z-index: 20;
-}
 .bottom-bar {
   background: #fff;
   display: flex;
   align-items: center;
-  padding: 20rpx 0;
+  padding: 20rpx 32rpx;
   border-top: 1rpx solid #f0f0f0;
   gap: 20rpx;
 }
@@ -762,9 +719,6 @@ function normalizeJob(item) {
 }
 .enroll-btn[disabled] {
   opacity: 0.65;
-}
-.enroll-btn::after {
-  border: 0;
 }
 .enroll-info {
   text-align: center;

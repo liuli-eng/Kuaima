@@ -85,6 +85,10 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     Page<Message> findByUserIdAndRoleAndTypeAndReadFlagOrderByIdDesc(Long userId, String role, String type, boolean readFlag, Pageable pageable);
 
+    long countByUserIdAndRoleAndTypeAndReadFlagFalse(Long userId, String role, String type);
+
+    java.util.Optional<Message> findFirstByUserIdAndRoleAndTypeOrderByIdDesc(Long userId, String role, String type);
+
     /** 校验消息归属后取单条 */
     Optional<Message> findByIdAndUserId(Long id, Long userId);
 
