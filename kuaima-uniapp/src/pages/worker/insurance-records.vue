@@ -29,7 +29,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { listInsurance } from "@/api/backend";
 const records = ref([
   {

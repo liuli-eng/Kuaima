@@ -38,7 +38,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { completeTrainingTask, listTrainingTasks } from "@/api/backend";
 const pages = getCurrentPages();
 const options = pages[pages.length - 1]?.options || {};

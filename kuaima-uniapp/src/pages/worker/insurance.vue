@@ -31,7 +31,7 @@
 <script setup>
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 const types = ["意外受伤", "财产损失", "其他"];
 const orderNo = ref("");
 const type = ref("");

@@ -2,6 +2,12 @@ package com.kuaima.app.controller.boss;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashSet;
+import java.util.Set;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.kuaima.app.common.Result;
 import com.kuaima.app.common.ForbiddenBusinessException;
@@ -25,12 +32,21 @@ import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.model.BossOrderQuery;
 import com.kuaima.app.domain.boss.service.BossOrderService;
+import com.kuaima.app.domain.boss.service.BossProfileService;
 import com.kuaima.app.domain.jobcategory.model.JobCategoryModels.HotItem;
 import com.kuaima.app.domain.jobcategory.service.JobCategoryService;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.service.CertificationService;
 import com.kuaima.app.security.model.LoginUser;
+import com.kuaima.app.domain.wallet.service.WalletService;
+import com.kuaima.app.domain.points.repository.PointsAccountRepository;
+import com.kuaima.app.domain.coupon.repository.UserCouponRepository;
+import com.kuaima.app.domain.invite.repository.InviteRelationRepository;
+import com.kuaima.app.domain.boss.repository.BossOrderRespository;
+import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
+import com.kuaima.app.domain.boss.entity.BaseOrderItem;
+import com.kuaima.app.domain.boss.constant.BossStatus;
 
 @RestController
 @RequestMapping("/boss")
@@ -40,12 +56,54 @@ public class BossController {
     private final BossOrderService bossOrderService;
     private final JobCategoryService jobCategoryService;
     private final CertificationService certificationService;
+    private final WalletService walletService;
+    private final PointsAccountRepository pointsAccountRepository;
+    private final UserCouponRepository userCouponRepository;
+    private final InviteRelationRepository inviteRelationRepository;
+    private final BossOrderRespository orderRepository;
+    private final BaseOrderItemRespository itemRepository;
+    private final BossProfileService bossProfileService;
 
+    @Autowired
     public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService,
-                          CertificationService certificationService) {
+                          CertificationService certificationService, WalletService walletService,
+                          PointsAccountRepository pointsAccountRepository, UserCouponRepository userCouponRepository,
+                          InviteRelationRepository inviteRelationRepository, BossOrderRespository orderRepository,
+                          BaseOrderItemRespository itemRepository, BossProfileService bossProfileService) {
         this.bossOrderService = bossOrderService;
         this.jobCategoryService = jobCategoryService;
         this.certificationService = certificationService;
+        this.walletService = walletService;
+        this.pointsAccountRepository = pointsAccountRepository;
+        this.userCouponRepository = userCouponRepository;
+        this.inviteRelationRepository = inviteRelationRepository;
+        this.orderRepository = orderRepository;
+        this.itemRepository = itemRepository;
+        this.bossProfileService = bossProfileService;
+    }
+
+    /** 兼容既有单元测试及其他直接构造调用。 */
+    public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService,
+                          CertificationService certificationService) {
+        this(bossOrderService, jobCategoryService, certificationService, null, null, null, null, null, null, null);
+    }
+
+    @Operation(summary = "招工订单运营统计", description = "按订单工作日期及零工报名状态统计当前老板可见订单；跨天订单按开始日期归属")
+    @GetMapping("/order/stats")
+    public Result<Map<String, Object>> orderStats(@RequestParam(defaultValue = "ALL") String dateRange,
+                                                   Authentication authentication) {
+        Long bossId = requireCurrentBossId(authentication);
+        LocalDate today = LocalDate.now();
+        LocalDate target = switch (dateRange.toUpperCase()) { case "YESTERDAY" -> today.minusDays(1); case "TODAY" -> today; case "TOMORROW" -> today.plusDays(1); default -> null; };
+        Set<Long> orderIds = new HashSet<>();
+        for (BossOrder o : orderRepository.findByCreateByOrderByIdDesc(bossId)) {
+            if (target == null || o.getStartTime() == null || o.getStartTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDate().equals(target)) orderIds.add(o.getId());
+        }
+        int applicant=0, accepted=0, arrived=0, working=0, pending=0;
+        for (Long id : orderIds) for (BaseOrderItem i : itemRepository.findByOrderId(id)) {
+            switch (i.getStatus()) { case BossStatus.ITEM_APPLIED -> applicant++; case BossStatus.ITEM_HIRED -> accepted++; case BossStatus.ITEM_ON_WORK -> { accepted++; arrived++; working++; } case BossStatus.ITEM_FINISHED -> { accepted++; pending++; } default -> {} }
+        }
+        return Result.success(Map.of("dateRange", dateRange.toUpperCase(), "applicantCount", applicant, "acceptedCount", accepted, "arrivedCount", arrived, "workingCount", working, "pendingSettlementCount", pending));
     }
 
     // ==================== 招工订单 ====================
@@ -69,14 +127,17 @@ public class BossController {
     /** 修改订单（仅招工中） */
     @Operation(summary = "修改招工订单", description = "仅「待审核」或「招工中」状态可修改；请求体字段非空才会被更新。类型改为非月结时清空 trialDuration；试工时间仅在类型为 month 时可设置")
     @PutMapping("/order/{id}")
-    public Result<BossOrder> updateOrder(@PathVariable Long id, @RequestBody BossOrder order) {
+    public Result<BossOrder> updateOrder(@PathVariable Long id, @RequestBody BossOrder order,
+                                         Authentication authentication) {
+        requireOwnedOrder(id, authentication);
         return Result.success(bossOrderService.updateOrder(id, order));
     }
 
     /** 订单详情 */
     @Operation(summary = "订单详情", description = "返回完整订单对象（含 id、date、createBy、timestamp 及订单字段）")
     @GetMapping("/order/{id}")
-    public Result<BossOrder> getOrder(@PathVariable Long id) {
+    public Result<BossOrder> getOrder(@PathVariable Long id, Authentication authentication) {
+        requireOwnedOrder(id, authentication);
         return Result.success(bossOrderService.getOrder(id));
     }
 
@@ -97,7 +158,8 @@ public class BossController {
     /** 删除订单（仅招工中/已取消） */
     @Operation(summary = "删除订单", description = "仅「待审核」/「审核拒绝」/「招工中」/「取消招工」状态的订单可删除")
     @DeleteMapping("/order/{id}")
-    public Result<Void> deleteOrder(@PathVariable Long id) {
+    public Result<Void> deleteOrder(@PathVariable Long id, Authentication authentication) {
+        requireOwnedOrder(id, authentication);
         bossOrderService.deleteOrder(id);
         return Result.success();
     }
@@ -105,7 +167,9 @@ public class BossController {
     /** 订单状态流转：/boss/order/{id}/status?target=招工结束|待结算|已完成|取消招工 */
     @Operation(summary = "订单状态流转", description = "target 取值：招工结束 / 待结算 / 已完成 / 取消招工。取消招工会将该订单下所有未完成报名记录置为「取消招工」并记录取消时间")
     @PutMapping("/order/{id}/status")
-    public Result<BossOrder> changeOrderStatus(@PathVariable Long id, @RequestParam String target) {
+    public Result<BossOrder> changeOrderStatus(@PathVariable Long id, @RequestParam String target,
+                                               Authentication authentication) {
+        requireOwnedOrder(id, authentication);
         return Result.success(bossOrderService.changeOrderStatus(id, target));
     }
 
@@ -118,6 +182,16 @@ public class BossController {
     public Result<Void> notifyOrderStart(@PathVariable Long id) {
         bossOrderService.notifyOrderStart(id);
         return Result.success();
+    }
+
+    private BossOrder requireOwnedOrder(Long orderId, Authentication authentication) {
+        Long bossId = requireCurrentBossId(authentication);
+        BossOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("订单不存在"));
+        if (!bossId.equals(order.getCreateBy())) {
+            throw new ForbiddenBusinessException("无权操作该订单");
+        }
+        return order;
     }
 
     // ==================== 报名记录 ====================
@@ -211,8 +285,13 @@ public class BossController {
     /** 老板首页统计：/boss/stats?userId=1 */
     @Operation(summary = "老板首页统计", description = "返回 totalOrders、recruitingCount、applicantCount、settledAmount 等汇总数据")
     @GetMapping("/stats")
-    public Result<Map<String, Object>> getBossStats(@RequestParam Long userId) {
-        return Result.success(bossOrderService.getBossStats(userId));
+    public Result<com.kuaima.app.domain.boss.model.BossHomeModels.BossStats> getBossStats(
+            @RequestParam(required = false) Long userId, Authentication authentication) {
+        Long currentBossId = requireCurrentBossId(authentication);
+        if (userId != null && !currentBossId.equals(userId)) {
+            throw new ForbiddenBusinessException("只能查询当前老板账号统计");
+        }
+        return Result.success(bossOrderService.getBossStats(currentBossId));
     }
 
     /** 工种分类：/boss/job-categories */
@@ -230,10 +309,32 @@ public class BossController {
     }
 
     /** 老板账户统计：/boss/profile/{userId}/stats */
-    @Operation(summary = "老板账户统计", description = "返回 totalOrders、recruitingCount、applicantCount、settledAmount 等账户汇总")
+    @Operation(summary = "老板个人页统计", description = "仅允许当前JWT老板查询本人；保留基础统计并返回诚意分、好评率、到岗完成率、24小时结算率、累计支付分值和已完成订单数")
     @GetMapping("/profile/{userId}/stats")
-    public Result<Map<String, Object>> getBossProfileStats(@PathVariable Long userId) {
-        return Result.success(bossOrderService.getBossProfileStats(userId));
+    public Result<com.kuaima.app.domain.boss.model.BossProfileModels.ProfileStats> getBossProfileStats(
+            @PathVariable Long userId, Authentication authentication) {
+        Long currentBossId = requireCurrentBossId(authentication);
+        if (!currentBossId.equals(userId)) {
+            throw new ForbiddenBusinessException("只能查询当前老板账号统计");
+        }
+        return Result.success(bossProfileService.stats(currentBossId));
+    }
+
+    /** 老板个人页资产汇总：余额、积分、未使用券包和已发放邀请奖励金。 */
+    @Operation(summary = "老板资产汇总", description = "返回 balance(分)、points、couponCount、rewardAmount(分)；仅允许当前老板查询本人")
+    @GetMapping("/profile/{userId}/assets")
+    public Result<Map<String, Object>> getBossProfileAssets(@PathVariable Long userId, Authentication authentication) {
+        Long current = requireCurrentBossId(authentication);
+        if (!current.equals(userId)) throw new ForbiddenBusinessException("只能查询当前老板账号资产");
+        Map<String, Object> data = new HashMap<>();
+        data.put("balance", walletService.getOrCreateWallet(userId).getBalance());
+        data.put("points", pointsAccountRepository.findByUserId(userId).map(a -> a.getBalance() == null ? 0 : a.getBalance()).orElse(0));
+        Date now = new Date(System.currentTimeMillis());
+        long coupons = userCouponRepository.countByUserIdAndStatusAndExpireAtIsNull(userId, "UNUSED")
+                + userCouponRepository.countByUserIdAndStatusAndExpireAtGreaterThanEqual(userId, "UNUSED", now);
+        data.put("couponCount", coupons);
+        data.put("rewardAmount", inviteRelationRepository.countByInviterIdAndRewardStatus(userId, "SENT") * 5000L);
+        return Result.success(data);
     }
 
     // ==================== 高级筛选（零工端） ====================

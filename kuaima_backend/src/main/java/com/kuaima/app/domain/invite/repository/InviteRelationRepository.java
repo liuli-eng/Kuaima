@@ -10,4 +10,6 @@ public interface InviteRelationRepository extends JpaRepository<InviteRelation, 
 
     /** 按邀请人查邀请关系 */
     List<InviteRelation> findByInviterId(Long inviterId);
+
+    long countByInviterIdAndRewardStatus(Long inviterId, String rewardStatus);
 }

@@ -315,6 +315,10 @@
     },
     { "path": "pages/boss/order", "style": { "navigationStyle": "custom" } },
     {
+      "path": "pages/boss/publish-template",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/boss/order-detail",
       "style": { "navigationStyle": "custom" }
     },

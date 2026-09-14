@@ -59,7 +59,7 @@
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import {
   cancelOrderItem,
   getOrder,

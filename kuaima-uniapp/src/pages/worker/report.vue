@@ -23,7 +23,7 @@
 <script setup>
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { request } from "@/api/http";
 const types = ["虚假岗位", "私下收费", "飞单/绕平台", "其他"];
 const type = ref("");

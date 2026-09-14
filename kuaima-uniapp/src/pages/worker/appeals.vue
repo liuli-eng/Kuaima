@@ -25,7 +25,7 @@
 <script setup>
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 const records = ref([]);
 function create() {
   uni.showToast({ title: "后端暂未提供申诉接口", icon: "none" });

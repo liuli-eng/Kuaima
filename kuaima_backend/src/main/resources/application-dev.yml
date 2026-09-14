@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/kuaima?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowMultiQueries=true
-    username: root
-    password: 11112222
+    url: jdbc:mysql://192.168.2.73:3306/kuaima?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowMultiQueries=true
+    username: user
+    password: zhUTA5rp228hjKSW
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       connection-timeout: 10000
@@ -22,8 +22,8 @@ jwt:
   expiration: 259200000
 
 wechat:
-  appid: wx4c163632a2e19ea5
-  secret: 14be11aeff46c668f888ac7bdd4a5388
+  appid: wxe0f1ec79874ea809
+  secret: b75c807a8c5faa84552f94a9a7be6fb1
 
 # 阿里云短信（密钥通过环境变量注入，请勿硬编码）
 aliyun:

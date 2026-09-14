@@ -255,4 +255,26 @@ class BossOrderServiceListTests {
         verify(itemRepository, times(2)).findByOrderId(26L);
     }
 
+    @Test
+    void pendingAuditOrder_shouldBeCancelable() {
+        BossOrder order = new BossOrder();
+        order.setId(51L);
+        order.setOrderStatus(BossStatus.ORDER_PENDING_AUDIT);
+        BaseOrderItem applied = new BaseOrderItem();
+        applied.setId(511L);
+        applied.setOrderId(51L);
+        applied.setUserId(61L);
+        applied.setStatus(BossStatus.ITEM_APPLIED);
+        when(orderRepository.findById(51L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemRepository.findByOrderId(51L)).thenReturn(List.of(applied));
+
+        BossOrder result = service.changeOrderStatus(51L, BossStatus.ORDER_CANCELED);
+
+        assertEquals(BossStatus.ORDER_CANCELED, result.getOrderStatus());
+        assertEquals(BossStatus.ITEM_CANCEL_BY_BOSS, applied.getStatus());
+        verify(itemRepository).saveAll(List.of(applied));
+        verify(orderRepository).save(order);
+    }
+
 }

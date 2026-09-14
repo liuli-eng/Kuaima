@@ -44,7 +44,7 @@
           ><view class="history-btn"><text>查看历史消息</text></view></view
         >
         <view class="bottom-slogan"
-          ><text class="slogan-title">招临时工 上快马日结</text
+          ><text class="slogan-title">招工找活 上找活赣</text
           ><text class="slogan-desc">— 熟练工 上岗快 人靠谱 —</text></view
         >
       </view>

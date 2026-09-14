@@ -1,6 +1,6 @@
 <template>
   <view class="page">
-    <view class="top-nav">
+    <view class="top-nav" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="nav-back" @click="goBack">
         <text class="nav-back-icon">‹</text>
       </view>
@@ -25,6 +25,10 @@
   </view>
 </template>
 <script setup>
+import { ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
+
+const statusBarHeight = ref(0);
 const rules = [
   { type: "notice", title: "规则公示", description: "平台公告、重要通知", icon: "📢", iconClass: "icon-notice" },
   { type: "credit", title: "信用分规则", description: "信用分评定、奖惩机制", icon: "★", iconClass: "icon-credit" },
@@ -32,6 +36,12 @@ const rules = [
   { type: "trade", title: "交易规则", description: "接单、完工、结算流程", icon: "🔁", iconClass: "icon-trade" },
   { type: "fly", title: "飞单认定与处理规则", description: "违规认定、处罚措施", icon: "🚫", iconClass: "icon-fly" },
 ];
+onLoad(() => {
+  try {
+    const info = typeof uni.getWindowInfo === "function" ? uni.getWindowInfo() : uni.getSystemInfoSync();
+    statusBarHeight.value = Number(info.statusBarHeight || 0);
+  } catch (_) {}
+});
 function goBack() {
   const pages = getCurrentPages();
   if (pages.length > 1) {
@@ -59,7 +69,6 @@ function open(item) {
 }
 .top-nav {
   padding: 16rpx 32rpx 24rpx;
-  padding-top: calc(16rpx + var(--status-bar-height, 44rpx));
   display: flex;
   align-items: center;
   justify-content: space-between;

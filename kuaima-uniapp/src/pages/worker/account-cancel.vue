@@ -16,7 +16,7 @@
 </template>
 <script setup>
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { cancelAccount } from "@/api/backend";
 const checks = [
   "当前没有进行中的订单",

@@ -2,6 +2,7 @@ package com.kuaima.app.domain.boss.repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Date;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +43,9 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, Jp
 
     /** 某老板发布的全部订单（最新在前） */
     List<BossOrder> findByCreateByOrderByIdDesc(Long createBy);
+
+    List<BossOrder> findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(
+            Long createBy, Date startInclusive, Date endExclusive);
 
     /** 某老板的草稿订单列表 */
     List<BossOrder> findByOrderStatusAndCreateByOrderByIdDesc(String orderStatus, Long createBy);

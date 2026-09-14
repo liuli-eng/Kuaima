@@ -279,6 +279,8 @@ public class BossOrderService {
         }
 
         boolean validTransition = switch (current) {
+            case BossStatus.ORDER_PENDING_AUDIT ->
+                    targetStatus.equals(BossStatus.ORDER_CANCELED);
             case BossStatus.ORDER_RECRUITING ->
                     targetStatus.equals(BossStatus.ORDER_RECRUIT_END) || targetStatus.equals(BossStatus.ORDER_CANCELED);
             case BossStatus.ORDER_RECRUIT_END ->
@@ -573,31 +575,36 @@ public class BossOrderService {
     // ==================== 统计与资料 ====================
 
     /** 老板首页统计：总订单数、招工中数、报名数、已结算金额(元) */
-    public java.util.Map<String, Object> getBossStats(Long userId) {
+    public com.kuaima.app.domain.boss.model.BossHomeModels.BossStats getBossStats(Long userId) {
         List<BossOrder> orders = orderRepository.findByCreateByOrderByIdDesc(userId);
         int totalOrders = orders.size();
         long recruitingCount = orders.stream().filter(o -> BossStatus.ORDER_RECRUITING.equals(o.getOrderStatus())).count();
         long applicantCount = itemRepository.countApplicantsByBossId(userId);
-        // 已结算金额：该老板所有已支付结算单 totalAmount 之和(分→元)
-        long totalSpentCent = 0;
-        for (BossOrder o : orders) {
-            List<Settlement> settlements = settlementRespository.findByOrderIdOrderByIdDesc(o.getId());
-            totalSpentCent += settlements.stream()
-                    .filter(s -> "已支付".equals(s.getStatus()))
-                    .mapToLong(s -> s.getTotalAmount() != null ? s.getTotalAmount() : 0)
-                    .sum();
-        }
-        java.util.Map<String, Object> stats = new java.util.HashMap<>();
-        stats.put("totalOrders", totalOrders);
-        stats.put("recruitingCount", recruitingCount);
-        stats.put("applicantCount", applicantCount);
-        stats.put("settledAmount", totalSpentCent / 100.0);
-        return stats;
+        List<Long> orderIds = orders.stream().map(BossOrder::getId).toList();
+        long totalSpentCent = orderIds.isEmpty() ? 0 : settlementRespository.findByOrderIdIn(orderIds).stream()
+                .filter(s -> SettlementStatus.PAID.equals(s.getStatus()))
+                .mapToLong(s -> s.getTotalAmount() == null ? 0 : s.getTotalAmount()).sum();
+        String city = userRepository.findById(userId).map(User::getCity).filter(StringUtils::hasText).orElse("");
+        long nearbyWorkers = StringUtils.hasText(city)
+                ? userRepository.countByRoleAndCity(UserRole.USER, city)
+                : userRepository.countByRole(UserRole.USER);
+        return new com.kuaima.app.domain.boss.model.BossHomeModels.BossStats(
+                totalOrders, recruitingCount, applicantCount, totalSpentCent / 100.0,
+                nearbyWorkers, 0, city);
     }
 
     /** 老板账户统计：与首页统计类似，用于"我的"页面 */
     public java.util.Map<String, Object> getBossProfileStats(Long userId) {
-        return getBossStats(userId);
+        var stats = getBossStats(userId);
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("totalOrders", stats.totalOrders());
+        result.put("recruitingCount", stats.recruitingCount());
+        result.put("applicantCount", stats.applicantCount());
+        result.put("settledAmount", stats.settledAmount());
+        result.put("nearbyWorkers", stats.nearbyWorkers());
+        result.put("fastestMinutes", stats.fastestMinutes());
+        result.put("city", stats.city());
+        return result;
     }
 
     /** 老板资料 */

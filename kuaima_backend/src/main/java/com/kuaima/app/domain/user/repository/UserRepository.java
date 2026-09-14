@@ -26,6 +26,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 按角色计数 */
     long countByRole(String role);
 
+    long countByRoleAndCity(String role, String city);
+
     /** 按角色分页查询 */
     Page<User> findByRole(String role, Pageable pageable);
 

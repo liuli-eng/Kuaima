@@ -10,4 +10,8 @@ public interface SubAccountRepository extends JpaRepository<SubAccount, Long> {
 
     /** 按主账号查子账号 */
     List<SubAccount> findByParentId(Long parentId);
+
+    java.util.Optional<SubAccount> findByIdAndParentId(Long id, Long parentId);
+
+    boolean existsByParentIdAndUserId(Long parentId, Long userId);
 }

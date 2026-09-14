@@ -5,6 +5,7 @@ import com.kuaima.app.domain.base.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -29,4 +30,7 @@ public class SubAccount extends BaseEntity {
 
     @Column(length = 20, comment = "状态:启用(ACTIVE)/禁用(DISABLED)")
     private String status;
+
+    @Transient
+    private String phone;
 }

@@ -1,6 +1,13 @@
 <template>
   <view class="container">
-    <scroll-view scroll-y class="scroll-area" @scrolltolower="loadMoreOrders">
+    <scroll-view
+      scroll-y
+      class="scroll-area"
+      refresher-enabled
+      :refresher-triggered="refreshing"
+      @refresherrefresh="refreshPage"
+      @scrolltolower="loadMoreOrders"
+    >
       <!-- 头部 -->
       <view
         class="header-bar"
@@ -14,26 +21,11 @@
         </view>
       </view>
 
-      <!-- 提示条 -->
-      <view class="notice-bar">
-        <text class="notice-icon">●</text>
-        <text class="notice-text"
-          >通话将被录音，禁止交换电话号码和微信；零工完工后...</text
-        >
+      <view class="filter-panel">
+        <view class="stats-header"><text class="stats-title">统计</text><view class="stats-links"><text @click="navigateTo('talent-list')">查看零工</text><text @click="navigateTo('schedule-stats')">查看排班</text></view></view>
+        <view class="time-tabs"><text v-for="item in timeTabs" :key="item.label" class="time-tab" :class="{ active: timeFilter === item.value }" @click="switchTimeFilter(item.value)">{{ item.label }}</text></view>
+        <view class="status-row"><view v-for="item in orderStats" :key="item.label" class="status-cell"><text class="status-num">{{ item.value }}</text><text class="status-label">{{ item.label }}{{ item.link ? ' ›' : '' }}</text></view></view>
       </view>
-
-      <!-- 筛选标签 -->
-      <scroll-view class="filter-tabs-scroll" scroll-x :show-scrollbar="false">
-        <view class="filter-tabs">
-          <text
-          v-for="tab in statusTabs"
-          :key="tab.value || 'all'"
-          class="filter-tab"
-          :class="{ active: statusFilter === tab.value }"
-          @click="switchStatusFilter(tab.value)"
-          >{{ tab.label }}</text>
-        </view>
-      </scroll-view>
 
       <!-- 实名认证Banner -->
       <view
@@ -47,16 +39,36 @@
         <text class="cert-btn">立即实名 ›</text>
       </view>
 
+      <view class="acct-bar" @click="showAccountSheet = true">
+        <view class="acct-current"><view class="acct-avatar">{{ account.name.slice(0, 1) }}</view><view class="acct-info"><text>{{ account.name }}</text><text>{{ account.type }}</text></view><text class="acct-swap">⇄</text></view>
+        <view class="acct-codes"><view><text>开工码</text><text class="code-num">{{ account.workCode || '--' }}</text></view><view><text>早退码</text><text class="code-num warn">{{ account.leaveCode || '未开启' }}</text></view></view>
+      </view>
+
+      <scroll-view class="filter-tabs-scroll" scroll-x :show-scrollbar="false">
+        <view class="filter-tabs">
+          <text
+            v-for="tab in statusTabs"
+            :key="tab.value || 'all'"
+            class="filter-tab"
+            :class="{ active: statusFilter === tab.value }"
+            @click="switchStatusFilter(tab.value)"
+          >{{ tab.label }}</text>
+        </view>
+      </scroll-view>
+
       <!-- 列表头部 -->
       <view class="list-header">
         <text class="list-title">招工列表</text>
         <view style="display: flex; gap: 10px; align-items: center">
+          <view class="filter-btn" @click="openTemplateList">
+            <text>模板</text>
+          </view>
           <view class="filter-btn" @click="navigateTo('boss-filter')">
             <text class="filter-icon">⌕</text>
             <text>筛选</text>
             <text class="filter-arrow">⌄</text>
           </view>
-          <view class="applicant-btn" @click="navigateTo('applicant-info')">
+          <view class="applicant-btn" @click="openApplicantPicker">
             <text>✓</text>
             <text>报名信息</text>
           </view>
@@ -65,7 +77,7 @@
 
       <!-- 招工卡片列表 -->
       <view id="jobList">
-        <view class="job-card" v-for="job in filteredJobs" :key="job.id">
+        <view class="job-card" v-for="job in jobList" :key="job.id">
           <view class="job-card-header">
             <view class="job-title-wrap">
               <text class="job-title">{{ job.title }}</text>
@@ -106,8 +118,13 @@
               <text class="info-value">{{ job.currentApply }}人</text>
             </view>
           </view>
-          <view class="job-actions">
-            <template v-if="job.status === 'recruiting'">
+          <scroll-view
+            scroll-x
+            class="job-actions-scroll"
+            :show-scrollbar="false"
+          >
+            <view class="job-actions">
+              <template v-if="job.status === 'recruiting'">
               <text
                 class="job-btn btn-primary"
                 @click="navigateTo('applicant-info', { orderId: job.id })"
@@ -118,64 +135,64 @@
                 @click="navigateTo('publish-info', { id: job.id })"
                 >编辑招工</text
               >
-              <text class="job-btn btn-danger" @click="cancelJob(job.id)"
+              </template>
+              <template v-else-if="job.status === 'pending'">
+                <text
+                  class="job-btn btn-secondary"
+                  @click="navigateTo('publish-info', { id: job.id })"
+                  >编辑招工</text
+                >
+              </template>
+              <template v-else-if="job.status === 'ended'">
+                <text
+                  class="job-btn btn-secondary"
+                  @click="confirmArrival(job.id)"
+                  >确认到岗</text
+                >
+                <text
+                  class="job-btn btn-link"
+                  @click="navigateTo('order-detail', { id: job.id })"
+                  >详情</text
+                >
+              </template>
+              <template v-else-if="job.status === 'settling'">
+                <text
+                  class="job-btn btn-primary"
+                  @click="navigateTo('suspend-settle', { orderId: job.id })"
+                  >去结算</text
+                >
+                <text
+                  class="job-btn btn-link"
+                  @click="navigateTo('order-detail', { id: job.id })"
+                  >详情</text
+                >
+              </template>
+              <template v-else>
+                <text
+                  class="job-btn btn-link"
+                  @click="navigateTo('order-detail', { id: job.id })"
+                  >详情</text
+                >
+              </template>
+              <text
+                v-if="['pending', 'recruiting', 'ended', 'settling'].includes(job.status)"
+                class="job-btn btn-danger"
+                @click="cancelJob(job.id)"
                 >取消招工</text
-            >
-            </template>
-            <template v-else-if="job.status === 'pending'">
-              <text
-                class="job-btn btn-secondary"
-                @click="navigateTo('publish-info', { id: job.id })"
-                >编辑招工</text
               >
-              <text class="job-btn btn-danger" @click="cancelJob(job.id)"
-                >取消招工</text
+              <text class="job-btn btn-secondary" @click="saveAsTemplate(job)"
+                >收藏为模板</text
               >
-            </template>
-            <template v-else-if="job.status === 'ended'">
-              <text
-                class="job-btn btn-secondary"
-                @click="confirmArrival(job.id)"
-                >确认到岗</text
+              <text class="job-btn btn-primary" @click="repeatOrder(job)"
+                >再来一单</text
               >
-              <text
-                class="job-btn btn-link"
-                @click="navigateTo('order-detail', { id: job.id })"
-                >详情</text
-              >
-            </template>
-            <template v-else-if="job.status === 'settling'">
-              <text
-                class="job-btn btn-primary"
-                @click="navigateTo('suspend-settle', { orderId: job.id })"
-                >去结算</text
-              >
-              <text
-                class="job-btn btn-link"
-                @click="navigateTo('order-detail', { id: job.id })"
-                >详情</text
-              >
-            </template>
-            <template v-else-if="job.status === 'completed'">
-              <text
-                class="job-btn btn-link"
-                @click="navigateTo('order-detail', { id: job.id })"
-                >详情</text
-              >
-            </template>
-            <template v-else-if="job.status === 'cancelled'">
-              <text
-                class="job-btn btn-link"
-                @click="navigateTo('order-detail', { id: job.id })"
-                >详情</text
-              >
-            </template>
-          </view>
+            </view>
+          </scroll-view>
         </view>
       </view>
 
       <view v-if="loading" class="list-state">正在加载招工订单...</view>
-      <view v-else-if="filteredJobs.length === 0" class="empty-state">
+      <view v-else-if="jobList.length === 0" class="empty-state">
         <text class="empty-icon">▣</text>
         <text>暂无招工订单</text>
       </view>
@@ -216,6 +233,61 @@
           <image class="tab-svg" src="/static/icons/boss-tabbar/face-smile-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">我的</text>
+      </view>
+    </view>
+
+    <view
+      v-if="showTemplateList"
+      class="sheet-mask"
+      @click="showTemplateList = false"
+    >
+      <view class="acct-sheet" @click.stop>
+        <view class="acct-sheet-header">
+          <text class="acct-sheet-title">招工模板</text>
+          <text class="acct-sheet-close" @click="showTemplateList = false">×</text>
+        </view>
+        <view v-if="loadingTemplates" class="account-empty">模板加载中...</view>
+        <view v-else-if="!templates.length" class="account-empty">暂无招工模板</view>
+        <view
+          v-for="item in templates"
+          :key="item.id"
+          class="template-item"
+          @click="openTemplateDetail(item)"
+        >
+          <view class="acct-item-info">
+            <text class="acct-item-name">{{ item.templateName || item.name || '未命名模板' }}</text>
+            <text>{{ item.orderTitle || item.title || '招工订单模板' }}</text>
+          </view>
+          <text class="template-delete" @click.stop="confirmDeleteTemplate(item)">删除</text>
+        </view>
+      </view>
+    </view>
+
+    <view
+      v-if="showAccountSheet"
+      class="sheet-mask"
+      @click="showAccountSheet = false"
+    >
+      <view class="acct-sheet" @click.stop>
+        <view class="acct-sheet-header">
+          <text class="acct-sheet-title">切换账号</text>
+          <text class="acct-sheet-close" @click="showAccountSheet = false">×</text>
+        </view>
+        <view
+          v-for="item in accounts"
+          :key="item.id"
+          class="acct-item"
+          :class="{ selected: item.current || item.id === currentAccountId }"
+          @click="selectRecruitAccount(item)"
+        >
+          <view class="acct-avatar">{{ (item.name || '账').slice(0, 1) }}</view>
+          <view class="acct-item-info">
+            <text class="acct-item-name">{{ item.name || '招聘账号' }}</text>
+            <text>{{ formatAuthorizationType(item.authorizationType) }} · 开工码 {{ item.workCode || '--' }} · 早退码 {{ item.leaveCode || '未开启' }}</text>
+          </view>
+          <text v-if="item.current || item.id === currentAccountId" class="acct-item-check">✓</text>
+        </view>
+        <view v-if="!accounts.length" class="account-empty">暂无可切换账号</view>
       </view>
     </view>
 
@@ -274,9 +346,15 @@
 <script>
 import {
   changeOrderStatus,
+  deleteBossOrderTemplate,
+  getBossOrderStats,
+  getBossRecruitAccounts,
   getCurrentUser,
-  listOrders as fetchOrders,
+  listBossOrders,
+  listBossOrderTemplates,
+  switchBossRecruitAccount,
 } from "@/api/backend";
+import { handleTokenInvalid } from "@/api/auth";
 
 function getSafeArea() {
   try {
@@ -338,6 +416,104 @@ function normalizeOrder(order, currentApply = 0) {
   };
 }
 
+function getTemplateRouteParams(job) {
+  const wageText = String(job.wage || "0元/天");
+  const wage = wageText.match(/[\d.]+/)?.[0] || "0";
+  const unit = wageText.replace(/[\d.]+/, "") || "元/天";
+  const timeMatch = String(job.workTime || "").match(
+    /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2})/,
+  );
+  let time = job.workTime || "时间待定";
+  let hours = job.duration ? `${job.duration}工时` : "工时待定";
+  if (timeMatch) {
+    time = `${timeMatch[1]}开工 ${timeMatch[2]}完工`;
+    const [startHour, startMinute] = timeMatch[1].split(":").map(Number);
+    const [endHour, endMinute] = timeMatch[2].split(":").map(Number);
+    let minutes = endHour * 60 + endMinute - (startHour * 60 + startMinute);
+    if (minutes <= 0) minutes += 24 * 60;
+    hours = `${Number((minutes / 60).toFixed(1))}工时`;
+  }
+  return {
+    orderId: job.id,
+    name: job.title,
+    wage,
+    unit,
+    tag: { month: "月结", heldBack: "压薪日结", daily: "每天日结" }[job.type] || "每天日结",
+    time,
+    hours,
+    count: `招${job.recruitCount || 0}人`,
+    age: job.experience || "18岁-不限",
+    gender: job.gender || "男女不限",
+  };
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getDateRange(label) {
+  if (!label || label === "全部") return {};
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let start = new Date(today);
+  let end = new Date(today);
+  if (label === "昨天") {
+    start.setDate(start.getDate() - 1);
+    end = new Date(start);
+  } else if (label === "明天") {
+    start.setDate(start.getDate() + 1);
+    end = new Date(start);
+  } else if (label === "后天") {
+    start.setDate(start.getDate() + 2);
+    end = new Date(start);
+  } else if (label === "本周内") {
+    const weekday = today.getDay() || 7;
+    end.setDate(today.getDate() + (7 - weekday));
+  } else if (label === "本月内") {
+    end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  }
+  return { startDate: formatLocalDate(start), endDate: formatLocalDate(end) };
+}
+
+function getSalaryRange(label) {
+  return {
+    "100元以下": { salaryMax: 100 },
+    "100-200元": { salaryMin: 100, salaryMax: 200 },
+    "200-300元": { salaryMin: 200, salaryMax: 300 },
+    "300元以上": { salaryMin: 300 },
+  }[label] || {};
+}
+
+function unpackOrderPage(result, requestedPage, pageSize) {
+  const body = result?.data && !Array.isArray(result.data) ? result.data : result;
+  const records = Array.isArray(result)
+    ? result
+    : Array.isArray(result?.data)
+      ? result.data
+      : body?.records || body?.content || [];
+  const totalValue = result?.total ?? body?.total ?? body?.totalElements;
+  const total = Number(totalValue);
+  const page = Number(result?.page ?? body?.page ?? body?.number ?? requestedPage);
+  const hasTotal = Number.isFinite(total) && total >= 0;
+  return {
+    records: Array.isArray(records) ? records : [],
+    total: hasTotal ? total : null,
+    page,
+    hasMore: hasTotal
+      ? (page + 1) * pageSize < total
+      : Array.isArray(records) && records.length === pageSize,
+  };
+}
+
+function getErrorMessage(error, fallback) {
+  const status = Number(error?.code || error?.statusCode);
+  if (status === 403) return error.message || "无权操作";
+  if (status === 404) return error.message || "订单不存在";
+  if (status === 400) return error.message || fallback;
+  if (!error?.statusCode) return "加载失败";
+  return error?.message || fallback;
+}
+
 export default {
   data() {
     const safeArea = getSafeArea();
@@ -364,16 +540,43 @@ export default {
         cancelled: { text: "取消招工", class: "status-cancelled" },
       },
       statusFilter: null,
+      timeTabs: [
+        { label: "全部", value: "ALL" },
+        { label: "昨天", value: "YESTERDAY" },
+        { label: "今天", value: "TODAY" },
+        { label: "明天", value: "TOMORROW" },
+      ],
+      timeFilter: "ALL",
+      orderStats: [
+        { label: "报名", field: "applicantCount", value: 0, link: true },
+        { label: "接单", field: "acceptedCount", value: 0, link: true },
+        { label: "到达", field: "arrivedCount", value: 0 },
+        { label: "工作中", field: "workingCount", value: 0, link: true },
+        { label: "待结算", field: "pendingSettlementCount", value: 0, link: true },
+      ],
+      account: { name: "当前账号", type: "个人授权", workCode: "", leaveCode: "" },
+      accounts: [],
+      currentAccountId: null,
+      showAccountSheet: false,
+      switchingAccount: false,
       showCancelModal: false,
       showConfirmModal: false,
+      showTemplateList: false,
+      templates: [],
+      loadingTemplates: false,
       cancelTargetId: null,
       cancelTargetTitle: "",
       confirmTargetId: null,
       confirmTargetTitle: "",
       loading: false,
       loadingMore: false,
+      loadingStats: false,
+      loadingAccounts: false,
+      refreshing: false,
+      authRedirecting: false,
       page: 0,
       pageSize: 20,
+      total: 0,
       hasMore: true,
       operating: false,
       isCertified: false,
@@ -383,22 +586,42 @@ export default {
   onShow() {
     this.loadOrderFilter();
     this.loadCertificationStatus();
-    this.loadOrders();
+    this.refreshData();
   },
   onLoad() {
     uni.$on("filterChanged", this.applyOrderFilter);
+    uni.$on("bossTemplateChanged", this.handleTemplateChanged);
   },
   onUnload() {
     uni.$off("filterChanged", this.applyOrderFilter);
-  },
-  computed: {
-    filteredJobs() {
-      return this.jobList.filter((job) => {
-        return this.matchesOrderFilter(job, this.orderFilter);
-      });
-    },
+    uni.$off("bossTemplateChanged", this.handleTemplateChanged);
   },
   methods: {
+    handleRequestError(error, fallback) {
+      if (Number(error?.code || error?.statusCode) === 401) {
+        if (!this.authRedirecting) {
+          this.authRedirecting = true;
+          handleTokenInvalid({ role: "boss" }).finally(() => {
+            this.authRedirecting = false;
+          });
+        }
+        return;
+      }
+      uni.showToast({ title: getErrorMessage(error, fallback), icon: "none" });
+    },
+    handleTemplateRequestError(error, fallback) {
+      const status = Number(error?.code || error?.statusCode);
+      if (status === 401) {
+        this.handleRequestError(error, fallback);
+        return;
+      }
+      const title = status === 403
+        ? "无权操作"
+        : status === 404
+          ? "模板不存在"
+          : error?.message || fallback;
+      uni.showToast({ title, icon: "none" });
+    },
     loadOrderFilter() {
       const saved = uni.getStorageSync("bossOrderFilter");
       this.orderFilter = saved && typeof saved === "object" ? saved : null;
@@ -406,67 +629,64 @@ export default {
     applyOrderFilter(filter) {
       this.orderFilter = filter && typeof filter === "object" ? filter : null;
     },
-    getOrderFilterParams() {
+    async getOrderFilterParams() {
       const filter = this.orderFilter || {};
-      const params = {};
-      if (filter.date && filter.date !== "全部") params.filterDate = filter.date;
+      const params = { ...getDateRange(filter.date), ...getSalaryRange(filter.salary) };
+      [
+        "type",
+        "title",
+        "startDate",
+        "endDate",
+        "jobCategoryId",
+        "salaryMin",
+        "salaryMax",
+        "longitude",
+        "latitude",
+        "distanceKm",
+        "experience",
+        "gender",
+        "tags",
+        "tagMode",
+      ].forEach((key) => {
+        if (filter[key] !== undefined && filter[key] !== null && filter[key] !== "") {
+          params[key] = filter[key];
+        }
+      });
       if (filter.jobType && filter.jobType !== "全部") {
-        params.jobType = filter.jobType;
-      }
-      if (filter.salary && filter.salary !== "不限") params.salary = filter.salary;
-      if (filter.location && filter.location !== "不限") {
-        params.location = filter.location;
+        params.title = filter.jobType;
       }
       if (filter.experience && filter.experience !== "不限") {
         params.experience = filter.experience;
       }
-      if (filter.gender && filter.gender !== "不限") params.gender = filter.gender;
-      if (Array.isArray(filter.tags) && filter.tags.length) {
-        params.tags = filter.tags.join(",");
+      if (filter.gender && !["不限", "男女均可"].includes(filter.gender)) {
+        params.gender = filter.gender;
+      }
+      const tags = Array.isArray(filter.tags) ? [...filter.tags] : [];
+      if (filter.salary === "日结周结") tags.push("日结");
+      if (tags.length) {
+        params.tags = [...new Set(tags)].join(",");
+        params.tagMode = "ALL";
+      }
+      if (filter.location && filter.location !== "不限") {
+        if (filter.location !== "同城") {
+          params.distanceKm = Number(String(filter.location).match(/[\d.]+/)?.[0] || 0);
+        }
+        const location = await this.getCurrentLocation();
+        if (location) {
+          params.longitude = location.longitude;
+          params.latitude = location.latitude;
+        }
       }
       return params;
     },
-    matchesOrderFilter(job, filter) {
-      if (!filter) return true;
-      if (filter.jobType && filter.jobType !== "全部") {
-        const text = `${job.title || ""} ${job.tags || ""}`;
-        const categoryMap = {
-          餐饮服务: ["餐饮", "服务员", "厨师", "洗碗"],
-          快递配送: ["快递", "配送", "分拣"],
-          仓储物流: ["仓储", "物流", "仓库", "搬运"],
-          制造业: ["电子", "工厂", "制造", "装配", "焊"],
-          建筑装修: ["建筑", "装修", "施工"],
-          零售促销: ["零售", "促销", "超市", "营业员"],
-          家政服务: ["家政", "保洁", "保姆"],
-        };
-        const keywords = categoryMap[filter.jobType] || [filter.jobType];
-        if (!keywords.some((keyword) => text.includes(keyword))) return false;
-      }
-      if (filter.salary && !["不限", "日结周结"].includes(filter.salary)) {
-        const amount = Number(String(job.wage || "").match(/[\d.]+/)?.[0] || 0);
-        if (filter.salary === "100元以下" && amount > 100) return false;
-        if (filter.salary === "100-200元" && (amount < 100 || amount > 200))
-          return false;
-        if (filter.salary === "200-300元" && (amount < 200 || amount > 300))
-          return false;
-        if (filter.salary === "300元以上" && amount < 300) return false;
-      }
-      if (
-        filter.location &&
-        filter.location !== "不限" &&
-        filter.location !== "同城"
-      ) {
-        const distance = Number(
-          String(job.distance || "").match(/[\d.]+/)?.[0] || 0,
-        );
-        const limit = Number(String(filter.location).match(/[\d.]+/)?.[0] || 0);
-        if (distance && limit && distance > limit) return false;
-      }
-      if (Array.isArray(filter.tags) && filter.tags.length) {
-        const text = `${job.title || ""} ${job.wage || ""} ${job.tags || ""}`;
-        if (!filter.tags.every((tag) => text.includes(tag))) return false;
-      }
-      return true;
+    getCurrentLocation() {
+      return new Promise((resolve) => {
+        uni.getLocation({
+          type: "gcj02",
+          success: ({ longitude, latitude }) => resolve({ longitude, latitude }),
+          fail: () => resolve(null),
+        });
+      });
     },
     applyCertificationStatus(user = {}) {
       const status = String(
@@ -504,6 +724,7 @@ export default {
         "search-worker",
         "select-job",
         "publish-info",
+        "publish-template",
         "schedule-stats",
         "enterprise-cert",
         "enterprise-cert-form",
@@ -557,23 +778,22 @@ export default {
         this.loadingMore = true;
       }
       try {
-        const result = await fetchOrders({
-          page: this.page,
+        const requestedPage = reset ? 0 : this.page;
+        const result = await listBossOrders({
+          page: requestedPage,
           size: this.pageSize,
           status: this.statusFilter || undefined,
-          ...this.getOrderFilterParams(),
+          ...(await this.getOrderFilterParams()),
         });
-        const orders = Array.isArray(result) ? result : result?.records || [];
-        const normalized = orders.map((order) => normalizeOrder(order));
+        const pageData = unpackOrderPage(result, requestedPage, this.pageSize);
+        const normalized = pageData.records.map((order) => normalizeOrder(order));
         this.jobList = reset ? normalized : [...this.jobList, ...normalized];
-        this.hasMore = orders.length === this.pageSize;
-        if (this.hasMore) this.page += 1;
+        this.total = pageData.total ?? this.jobList.length;
+        this.hasMore = pageData.hasMore;
+        this.page = requestedPage + 1;
       } catch (error) {
         if (reset) this.jobList = [];
-        uni.showToast({
-          title: error.message || "招工列表加载失败",
-          icon: "none",
-        });
+        this.handleRequestError(error, "招工列表加载失败");
       } finally {
         this.loading = false;
         this.loadingMore = false;
@@ -587,6 +807,147 @@ export default {
         return;
       this.statusFilter = status;
       await this.loadOrders(true);
+    },
+    async loadStats() {
+      if (this.loadingStats) return;
+      this.loadingStats = true;
+      try {
+        const stats = await getBossOrderStats(this.timeFilter);
+        this.orderStats = this.orderStats.map((item) => ({
+          ...item,
+          value: Number(stats?.[item.field] || 0),
+        }));
+      } catch (error) {
+        this.handleRequestError(error, "统计加载失败");
+      } finally {
+        this.loadingStats = false;
+      }
+    },
+    async switchTimeFilter(value) {
+      if (this.timeFilter === value || this.loadingStats) return;
+      this.timeFilter = value;
+      await this.loadStats();
+    },
+    formatAuthorizationType(value) {
+      return { PERSONAL: "个人授权", ENTERPRISE: "企业授权" }[value] || value || "未设置授权";
+    },
+    applyCurrentAccount(item) {
+      this.account = {
+        name: item?.name || "当前账号",
+        type: this.formatAuthorizationType(item?.authorizationType),
+        workCode: item?.workCode || "",
+        leaveCode: item?.leaveCode || "",
+      };
+    },
+    async loadAccounts() {
+      if (this.loadingAccounts) return;
+      this.loadingAccounts = true;
+      try {
+        const result = await getBossRecruitAccounts();
+        this.accounts = Array.isArray(result?.accounts) ? result.accounts : [];
+        this.currentAccountId = result?.currentAccountId ?? this.accounts.find((item) => item.current)?.id ?? null;
+        const current = this.accounts.find((item) => item.current || item.id === this.currentAccountId);
+        this.applyCurrentAccount(current);
+      } catch (error) {
+        this.accounts = [];
+        this.handleRequestError(error, "账号加载失败");
+      } finally {
+        this.loadingAccounts = false;
+      }
+    },
+    async selectRecruitAccount(item) {
+      if (!item?.id || item.id === this.currentAccountId || this.switchingAccount) {
+        this.showAccountSheet = false;
+        return;
+      }
+      this.switchingAccount = true;
+      try {
+        await switchBossRecruitAccount(item.id);
+        this.showAccountSheet = false;
+        uni.showToast({ title: "招聘账号已切换", icon: "success" });
+        await Promise.all([this.loadOrders(true), this.loadStats(), this.loadAccounts()]);
+      } catch (error) {
+        this.handleRequestError(error, "账号切换失败");
+      } finally {
+        this.switchingAccount = false;
+      }
+    },
+    saveAsTemplate(job) {
+      if (!job?.id) {
+        uni.showToast({ title: "订单信息不完整", icon: "none" });
+        return;
+      }
+      this.navigateTo("publish-template", getTemplateRouteParams(job));
+    },
+    async openTemplateList() {
+      this.showTemplateList = true;
+      await this.loadTemplates();
+    },
+    openTemplateDetail(item) {
+      if (!item?.id) {
+        uni.showToast({ title: "模板信息不完整", icon: "none" });
+        return;
+      }
+      this.navigateTo("publish-template", { templateId: item.id });
+    },
+    handleTemplateChanged() {
+      if (this.showTemplateList) this.loadTemplates();
+    },
+    async loadTemplates() {
+      if (this.loadingTemplates) return;
+      this.loadingTemplates = true;
+      try {
+        const result = await listBossOrderTemplates({ page: 0, size: 20 });
+        this.templates = Array.isArray(result)
+          ? result
+          : result?.records || result?.content || [];
+      } catch (error) {
+        this.templates = [];
+        this.handleTemplateRequestError(error, "模板加载失败");
+      } finally {
+        this.loadingTemplates = false;
+      }
+    },
+    confirmDeleteTemplate(item) {
+      if (!item?.id) {
+        uni.showToast({ title: "模板信息不完整", icon: "none" });
+        return;
+      }
+      uni.showModal({
+        title: "删除模板",
+        content: `确认删除“${item.templateName || item.name || "该模板"}”？`,
+        confirmColor: "#f5222d",
+        success: async ({ confirm }) => {
+          if (!confirm) return;
+          try {
+            await deleteBossOrderTemplate(item.id);
+            await this.loadTemplates();
+            uni.showToast({ title: "模板已删除", icon: "success" });
+          } catch (error) {
+            this.handleTemplateRequestError(error, "模板删除失败");
+          }
+        },
+      });
+    },
+    repeatOrder(job) {
+      this.navigateTo("publish-info", { sourceOrderId: job.id });
+    },
+    openApplicantPicker() {
+      if (this.jobList.length === 0) {
+        uni.showToast({ title: "暂无招工订单", icon: "none" });
+        return;
+      }
+      if (this.jobList.length === 1) {
+        this.navigateTo("applicant-info", { orderId: this.jobList[0].id });
+        return;
+      }
+      uni.showActionSheet({
+        itemList: this.jobList.slice(0, 6).map((job) => job.title),
+        success: ({ tapIndex }) => {
+          const job = this.jobList[tapIndex];
+          if (job) this.navigateTo("applicant-info", { orderId: job.id });
+        },
+      });
     },
     switchTab(tab) {
       if (tab === "workbench")
@@ -623,11 +984,11 @@ export default {
       this.operating = true;
       try {
         await changeOrderStatus(this.cancelTargetId, "取消招工");
-        uni.showToast({ title: "招工已取消", icon: "success" });
         this.showCancelModal = false;
-        await this.loadOrders();
+        await Promise.all([this.loadOrders(true), this.loadStats()]);
+        uni.showToast({ title: "招工已取消", icon: "success" });
       } catch (error) {
-        uni.showToast({ title: error.message || "取消失败", icon: "none" });
+        this.handleRequestError(error, "取消失败");
       } finally {
         this.operating = false;
       }
@@ -643,13 +1004,25 @@ export default {
       this.operating = true;
       try {
         await changeOrderStatus(this.confirmTargetId, "待结算");
-        uni.showToast({ title: "订单已进入待结算", icon: "success" });
         this.showConfirmModal = false;
-        await this.loadOrders();
+        await Promise.all([this.loadOrders(true), this.loadStats()]);
+        uni.showToast({ title: "订单已进入待结算", icon: "success" });
       } catch (error) {
-        uni.showToast({ title: error.message || "状态更新失败", icon: "none" });
+        this.handleRequestError(error, "状态更新失败");
       } finally {
         this.operating = false;
+      }
+    },
+    async refreshData() {
+      await Promise.all([this.loadOrders(true), this.loadStats(), this.loadAccounts()]);
+    },
+    async refreshPage() {
+      if (this.refreshing) return;
+      this.refreshing = true;
+      try {
+        await this.refreshData();
+      } finally {
+        this.refreshing = false;
       }
     },
   },
@@ -688,6 +1061,60 @@ export default {
   font-weight: 700;
   color: #8b4513;
 }
+.filter-panel,.acct-bar { background:#fff; margin:0 16px 12px; border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.05); }
+.filter-panel { padding:14px; }
+.stats-header { display:flex; justify-content:space-between; align-items:center; }
+.stats-title { font-size:16px; font-weight:700; color:#333; border-left:4px solid #ff6b35; padding-left:7px; }
+.stats-links { display:flex; gap:14px; color:#e88a00; font-size:12px; }
+.time-tabs { display:flex; gap:20px; margin:16px 0 14px; }
+.time-tab { position:relative; padding-bottom:5px; color:#999; font-size:13px; }
+.time-tab.active { color:#ff6b35; font-weight:600; }
+.time-tab.active::after { content:""; position:absolute; bottom:0; left:50%; width:16px; height:3px; margin-left:-8px; border-radius:2px; background:#ff6b35; }
+.status-row { display:flex; gap:8px; }
+.status-cell { flex:1; min-width:0; padding:10px 2px; border-radius:10px; background:#f8f8fa; text-align:center; }
+.status-num,.status-label { display:block; }
+.status-num { color:#333; font-size:20px; font-weight:700; }
+.status-cell:last-child .status-num { color:#ff6b35; }
+.status-label { margin-top:3px; color:#999; font-size:11px; white-space:nowrap; }
+.acct-bar { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; }
+.acct-current { display:flex; align-items:center; gap:8px; }
+.acct-avatar { width:38px; height:38px; line-height:38px; border-radius:50%; text-align:center; color:#fff; background:linear-gradient(135deg,#ffb347,#ff6b35); }
+.acct-info { display:flex; flex-direction:column; gap:3px; font-size:12px; color:#999; }
+.acct-info text:first-child { color:#333; font-size:14px; font-weight:700; }
+.acct-swap { color:#ff6b35; }
+.acct-codes { display:flex; gap:18px; text-align:center; color:#999; font-size:11px; }
+.acct-codes view { display:flex; flex-direction:column; gap:3px; }
+.code-num { color:#333; font-size:16px; font-weight:700; }
+.code-num.warn { color:#ff6b35; font-size:13px; }
+.sheet-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.5);
+}
+.acct-sheet {
+  width: 100%;
+  max-height: 70vh;
+  padding: 18px 16px calc(24px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+  box-sizing: border-box;
+}
+.acct-sheet-header { position:relative; display:flex; justify-content:center; align-items:center; margin-bottom:14px; }
+.acct-sheet-title { color:#333; font-size:16px; font-weight:700; }
+.acct-sheet-close { position:absolute; right:0; padding:4px 8px; color:#999; font-size:22px; }
+.acct-item { display:flex; align-items:center; gap:10px; margin-bottom:10px; padding:12px; border:1.5px solid transparent; border-radius:14px; background:#f7f7f7; }
+.acct-item.selected { border-color:#ff9800; background:#fff7e8; }
+.acct-item-info { display:flex; flex:1; min-width:0; flex-direction:column; gap:4px; color:#999; font-size:12px; }
+.acct-item-name { color:#333; font-size:14px; font-weight:600; }
+.acct-item-check { color:#ff9800; font-size:16px; }
+.account-empty { padding:32px 0; color:#999; font-size:13px; text-align:center; }
+.template-item { display:flex; align-items:center; gap:12px; margin-bottom:10px; padding:12px; border-radius:12px; background:#f7f7f7; }
+.template-delete { flex-shrink:0; padding:6px 10px; color:#f5222d; font-size:12px; }
+.job-actions-extra { margin-top:8px; padding-top:10px; border-top:1px solid #f5f5f5; }
 
 .nav-icons {
   display: flex;
@@ -980,13 +1407,25 @@ export default {
   border-right: 1px dashed #f0f0f0;
 }
 
-.job-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.job-actions-scroll {
+  width: 100%;
   padding-top: 12px;
   border-top: 1px solid #f5f5f5;
-  min-width: 0;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.job-actions {
+  display: inline-flex;
+  gap: 8px;
+  min-width: 100%;
+  align-items: center;
+}
+
+.job-actions .job-btn {
+  flex: 0 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .job-btn {

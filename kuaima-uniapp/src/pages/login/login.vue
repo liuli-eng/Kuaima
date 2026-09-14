@@ -162,13 +162,13 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { wechatLogin, getCurrentUser } from "@/api/auth";
 import { USE_MOCK } from "@/api/http";
 
 const pages = getCurrentPages();
 const query = pages[pages.length - 1]?.options || {};
-const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
+const statusBarHeight = Number(uni.getWindowInfo().statusBarHeight || 0);
 const userRole = ref(
   query.role === "boss" || query.role === "worker" ? query.role : "",
 );

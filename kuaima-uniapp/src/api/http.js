@@ -46,7 +46,14 @@ function mockResponse(url, method = "GET", data) {
   return null;
 }
 
-export function request({ url, method = "GET", data, header = {}, skipUserIdHeader = false }) {
+export function request({
+  url,
+  method = "GET",
+  data,
+  header = {},
+  skipUserIdHeader = false,
+  rawResponse = false,
+}) {
   if (USE_MOCK) return Promise.resolve(mockResponse(url, method, data));
   const token = uni.getStorageSync("token");
   const userId = uni.getStorageSync("userId") || "2001";
@@ -67,12 +74,19 @@ export function request({ url, method = "GET", data, header = {}, skipUserIdHead
         if (
           response.statusCode >= 200 &&
           response.statusCode < 300 &&
-          (!payload?.code || payload.code === 200 || payload.code === "200" || payload.code === 0 || payload.code === "0")
+          (!payload?.code ||
+            payload.code === 200 ||
+            payload.code === "200" ||
+            payload.code === 0 ||
+            payload.code === "0")
         ) {
-          resolve(payload?.data ?? payload);
+          resolve(rawResponse ? payload : (payload?.data ?? payload));
           return;
         }
-        const error = formatError(payload, `请求失败（${response.statusCode}）`);
+        const error = formatError(
+          payload,
+          `请求失败（${response.statusCode}）`,
+        );
         error.statusCode = response.statusCode;
         error.payload = payload;
         error.code = payload?.code;
@@ -86,18 +100,23 @@ export function request({ url, method = "GET", data, header = {}, skipUserIdHead
 }
 
 function resolveBackendUrl(url, userId, data) {
-  if (url.startsWith("/worker/jobs/")) return url.replace("/worker/jobs/", "/jobs/");
+  if (url.startsWith("/worker/jobs/"))
+    return url.replace("/worker/jobs/", "/jobs/");
   if (url === "/worker/jobs" || url.startsWith("/worker/jobs?")) {
-    const query = url.includes("?") ? url.substring(url.indexOf("?")) : "?page=0&size=20";
+    const query = url.includes("?")
+      ? url.substring(url.indexOf("?"))
+      : "?page=0&size=20";
     return `/jobs${query.replace("pageNo", "page").replace("pageSize", "size")}`;
   }
   if (url.startsWith("/worker/orders/apply/")) {
     const orderId = url.split("/").pop();
     return `/jobs/${orderId}/apply`;
   }
-  if (url === "/worker/wallet" || url.startsWith("/worker/wallet?")) return `/wallet/${userId}`;
+  if (url === "/worker/wallet" || url.startsWith("/worker/wallet?"))
+    return `/wallet/${userId}`;
   if (url === "/worker/wallet/records") return `/wallet/${userId}/flows`;
-  if (url === "/worker/wallet/withdraw-records") return `/wallet/${userId}/withdraws`;
+  if (url === "/worker/wallet/withdraw-records")
+    return `/wallet/${userId}/withdraws`;
   if (url === "/worker/wallet/withdraw") {
     const params = {
       userId,
@@ -107,8 +126,13 @@ function resolveBackendUrl(url, userId, data) {
     };
     return `/wallet/withdraw?${toQuery(params)}`;
   }
-  if (url === "/worker/notifications" || url.startsWith("/worker/notifications?")) return `/message/list?userId=${encodeURIComponent(userId)}&page=0&size=20`;
-  if (url === "/worker/notification/unread") return `/message/unread?userId=${encodeURIComponent(userId)}`;
+  if (
+    url === "/worker/notifications" ||
+    url.startsWith("/worker/notifications?")
+  )
+    return `/message/list?userId=${encodeURIComponent(userId)}&page=0&size=20`;
+  if (url === "/worker/notification/unread")
+    return `/message/unread?userId=${encodeURIComponent(userId)}`;
   // 零工认证状态：后端无 /worker/... Controller，重写到 /user/{userId}（User 实体含 certStatus 字段）
   if (url === "/worker/certification/status") return `/user/${userId}`;
   return url;
@@ -116,7 +140,12 @@ function resolveBackendUrl(url, userId, data) {
 
 function toQuery(params = {}) {
   return Object.entries(params)
-    .filter(([, value]) => value !== undefined && value !== null && value !== "")
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .filter(
+      ([, value]) => value !== undefined && value !== null && value !== "",
+    )
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+    )
     .join("&");
 }

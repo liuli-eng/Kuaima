@@ -18,6 +18,8 @@ public interface SettlementRespository extends JpaRepository<Settlement, Long> {
 
     List<Settlement> findByItemIdInOrderByIdDesc(Collection<Long> itemIds);
 
+    List<Settlement> findByOrderIdIn(Collection<Long> orderIds);
+
     /** 某零工的结算单（最新在前） */
     List<Settlement> findByWorkerIdOrderByIdDesc(Long workerId);
 

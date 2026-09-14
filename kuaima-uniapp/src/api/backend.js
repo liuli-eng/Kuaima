@@ -60,29 +60,114 @@ export function submitCertification(data) {
 export function listOrders(params = {}) {
   return request({
     url: `/boss/order?${query({ page: 0, size: 20, ...params })}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 老板端招工订单分页列表，保留后端的 page/total 等分页元数据。 */
+export function listBossOrders(params = {}) {
+  return request({
+    url: `/boss/order?${query({ page: 0, size: 20, ...params })}`,
+    rawResponse: true,
+    skipUserIdHeader: true,
+  });
+}
+
+export function getBossOrderStats(dateRange = "ALL") {
+  return request({
+    url: `/boss/order/stats?${query({ dateRange })}`,
+    skipUserIdHeader: true,
   });
 }
 
 export function getOrder(id) {
-  return request({ url: `/boss/order/${id}` });
+  return request({ url: `/boss/order/${id}`, skipUserIdHeader: true });
 }
 
 export function createOrder(data) {
-  return request({ url: "/boss/order", method: "POST", data });
+  return request({
+    url: "/boss/order",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
 }
 
 export function updateOrder(id, data) {
-  return request({ url: `/boss/order/${id}`, method: "PUT", data });
+  return request({
+    url: `/boss/order/${id}`,
+    method: "PUT",
+    data,
+    skipUserIdHeader: true,
+  });
 }
 
 export function deleteOrder(id) {
-  return request({ url: `/boss/order/${id}`, method: "DELETE" });
+  return request({
+    url: `/boss/order/${id}`,
+    method: "DELETE",
+    skipUserIdHeader: true,
+  });
 }
 
 export function changeOrderStatus(id, target) {
   return request({
     url: `/boss/order/${id}/status?target=${encodeURIComponent(target)}`,
     method: "PUT",
+    skipUserIdHeader: true,
+  });
+}
+
+export function createBossOrderTemplate(orderId, data) {
+  return request({
+    url: `/boss/order/${normalizeId(orderId, "orderId")}/template`,
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+export function listBossOrderTemplates(params = {}) {
+  return request({
+    url: `/boss/order/templates?${query({ page: 0, size: 20, ...params })}`,
+    skipUserIdHeader: true,
+  });
+}
+
+export function getBossOrderTemplate(id) {
+  return request({
+    url: `/boss/order/templates/${normalizeId(id, "templateId")}`,
+    skipUserIdHeader: true,
+  });
+}
+
+export function updateBossOrderTemplate(id, data) {
+  return request({
+    url: `/boss/order/templates/${normalizeId(id, "templateId")}`,
+    method: "PUT",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+export function deleteBossOrderTemplate(id) {
+  return request({
+    url: `/boss/order/templates/${normalizeId(id, "templateId")}`,
+    method: "DELETE",
+    skipUserIdHeader: true,
+  });
+}
+
+export function getBossRecruitAccounts() {
+  return request({ url: "/boss/recruit-accounts", skipUserIdHeader: true });
+}
+
+export function switchBossRecruitAccount(accountId) {
+  return request({
+    url: "/boss/recruit-accounts/current",
+    method: "PUT",
+    data: { accountId: normalizeId(accountId, "accountId") },
+    skipUserIdHeader: true,
   });
 }
 
@@ -143,7 +228,10 @@ export function listWorkerOrders(params = {}) {
 }
 
 export function listOrderItems(orderId) {
-  return request({ url: `/boss/order/${orderId}/items` });
+  return request({
+    url: `/boss/order/${orderId}/items`,
+    skipUserIdHeader: true,
+  });
 }
 
 export function hireOrderItem(id) {
@@ -304,8 +392,30 @@ export function getBossProfile(userId) {
   return request({ url: `/boss/profile/${userId}` });
 }
 
+export function getBossProfileStats(userId) {
+  return request({ url: `/boss/profile/${userId}/stats` });
+}
+
+export function getBossProfileAssets(userId) {
+  return request({ url: `/boss/profile/${userId}/assets` });
+}
+
 export function getBossStats(userId) {
   return request({ url: `/boss/stats?${query({ userId })}` });
+}
+
+export function getBossHomeOverview(params = {}) {
+  return request({
+    url: `/boss/home/overview?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+export function getBossHomeSchedule(date, accountId) {
+  return request({
+    url: `/boss/home/schedule?${query({ date, accountId })}`,
+    skipUserIdHeader: true,
+  });
 }
 
 export function saveOrderDraft(data) {

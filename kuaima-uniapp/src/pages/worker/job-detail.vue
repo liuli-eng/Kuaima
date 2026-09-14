@@ -152,7 +152,7 @@
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import {
   checkFavoriteJob,
   favoriteJob,

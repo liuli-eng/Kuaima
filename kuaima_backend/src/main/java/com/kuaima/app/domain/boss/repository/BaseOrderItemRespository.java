@@ -16,6 +16,12 @@ public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, L
     /** 查询某订单的所有报名记录 */
     List<BaseOrderItem> findByOrderId(Long orderId);
 
+    List<BaseOrderItem> findByOrderIdIn(Collection<Long> orderIds);
+
+    /** 当前老板全部报名记录，单次批量查询用于个人页统计。 */
+    @Query("select i from BaseOrderItem i join BossOrder o on i.orderId = o.id where o.createBy = :bossId")
+    List<BaseOrderItem> findAllByBossId(@Param("bossId") Long bossId);
+
     /** 后台订单列表分页：按报名状态过滤 + 分页（status 为空时返回全部） */
     Page<BaseOrderItem> findByStatus(String status, Pageable pageable);
 

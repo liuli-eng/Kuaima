@@ -45,7 +45,7 @@
 <script setup>
 import { reactive } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 const genders = ["男", "女"];
 const form = reactive({
   name: "",

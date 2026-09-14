@@ -160,6 +160,7 @@
 
 <script>
 import {
+  getOrder,
   listOrders,
   listOrderItems,
   hireOrderItem,
@@ -202,6 +203,7 @@ export default {
       },
       targetItemId: "",
       targetMessageId: "",
+      orderId: "",
     };
   },
   onLoad(options = {}) {
@@ -214,6 +216,7 @@ export default {
     } catch (_) {}
     this.targetItemId = options.id || options.itemId || "";
     this.targetMessageId = options.messageId || "";
+    this.orderId = options.orderId || "";
     this.loadApplicants();
   },
   computed: {
@@ -236,15 +239,13 @@ export default {
   methods: {
     async loadApplicants() {
       try {
-        const result = await listOrders({ page: 0, size: 50 });
-        let orders = Array.isArray(result) ? result : result?.records || [];
-        const pages = getCurrentPages();
-        const pageOptions = pages[pages.length - 1]?.options || {};
-        if (pageOptions.orderId) {
-          orders = orders.filter(
-            (order) => String(order.id) === String(pageOptions.orderId),
-          );
-          if (!orders.length) orders = [{ id: pageOptions.orderId }];
+        let orders;
+        if (this.orderId) {
+          const order = await getOrder(this.orderId);
+          orders = [{ ...(order || {}), id: order?.id || this.orderId }];
+        } else {
+          const result = await listOrders({ page: 0, size: 50 });
+          orders = Array.isArray(result) ? result : result?.records || [];
         }
         const orderMap = Object.fromEntries(
           orders.map((order) => [String(order.id), order]),

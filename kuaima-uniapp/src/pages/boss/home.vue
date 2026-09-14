@@ -10,13 +10,6 @@
           }"
         >
           <view class="brand-tag">快马日结</view>
-          <!-- #ifndef MP-WEIXIN -->
-          <view class="window-controls">
-            <text class="window-btn">•••</text>
-            <view class="window-divider" />
-            <text class="window-btn">●</text>
-          </view>
-          <!-- #endif -->
         </view>
         <view class="hero-banner" @click="navigateTo('select-job')">
           <view class="hero-banner-icon">
@@ -31,7 +24,7 @@
         <view class="employer-card-deco" />
         <view class="employer-top">
           <view class="employer-location">
-            <image class="inline-icon location-icon" src="/static/icons/boss-home/location.svg" mode="aspectFit" /><text>松江</text>
+            <image class="inline-icon location-icon" src="/static/icons/boss-home/location.svg" mode="aspectFit" /><text>{{ city || "当前城市" }}</text>
           </view>
           <view
             class="employer-service"
@@ -56,27 +49,10 @@
         </view>
       </view>
 
-      <view class="peer-section">
-        <view class="peer-features">
-          <view
-            v-for="item in peerFeatures"
-            :key="item.title"
-            class="peer-feature"
-          >
-            <view class="peer-feature-icon" :class="item.theme">
-              <image v-if="item.icon === 'bolt'" class="feature-svg" src="/static/icons/boss-home/bolt.svg" mode="aspectFit" />
-              <image v-else-if="item.icon === 'wrench'" class="feature-svg" src="/static/icons/boss-home/wrench.svg" mode="aspectFit" />
-              <image v-else-if="item.icon === 'user-check'" class="feature-svg" src="/static/icons/boss-home/user-check.svg" mode="aspectFit" />
-              <image v-else class="feature-svg" src="/static/icons/boss-home/coins.svg" mode="aspectFit" />
-            </view>
-            <text class="peer-feature-title">{{ item.title }}</text>
-            <text class="peer-feature-desc">{{ item.description }}</text>
-          </view>
-        </view>
-        <view class="bottom-slogan">
-          <text class="slogan-title">快 马 日 结</text>
-          <text class="slogan-desc">专业日结零工招工平台</text>
-        </view>
+      <view class="emp-tools-wrap">
+        <view class="emp-tools-header"><view class="acct-current"><image v-if="account.avatar" class="acct-avatar account-avatar-image" :src="account.avatar" mode="aspectFill" /><view v-else class="acct-avatar">{{ (account.name || "账").slice(0, 1) }}</view><view class="acct-info"><text>{{ account.name || "当前账号" }}</text><text>{{ authorizationTypeText }}</text></view><image class="acct-swap-icon" src="/static/icons/boss-profile/exchange.svg" mode="aspectFit" /></view><view class="home-codes"><view><text>开工码</text><b>{{ account.workCode || "--" }}</b></view><view><text>早退码</text><b class="warn">{{ account.leaveCode || "未开启" }}</b></view></view></view>
+        <view class="emp-tools-row"><view v-for="(item, index) in tools" :key="item.label" class="emp-tool-item" :class="{ active: index === 0 }" @click="navigateTo(item.page)"><view class="emp-tool-icon"><image :src="item.icon" mode="aspectFit"/></view><text class="emp-tool-label">{{ item.label }}</text></view></view>
+        <view class="schedule-mini"><view class="schedule-tabs"><view v-for="day in schedule" :key="day.date" class="schedule-tab" :class="{active: selectedScheduleDate === day.date}" @click="selectSchedule(day)"><text>{{ day.label }}</text><small class="schedule-req">需求 {{ day.demand }}</small></view></view><view class="schedule-data"><view v-if="scheduleLoading" class="schedule-state">排班加载中...</view><template v-else><view class="schedule-stats"><view v-for="stat in selectedSchedule.stats" :key="stat.label" class="schedule-stat"><text :class="{highlight: stat.highlight}">{{ stat.value }}</text><small>{{ stat.label }}</small></view></view><view v-for="record in selectedSchedule.records" :key="record.id" class="schedule-record"><view class="schedule-record-icon"><image :src="record.icon" mode="aspectFit" /></view><view class="schedule-record-info"><text class="schedule-record-title">{{ record.title }}</text><text class="schedule-record-sub">{{ record.sub }}</text></view><text class="schedule-record-tag" :class="record.statusClass">{{ record.status }}</text></view><view v-if="!selectedSchedule.records.length" class="schedule-state">暂无排班记录</view></template></view></view>
       </view>
 
       <view class="scroll-bottom-space" />
@@ -109,8 +85,15 @@
 </template>
 
 <script>
-import { getBossStats } from "@/api/backend";
+import { getBossHomeOverview, getBossHomeSchedule } from "@/api/backend";
+import { handleTokenInvalid } from "@/api/auth";
 import { checkBossPublishEligibility } from "@/api/publish-eligibility";
+import squarePlusIcon from "/static/icons/boss-home/square-plus-orange.svg";
+import fileLinesIcon from "/static/icons/boss-home/file-lines.svg";
+import gearIcon from "/static/icons/boss-home/gear.svg";
+import mapIcon from "/static/icons/boss-home/map.svg";
+import circleQuestionIcon from "/static/icons/boss-home/circle-question.svg";
+import industryIcon from "/static/icons/boss-home/industry.svg";
 
 function getSafeArea() {
   try {
@@ -137,71 +120,177 @@ export default {
   data() {
     return {
       ...getSafeArea(),
-      peerFeatures: [
-        {
-          icon: "bolt",
-          theme: "orange",
-          title: "到岗快",
-          description: "3000万临时工在线接单，最快3分钟接单，20分钟到岗",
-        },
-        {
-          icon: "wrench",
-          theme: "green",
-          title: "熟练工",
-          description:
-            "工厂、电商、餐饮、酒店、仓储、物流等都在平台招临时工熟手",
-        },
-        {
-          icon: "user-check",
-          theme: "blue",
-          title: "人靠谱",
-          description:
-            "零工实名接单，信用分机制筛选，零工星级评定帮您招靠谱临时工",
-        },
-        {
-          icon: "coins",
-          theme: "yellow",
-          title: "更省钱",
-          description: "临时工成本比正式工低30%，熟练临时工效率成本更优",
-        },
+      city: "",
+      account: { name: "当前账号", avatar: "", authorizationType: "", workCode: "", leaveCode: "" },
+      currentAccountId: null,
+      nearbyWorkers: 0,
+      fastestMinutes: 0,
+      tools: [
+        { label: "再来一单", page: "select-job", icon: squarePlusIcon },
+        { label: "招工模版", page: "order", icon: fileLinesIcon },
+        { label: "招工设置", page: "recruit-set", icon: gearIcon },
+        { label: "地址管理", page: "recruit-address", icon: mapIcon },
+        { label: "帮助中心", page: "boss-faq", icon: circleQuestionIcon }
       ],
-      nearbyWorkers: 2326,
-      fastestMinutes: 3,
+      schedule: [],
+      selectedScheduleDate: "",
+      selectedSchedule: { stats: [{label:"接单",value:0},{label:"到达",value:0},{label:"开工",value:0},{label:"完工",value:0},{label:"结算",value:0,highlight:true}], records: [] },
       statsLoading: false,
+      scheduleLoading: false,
       publishChecking: false,
     };
   },
   onLoad() {
-    this.loadStats();
+    this.schedule = this.buildScheduleDates();
+    this.selectedScheduleDate = this.schedule.find((item) => item.key === "TODAY")?.date || "";
+    this.loadHomeOverview();
+  },
+  computed: {
+    authorizationTypeText() {
+      return { PERSONAL: "个人授权", ENTERPRISE: "企业授权" }[
+        this.account.authorizationType
+      ] || this.account.authorizationType || "";
+    },
   },
   methods: {
-    async loadStats() {
+    async loadHomeOverview() {
       this.statsLoading = true;
       try {
-        const result = await getBossStats(
-          uni.getStorageSync("userId") || "2001",
-        );
-        const nearbyWorkers = Number(
-          result?.nearbyWorkers ??
-            result?.workerCount ??
-            result?.availableWorkers,
-        );
-        const fastestMinutes = Number(
-          result?.fastestMinutes ??
-            result?.estimatedMinutes ??
-            result?.expectedMinutes,
-        );
-        if (Number.isFinite(nearbyWorkers) && nearbyWorkers > 0) {
-          this.nearbyWorkers = nearbyWorkers;
-        }
-        if (Number.isFinite(fastestMinutes) && fastestMinutes > 0) {
-          this.fastestMinutes = fastestMinutes;
+        const location = await this.getCurrentLocation();
+        const result = await getBossHomeOverview({
+          ...(location || {}),
+          accountId: this.currentAccountId || undefined,
+        });
+        this.city = result?.city || "";
+        this.nearbyWorkers = Number(result?.nearbyWorkers || 0);
+        this.fastestMinutes = Number(result?.fastestMinutes || 0);
+        this.currentAccountId = result?.currentAccountId ?? null;
+        this.account = { ...this.account, ...(result?.account || {}) };
+        const scheduleDays = result?.scheduleDays || {};
+        const dates = this.buildScheduleDates();
+        this.schedule = dates.map((item) => ({
+          ...item,
+          demand: this.getScheduleDemand(scheduleDays, item),
+        }));
+        const today = this.schedule.find((item) => item.key === "TODAY") || this.schedule[0];
+        if (today) {
+          this.selectedScheduleDate = today.date;
+          await this.loadSchedule(today);
         }
       } catch (error) {
-        console.warn("老板首页统计加载失败，使用默认展示数据", error);
+        this.handleRequestError(error, "首页数据加载失败");
       } finally {
         this.statsLoading = false;
       }
+    },
+    getCurrentLocation() {
+      return new Promise((resolve) => {
+        uni.getLocation({
+          type: "gcj02",
+          success: ({ longitude, latitude }) => resolve({ longitude, latitude }),
+          fail: () => resolve(null),
+        });
+      });
+    },
+    buildScheduleDates() {
+      const labels = [
+        ["昨天", "YESTERDAY", -1],
+        ["今天", "TODAY", 0],
+        ["明天", "TOMORROW", 1],
+        ["后天", "AFTER_TOMORROW", 2],
+      ];
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      return labels.map(([label, key, offset]) => {
+        const date = new Date(now);
+        date.setDate(date.getDate() + offset);
+        return { label, key, date: this.formatDate(date), demand: 0 };
+      });
+    },
+    formatDate(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    },
+    getScheduleDemand(scheduleDays, day) {
+      if (Array.isArray(scheduleDays)) {
+        const matched = scheduleDays.find(
+          (item) =>
+            item?.date === day.date ||
+            item?.label === day.label ||
+            item?.key === day.key,
+        );
+        return Number(matched?.demand || 0);
+      }
+      return Number(
+        scheduleDays?.[day.key] ??
+          scheduleDays?.[day.key.toLowerCase()] ??
+          scheduleDays?.[
+            { YESTERDAY: "yesterday", TODAY: "today", TOMORROW: "tomorrow", AFTER_TOMORROW: "dayAfterTomorrow" }[day.key]
+          ] ??
+          scheduleDays?.[day.label] ??
+          scheduleDays?.[day.date] ??
+          0,
+      );
+    },
+    async selectSchedule(day) {
+      this.selectedScheduleDate = day.date;
+      await this.loadSchedule(day);
+    },
+    async loadSchedule(day) {
+      if (!day?.date || this.scheduleLoading) return;
+      this.scheduleLoading = true;
+      try {
+        const result = await getBossHomeSchedule(day.date, this.currentAccountId);
+        const stats = result?.stats || {};
+        this.selectedSchedule = {
+          stats: [
+            { label: "接单", value: Number(stats.accepted || 0) },
+            { label: "到达", value: Number(stats.arrived || 0) },
+            { label: "开工", value: Number(stats.working || 0) },
+            { label: "完工", value: Number(stats.finished || 0) },
+            { label: "结算", value: Number(stats.settled || 0), highlight: true },
+          ],
+          records: this.normalizeScheduleRecords(result?.records),
+        };
+        day.demand = Number(result?.demand ?? day.demand ?? 0);
+      } catch (error) {
+        this.selectedSchedule = { stats: [{label:"接单",value:0},{label:"到达",value:0},{label:"开工",value:0},{label:"完工",value:0},{label:"结算",value:0,highlight:true}], records: [] };
+        this.handleRequestError(error, "排班加载失败");
+      } finally {
+        this.scheduleLoading = false;
+      }
+    },
+    normalizeScheduleRecords(records) {
+      const list = Array.isArray(records) ? records : [];
+      return list.map((record, index) => {
+        const status = record.status || record.orderStatus || "待接单";
+        const time =
+          record.time ||
+          record.workTime ||
+          [record.startTime, record.endTime]
+            .filter(Boolean)
+            .map((value) => String(value).replace("T", " ").slice(11, 16))
+            .join("-") ||
+          "时间待定";
+        return {
+          id: record.id || record.orderId || index,
+          title: record.title || record.orderTitle || record.postion || "招工岗位",
+          sub:
+            record.sub ||
+            `招${record.orderNum || record.demand || 0}人 · ${time} · 已接单${record.accepted || 0}人`,
+          status,
+          statusClass:
+            record.statusClass ||
+            (["进行中", "招工中", "工作中"].includes(status)
+              ? "doing"
+              : "wait"),
+          icon: record.icon || industryIcon,
+        };
+      });
+    },
+    handleRequestError(error, fallback) {
+      const status = Number(error?.code || error?.statusCode);
+      if (status === 401 || status === 403) return handleTokenInvalid({ role: "boss" });
+      uni.showToast({ title: error?.message || fallback, icon: "none" });
     },
     async navigateTo(pageName) {
       if (pageName === "select-job") {
@@ -500,6 +589,11 @@ export default {
 .peer-section {
   padding: 20px 16px;
 }
+.emp-tools-wrap { margin: 0 16px 12px; background:#fff; border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.06); padding:12px; }
+.emp-tools-header { display:flex; justify-content:space-between; align-items:center; }
+.acct-current,.home-codes,.acct-info,.home-codes view { display:flex; align-items:center; }
+.acct-current { gap:8px; }.acct-avatar { width:38px;height:38px;line-height:38px;text-align:center;border-radius:50%;background:#ff8b45;color:#fff; }.acct-info { flex-direction:column;align-items:flex-start;gap:2px;font-size:11px;color:#999; }.acct-info text:first-child { color:#333;font-size:14px;font-weight:700; }.acct-swap-icon { width:16px;height:16px;margin-left:4px; }.home-codes { gap:16px; }.home-codes view { flex-direction:column;gap:2px;color:#999;font-size:10px; }.home-codes b { color:#333;font-size:16px; }.home-codes .warn { color:#ff6b35;font-size:12px; }
+.emp-tools-row { display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:16px;border-top:1px solid #f5f5f5;padding-top:12px; }.emp-tool-item { display:flex;flex-direction:column;align-items:center;gap:5px;color:#666;font-size:11px; }.emp-tool-item image { width:22px;height:22px; }.schedule-mini { margin-top:14px;background:#fafafa;border-radius:10px;padding:10px; }.schedule-tabs { display:grid;grid-template-columns:repeat(4,1fr);gap:4px; }.schedule-tab { text-align:center;color:#999;font-size:12px;padding:5px 0; }.schedule-tab text,.schedule-tab small { display:block; }.schedule-tab small { font-size:10px;margin-top:3px; }.schedule-tab.active { color:#8b4513;font-weight:600;background:#ffe8b0;border:1.5px solid #ff9c4a;border-radius:8px; }.schedule-req { display:block;margin:3px auto 0;padding:1px 6px;border-radius:8px;background:#ff6b35;color:#fff;font-size:9px;width:max-content; }.schedule-data { margin-top:10px; }.schedule-stats { display:flex;background:#fff;border-radius:10px;padding:8px 4px;margin-bottom:8px; }.schedule-stat { flex:1;text-align:center; }.schedule-stat text,.schedule-stat small { display:block; }.schedule-stat text { color:#333;font-size:14px;font-weight:700; }.schedule-stat text.highlight { color:#ff6b35; }.schedule-stat small { margin-top:1px;color:#999;font-size:9px; }.schedule-record { display:flex;align-items:center;gap:8px;padding:7px 9px;margin-bottom:6px;border:1px solid #f2f2f2;border-radius:8px;background:#fafafa; }.schedule-record-icon { width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:linear-gradient(135deg,#fff3d6,#ffe8b0); }.schedule-record-icon image { width:16px;height:16px; }.schedule-record-info { flex:1;min-width:0; }.schedule-record-title,.schedule-record-sub { display:block; }.schedule-record-title { color:#333;font-size:12px;font-weight:600; }.schedule-record-sub { margin-top:1px;color:#999;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }.schedule-record-tag { padding:2px 7px;border-radius:8px;font-size:9px;font-weight:600; }.schedule-record-tag.doing { background:#fff1e6;color:#ff6b35; }.schedule-record-tag.wait { background:#f2f3f5;color:#999; }
 
 .peer-banner {
   box-sizing: border-box;
@@ -668,5 +762,48 @@ export default {
 .slogan-desc { display: block; margin-top: 8px; color: #d4b896; font-size: 13px; }
 .tab-svg { width: 22px; height: 22px; opacity: .55; }
 .tab-item.active .tab-svg { opacity: 1; }
+
+/* 原型精确尺寸：业务区不包含浏览器手机壳层 */
+.employer-card { background: #ffc95a; }
+.emp-tools-wrap { margin: 12px 16px 10px; padding: 12px 14px; }
+.emp-tools-header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed #f0e6d2; font-size: 13px; }
+.acct-avatar { width: 32px; height: 32px; line-height: 32px; font-size: 13px; }
+.emp-tools-row { gap: 8px; margin-top: 0; margin-bottom: 12px; border-top: 0; padding-top: 0; }
+.emp-tool-icon { height: 26px; margin-bottom: 5px; }
+.emp-tool-item { font-size: 12px; }
+.emp-tool-label { font-size: 12px; }
+.schedule-mini { margin-top: 0; background: transparent; padding: 12px 0 0; border-top: 1px solid #f5f5f5; border-radius: 0; }
+.schedule-tabs { display: flex; gap: 8px; }
+.schedule-tab { flex: 1; padding: 7px 2px; background: #fff8e8; border: 1.5px solid transparent; border-radius: 10px; }
+.schedule-tab.active { background: #ffe8b0; border-color: #ff9c4a; }
+.schedule-tab small { font-size: 9px; }
+
+/* 微信端文字层级按设计稿校准 */
+.container {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.acct-info { gap: 1px; font-size: 10px; line-height: 1.15; }
+.acct-info text:first-child { font-size: 12px; font-weight: 600; line-height: 1.15; }
+.acct-swap-icon { width: 13px; height: 13px; margin-left: 2px; }
+.home-codes { gap: 8px; }
+.home-codes view { min-width: 54px; padding: 4px 6px; border-radius: 8px; background: #fff8e8; font-size: 9px; line-height: 1.15; }
+.home-codes b { margin-top: 2px; font-size: 13px; line-height: 1.1; color: #1890ff; }
+.home-codes .warn { font-size: 10px; line-height: 1.25; color: #ffb020; }
+.emp-tool-icon image { width: 20px; height: 20px; }
+.emp-tool-label { color: #666; font-size: 10px; font-weight: 400; line-height: 1.2; white-space: nowrap; }
+.emp-tool-item.active .emp-tool-label { color: #ff7a1a; }
+.schedule-tab text { color: #8b4513; font-size: 11px; font-weight: 600; line-height: 1.2; }
+.schedule-req { margin-top: 3px; padding: 1px 5px; font-size: 8px; font-weight: 600; line-height: 1.25; }
+.schedule-data { margin-top: 7px; }
+.schedule-stats { padding: 5px 4px; margin-bottom: 7px; }
+.schedule-stat text { color: #333; font-size: 10px; font-weight: 700; line-height: 1.05; }
+.schedule-stat small { margin-top: 3px; color: #2c1810; font-size: 12px; font-weight: 600; line-height: 1.1; }
+.schedule-record { gap: 7px; padding: 6px 8px; margin-bottom: 5px; }
+.schedule-record-icon { width: 28px; height: 28px; }
+.schedule-record-icon image { width: 14px; height: 14px; }
+.schedule-record-title { font-size: 11px; font-weight: 600; line-height: 1.2; }
+.schedule-record-sub { margin-top: 2px; font-size: 9px; line-height: 1.2; }
+.schedule-record-tag { padding: 2px 7px; font-size: 8px; line-height: 1.25; }
 
 </style>

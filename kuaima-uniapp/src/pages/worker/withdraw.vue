@@ -34,7 +34,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { request } from "@/api/http";
 const available = ref("0.00");
 const amount = ref("");

@@ -61,7 +61,7 @@
 <script setup>
 import { ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import SafeBottomAction from "@/components/SafeBottomAction.vue";
+import SafeBottomAction from "@/components/safe-bottom-action.vue";
 const reasons = ["订单误取消", "迟到扣分", "差评申诉", "其他"];
 const reason = ref("");
 const detail = ref("");
