@@ -96,6 +96,25 @@ const routes = [
         component: () => import('@/views/order/SettlementDetail.vue'),
         meta: { title: '结算详情', icon: 'fa-eye', hidden: true, permKey: 'permOrder.o3' }
       },
+      // 发薪与员工
+      {
+        path: 'project-salary',
+        name: 'ProjectSalary',
+        component: () => import('@/views/payroll/ProjectSalary.vue'),
+        meta: { title: '发薪管理', icon: 'fa-money-bill-wave', permKey: 'permPayroll.p1' }
+      },
+      {
+        path: 'payroll-detail/:id',
+        name: 'PayrollDetail',
+        component: () => import('@/views/payroll/PayrollDetail.vue'),
+        meta: { title: '薪单详情', icon: 'fa-eye', hidden: true, permKey: 'permPayroll.p1' }
+      },
+      {
+        path: 'employees',
+        name: 'Employees',
+        component: () => import('@/views/employee/EmployeeManage.vue'),
+        meta: { title: '员工管理', icon: 'fa-users', permKey: 'permEmployee.e1' }
+      },
       // 内容管理
       {
         path: 'certification',

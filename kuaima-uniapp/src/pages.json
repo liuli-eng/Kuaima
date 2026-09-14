@@ -415,7 +415,16 @@
       "path": "pages/boss/task-content",
       "style": { "navigationStyle": "custom" }
     },
-    { "path": "pages/boss/voucher", "style": { "navigationStyle": "custom" } }
+    { "path": "pages/boss/voucher", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/projects", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/project-detail", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/proj-members", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/proj-attendance", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/proj-checkin", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/proj-onboard", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/proj-onsite", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/proj-onsite-add", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/proj-settings", "style": { "navigationStyle": "custom" } }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

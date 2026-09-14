@@ -1,0 +1,376 @@
+<template>
+  <view class="container">
+    <BossPageHeader title="项目管理" />
+    <scroll-view scroll-y class="body">
+      <!-- 搜索 -->
+      <view class="search-bar">
+        <text class="search-icon">🔍</text>
+        <input
+          class="search-input"
+          v-model="keyword"
+          placeholder="请输入项目名称/用工企业名称"
+          confirm-type="search"
+          @confirm="loadList"
+        />
+      </view>
+
+      <!-- Tab 切换 -->
+      <view class="proj-tabs">
+        <view
+          class="proj-tab"
+          :class="{ active: tab === 'created' }"
+          @click="switchTab('created')"
+        >
+          创建新的项目
+          <text v-if="overview.created" class="tab-count">{{ overview.created }}</text>
+        </view>
+        <view
+          class="proj-tab"
+          :class="{ active: tab === 'archived' }"
+          @click="switchTab('archived')"
+        >
+          已归档的项目
+          <text v-if="overview.archived" class="tab-count">{{ overview.archived }}</text>
+        </view>
+      </view>
+
+      <!-- 列表 -->
+      <view v-if="filteredList.length" class="proj-list">
+        <view
+          v-for="item in filteredList"
+          :key="item.id"
+          class="proj-card"
+          @click="goDetail(item)"
+        >
+          <view class="proj-name">
+            <text class="proj-name-text">{{ item.name }}</text>
+            <text v-if="tab === 'archived'" class="wb-tag gray">已归档</text>
+            <text class="proj-arrow">›</text>
+          </view>
+          <view class="proj-info">
+            <text class="proj-info-ico">🏢</text>
+            <text class="proj-info-text">用工企业：{{ item.companyName || "—" }}</text>
+          </view>
+          <view class="proj-info">
+            <text class="proj-info-ico">👤</text>
+            <text class="proj-info-text">负责人：{{ item.leaderName || "—" }}</text>
+          </view>
+          <view class="proj-info">
+            <text class="proj-info-ico">📅</text>
+            <text class="proj-info-text">立项日期：{{ formatCnDate(item.establishDate) || "—" }}</text>
+          </view>
+        </view>
+      </view>
+      <view v-else class="empty">
+        <text class="empty-ico">📂</text>
+        <text class="empty-text">{{ loading ? "加载中…" : "暂无项目" }}</text>
+      </view>
+      <view class="bottom-space" />
+    </scroll-view>
+
+    <!-- 新建项目 -->
+    <view class="footer">
+      <view class="primary-btn" @click="openCreate">
+        <text class="primary-btn-ico">＋</text>创建新的项目
+      </view>
+    </view>
+
+    <!-- 创建弹层 -->
+    <view v-if="showCreate" class="mask" @click="closeCreate">
+      <view class="sheet" @click.stop>
+        <view class="sheet-title">创建新项目</view>
+        <view class="form-item">
+          <text class="form-label">项目名称<text class="req">*</text></text>
+          <input class="form-input" v-model="form.name" placeholder="如：菜鸟·云联日结" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">用工企业</text>
+          <input class="form-input" v-model="form.companyName" placeholder="用工企业名称" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">负责人</text>
+          <input class="form-input" v-model="form.leaderName" placeholder="负责人姓名" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">立项日期</text>
+          <picker mode="date" :value="form.establishDate" @change="onDateChange">
+            <view class="form-input picker-text">
+              {{ form.establishDate || "选择日期" }}
+            </view>
+          </picker>
+        </view>
+        <view class="sheet-actions">
+          <view class="sheet-btn cancel" @click="closeCreate">取消</view>
+          <view class="sheet-btn confirm" @click="submitCreate">确认创建</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+import BossPageHeader from "@/components/BossPageHeader.vue";
+import {
+  listProjects,
+  getProjectOverview,
+  createProject,
+  formatCnDate,
+} from "@/api/project";
+
+export default {
+  components: { BossPageHeader },
+  data() {
+    return {
+      keyword: "",
+      tab: "created",
+      list: [],
+      overview: {},
+      loading: false,
+      showCreate: false,
+      form: {
+        name: "",
+        companyName: "",
+        leaderName: "",
+        establishDate: "",
+      },
+    };
+  },
+  computed: {
+    filteredList() {
+      const kw = this.keyword.trim();
+      if (!kw) return this.list;
+      return this.list.filter((p) => {
+        return (
+          (p.name || "").includes(kw) ||
+          (p.companyName || "").includes(kw)
+        );
+      });
+    },
+  },
+  onShow() {
+    this.loadData();
+  },
+  methods: {
+    formatCnDate,
+    async loadData() {
+      this.loading = true;
+      try {
+        const [overview, list] = await Promise.all([
+          getProjectOverview().catch(() => ({})),
+          listProjects({ status: this.tab === "created" ? "active" : "archived" }).catch(() => []),
+        ]);
+        this.overview = overview || {};
+        this.list = Array.isArray(list) ? list : [];
+      } catch (e) {
+        console.warn("项目列表加载失败", e);
+        this.list = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+    async loadList() {
+      await this.loadData();
+    },
+    switchTab(tab) {
+      if (this.tab === tab) return;
+      this.tab = tab;
+      this.loadData();
+    },
+    goDetail(item) {
+      uni.navigateTo({ url: `/pages/boss/project-detail?id=${item.id}` });
+    },
+    openCreate() {
+      this.form = { name: "", companyName: "", leaderName: "", establishDate: "" };
+      this.showCreate = true;
+    },
+    closeCreate() {
+      this.showCreate = false;
+    },
+    onDateChange(e) {
+      this.form.establishDate = e.detail.value;
+    },
+    async submitCreate() {
+      if (!this.form.name.trim()) {
+        uni.showToast({ title: "请填写项目名称", icon: "none" });
+        return;
+      }
+      try {
+        await createProject({
+          name: this.form.name.trim(),
+          companyName: this.form.companyName.trim(),
+          leaderName: this.form.leaderName.trim(),
+          establishDate: this.form.establishDate || null,
+          status: "active",
+        });
+        uni.showToast({ title: "创建成功", icon: "success" });
+        this.showCreate = false;
+        this.tab = "created";
+        this.loadData();
+      } catch (e) {
+        uni.showToast({ title: "创建失败，请重试", icon: "none" });
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f3f4f6;
+}
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px 0;
+}
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 22px;
+  padding: 0 14px;
+  height: 40px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+.search-icon { font-size: 14px; color: #bbb; margin-right: 8px; }
+.search-input { flex: 1; font-size: 13px; color: #333; }
+.proj-tabs {
+  display: flex;
+  background: #fff;
+  border-radius: 16px;
+  padding: 4px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+.proj-tab {
+  flex: 1;
+  text-align: center;
+  padding: 9px 0;
+  font-size: 13px;
+  color: #666;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.proj-tab.active {
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  color: #fff;
+  font-weight: 600;
+}
+.tab-count {
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 0 6px;
+}
+.proj-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+.proj-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.proj-name-text { flex: 1; }
+.proj-arrow { color: #c8c8c8; font-size: 16px; margin-left: 6px; }
+.wb-tag {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 8px;
+}
+.wb-tag.gray { background: #f3f4f6; color: #999; margin-left: 6px; }
+.proj-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #888;
+  margin-top: 5px;
+}
+.proj-info-ico { width: 14px; color: #b0b0b0; font-size: 11px; text-align: center; }
+.empty {
+  text-align: center;
+  padding: 60px 0;
+  color: #bbb;
+}
+.empty-ico { font-size: 34px; display: block; margin-bottom: 10px; }
+.empty-text { font-size: 13px; }
+.bottom-space { height: 16px; }
+.footer {
+  flex-shrink: 0;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 0.5px solid #f0f0f0;
+}
+.primary-btn {
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  color: #fff;
+  border-radius: 24px;
+  text-align: center;
+  padding: 13px 0;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+.primary-btn-ico { margin-right: 4px; font-weight: 700; }
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+}
+.sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 18px 18px 0 0;
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+}
+.sheet-title { font-size: 17px; font-weight: 700; color: #222; margin-bottom: 14px; }
+.form-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+.form-label { font-size: 14px; color: #333; width: 80px; flex-shrink: 0; }
+.req { color: #ff3b30; margin-left: 2px; }
+.form-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #333;
+  text-align: right;
+}
+.picker-text { color: #333; }
+.sheet-actions { display: flex; gap: 12px; margin-top: 18px; }
+.sheet-btn {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.sheet-btn.cancel { background: #f3f4f6; color: #666; }
+.sheet-btn.confirm {
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  color: #fff;
+}
+</style>
