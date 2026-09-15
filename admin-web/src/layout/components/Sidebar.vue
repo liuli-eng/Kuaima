@@ -93,6 +93,14 @@ const menuGroups = [
     ]
   },
   {
+    id: 'employee',
+    name: '企业工作台',
+    items: [
+      { path: '/admin/employees', name: '员工管理', icon: 'fa-users', permKey: 'permEmployee.e1' },
+      { path: '/admin/project-salary', name: '发薪管理', icon: 'fa-money-bill-wave', permKey: 'permPayroll.p1' }
+    ]
+  },
+  {
     id: 'content',
     name: '内容管理',
     items: [
