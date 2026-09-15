@@ -43,7 +43,7 @@ aliyun:
 # SpringDoc OpenAPI / Swagger 文档配置
 springdoc:
   api-docs:
-    enabled: false
+    enabled: true
     path: /v3/api-docs
   swagger-ui:
     enabled: true

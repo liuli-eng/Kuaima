@@ -23,6 +23,35 @@
       </div>
     </div>
 
+    <!-- 业务入口卡片 -->
+    <div class="entry-cards">
+      <router-link to="/admin/employees" class="entry-card">
+        <div class="entry-card-icon">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="entry-card-info">
+          <div class="entry-card-title">员工管理</div>
+          <div class="entry-card-desc">在册 {{ empStats.total }} 人 · 在职 {{ empStats.active }} 人</div>
+        </div>
+        <div class="entry-card-action">
+          <i class="fas fa-chevron-right"></i>
+        </div>
+      </router-link>
+
+      <router-link to="/admin/project-salary" class="entry-card">
+        <div class="entry-card-icon payroll">
+          <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <div class="entry-card-info">
+          <div class="entry-card-title">发薪管理</div>
+          <div class="entry-card-desc">待审批 {{ payrollStats.pendingCount }} 笔 · 本月已发 {{ payrollStats.monthCount }} 笔</div>
+        </div>
+        <div class="entry-card-action">
+          <i class="fas fa-chevron-right"></i>
+        </div>
+      </router-link>
+    </div>
+
     <!-- 图表区域 -->
     <div class="content-grid-2col">
       <!-- 订单趋势 -->
@@ -64,7 +93,7 @@
       <div class="card-header">
         <span class="card-title">实时订单</span>
         <div style="display: flex; gap: 12px; align-items: center;">
-          <el-button link type="primary" :underline="false">刷新</el-button>
+          <el-button link type="primary" :underline="false" @click="loadRecentOrders">刷新</el-button>
           <router-link to="/admin/orders" class="card-action">
             查看全部 <i class="fas fa-arrow-right" style="font-size:11px; margin-left:4px;"></i>
           </router-link>
@@ -122,7 +151,7 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
-import { getStats, getTrend, getDistribution, getRecentOrders } from '@/api/dashboard'
+import { getStats, getTrend, getDistribution, getRecentOrders, getEmployeeStats, getPayrollStats } from '@/api/dashboard'
 
 // statCards：后端接口填充 value，其余字段保留原展示元数据
 // 后端 Dashboard 字段：workerTotal, bossTotal, orderTotal, settledTotal, pendingAudit
@@ -134,6 +163,35 @@ const statCards = reactive([
   { title: '已结算', value: '-', change: '+5.2%', up: true, icon: 'fa-coins', iconClass: 'yellow' },
   { title: '待审核', value: '-', change: '需及时处理', up: true, icon: 'fa-clock', iconClass: 'yellow' }
 ])
+
+// ============ 员工管理统计（首页入口卡片） ============
+const empStats = reactive({ total: 0, active: 0 })
+const loadEmployeeStats = async () => {
+  try {
+    const result = await getEmployeeStats()
+    const d = result.data || {}
+    empStats.total = d.total ?? 0
+    empStats.active = d.active ?? 0
+  } catch (e) {
+    console.warn('[Dashboard] 员工统计加载失败:', e)
+  }
+}
+
+// ============ 发薪管理统计（首页入口卡片） ============
+// 后端字段：pendingCount(待审批) / monthCount(本月已发) / monthAmount(本月金额) / projectTotal(项目数)
+const payrollStats = reactive({ pendingCount: 0, monthCount: 0, monthAmount: 0, projectTotal: 0 })
+const loadPayrollStats = async () => {
+  try {
+    const result = await getPayrollStats()
+    const d = result.data || {}
+    payrollStats.pendingCount = d.pendingCount ?? 0
+    payrollStats.monthCount = d.monthCount ?? 0
+    payrollStats.monthAmount = d.monthAmount ?? 0
+    payrollStats.projectTotal = d.projectTotal ?? 0
+  } catch (e) {
+    console.warn('[Dashboard] 发薪统计加载失败:', e)
+  }
+}
 
 // 趋势和工种分布数据（从后端加载）
 const orderTrendData = reactive({ labels: ['周一','周二','周三','周四','周五','周六','周日'], values: [0,0,0,0,0,0,0] })
@@ -339,7 +397,7 @@ onMounted(async () => {
   initDonutChart()
   window.addEventListener('resize', handleResize)
   // 加载真实数据
-  await Promise.all([loadStats(), loadTrend(), loadDistribution(), loadRecentOrders()])
+  await Promise.all([loadStats(), loadTrend(), loadDistribution(), loadRecentOrders(), loadEmployeeStats(), loadPayrollStats()])
   // 数据加载后刷新图表
   if (trendChartInstance) {
     trendChartInstance.setOption({ xAxis: { data: orderTrendData.labels }, series: [{ data: orderTrendData.values }] })
@@ -433,5 +491,73 @@ onBeforeUnmount(() => {
     font-size: 13px;
     color: var(--text-secondary);
   }
+}
+
+/* ============ 业务入口卡片 ============ */
+.entry-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.entry-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.entry-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 16px rgba(255, 107, 53, 0.1);
+  transform: translateY(-2px);
+}
+
+.entry-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #FFF0EB 0%, #FFE8DC 100%);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.entry-card-icon.payroll {
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  color: var(--success);
+}
+
+.entry-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.entry-card-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.entry-card-action {
+  color: var(--text-muted);
+  font-size: 14px;
 }
 </style>

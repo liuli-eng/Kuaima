@@ -26,7 +26,20 @@ public class EmployeeService {
     }
 
     public Page<Employee> list(String keyword, String company, String role, String status, Pageable pageable) {
-        Specification<Employee> spec = (root, query, cb) -> {
+        Specification<Employee> spec = buildSpec(keyword, company, role, status);
+        return employeeRepository.findAll(spec, pageable);
+    }
+
+    /**
+     * 统计员工数（用于首页卡片）。参数均为可选过滤。
+     */
+    public long count(String keyword, String company, String role, String status) {
+        Specification<Employee> spec = buildSpec(keyword, company, role, status);
+        return employeeRepository.count(spec);
+    }
+
+    private Specification<Employee> buildSpec(String keyword, String company, String role, String status) {
+        return (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             if (StringUtils.hasText(company) && !"all".equals(company)) {
                 predicates.add(cb.equal(root.get("company"), company));
@@ -45,7 +58,6 @@ public class EmployeeService {
             }
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
-        return employeeRepository.findAll(spec, pageable);
     }
 
     public Employee getOrThrow(Long id) {

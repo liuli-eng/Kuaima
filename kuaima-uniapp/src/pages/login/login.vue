@@ -152,7 +152,10 @@
           }}</text
           ><text v-else-if="flowMessage" class="flow-message">{{
             flowMessage
-          }}</text></view
+          }}</text
+          ><text v-if="isDevTools()" class="mock-mode-badge"
+            >🔧 开发者工具 Mock 模式</text
+          ></view
         >
       </view>
       <view class="page-indicator"></view>
@@ -169,6 +172,16 @@ import { USE_MOCK } from "@/api/http";
 const pages = getCurrentPages();
 const query = pages[pages.length - 1]?.options || {};
 const statusBarHeight = Number(uni.getWindowInfo().statusBarHeight || 0);
+
+// 检测是否在微信开发者工具中运行
+function isDevTools() {
+  try {
+    const systemInfo = uni.getSystemInfoSync();
+    return systemInfo.platform === "devtools";
+  } catch (_) {
+    return false;
+  }
+}
 const userRole = ref(
   query.role === "boss" || query.role === "worker" ? query.role : "",
 );
@@ -232,6 +245,7 @@ async function doLogin(phoneCode = "") {
     loggingIn.value = true;
     errorMessage.value = "";
     flowMessage.value = "";
+
     if (!phoneCode && preparedLoginResult.value) {
       const result = preparedLoginResult.value;
       preparedLoginResult.value = null;
@@ -249,7 +263,9 @@ async function doLogin(phoneCode = "") {
         const payload = phoneCode && registrationToken.value
           ? { registrationToken: registrationToken.value, role, phoneCode }
           : { code, role, ...(phoneCode ? { phoneCode } : {}) };
+        console.log("[wechatLogin] payload:", payload);
         const result = await wechatLogin(payload);
+        console.log("[wechatLogin] result:", result);
         if (result.needPhoneNumber === true) {
           if (phoneCode) throw new Error("手机号绑定未完成，请重试");
           phoneRequired.value = true;
@@ -266,6 +282,7 @@ async function doLogin(phoneCode = "") {
         preparedLoginResult.value = null;
         await completeLogin(result);
       } catch (e) {
+        console.error("[wechatLogin] error:", e);
         flowMessage.value = "";
         errorMessage.value = e.message || "微信登录失败";
         loggingIn.value = false;
@@ -316,7 +333,9 @@ function prepareWechatLogin() {
     provider: "weixin",
     success: async ({ code }) => {
       try {
+        console.log("[prepareWechatLogin] code:", code, "role:", role);
         const result = await wechatLogin({ code, role });
+        console.log("[prepareWechatLogin] result:", result);
         if (result.needPhoneNumber === true) {
           registrationToken.value = result.registrationToken || "";
           phoneRequired.value = true;
@@ -328,6 +347,7 @@ function prepareWechatLogin() {
         phoneRequired.value = false;
         preparedLoginResult.value = result;
       } catch (e) {
+        console.error("[prepareWechatLogin] error:", e);
         errorMessage.value = e.message || "登录状态检查失败";
       } finally {
         preparingLogin.value = false;
@@ -701,6 +721,17 @@ async function completeLogin(result) {
   color: #8b6a45;
   font-size: 12px;
   margin-top: 12px;
+}
+.mock-mode-badge {
+  display: block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.5);
+  border-radius: 4px;
+  color: #856404;
+  font-size: 11px;
+  text-align: center;
 }
 .page-indicator {
   position: absolute;

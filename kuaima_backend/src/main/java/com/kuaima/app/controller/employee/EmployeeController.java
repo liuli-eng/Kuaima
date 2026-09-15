@@ -1,6 +1,8 @@
 package com.kuaima.app.controller.employee;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,6 +44,19 @@ public class EmployeeController {
             @RequestParam(defaultValue = "10") int size) {
         Page<Employee> result = employeeService.list(keyword, company, role, status, PageRequest.of(page, size));
         return Result.success(result.getContent(), page, result.getTotalElements());
+    }
+
+    /**
+     * 员工统计（用于首页卡片）：total 总数、active 在职数。
+     * 与 GET /admin/employees 解耦，避免每次首页都拉分页数据。
+     */
+    @GetMapping("/stats")
+    @Operation(summary = "员工统计（总数 / 在职数）")
+    public Result<Map<String, Object>> stats() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("total", employeeService.count(null, null, null, null));
+        data.put("active", employeeService.count(null, null, null, "active"));
+        return Result.success(data);
     }
 
     @GetMapping("/{id}")

@@ -36,6 +36,10 @@ public class WechatService {
 
     /** 小程序登录：js_code -> openid + session_key（昵称头像由前端传入） */
     public WechatUserInfo loginByCode(String code) {
+        // Mock 模式：开发/测试环境跳过微信 API 验证，直接返回模拟 openid
+        if (properties.isMockEnabled()) {
+            return mockLogin(code);
+        }
         String url = JSCODE2SESSION_URL
                 + "?appid=" + enc(properties.getAppid())
                 + "&secret=" + enc(properties.getSecret())
@@ -50,8 +54,29 @@ public class WechatService {
                 null);
     }
 
+    /**
+     * Mock 登录：返回固定 openid，用于开发/测试环境。
+     * 无论 code 如何变化，都映射到同一个测试用户，便于复用登录状态。
+     */
+    private WechatUserInfo mockLogin(String code) {
+        String mockOpenid = "mock_openid_fixed";
+        return new WechatUserInfo(mockOpenid, null, null, null);
+    }
+
+    /**
+     * Mock 手机号：返回固定手机号，用于开发/测试环境。
+     * 与固定 openid 配合，保证每次授权都落到同一个测试用户上。
+     */
+    private String mockPhoneNumber(String phoneCode) {
+        return "13800000000";
+    }
+
     /** 小程序手机号快速验证：getPhoneNumber 按钮回调的 code -> 手机号 */
     public String getPhoneNumber(String phoneCode) {
+        // Mock 模式：开发/测试环境返回模拟手机号
+        if (properties.isMockEnabled()) {
+            return mockPhoneNumber(phoneCode);
+        }
         String accessToken = getAccessToken();
         String url = GET_PHONE_URL + "?access_token=" + enc(accessToken);
         JSONObject body = new JSONObject();

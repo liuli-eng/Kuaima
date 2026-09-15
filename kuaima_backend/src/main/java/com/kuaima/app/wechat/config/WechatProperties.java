@@ -13,6 +13,9 @@ public class WechatProperties {
     /** 微信小程序 AppSecret */
     private String secret;
 
+    /** 开发/测试环境 Mock 模式：跳过微信 API 验证，直接返回模拟 openid */
+    private boolean mockEnabled = false;
+
     public String getAppid() {
         return appid;
     }
@@ -27,5 +30,13 @@ public class WechatProperties {
 
     public void setSecret(String secret) {
         this.secret = secret;
+    }
+
+    public boolean isMockEnabled() {
+        return mockEnabled;
+    }
+
+    public void setMockEnabled(boolean mockEnabled) {
+        this.mockEnabled = mockEnabled;
     }
 }
