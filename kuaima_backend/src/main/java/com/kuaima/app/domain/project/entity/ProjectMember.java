@@ -15,17 +15,17 @@ import lombok.Setter;
 @Entity
 @Table(name = "project_member", indexes = {
         @Index(name = "idx_pm_project", columnList = "project_id"),
-        @Index(name = "idx_pm_status", columnList = "status"),
+        @Index(name = "idx_pm_status", columnList = "`status`"),
         @Index(name = "idx_pm_user", columnList = "user_id")
 })
 @Setter
 @Getter
 public class ProjectMember extends BaseEntity {
 
-    @Column(comment = "关联 project.id")
+    @Column(name = "project_id", comment = "关联 project.id")
     private Long projectId;
 
-    @Column(comment = "关联用户/员工 id（外部零工可空）")
+    @Column(name = "user_id", comment = "关联用户/员工 id（外部零工可空）")
     private Long userId;
 
     @Column(comment = "成员姓名")
@@ -34,12 +34,12 @@ public class ProjectMember extends BaseEntity {
     @Column(comment = "手机号")
     private String phone;
 
-    @Column(comment = "职位/岗位，如 分拣员、装车员")
+    @Column(name = "`role`", comment = "职位/岗位，如 分拣员、装车员")
     private String role;
 
-    @Column(comment = "状态:active在职/temp临时/left已离职")
+    @Column(name = "`status`", comment = "状态:active在职/temp临时/left已离职")
     private String status = "temp";
 
-    @Column(comment = "入职日期")
+    @Column(name = "join_date", comment = "入职日期")
     private LocalDate joinDate;
 }

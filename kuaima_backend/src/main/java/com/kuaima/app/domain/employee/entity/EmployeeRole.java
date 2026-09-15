@@ -21,7 +21,7 @@ public class EmployeeRole extends BaseEntity {
     @Column(comment = "角色描述")
     private String description;
 
-    @Column(comment = "是否系统内置角色（不可删）")
+    @Column(name = "`system`", comment = "是否系统内置角色（不可删）")
     private Boolean system = false;
 
     @Column(comment = "角色标识色")

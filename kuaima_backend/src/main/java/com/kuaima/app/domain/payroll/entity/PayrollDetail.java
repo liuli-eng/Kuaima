@@ -40,6 +40,6 @@ public class PayrollDetail extends BaseEntity {
     @Column(comment = "应发金额（分）")
     private Long amount = 0L;
 
-    @Column(comment = "状态:pending待转账/success转账成功/failed转账失败")
+    @Column(comment = "状态:pending待转移/success转账成功/failed转账失败")
     private String status = "pending";
 }

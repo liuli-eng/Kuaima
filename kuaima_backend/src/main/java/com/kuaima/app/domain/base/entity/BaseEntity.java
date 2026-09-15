@@ -29,12 +29,15 @@ public class BaseEntity {
     Long id;
 
     @CreatedDate
+    @Column(name = "`date`")
     LocalDate date;
 
     @CreatedBy
+    @Column(name = "create_by")
     Long createBy;
 
     @UpdateTimestamp
+    @Column(name = "`timestamp`")
     Timestamp timestamp;
 
 }
