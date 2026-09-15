@@ -1,21 +1,11 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <!-- 导航栏 -->
-    <view class="nav-bar">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
-      <text class="nav-title">添加招工地址</text>
+      <text class="nav-title">{{ addressId ? "编辑招工地址" : "添加招工地址" }}</text>
       <view class="nav-right"></view>
     </view>
 
@@ -75,48 +65,171 @@
         </view>
       </view>
 
-      <button class="save-btn" @click="saveAddress">保存地址</button>
+      <button class="save-btn" :disabled="saving" @click="saveAddress">{{ saving ? "保存中..." : "保存地址" }}</button>
     </view>
   </view>
 </template>
 
 <script>
+import {
+  createBossRecruitAddress,
+  listBossRecruitAddresses,
+  updateBossRecruitAddress,
+} from "@/api/backend";
+import { handleTokenInvalid } from "@/api/auth";
+
 export default {
   data() {
     return {
+      statusBarHeight: 0,
+      addressId: null,
       addressName: '',
       contactName: '',
       contactPhone: '',
       city: '',
       district: '',
       detailAddress: '',
-      isDefault: false
-    }
+      isDefault: false,
+      latitude: null,
+      longitude: null,
+      loading: false,
+      saving: false,
+      authRedirecting: false,
+    };
+  },
+  async onLoad(options = {}) {
+    const id = Number(options.id);
+    const editing = Number.isSafeInteger(id) && id > 0;
+    uni.redirectTo({
+      url: `/pages/boss/location?mode=${editing ? "edit" : "add"}${editing ? `&id=${id}` : ""}&returnAfterSave=1`,
+    });
   },
   methods: {
     goBack() {
       uni.navigateBack()
     },
     selectLocation() {
-      uni.showToast({ title: '打开地图选点', icon: 'none' })
+      uni.chooseLocation({
+        success: ({ name, address, latitude, longitude }) => {
+          if (!this.addressName && name) this.addressName = name;
+          this.detailAddress = address || name || this.detailAddress;
+          this.latitude = Number(latitude);
+          this.longitude = Number(longitude);
+        },
+        fail: (error) => {
+          if (!String(error?.errMsg || "").includes("cancel")) {
+            uni.showToast({ title: "地图选点失败", icon: "none" });
+          }
+        },
+      });
     },
     selectCity() {
-      uni.showToast({ title: '选择城市', icon: 'none' })
+      uni.showModal({
+        title: "所在城市",
+        editable: true,
+        placeholderText: "请输入城市",
+        content: this.city,
+        success: ({ confirm, content }) => {
+          if (confirm && content?.trim()) this.city = content.trim();
+        },
+      });
     },
     selectDistrict() {
-      uni.showToast({ title: '选择区域', icon: 'none' })
+      uni.showModal({
+        title: "所在区域",
+        editable: true,
+        placeholderText: "请输入区域",
+        content: this.district,
+        success: ({ confirm, content }) => {
+          if (confirm && content?.trim()) this.district = content.trim();
+        },
+      });
     },
     toggleDefault() {
       this.isDefault = !this.isDefault
     },
-    saveAddress() {
-      uni.showToast({ title: '地址保存成功', icon: 'success' })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 500)
-    }
-  }
-}
+    async loadAddress(id) {
+      this.loading = true;
+      try {
+        const result = await listBossRecruitAddresses();
+        const rows = Array.isArray(result)
+          ? result
+          : result?.records || result?.content || [];
+        const address = rows.find((item) => Number(item?.id) === Number(id));
+        if (!address) {
+          uni.showToast({ title: "地址不存在", icon: "none" });
+          return;
+        }
+        this.addressName = address.name || "";
+        this.contactName = address.contactName || "";
+        this.contactPhone = address.contactPhone || "";
+        this.city = address.city || "";
+        this.district = address.district || "";
+        this.detailAddress = address.detail || address.address || "";
+        this.latitude = Number(address.latitude ?? address.lat) || null;
+        this.longitude = Number(address.longitude ?? address.lng) || null;
+        this.isDefault = address.isDefault === true;
+      } catch (error) {
+        this.handleRequestError(error, "地址加载失败");
+      } finally {
+        this.loading = false;
+      }
+    },
+    validateForm() {
+      if (!this.addressName.trim()) return "请输入地址名称";
+      if (!this.contactName.trim()) return "请输入联系人姓名";
+      if (!/^1\d{10}$/.test(this.contactPhone.trim())) return "请输入正确的联系电话";
+      if (!this.city.trim()) return "请选择所在城市";
+      if (!this.district.trim()) return "请选择所在区域";
+      if (!this.detailAddress.trim()) return "请输入详细地址";
+      return "";
+    },
+    async saveAddress() {
+      if (this.saving) return;
+      const message = this.validateForm();
+      if (message) {
+        uni.showToast({ title: message, icon: "none" });
+        return;
+      }
+      const data = {
+        name: this.addressName.trim(),
+        contactName: this.contactName.trim(),
+        contactPhone: this.contactPhone.trim(),
+        city: this.city.trim(),
+        district: this.district.trim(),
+        detail: this.detailAddress.trim(),
+        latitude: this.latitude,
+        longitude: this.longitude,
+        isDefault: this.isDefault,
+      };
+      this.saving = true;
+      try {
+        if (this.addressId) await updateBossRecruitAddress(this.addressId, data);
+        else await createBossRecruitAddress(data);
+        uni.showToast({ title: "地址保存成功", icon: "success" });
+        setTimeout(() => uni.navigateBack(), 500);
+      } catch (error) {
+        this.handleRequestError(error, "地址保存失败");
+      } finally {
+        this.saving = false;
+      }
+    },
+    handleRequestError(error, fallback) {
+      const status = Number(error?.code || error?.statusCode);
+      if (status === 401) {
+        if (!this.authRedirecting) {
+          this.authRedirecting = true;
+          handleTokenInvalid({ role: "boss" }).finally(() => {
+            this.authRedirecting = false;
+          });
+        }
+        return;
+      }
+      const title = status === 403 ? "无权操作" : status === 404 ? "地址不存在" : error?.message || fallback;
+      uni.showToast({ title, icon: "none" });
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>

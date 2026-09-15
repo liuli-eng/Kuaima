@@ -26,6 +26,8 @@ import com.kuaima.app.domain.boss.model.BossOrderQuery;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderSpecifications;
+import com.kuaima.app.domain.boss.repository.BossRecruitSettingsRepository;
+import com.kuaima.app.domain.boss.entity.BossRecruitSettings;
 import com.kuaima.app.domain.message.constant.BizType;
 import com.kuaima.app.domain.message.constant.MessageType;
 import com.kuaima.app.domain.message.service.MessageService;
@@ -48,6 +50,7 @@ public class BossOrderService {
     private final MessageService messageService;
     private final SettlementRespository settlementRespository;
     private final CertificationService certificationService;
+    private final BossRecruitSettingsRepository recruitSettingsRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public BossOrderService(BossOrderRespository orderRepository,
@@ -55,13 +58,15 @@ public class BossOrderService {
                             UserRepository userRepository,
                             MessageService messageService,
                             SettlementRespository settlementRespository,
-                            CertificationService certificationService) {
+                            CertificationService certificationService,
+                            BossRecruitSettingsRepository recruitSettingsRepository) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
         this.messageService = messageService;
         this.settlementRespository = settlementRespository;
         this.certificationService = certificationService;
+        this.recruitSettingsRepository = recruitSettingsRepository;
     }
 
     public BossOrderService(BossOrderRespository orderRepository,
@@ -70,7 +75,7 @@ public class BossOrderService {
                             MessageService messageService,
                             SettlementRespository settlementRespository) {
         this(orderRepository, itemRepository, userRepository, messageService,
-                settlementRespository, null);
+                settlementRespository, null, null);
     }
 
     // ==================== 订单管理 ====================
@@ -81,9 +86,8 @@ public class BossOrderService {
         if (!StringUtils.hasText(order.getOrderTitle())) {
             throw new IllegalArgumentException("订单标题不能为空");
         }
-        if (!StringUtils.hasText(order.getType())) {
-            throw new IllegalArgumentException("招工类型不能为空");
-        }
+        applyGlobalRecruitDefaults(order);
+        if (!StringUtils.hasText(order.getType())) throw new IllegalArgumentException("招工类型不能为空");
         if (!BossType.isValid(order.getType())) {
             throw new IllegalArgumentException("招工类型不合法: " + order.getType());
         }
@@ -806,6 +810,18 @@ public class BossOrderService {
             target.setSettleNotify(source.getSettleNotify() != null ? source.getSettleNotify() : Boolean.TRUE);
         }
         validateSignMode(target.getSignMode());
+    }
+
+    private void applyGlobalRecruitDefaults(BossOrder order) {
+        if (recruitSettingsRepository == null || order.getCreateBy() == null) return;
+        BossRecruitSettings s = recruitSettingsRepository.findByBossId(order.getCreateBy()).orElse(null);
+        if (s == null) return;
+        if (!StringUtils.hasText(order.getType())) order.setType(s.getType());
+        if (!StringUtils.hasText(order.getSignMode())) order.setSignMode(s.getSignMode());
+        if (order.getPhoneNotify() == null) order.setPhoneNotify(s.getPhoneNotify());
+        if (order.getSignNotify() == null) order.setSignNotify(s.getSignNotify());
+        if (order.getStartRemind() == null) order.setStartRemind(s.getStartRemind());
+        if (order.getSettleNotify() == null) order.setSettleNotify(s.getSettleNotify());
     }
 
     private void normalizeRecruitSettings(BossOrder order) {

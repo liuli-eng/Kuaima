@@ -78,8 +78,8 @@
           <el-descriptions-item label="工价">{{ currentItem.price }}</el-descriptions-item>
           <el-descriptions-item label="招聘人数">{{ currentItem.count }}</el-descriptions-item>
           <el-descriptions-item label="地点">{{ currentItem.location }}</el-descriptions-item>
-          <el-descriptions-item label="开始时间">2024-03-16 08:00</el-descriptions-item>
-          <el-descriptions-item label="结束时间">2024-03-31 18:00</el-descriptions-item>
+          <el-descriptions-item label="开始时间">{{ formatTime(currentItem.startTime) }}</el-descriptions-item>
+          <el-descriptions-item label="结束时间">{{ formatTime(currentItem.endTime) }}</el-descriptions-item>
           <el-descriptions-item label="性别要求">不限</el-descriptions-item>
           <el-descriptions-item label="经验要求">不限</el-descriptions-item>
           <el-descriptions-item label="提交时间" :span="2">{{ currentItem.time }}</el-descriptions-item>
@@ -205,6 +205,8 @@ const normalizeAudit = (item) => {
     count: item.orderNum ?? item.count,
     location: item.address ?? item.location,
     time: item.timestamp ?? item.time,
+    startTime: item.startTime,
+    endTime: item.endTime,
     status: statusVal,
     statusClass: statusClassMap[statusVal] ?? 'default',
     auditBy: item.auditBy,

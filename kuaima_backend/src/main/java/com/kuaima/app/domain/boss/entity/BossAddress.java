@@ -23,6 +23,18 @@ public class BossAddress extends BaseEntity {
     @Column(length = 100, comment = "地址名称")
     private String name;
 
+    @Column(length = 50, comment = "联系人姓名")
+    private String contactName;
+
+    @Column(length = 20, comment = "联系人手机号")
+    private String contactPhone;
+
+    @Column(length = 50, comment = "城市")
+    private String city;
+
+    @Column(length = 50, comment = "区县")
+    private String district;
+
     @Column(length = 200, comment = "地址详情")
     private String detail;
 

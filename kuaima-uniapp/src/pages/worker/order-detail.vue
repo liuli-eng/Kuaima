@@ -65,6 +65,8 @@ import {
   getOrder,
   listSettlements,
   listWorkerItems,
+  workerCheckIn,
+  workerEarlyLeave,
 } from "@/api/backend";
 const order = ref({
   id: "",
@@ -159,8 +161,8 @@ const actionText = computed(
   () =>
     ({
       applied: "取消报名",
-      hired: "查看到岗须知",
-      arrived: "查看工作信息",
+      hired: "输入开工码",
+      arrived: "输入早退码",
       done: "查看结算",
     })[order.value.status] || "查看钱包",
 );
@@ -170,20 +172,39 @@ function contact() {
 function primaryAction() {
   if (order.value.status === "applied") return cancel();
   if (order.value.status === "done") return openSettlement();
-  if (order.value.status === "hired")
-    return uni.showModal({
-      title: "到岗须知",
-      content:
-        "请携带本人有效身份证件，按约定时间到达工作地点，并由雇主确认到岗。",
-      showCancel: false,
-    });
-  if (order.value.status === "arrived")
-    return uni.showModal({
-      title: "工作信息",
-      content: "请服从现场管理并按要求完成工作，完工后由雇主确认并发起结算。",
-      showCancel: false,
-    });
+  if (order.value.status === "hired") return enterAttendanceCode("work");
+  if (order.value.status === "arrived") return enterAttendanceCode("leave");
   uni.navigateTo({ url: "/pages/worker/wallet" });
+}
+function enterAttendanceCode(type) {
+  const isWork = type === "work";
+  const label = isWork ? "开工码" : "早退码";
+  uni.showModal({
+    title: `输入${label}`,
+    editable: true,
+    placeholderText: `请输入${label}`,
+    success: async ({ confirm, content }) => {
+      const code = String(content || "").trim();
+      if (!confirm) return;
+      if (!code) return uni.showToast({ title: "请输入验证码", icon: "none" });
+      if (operating.value) return;
+      operating.value = true;
+      try {
+        if (isWork) {
+          await workerCheckIn(order.value.orderId, code);
+          order.value.status = "arrived";
+          order.value.statusText = "已到岗";
+        } else {
+          await workerEarlyLeave(order.value.orderId, code);
+          order.value.status = "done";
+          order.value.statusText = "已完成";
+        }
+        uni.showToast({ title: `${label}成功`, icon: "success" });
+      } catch (error) {
+        uni.showToast({ title: error?.message || `${label}失败`, icon: "none" });
+      } finally { operating.value = false; }
+    },
+  });
 }
 async function openSettlement() {
   try {

@@ -1,17 +1,7 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
     <!-- 导航栏 -->
-    <view class="nav-bar">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
@@ -25,7 +15,14 @@
     <view class="search-bar">
       <view class="search-input">
         <text style="color:#999;margin-right:8px;">🔍</text>
-        <input type="text" placeholder="搜索零工姓名/工种" v-model="searchText" />
+        <input
+          v-model="searchText"
+          type="text"
+          placeholder="搜索零工姓名/工种"
+          confirm-type="search"
+          @confirm="search"
+          @input="handleSearchInput"
+        />
       </view>
     </view>
 
@@ -33,16 +30,26 @@
     <view class="filter-tabs">
       <text 
         class="filter-tab" 
-        :class="{ active: currentTab === tab }"
+        :class="{ active: currentTab === tab.value }"
         v-for="tab in tabs" 
-        :key="tab"
-        @click="currentTab = tab"
-      >{{ tab }}</text>
+        :key="tab.value"
+        @click="switchFilter(tab)"
+      >{{ tab.label }}</text>
     </view>
 
-    <scroll-view scroll-y class="scroll-area">
-      <view class="worker-card" v-for="(worker, index) in workers" :key="index">
-        <view class="worker-avatar" :style="{ background: worker.avatarBg }">
+    <scroll-view
+      scroll-y
+      class="scroll-area"
+      refresher-enabled
+      :refresher-triggered="refreshing"
+      @refresherrefresh="refresh"
+      @scrolltolower="loadMore"
+    >
+      <view v-if="loading && !workers.length" class="page-state">人才加载中...</view>
+      <view v-else-if="!workers.length" class="page-state">暂无人才信息</view>
+      <view class="worker-card" v-for="worker in workers" :key="worker.id">
+        <image v-if="worker.avatar" class="worker-avatar avatar-image" :src="worker.avatar" mode="aspectFill" />
+        <view v-else class="worker-avatar" :style="{ background: worker.avatarBg }">
           {{ worker.initial }}
         </view>
         <view class="worker-info">
@@ -56,40 +63,214 @@
           </view>
         </view>
         <view class="worker-action">
-          <button class="btn-sm btn-outline" @click="collect(worker)">收藏</button>
-          <button class="btn-sm btn-primary" @click="hire(worker)">雇佣</button>
+          <button class="btn-sm btn-outline" :disabled="worker.operating" @click="collect(worker)">{{ worker.isFavorite ? "已收藏" : "收藏" }}</button>
+          <button class="btn-sm btn-primary" :disabled="worker.inviting" @click="hire(worker)">{{ worker.inviting ? "邀请中" : "雇佣" }}</button>
         </view>
       </view>
+      <view v-if="loadingMore" class="list-state">加载中...</view>
+      <view v-else-if="workers.length && !hasMore" class="list-state">没有更多了</view>
     </scroll-view>
   </view>
 </template>
 
 <script>
+import {
+  inviteBossTalent,
+  listBossTalents,
+  toggleBossTalentFavorite,
+} from "@/api/backend";
+import { handleTokenInvalid } from "@/api/auth";
+
+function normalizeResponse(payload, requestedPage) {
+  const body = payload?.data ?? payload ?? {};
+  const records = Array.isArray(body)
+    ? body
+    : body.records || body.content || [];
+  const totalValue = body.total ?? payload?.total;
+  const total = Number(totalValue);
+  const page = Number(body.page ?? payload?.page ?? requestedPage);
+  return {
+    records: Array.isArray(records) ? records : [],
+    total: Number.isFinite(total) ? total : null,
+    page: Number.isFinite(page) ? page : requestedPage,
+  };
+}
+
 export default {
   data() {
     return {
-      searchText: '',
-      currentTab: '全部',
-      tabs: ['全部', '熟练工', '新零工', '我收藏的'],
-      workers: [
-        { initial: '张', name: '张师傅', tag: '熟练工', meta: '3年经验 · 电商分拣 · 好评率98%', skills: ['分拣', '打包'], avatarBg: 'linear-gradient(135deg, #FF6B35, #FF8C5A)' },
-        { initial: '李', name: '李阿姨', tag: '熟练工', meta: '5年经验 · 餐饮服务 · 好评率100%', skills: ['餐饮', '服务员'], avatarBg: 'linear-gradient(135deg, #52C41A, #73D13D)' },
-        { initial: '王', name: '王师傅', tag: '熟练工', meta: '4年经验 · 快递搬运 · 好评率95%', skills: ['搬运', '装卸'], avatarBg: 'linear-gradient(135deg, #1890FF, #40A9FF)' }
-      ]
-    }
+      statusBarHeight: 0,
+      orderId: null,
+      searchText: "",
+      searchTimer: null,
+      currentTab: "all",
+      tabs: [
+        { label: "全部", value: "all" },
+        { label: "熟练工", value: "skilled", level: "熟练工" },
+        { label: "新零工", value: "new", level: "新零工" },
+        { label: "我收藏的", value: "favorite", favoriteOnly: true },
+      ],
+      workers: [],
+      page: 0,
+      size: 20,
+      total: null,
+      hasMore: true,
+      loading: false,
+      loadingMore: false,
+      refreshing: false,
+      authRedirecting: false,
+    };
+  },
+  onLoad(options = {}) {
+    const info = typeof uni.getWindowInfo === "function"
+      ? uni.getWindowInfo()
+      : uni.getSystemInfoSync();
+    this.statusBarHeight = Number(info.statusBarHeight || 0);
+    const orderId = Number(options.orderId);
+    this.orderId = Number.isSafeInteger(orderId) && orderId > 0 ? orderId : null;
+    this.loadWorkers(true);
+  },
+  onUnload() {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
   },
   methods: {
     goBack() {
       uni.navigateBack()
     },
-    collect(worker) {
-      uni.showToast({ title: `已收藏${worker.name}`, icon: 'success' })
+    getFilterParams() {
+      const tab = this.tabs.find((item) => item.value === this.currentTab) || {};
+      return {
+        keyword: this.searchText.trim() || undefined,
+        level: tab.level,
+        favoriteOnly: tab.favoriteOnly || undefined,
+      };
     },
-    hire(worker) {
-      uni.showToast({ title: `雇佣${worker.name}`, icon: 'none' })
-    }
-  }
-}
+    normalizeWorker(item, index) {
+      const name = item.nickname || item.name || item.realName || `零工${item.id || ""}`;
+      const tags = Array.isArray(item.tags)
+        ? item.tags
+        : String(item.tags || "").split(/[,，]/).filter(Boolean);
+      const rating = item.rating ?? item.goodRate;
+      const meta = [
+        item.experience,
+        item.category || item.jobCategory,
+        rating !== undefined && rating !== null && rating !== "" ? `好评率${rating}${String(rating).includes("%") ? "" : "%"}` : "",
+      ].filter(Boolean).join(" · ");
+      const colors = [
+        "linear-gradient(135deg, #FF6B35, #FF8C5A)",
+        "linear-gradient(135deg, #52C41A, #73D13D)",
+        "linear-gradient(135deg, #1890FF, #40A9FF)",
+      ];
+      return {
+        ...item,
+        id: item.workerId || item.userId || item.id,
+        name,
+        initial: name.slice(0, 1),
+        tag: item.level || "零工",
+        meta: meta || "暂无工作信息",
+        skills: tags,
+        avatarBg: colors[index % colors.length],
+        isFavorite: item.isFavorite === true || item.favorite === true,
+        operating: false,
+        inviting: false,
+      };
+    },
+    async loadWorkers(reset = false) {
+      if ((this.loading || this.loadingMore) && !reset) return;
+      const targetPage = reset ? 0 : this.page;
+      if (reset) this.loading = true;
+      else this.loadingMore = true;
+      try {
+        const payload = await listBossTalents({
+          page: targetPage,
+          size: this.size,
+          ...this.getFilterParams(),
+        });
+        const result = normalizeResponse(payload, targetPage);
+        const rows = result.records.map((item, index) => this.normalizeWorker(item, index));
+        this.workers = reset ? rows : [...this.workers, ...rows];
+        this.total = result.total;
+        this.page = result.page + 1;
+        this.hasMore = result.total !== null
+          ? this.workers.length < result.total
+          : rows.length === this.size;
+      } catch (error) {
+        if (reset) this.workers = [];
+        this.handleRequestError(error, "人才加载失败");
+      } finally {
+        this.loading = false;
+        this.loadingMore = false;
+        this.refreshing = false;
+      }
+    },
+    search() {
+      this.loadWorkers(true);
+    },
+    handleSearchInput() {
+      if (this.searchTimer) clearTimeout(this.searchTimer);
+      this.searchTimer = setTimeout(() => this.loadWorkers(true), 350);
+    },
+    switchFilter(tab) {
+      if (this.currentTab === tab.value) return;
+      this.currentTab = tab.value;
+      this.loadWorkers(true);
+    },
+    refresh() {
+      this.refreshing = true;
+      this.loadWorkers(true);
+    },
+    loadMore() {
+      if (this.hasMore) this.loadWorkers(false);
+    },
+    async collect(worker) {
+      if (!worker?.id || worker.operating) return;
+      worker.operating = true;
+      const target = !worker.isFavorite;
+      try {
+        const result = await toggleBossTalentFavorite(worker.id, target);
+        worker.isFavorite = result?.favorite ?? result?.isFavorite ?? target;
+        uni.showToast({ title: worker.isFavorite ? "收藏成功" : "已取消收藏", icon: "success" });
+        if (this.currentTab === "favorite" && !worker.isFavorite) {
+          this.workers = this.workers.filter((item) => item.id !== worker.id);
+        }
+      } catch (error) {
+        this.handleRequestError(error, "收藏操作失败");
+      } finally {
+        worker.operating = false;
+      }
+    },
+    async hire(worker) {
+      if (!worker?.id || worker.inviting) return;
+      worker.inviting = true;
+      try {
+        await inviteBossTalent(worker.id, this.orderId ? { orderId: this.orderId } : {});
+        uni.showToast({ title: "邀请已发送", icon: "success" });
+      } catch (error) {
+        this.handleRequestError(error, "邀请发送失败");
+      } finally {
+        worker.inviting = false;
+      }
+    },
+    handleRequestError(error, fallback) {
+      const status = Number(error?.code || error?.statusCode);
+      if (status === 401) {
+        if (!this.authRedirecting) {
+          this.authRedirecting = true;
+          handleTokenInvalid({ role: "boss" }).finally(() => {
+            this.authRedirecting = false;
+          });
+        }
+        return;
+      }
+      const title = status === 403
+        ? "无权操作"
+        : status === 404
+          ? "人才不存在"
+          : error?.message || fallback;
+      uni.showToast({ title, icon: "none" });
+    },
+  },
+};
 </script>
 
 <style lang="scss" scoped>
@@ -195,6 +376,14 @@ export default {
   overflow-y: auto;
 }
 
+.page-state,
+.list-state {
+  padding: 32px 16px;
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+}
+
 .worker-card {
   background: #fff;
   margin: 8px 16px;
@@ -214,6 +403,10 @@ export default {
   color: #fff;
   font-weight: 600;
   flex-shrink: 0;
+}
+
+.avatar-image {
+  display: block;
 }
 
 .worker-info {

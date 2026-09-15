@@ -2,6 +2,7 @@ package com.kuaima.app.domain.boss.repository;
 
 import java.util.List;
 import java.util.Collection;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,22 +29,23 @@ public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, L
     /** 查询某用户报名过的订单记录 */
     List<BaseOrderItem> findByUserId(Long userId);
 
-    /** 零工订单聚合列表：报名记录与订单类型、状态一起分页查询。 */
+    /** 零工订单聚合列表：报名记录与订单类型、状态一起分页查询。statuses 为空则不过滤状态。 */
     @Query("""
             select i from BaseOrderItem i
             join BossOrder o on i.orderId = o.id
             where i.userId = :userId
               and (:type is null or o.type = :type)
-              and (:status is null or i.status = :status)
+              and (:statuses is null or i.status in :statuses)
             order by i.id desc
             """)
     Page<BaseOrderItem> findWorkerOrders(@Param("userId") Long userId,
                                          @Param("type") String type,
-                                         @Param("status") String status,
+                                         @Param("statuses") Collection<String> statuses,
                                          Pageable pageable);
 
     /** 查询某订单下某用户是否已报名 */
     boolean existsByOrderIdAndUserId(Long orderId, Long userId);
+    Optional<BaseOrderItem> findByOrderIdAndUserId(Long orderId, Long userId);
 
     /**
      * 某零工在某招工类型(daily/heldBack/month)下的报名记录（按订单类型关联过滤）。

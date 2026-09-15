@@ -33,7 +33,7 @@ public class WorkerOrderController {
     }
 
     @GetMapping
-    @Operation(summary = "零工订单列表", description = "按当前JWT零工查询报名记录及岗位完整信息，支持type/status/page/size")
+    @Operation(summary = "零工订单列表", description = "按当前JWT零工查询报名记录及岗位完整信息。支持三大整合状态过滤：工作中/已完成/已取消（0912产品调整），同时兼容底层状态值透传。type=daily/heldBack/month。")
     public Result<List<WorkerOrder>> listOrders(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String status,

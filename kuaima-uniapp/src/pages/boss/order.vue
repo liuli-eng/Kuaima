@@ -41,28 +41,22 @@
 
       <view class="acct-bar" @click="showAccountSheet = true">
         <view class="acct-current"><view class="acct-avatar">{{ account.name.slice(0, 1) }}</view><view class="acct-info"><text>{{ account.name }}</text><text>{{ account.type }}</text></view><text class="acct-swap">⇄</text></view>
-        <view class="acct-codes"><view><text>开工码</text><text class="code-num">{{ account.workCode || '--' }}</text></view><view><text>早退码</text><text class="code-num warn">{{ account.leaveCode || '未开启' }}</text></view></view>
-      </view>
-
-      <scroll-view class="filter-tabs-scroll" scroll-x :show-scrollbar="false">
-        <view class="filter-tabs">
-          <text
-            v-for="tab in statusTabs"
-            :key="tab.value || 'all'"
-            class="filter-tab"
-            :class="{ active: statusFilter === tab.value }"
-            @click="switchStatusFilter(tab.value)"
-          >{{ tab.label }}</text>
+        <view class="acct-codes">
+          <view @click.stop="confirmRefreshCode('work')">
+            <text>开工码</text>
+            <text class="code-num">{{ attendance.workCodeEnabled ? (attendance.workCode || '--') : '未开启' }}</text>
+          </view>
+          <view @click.stop="confirmRefreshCode('leave')">
+            <text>早退码</text>
+            <text class="code-num warn">{{ attendance.leaveCodeEnabled ? (attendance.leaveCode || '--') : '未开启' }}</text>
+          </view>
         </view>
-      </scroll-view>
+      </view>
 
       <!-- 列表头部 -->
       <view class="list-header">
         <text class="list-title">招工列表</text>
         <view style="display: flex; gap: 10px; align-items: center">
-          <view class="filter-btn" @click="openTemplateList">
-            <text>模板</text>
-          </view>
           <view class="filter-btn" @click="navigateTo('boss-filter')">
             <text class="filter-icon">⌕</text>
             <text>筛选</text>
@@ -237,33 +231,6 @@
     </view>
 
     <view
-      v-if="showTemplateList"
-      class="sheet-mask"
-      @click="showTemplateList = false"
-    >
-      <view class="acct-sheet" @click.stop>
-        <view class="acct-sheet-header">
-          <text class="acct-sheet-title">招工模板</text>
-          <text class="acct-sheet-close" @click="showTemplateList = false">×</text>
-        </view>
-        <view v-if="loadingTemplates" class="account-empty">模板加载中...</view>
-        <view v-else-if="!templates.length" class="account-empty">暂无招工模板</view>
-        <view
-          v-for="item in templates"
-          :key="item.id"
-          class="template-item"
-          @click="openTemplateDetail(item)"
-        >
-          <view class="acct-item-info">
-            <text class="acct-item-name">{{ item.templateName || item.name || '未命名模板' }}</text>
-            <text>{{ item.orderTitle || item.title || '招工订单模板' }}</text>
-          </view>
-          <text class="template-delete" @click.stop="confirmDeleteTemplate(item)">删除</text>
-        </view>
-      </view>
-    </view>
-
-    <view
       v-if="showAccountSheet"
       class="sheet-mask"
       @click="showAccountSheet = false"
@@ -346,12 +313,13 @@
 <script>
 import {
   changeOrderStatus,
-  deleteBossOrderTemplate,
+  getBossAttendanceCodes,
   getBossOrderStats,
   getBossRecruitAccounts,
   getCurrentUser,
   listBossOrders,
-  listBossOrderTemplates,
+  refreshBossLeaveCode,
+  refreshBossWorkCode,
   switchBossRecruitAccount,
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
@@ -520,16 +488,6 @@ export default {
     return {
       ...safeArea,
       jobList: [],
-      statusTabs: [
-        { label: "全部", value: null },
-        { label: "待审核", value: "待审核" },
-        { label: "审核拒绝", value: "审核拒绝" },
-        { label: "招工中", value: "招工中" },
-        { label: "招工结束", value: "招工结束" },
-        { label: "待结算", value: "待结算" },
-        { label: "已完成", value: "已完成" },
-        { label: "取消招工", value: "取消招工" },
-      ],
       statusMap: {
         recruiting: { text: "招工中", class: "status-recruiting" },
         pending: { text: "待审核", class: "status-ended" },
@@ -555,15 +513,20 @@ export default {
         { label: "待结算", field: "pendingSettlementCount", value: 0, link: true },
       ],
       account: { name: "当前账号", type: "个人授权", workCode: "", leaveCode: "" },
+      attendance: {
+        workCodeEnabled: false,
+        workCode: "",
+        workCodeExpiresAt: "",
+        leaveCodeEnabled: false,
+        leaveCode: "",
+        leaveCodeExpiresAt: "",
+      },
       accounts: [],
       currentAccountId: null,
       showAccountSheet: false,
       switchingAccount: false,
       showCancelModal: false,
       showConfirmModal: false,
-      showTemplateList: false,
-      templates: [],
-      loadingTemplates: false,
       cancelTargetId: null,
       cancelTargetTitle: "",
       confirmTargetId: null,
@@ -590,11 +553,11 @@ export default {
   },
   onLoad() {
     uni.$on("filterChanged", this.applyOrderFilter);
-    uni.$on("bossTemplateChanged", this.handleTemplateChanged);
+    uni.$on("recruitSettingsSaved", this.loadAttendanceCodes);
   },
   onUnload() {
     uni.$off("filterChanged", this.applyOrderFilter);
-    uni.$off("bossTemplateChanged", this.handleTemplateChanged);
+    uni.$off("recruitSettingsSaved", this.loadAttendanceCodes);
   },
   methods: {
     handleRequestError(error, fallback) {
@@ -608,19 +571,6 @@ export default {
         return;
       }
       uni.showToast({ title: getErrorMessage(error, fallback), icon: "none" });
-    },
-    handleTemplateRequestError(error, fallback) {
-      const status = Number(error?.code || error?.statusCode);
-      if (status === 401) {
-        this.handleRequestError(error, fallback);
-        return;
-      }
-      const title = status === 403
-        ? "无权操作"
-        : status === 404
-          ? "模板不存在"
-          : error?.message || fallback;
-      uni.showToast({ title, icon: "none" });
     },
     loadOrderFilter() {
       const saved = uni.getStorageSync("bossOrderFilter");
@@ -802,12 +752,6 @@ export default {
     loadMoreOrders() {
       this.loadOrders(false);
     },
-    async switchStatusFilter(status) {
-      if (this.statusFilter === status || this.loading || this.loadingMore)
-        return;
-      this.statusFilter = status;
-      await this.loadOrders(true);
-    },
     async loadStats() {
       if (this.loadingStats) return;
       this.loadingStats = true;
@@ -830,6 +774,33 @@ export default {
     },
     formatAuthorizationType(value) {
       return { PERSONAL: "个人授权", ENTERPRISE: "企业授权" }[value] || value || "未设置授权";
+    },
+    async loadAttendanceCodes() {
+      try {
+        const result = await getBossAttendanceCodes();
+        this.attendance = { ...this.attendance, ...(result || {}) };
+      } catch (error) {
+        this.handleRequestError(error, "考勤码加载失败");
+      }
+    },
+    confirmRefreshCode(type) {
+      const label = type === "work" ? "开工码" : "早退码";
+      uni.showModal({
+        title: `刷新${label}`,
+        content: `确定要刷新${label}吗？旧验证码将立即失效。`,
+        success: async ({ confirm }) => {
+          if (!confirm) return;
+          try {
+            const result = type === "work"
+              ? await refreshBossWorkCode()
+              : await refreshBossLeaveCode();
+            this.attendance = { ...this.attendance, ...(result || {}) };
+            uni.showToast({ title: `${label}已刷新`, icon: "success" });
+          } catch (error) {
+            this.handleRequestError(error, `${label}刷新失败`);
+          }
+        },
+      });
     },
     applyCurrentAccount(item) {
       this.account = {
@@ -865,7 +836,12 @@ export default {
         await switchBossRecruitAccount(item.id);
         this.showAccountSheet = false;
         uni.showToast({ title: "招聘账号已切换", icon: "success" });
-        await Promise.all([this.loadOrders(true), this.loadStats(), this.loadAccounts()]);
+        await Promise.all([
+          this.loadOrders(true),
+          this.loadStats(),
+          this.loadAccounts(),
+          this.loadAttendanceCodes(),
+        ]);
       } catch (error) {
         this.handleRequestError(error, "账号切换失败");
       } finally {
@@ -878,56 +854,6 @@ export default {
         return;
       }
       this.navigateTo("publish-template", getTemplateRouteParams(job));
-    },
-    async openTemplateList() {
-      this.showTemplateList = true;
-      await this.loadTemplates();
-    },
-    openTemplateDetail(item) {
-      if (!item?.id) {
-        uni.showToast({ title: "模板信息不完整", icon: "none" });
-        return;
-      }
-      this.navigateTo("publish-template", { templateId: item.id });
-    },
-    handleTemplateChanged() {
-      if (this.showTemplateList) this.loadTemplates();
-    },
-    async loadTemplates() {
-      if (this.loadingTemplates) return;
-      this.loadingTemplates = true;
-      try {
-        const result = await listBossOrderTemplates({ page: 0, size: 20 });
-        this.templates = Array.isArray(result)
-          ? result
-          : result?.records || result?.content || [];
-      } catch (error) {
-        this.templates = [];
-        this.handleTemplateRequestError(error, "模板加载失败");
-      } finally {
-        this.loadingTemplates = false;
-      }
-    },
-    confirmDeleteTemplate(item) {
-      if (!item?.id) {
-        uni.showToast({ title: "模板信息不完整", icon: "none" });
-        return;
-      }
-      uni.showModal({
-        title: "删除模板",
-        content: `确认删除“${item.templateName || item.name || "该模板"}”？`,
-        confirmColor: "#f5222d",
-        success: async ({ confirm }) => {
-          if (!confirm) return;
-          try {
-            await deleteBossOrderTemplate(item.id);
-            await this.loadTemplates();
-            uni.showToast({ title: "模板已删除", icon: "success" });
-          } catch (error) {
-            this.handleTemplateRequestError(error, "模板删除失败");
-          }
-        },
-      });
     },
     repeatOrder(job) {
       this.navigateTo("publish-info", { sourceOrderId: job.id });
@@ -1014,7 +940,12 @@ export default {
       }
     },
     async refreshData() {
-      await Promise.all([this.loadOrders(true), this.loadStats(), this.loadAccounts()]);
+      await Promise.all([
+        this.loadOrders(true),
+        this.loadStats(),
+        this.loadAccounts(),
+        this.loadAttendanceCodes(),
+      ]);
     },
     async refreshPage() {
       if (this.refreshing) return;
@@ -1112,8 +1043,6 @@ export default {
 .acct-item-name { color:#333; font-size:14px; font-weight:600; }
 .acct-item-check { color:#ff9800; font-size:16px; }
 .account-empty { padding:32px 0; color:#999; font-size:13px; text-align:center; }
-.template-item { display:flex; align-items:center; gap:12px; margin-bottom:10px; padding:12px; border-radius:12px; background:#f7f7f7; }
-.template-delete { flex-shrink:0; padding:6px 10px; color:#f5222d; font-size:12px; }
 .job-actions-extra { margin-top:8px; padding-top:10px; border-top:1px solid #f5f5f5; }
 
 .nav-icons {
@@ -1166,46 +1095,6 @@ export default {
   white-space: normal;
   line-height: 1.5;
   overflow-wrap: anywhere;
-}
-
-.filter-tabs-scroll {
-  width: 100%;
-  white-space: nowrap;
-  box-sizing: border-box;
-}
-
-.filter-tabs {
-  display: inline-flex;
-  min-width: 100%;
-  gap: 18px;
-  padding: 0 16px;
-  box-sizing: border-box;
-}
-
-.filter-tab {
-  display: inline-block;
-  flex-shrink: 0;
-  padding: 8px 0;
-  font-size: 14px;
-  color: #666;
-  position: relative;
-}
-
-.filter-tab.active {
-  color: #ff6b35;
-  font-weight: 600;
-}
-
-.filter-tab.active::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 3px;
-  background: #ff6b35;
-  border-radius: 2px;
 }
 
 .cert-bar {

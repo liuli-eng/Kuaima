@@ -1,8 +1,10 @@
 package com.kuaima.app.domain.user.service;
 
 import java.time.LocalDate;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -12,14 +14,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.kuaima.app.domain.user.entity.User;
-import com.kuaima.app.domain.user.model.WorkerProfileModels.UpdateWorkerProfileRequest;
-import com.kuaima.app.domain.user.model.WorkerProfileModels.WorkerProfile;
-import com.kuaima.app.domain.user.model.WorkerOrderModels.WorkerOrder;
+import com.kuaima.app.domain.boss.constant.BossStatus;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
+import com.kuaima.app.domain.user.entity.User;
+import com.kuaima.app.domain.user.model.WorkerProfileModels.UpdateWorkerProfileRequest;
+import com.kuaima.app.domain.user.model.WorkerProfileModels.WorkerProfile;
+import com.kuaima.app.domain.user.model.WorkerOrderModels.WorkerOrder;
 import com.kuaima.app.domain.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -69,8 +72,9 @@ public class WorkerProfileService {
                 && !"daily".equals(type) && !"heldBack".equals(type) && !"month".equals(type)) {
             throw new IllegalArgumentException("订单类型不合法: " + type);
         }
+        Collection<String> statuses = resolveStatuses(status);
         Page<BaseOrderItem> items = itemRepository.findWorkerOrders(userId,
-                blankToNull(type), blankToNull(status), pageable);
+                blankToNull(type), statuses, pageable);
         if (items.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, items.getTotalElements());
         }
@@ -83,16 +87,59 @@ public class WorkerProfileService {
         return items.map(item -> toWorkerOrder(item, orders.get(item.getOrderId()), bosses));
     }
 
+    /**
+     * 零工端整合三大状态 ↔ 底层报名状态的映射（0912 产品调整）。
+     * <ul>
+     *   <li>工作中 → 已报名 / 已录用 / 已到岗（进行中全部）</li>
+     *   <li>已完成 → 已完成</li>
+     *   <li>已取消 → 取消报名 / 已拒绝 / 取消招工（老板取消订单统一置为此）</li>
+     *   <li>其他值（向后兼容，直接传底层状态）→ 单值集合</li>
+     *   <li>null/blank → null（不过滤）</li>
+     * </ul>
+     */
+    private Collection<String> resolveStatuses(String status) {
+        String trimmed = blankToNull(status);
+        if (trimmed == null) {
+            return null;
+        }
+        return switch (trimmed) {
+            case BossStatus.GROUP_WORKING ->
+                    Arrays.asList(BossStatus.ITEM_APPLIED, BossStatus.ITEM_HIRED, BossStatus.ITEM_ON_WORK);
+            case BossStatus.GROUP_COMPLETED ->
+                    List.of(BossStatus.ITEM_FINISHED);
+            case BossStatus.GROUP_CANCELED ->
+                    Arrays.asList(BossStatus.ITEM_CANCELED, BossStatus.ITEM_REJECTED, BossStatus.ITEM_CANCEL_BY_BOSS);
+            default ->
+                    List.of(trimmed);
+        };
+    }
+
     private WorkerOrder toWorkerOrder(BaseOrderItem item, BossOrder order, Map<Long, User> bosses) {
         if (order == null) {
             throw new EntityNotFoundException("报名关联的订单不存在: " + item.getOrderId());
         }
         User boss = order.getCreateBy() == null ? null : bosses.get(order.getCreateBy());
-        return new WorkerOrder(item.getId(), item.getOrderId(), item.getStatus(), item.getTrialRequested(),
+        return new WorkerOrder(item.getId(), item.getOrderId(), mapDisplayStatus(item.getStatus()), item.getTrialRequested(),
                 item.getApplyDate(), item.getHireDate(), item.getWorkDate(), item.getFinishDate(),
                 order.getOrderTitle(), order.getType(), order.getSalary(), order.getAddress(),
                 order.getStartTime(), order.getEndTime(), boss == null ? null : boss.getCompanyName(),
                 order.getPostion(), order.getOrderStatus(), order.getDuration(), order.getTags());
+    }
+
+    /**
+     * 0912 零工端状态文案统一：
+     * 已到岗 → 工作中；取消报名/取消招工/已拒绝 → 已取消；其余不变。
+     */
+    private String mapDisplayStatus(String rawStatus) {
+        if (rawStatus == null) {
+            return null;
+        }
+        return switch (rawStatus) {
+            case BossStatus.ITEM_ON_WORK -> BossStatus.DISPLAY_ON_WORK;
+            case BossStatus.ITEM_CANCELED, BossStatus.ITEM_CANCEL_BY_BOSS, BossStatus.ITEM_REJECTED ->
+                    BossStatus.GROUP_CANCELED;
+            default -> rawStatus;
+        };
     }
 
     private String blankToNull(String value) {

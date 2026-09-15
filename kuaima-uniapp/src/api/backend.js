@@ -84,6 +84,20 @@ export function getOrder(id) {
   return request({ url: `/boss/order/${id}`, skipUserIdHeader: true });
 }
 
+/** 老板端全局招工默认设置，身份由当前 JWT 判断。 */
+export function getBossRecruitSettings() {
+  return request({ url: "/boss/recruit-settings", skipUserIdHeader: true });
+}
+
+export function updateBossRecruitSettings(data = {}) {
+  return request({
+    url: "/boss/recruit-settings",
+    method: "PUT",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
 export function createOrder(data) {
   return request({
     url: "/boss/order",
@@ -418,6 +432,49 @@ export function getBossHomeSchedule(date, accountId) {
   });
 }
 
+/** 当前老板今日开工码/早退码状态，身份由 JWT 获取。 */
+export function getBossAttendanceCodes() {
+  return request({ url: "/boss/attendance-codes", skipUserIdHeader: true, skipMock: true });
+}
+
+export function refreshBossWorkCode() {
+  return request({
+    url: "/boss/attendance-codes/work/refresh",
+    method: "POST",
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
+export function refreshBossLeaveCode() {
+  return request({
+    url: "/boss/attendance-codes/leave/refresh",
+    method: "POST",
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
+export function workerCheckIn(orderId, code) {
+  return request({
+    url: `/worker/orders/${normalizeId(orderId, "orderId")}/check-in`,
+    method: "POST",
+    data: { code: String(code || "").trim() },
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
+export function workerEarlyLeave(orderId, code) {
+  return request({
+    url: `/worker/orders/${normalizeId(orderId, "orderId")}/early-leave`,
+    method: "POST",
+    data: { code: String(code || "").trim() },
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
 export function saveOrderDraft(data) {
   return request({ url: "/boss/order/draft", method: "POST", data });
 }
@@ -498,6 +555,45 @@ export function setDefaultBossAddress(id) {
   return request({ url: `/boss/addresses/${id}/default`, method: "PUT" });
 }
 
+/** 老板端招工地址，归属由当前 JWT 判断。 */
+export function listBossRecruitAddresses() {
+  return request({ url: "/boss/recruit-addresses", skipUserIdHeader: true });
+}
+
+export function createBossRecruitAddress(data = {}) {
+  return request({
+    url: "/boss/recruit-addresses",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+export function updateBossRecruitAddress(id, data = {}) {
+  return request({
+    url: `/boss/recruit-addresses/${normalizeId(id, "addressId")}`,
+    method: "PUT",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+export function deleteBossRecruitAddress(id) {
+  return request({
+    url: `/boss/recruit-addresses/${normalizeId(id, "addressId")}`,
+    method: "DELETE",
+    skipUserIdHeader: true,
+  });
+}
+
+export function setDefaultBossRecruitAddress(id) {
+  return request({
+    url: `/boss/recruit-addresses/${normalizeId(id, "addressId")}/default`,
+    method: "PUT",
+    skipUserIdHeader: true,
+  });
+}
+
 export function listBossContacts(userId) {
   return request({ url: `/boss/contacts?${query({ userId })}` });
 }
@@ -517,6 +613,33 @@ export function setDefaultBossContact(id) {
 export function searchTalents(params = {}) {
   return request({
     url: `/talent/search?${query({ page: 0, size: 20, ...params })}`,
+  });
+}
+
+/** 老板端人才库，人才与老板身份均由后端 JWT/真实数据确定。 */
+export function listBossTalents(params = {}) {
+  return request({
+    url: `/boss/talents?${query({ page: 0, size: 20, ...params })}`,
+    rawResponse: true,
+    skipUserIdHeader: true,
+  });
+}
+
+export function toggleBossTalentFavorite(workerId, favorite) {
+  return request({
+    url: `/boss/talents/${normalizeId(workerId, "workerId")}/favorite`,
+    method: "PUT",
+    data: favorite === undefined ? {} : { favorite: Boolean(favorite) },
+    skipUserIdHeader: true,
+  });
+}
+
+export function inviteBossTalent(workerId, data = {}) {
+  return request({
+    url: `/boss/talents/${normalizeId(workerId, "workerId")}/invite`,
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
   });
 }
 

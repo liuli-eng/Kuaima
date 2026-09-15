@@ -44,9 +44,9 @@ public class BossOrderTemplateController {
 
     @GetMapping("/templates")
     @Operation(summary = "模板列表", description = "分页返回当前JWT老板的模板，按ID倒序")
-    public Result<java.util.List<BossOrderTemplate>> list(@RequestParam(defaultValue = "0") int page,
-                                                          @RequestParam(defaultValue = "20") int size,
-                                                          Authentication authentication) {
+    public Result<java.util.List<TemplateView>> list(@RequestParam(defaultValue = "0") int page,
+                                                     @RequestParam(defaultValue = "20") int size,
+                                                     Authentication authentication) {
         var result = templateService.list(requireBossId(authentication), page, size);
         return Result.success(result.getContent(), result.getNumber(), result.getTotalElements());
     }

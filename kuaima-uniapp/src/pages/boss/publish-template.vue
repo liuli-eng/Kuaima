@@ -9,29 +9,30 @@
     </view>
 
     <scroll-view scroll-y class="content">
-      <view v-if="loading" class="state">模板信息加载中...</view>
+      <view v-if="loading" class="state">模板加载中...</view>
       <view v-else-if="loadError" class="state">{{ loadError }}</view>
+      <view v-else-if="!templates.length" class="state">暂无招工模板</view>
       <template v-else>
-        <view class="tpl-card">
-          <view class="tpl-name-row">模版名称：<text>{{ templateName }}</text></view>
+        <view v-for="item in templates" :key="item.id" class="tpl-card">
+          <view class="tpl-name-row">模版名称：<text>{{ item.templateName }}</text></view>
           <view class="tpl-job-row">
-            <text class="tpl-job-name">{{ jobName }}</text>
-            <view class="tpl-job-price"><text>{{ wage }}</text><small>{{ unit }}</small></view>
+            <text class="tpl-job-name">{{ item.jobName }}</text>
+            <view class="tpl-job-price"><text>{{ item.wage }}</text><small>{{ item.unit }}</small></view>
           </view>
           <view class="tpl-tags">
-            <text class="tpl-tag highlight">{{ tag }}</text>
-            <text class="tpl-tag plain">{{ time }}</text>
-            <text class="tpl-tag plain">{{ hours }}</text>
-            <text class="tpl-tag plain">{{ count }}</text>
+            <text class="tpl-tag highlight">{{ item.tag }}</text>
+            <text class="tpl-tag plain">{{ item.time }}</text>
+            <text class="tpl-tag plain">{{ item.hours }}</text>
+            <text class="tpl-tag plain">{{ item.count }}</text>
           </view>
           <view class="tpl-tags">
-            <text class="tpl-tag plain">{{ age }}</text>
-            <text class="tpl-tag plain">{{ gender }}</text>
+            <text class="tpl-tag plain">{{ item.age }}</text>
+            <text class="tpl-tag plain">{{ item.gender }}</text>
           </view>
           <view class="tpl-actions">
-            <text class="tpl-btn ghost" @click="deleteTemplate">删除</text>
-            <text class="tpl-btn ghost" @click="renameTemplate">修改模版名称</text>
-            <text class="tpl-btn main" @click="useTemplate">使用</text>
+            <text class="tpl-btn ghost" @click="deleteTemplate(item)">删除</text>
+            <text class="tpl-btn ghost" @click="renameTemplate(item)">修改模版名称</text>
+            <text class="tpl-btn main" @click="useTemplate(item)">使用</text>
           </view>
         </view>
         <view class="no-more">没有更多了</view>
@@ -45,6 +46,7 @@ import {
   createBossOrderTemplate,
   deleteBossOrderTemplate,
   getBossOrderTemplate,
+  listBossOrderTemplates,
   updateBossOrderTemplate,
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
@@ -54,6 +56,20 @@ function getErrorMessage(error, fallback) {
   if (Number(error?.code || error?.statusCode) === 403) return "无权操作";
   if (Number(error?.code || error?.statusCode) === 404) return "模板不存在";
   return error?.message || fallback;
+}
+
+function decodeRouteValue(value, fallback = "") {
+  if (value === undefined || value === null || value === "") return fallback;
+  try {
+    return decodeURIComponent(String(value));
+  } catch (_) {
+    return String(value);
+  }
+}
+
+function extractClock(value) {
+  const match = String(value || "").match(/(?:T|\s)(\d{1,2}:\d{2})/);
+  return match ? match[1] : "";
 }
 
 export default {
@@ -75,26 +91,105 @@ export default {
       loading: false,
       loadError: "",
       operating: false,
+      listMode: false,
+      templates: [],
     };
   },
-  onLoad(options = {}) {
+  async onLoad(options = {}) {
     const info = typeof uni.getWindowInfo === "function" ? uni.getWindowInfo() : uni.getSystemInfoSync();
     this.statusBarHeight = Number(info.statusBarHeight || 0);
-    this.orderId = options.orderId || "";
-    this.templateId = options.templateId || null;
-    this.templateName = options.name || "未命名模板";
-    this.jobName = options.name || "未命名岗位";
-    this.wage = options.wage || "0";
-    this.unit = options.unit || "元/天";
-    this.tag = options.tag || "每天日结";
-    this.time = options.time || "时间待定";
-    this.hours = options.hours || "工时待定";
-    this.count = options.count || "招0人";
-    this.age = options.age || "18岁-不限";
-    this.gender = options.gender || "男女不限";
-    if (this.templateId) this.loadTemplateDetail(this.templateId);
+    this.orderId = decodeRouteValue(options.orderId);
+    this.templateId = decodeRouteValue(options.templateId) || null;
+    this.templateName = decodeRouteValue(options.name, "未命名模板");
+    this.jobName = decodeRouteValue(options.name, "未命名岗位");
+    this.wage = decodeRouteValue(options.wage, "0");
+    this.unit = decodeRouteValue(options.unit, "元/天");
+    this.tag = decodeRouteValue(options.tag, "每天日结");
+    this.time = decodeRouteValue(options.time, "时间待定");
+    this.hours = decodeRouteValue(options.hours, "工时待定");
+    this.count = decodeRouteValue(options.count, "招0人");
+    this.age = decodeRouteValue(options.age, "18岁-不限");
+    this.gender = decodeRouteValue(options.gender, "男女不限");
+    if (this.templateId) {
+      await this.loadTemplateDetail(this.templateId);
+      return;
+    }
+    if (this.orderId) {
+      const saved = await this.saveTemplate(false);
+      if (saved && this.templateId) await this.loadTemplateDetail(this.templateId);
+      return;
+    }
+    this.listMode = true;
+    await this.loadTemplates();
   },
   methods: {
+    normalizeTemplate(detail = {}) {
+      const typeLabels = {
+        daily: "每天日结",
+        DAY: "每天日结",
+        month: "月结",
+        MONTHLY: "月结",
+        heldBack: "压薪日结",
+        PRESS: "压薪日结",
+      };
+      const start = detail.startTime ? extractClock(detail.startTime) : "";
+      const end = detail.endTime ? extractClock(detail.endTime) : "";
+      return {
+        ...detail,
+        id: detail.id || detail.templateId,
+        templateName: detail.templateName || detail.orderTitle || "未命名模板",
+        jobName: detail.orderTitle || detail.postion || "未命名岗位",
+        wage: detail.salary ?? "0",
+        unit: detail.unit || "元/天",
+        tag: typeLabels[detail.type] || detail.settleMode || "每天日结",
+        time: start && end ? `${start}开工 ${end}完工` : "时间待定",
+        hours: detail.duration
+          ? `${detail.duration}${String(detail.duration).includes("工") ? "" : "工时"}`
+          : "工时待定",
+        count: detail.orderNum != null ? `招${detail.orderNum}人` : "招0人",
+        age: detail.experience || "经验不限",
+        gender: detail.gender || "男女不限",
+      };
+    },
+    async loadTemplates() {
+      this.loading = true;
+      this.loadError = "";
+      try {
+        const pageSize = 20;
+        const rows = [];
+        const seenIds = new Set();
+        let page = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const result = await listBossOrderTemplates({ page, size: pageSize });
+          const records = Array.isArray(result)
+            ? result
+            : result?.records || result?.content || [];
+          let added = 0;
+          records.forEach((item) => {
+            const id = item?.id || item?.templateId;
+            if (!id || seenIds.has(id)) return;
+            seenIds.add(id);
+            rows.push(item);
+            added += 1;
+          });
+          const total = Number(result?.total);
+          hasMore = Number.isFinite(total)
+            ? rows.length < total && added > 0
+            : records.length === pageSize && added > 0;
+          page += 1;
+        }
+        this.templates = rows
+          .filter((item) => item?.id || item?.templateId)
+          .map((item) => this.normalizeTemplate(item));
+      } catch (error) {
+        this.templates = [];
+        this.loadError = getErrorMessage(error, "模板加载失败");
+        await this.handleRequestError(error, "模板加载失败");
+      } finally {
+        this.loading = false;
+      }
+    },
     async loadTemplateDetail(id) {
       this.loading = true;
       this.loadError = "";
@@ -109,16 +204,16 @@ export default {
       }
     },
     applyTemplateDetail(detail) {
+      const normalized = this.normalizeTemplate(detail);
+      this.templates = normalized.id ? [normalized] : [];
       this.templateId = detail.id || detail.templateId || this.templateId;
       this.orderId = detail.sourceOrderId || detail.orderId || this.orderId;
       this.templateName = detail.templateName || detail.orderTitle || this.templateName || "未命名模板";
       this.jobName = detail.orderTitle || detail.postion || this.jobName || "未命名岗位";
       this.wage = detail.salary ?? this.wage ?? "0";
       this.unit = detail.unit || this.unit || "元/天";
-      this.tag = Array.isArray(detail.tags) ? detail.tags.join("、") : (detail.tags || this.tag || "每天日结");
-      const start = detail.startTime ? String(detail.startTime).replace("T", " ").slice(0, 16) : "";
-      const end = detail.endTime ? String(detail.endTime).replace("T", " ").slice(0, 16) : "";
-      this.time = start && end ? `${start} ~ ${end}` : (detail.time || this.time || "时间待定");
+      this.tag = normalized.tag;
+      this.time = normalized.time;
       this.hours = detail.duration ? `${detail.duration}${String(detail.duration).includes("工") ? "" : "工时"}` : (this.hours || "工时待定");
       this.count = detail.orderNum != null ? `招${detail.orderNum}人` : (this.count || "招0人");
       this.age = detail.experience || this.age || "18岁-不限";
@@ -166,8 +261,9 @@ export default {
         this.operating = false;
       }
     },
-    renameTemplate() {
-      if (!this.templateId || this.operating) {
+    renameTemplate(item) {
+      const templateId = item?.id || this.templateId;
+      if (!templateId || this.operating) {
         uni.showToast({ title: "请先保存模板", icon: "none" });
         return;
       }
@@ -175,18 +271,19 @@ export default {
         title: "修改模版名称",
         editable: true,
         placeholderText: "请输入模版名称",
-        content: this.templateName,
+        content: item?.templateName || this.templateName,
         success: ({ confirm, content }) => {
-          if (confirm && content?.trim()) this.renameTemplateRequest(content.trim());
+          if (confirm && content?.trim()) this.renameTemplateRequest(templateId, content.trim());
         },
       });
     },
-    async renameTemplateRequest(name) {
+    async renameTemplateRequest(templateId, name) {
       this.operating = true;
       try {
-        await updateBossOrderTemplate(this.templateId, { templateName: name });
+        await updateBossOrderTemplate(templateId, { templateName: name });
         this.templateName = name;
-        await this.loadTemplateDetail(this.templateId);
+        if (this.listMode) await this.loadTemplates();
+        else await this.loadTemplateDetail(templateId);
         uni.$emit("bossTemplateChanged");
         uni.showToast({ title: "名称已修改", icon: "success" });
       } catch (error) {
@@ -195,8 +292,9 @@ export default {
         this.operating = false;
       }
     },
-    async deleteTemplate() {
-      if (!this.templateId || this.operating) {
+    async deleteTemplate(item) {
+      const templateId = item?.id || this.templateId;
+      if (!templateId || this.operating) {
         uni.showToast({ title: "请先保存模板", icon: "none" });
         return;
       }
@@ -208,10 +306,11 @@ export default {
           if (!confirm) return;
           this.operating = true;
           try {
-            await deleteBossOrderTemplate(this.templateId);
+            await deleteBossOrderTemplate(templateId);
             uni.$emit("bossTemplateChanged");
             uni.showToast({ title: "模版已删除", icon: "success" });
-            setTimeout(() => uni.navigateBack(), 500);
+            if (this.listMode) await this.loadTemplates();
+            else setTimeout(() => uni.navigateBack(), 500);
           } catch (error) {
             await this.handleRequestError(error, "模版删除失败");
           } finally {
@@ -220,9 +319,12 @@ export default {
         },
       });
     },
-    async useTemplate() {
-      if (this.templateId) {
-        uni.navigateTo({ url: "/pages/boss/home" });
+    async useTemplate(item) {
+      const templateId = item?.id || this.templateId;
+      if (templateId) {
+        uni.navigateTo({
+          url: `/pages/boss/publish-info?templateId=${encodeURIComponent(templateId)}`,
+        });
         return;
       }
       const saved = await this.saveTemplate(false);
@@ -243,8 +345,8 @@ export default {
 .tpl-card { padding:16px; margin-bottom:12px; border-radius:14px; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.04); }
 .tpl-name-row { padding-bottom:12px; border-bottom:1px solid #f5f5f5; color:#222; font-size:16px; font-weight:700; }
 .tpl-job-row { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-top:12px; }
-.tpl-job-name { color:#333; font-size:15px; font-weight:600; }
-.tpl-job-price { flex-shrink:0; color:#ff4d1f; font-size:22px; font-weight:800; line-height:1.1; }
+.tpl-job-name { min-width:0; color:#333; font-size:15px; font-weight:600; }
+.tpl-job-price { display:flex; align-items:baseline; flex-shrink:0; color:#ff4d1f; font-size:22px; font-weight:800; line-height:1.1; white-space:nowrap; }
 .tpl-job-price small { margin-left:2px; font-size:12px; font-weight:600; }
 .tpl-tags { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
 .tpl-tag { padding:2px 8px; border-radius:4px; font-size:12px; }

@@ -69,6 +69,10 @@ public class BossOrder extends BaseEntity {
     @Column(name = "job_category_id", comment = "工种分类ID")
     private Long jobCategoryId;
 
+    @Column(name = "industry_id") private Long industryId;
+    @Column(name = "enterprise_type_ids", length = 500) private String enterpriseTypeIds;
+    @Column(name = "job_ids", length = 500) private String jobIds;
+
     @Column(precision = 10, scale = 7, comment = "工作地点经度")
     private BigDecimal longitude;
 

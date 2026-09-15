@@ -50,7 +50,7 @@
       </view>
 
       <view class="emp-tools-wrap">
-        <view class="emp-tools-header"><view class="acct-current"><image v-if="account.avatar" class="acct-avatar account-avatar-image" :src="account.avatar" mode="aspectFill" /><view v-else class="acct-avatar">{{ (account.name || "账").slice(0, 1) }}</view><view class="acct-info"><text>{{ account.name || "当前账号" }}</text><text>{{ authorizationTypeText }}</text></view><image class="acct-swap-icon" src="/static/icons/boss-profile/exchange.svg" mode="aspectFit" /></view><view class="home-codes"><view><text>开工码</text><b>{{ account.workCode || "--" }}</b></view><view><text>早退码</text><b class="warn">{{ account.leaveCode || "未开启" }}</b></view></view></view>
+        <view class="emp-tools-header"><view class="acct-current"><image v-if="account.avatar" class="acct-avatar account-avatar-image" :src="account.avatar" mode="aspectFill" /><view v-else class="acct-avatar">{{ (account.name || "账").slice(0, 1) }}</view><view class="acct-info"><text>{{ account.name || "当前账号" }}</text><text>{{ authorizationTypeText }}</text></view><image class="acct-swap-icon" src="/static/icons/boss-profile/exchange.svg" mode="aspectFit" /></view><view class="home-codes"><view @click.stop="confirmRefreshCode('work')"><text>开工码</text><b>{{ attendance.workCodeEnabled ? (attendance.workCode || "--") : "未开启" }}</b></view><view @click.stop="confirmRefreshCode('leave')"><text>早退码</text><b class="warn">{{ attendance.leaveCodeEnabled ? (attendance.leaveCode || "--") : "未开启" }}</b></view></view></view>
         <view class="emp-tools-row"><view v-for="(item, index) in tools" :key="item.label" class="emp-tool-item" :class="{ active: index === 0 }" @click="navigateTo(item.page)"><view class="emp-tool-icon"><image :src="item.icon" mode="aspectFit"/></view><text class="emp-tool-label">{{ item.label }}</text></view></view>
         <view class="schedule-mini"><view class="schedule-tabs"><view v-for="day in schedule" :key="day.date" class="schedule-tab" :class="{active: selectedScheduleDate === day.date}" @click="selectSchedule(day)"><text>{{ day.label }}</text><small class="schedule-req">需求 {{ day.demand }}</small></view></view><view class="schedule-data"><view v-if="scheduleLoading" class="schedule-state">排班加载中...</view><template v-else><view class="schedule-stats"><view v-for="stat in selectedSchedule.stats" :key="stat.label" class="schedule-stat"><text :class="{highlight: stat.highlight}">{{ stat.value }}</text><small>{{ stat.label }}</small></view></view><view v-for="record in selectedSchedule.records" :key="record.id" class="schedule-record"><view class="schedule-record-icon"><image :src="record.icon" mode="aspectFit" /></view><view class="schedule-record-info"><text class="schedule-record-title">{{ record.title }}</text><text class="schedule-record-sub">{{ record.sub }}</text></view><text class="schedule-record-tag" :class="record.statusClass">{{ record.status }}</text></view><view v-if="!selectedSchedule.records.length" class="schedule-state">暂无排班记录</view></template></view></view>
       </view>
@@ -85,7 +85,7 @@
 </template>
 
 <script>
-import { getBossHomeOverview, getBossHomeSchedule } from "@/api/backend";
+import { getBossHomeOverview, getBossHomeSchedule, getBossAttendanceCodes, refreshBossWorkCode, refreshBossLeaveCode } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
 import { checkBossPublishEligibility } from "@/api/publish-eligibility";
 import squarePlusIcon from "/static/icons/boss-home/square-plus-orange.svg";
@@ -122,15 +122,16 @@ export default {
       ...getSafeArea(),
       city: "",
       account: { name: "当前账号", avatar: "", authorizationType: "", workCode: "", leaveCode: "" },
+      attendance: { workCodeEnabled: false, workCode: "", workCodeExpiresAt: "", leaveCodeEnabled: false, leaveCode: "", leaveCodeExpiresAt: "" },
       currentAccountId: null,
       nearbyWorkers: 0,
       fastestMinutes: 0,
       tools: [
         { label: "再来一单", page: "select-job", icon: squarePlusIcon },
-        { label: "招工模版", page: "order", icon: fileLinesIcon },
+        { label: "招工模版", page: "publish-template", icon: fileLinesIcon },
         { label: "招工设置", page: "recruit-set", icon: gearIcon },
         { label: "地址管理", page: "recruit-address", icon: mapIcon },
-        { label: "帮助中心", page: "boss-faq", icon: circleQuestionIcon }
+        { label: "帮助中心", page: "service-chat", icon: circleQuestionIcon }
       ],
       schedule: [],
       selectedScheduleDate: "",
@@ -143,7 +144,15 @@ export default {
   onLoad() {
     this.schedule = this.buildScheduleDates();
     this.selectedScheduleDate = this.schedule.find((item) => item.key === "TODAY")?.date || "";
+    uni.$on("recruitSettingsSaved", this.handleRecruitSettingsSaved);
     this.loadHomeOverview();
+    this.loadAttendanceCodes();
+  },
+  onShow() {
+    this.loadAttendanceCodes();
+  },
+  onUnload() {
+    uni.$off("recruitSettingsSaved", this.handleRecruitSettingsSaved);
   },
   computed: {
     authorizationTypeText() {
@@ -153,6 +162,30 @@ export default {
     },
   },
   methods: {
+    handleRecruitSettingsSaved() {
+      this.loadAttendanceCodes();
+      this.loadHomeOverview();
+    },
+    async loadAttendanceCodes() {
+      try { this.attendance = { ...this.attendance, ...(await getBossAttendanceCodes() || {}) }; }
+      catch (error) { this.handleAttendanceRequestError(error, "考勤码加载失败"); }
+    },
+    confirmRefreshCode(type) {
+      const label = type === "work" ? "开工码" : "早退码";
+      uni.showModal({ title: `刷新${label}`, content: `确定要刷新${label}吗？旧验证码将立即失效。`, success: async ({ confirm }) => {
+        if (!confirm) return;
+        try {
+          const result = type === "work" ? await refreshBossWorkCode() : await refreshBossLeaveCode();
+          this.attendance = { ...this.attendance, ...(result || {}) };
+          uni.showToast({ title: `${label}已刷新`, icon: "success" });
+        } catch (error) { this.handleAttendanceRequestError(error, `${label}刷新失败`); }
+      } });
+    },
+    handleAttendanceRequestError(error, fallback) {
+      const status = Number(error?.code || error?.statusCode);
+      if (status === 401) return handleTokenInvalid({ role: "boss" });
+      uni.showToast({ title: error?.message || fallback, icon: "none" });
+    },
     async loadHomeOverview() {
       this.statsLoading = true;
       try {
@@ -313,6 +346,7 @@ export default {
         "search-worker",
         "select-job",
         "publish-info",
+        "publish-template",
         "schedule-stats",
         "enterprise-cert",
         "enterprise-cert-form",
@@ -321,6 +355,8 @@ export default {
         "expense-detail",
         "payment-detail",
         "recruit-manager",
+        "recruit-settings",
+        "recruit-set",
         "recruit-address",
         "sub-account",
         "suspend-settle",

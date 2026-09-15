@@ -43,17 +43,27 @@ public class BossHomeService {
     private final SettlementRespository settlementRepository;
     private final BossRecruitAccountRepository accountRepository;
     private final UserRepository userRepository;
+    private final BossAttendanceCodeService attendanceCodeService;
 
     public BossHomeService(BossOrderRespository orderRepository,
                            BaseOrderItemRespository itemRepository,
                            SettlementRespository settlementRepository,
                            BossRecruitAccountRepository accountRepository,
                            UserRepository userRepository) {
+        this(orderRepository, itemRepository, settlementRepository, accountRepository, userRepository, null);
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public BossHomeService(BossOrderRespository orderRepository,
+                           BaseOrderItemRespository itemRepository,
+                           SettlementRespository settlementRepository,
+                           BossRecruitAccountRepository accountRepository,
+                           UserRepository userRepository, BossAttendanceCodeService attendanceCodeService) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.settlementRepository = settlementRepository;
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
+        this.attendanceCodeService = attendanceCodeService;
     }
 
     @Transactional
@@ -70,7 +80,7 @@ public class BossHomeService {
                 ? userRepository.countByRoleAndCity(UserRole.USER, resolvedCity)
                 : userRepository.countByRole(UserRole.USER);
         // 当前数据模型没有报名响应分钟字段，不能伪造“最快接单时间”，暂无可靠数据时返回 0。
-        return new Overview(resolvedCity, nearbyWorkers, 0, account.getId(), toAccount(account), days);
+        return new Overview(resolvedCity, nearbyWorkers, 0, account.getId(), toAccount(account, bossId), days);
     }
 
     @Transactional(readOnly = true)
@@ -171,9 +181,11 @@ public class BossHomeService {
                 displayStatus(order.getOrderStatus()), statusCode(order.getOrderStatus()), jobType(order));
     }
 
-    private Account toAccount(BossRecruitAccount account) {
+    private Account toAccount(BossRecruitAccount account, Long bossId) {
+        String workCode = account.getWorkCode(), leaveCode = account.getLeaveCode();
+        if (attendanceCodeService != null) { var state = attendanceCodeService.today(bossId); workCode = String.valueOf(state.get("workCode")); leaveCode = String.valueOf(state.get("leaveCode")); }
         return new Account(account.getId(), text(account.getName()), account.getAvatar(),
-                text(account.getAuthorizationType()), text(account.getWorkCode()), text(account.getLeaveCode()));
+                text(account.getAuthorizationType()), text(workCode), text(leaveCode));
     }
 
     private String displayStatus(String status) {

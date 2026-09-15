@@ -28,4 +28,12 @@ public final class BossStatus {
 
     /** 订单被取消时，报名记录统一置为的状态 */
     public static final String ITEM_CANCEL_BY_BOSS = "取消招工";
+
+    /** 零工端三大整合状态（前端展示与筛选用，不落库） */
+    public static final String GROUP_WORKING = "工作中";
+    public static final String GROUP_COMPLETED = "已完成";
+    public static final String GROUP_CANCELED = "已取消";
+
+    /** 零工端展示文案：已到岗 → 工作中（0912 产品调整） */
+    public static final String DISPLAY_ON_WORK = "工作中";
 }

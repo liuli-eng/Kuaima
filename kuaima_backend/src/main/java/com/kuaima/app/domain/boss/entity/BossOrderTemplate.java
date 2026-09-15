@@ -26,4 +26,14 @@ public class BossOrderTemplate extends BaseEntity {
     private String genderRequirement;
     private String experienceRequirement;
     @Column(length=500) private String tags;
+    private String orderContent;
+    private Long industryId;
+    @Column(length=500) private String enterpriseTypeIds;
+    @Column(length=500) private String jobIds;
+    private Long jobCategoryId;
+    private String signMode;
+    private Boolean phoneNotify;
+    private Boolean signNotify;
+    private Boolean startRemind;
+    private Boolean settleNotify;
 }

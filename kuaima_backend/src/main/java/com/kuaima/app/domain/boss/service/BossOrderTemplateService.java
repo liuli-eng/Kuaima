@@ -45,9 +45,10 @@ public class BossOrderTemplateService {
     }
 
     @Transactional(readOnly = true)
-    public Page<BossOrderTemplate> list(Long bossId, int page, int size) {
+    public Page<TemplateView> list(Long bossId, int page, int size) {
         return templateRepository.findByOwnerUserIdOrderByIdDesc(bossId,
-                PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100)));
+                PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100)))
+                .map(template -> toView(template, null));
     }
 
     @Transactional(readOnly = true)
@@ -94,6 +95,8 @@ public class BossOrderTemplateService {
     private void copyOrder(BossOrderTemplate template, BossOrder order) {
         template.setSourceOrderId(order.getId());
         template.setOrderTitle(order.getOrderTitle());
+        template.setOrderContent(order.getOrderContent());
+        template.setIndustryId(order.getIndustryId()); template.setEnterpriseTypeIds(order.getEnterpriseTypeIds()); template.setJobIds(order.getJobIds()); template.setJobCategoryId(order.getJobCategoryId());
         template.setPositionName(order.getPostion());
         template.setSalaryAmount(order.getSalary());
         template.setSalaryUnit(order.getType());
@@ -106,13 +109,16 @@ public class BossOrderTemplateService {
         template.setGenderRequirement(order.getGender());
         template.setExperienceRequirement(order.getExperience());
         template.setTags(order.getTags());
+        template.setSignMode(order.getSignMode()); template.setPhoneNotify(order.getPhoneNotify()); template.setSignNotify(order.getSignNotify()); template.setStartRemind(order.getStartRemind()); template.setSettleNotify(order.getSettleNotify());
     }
 
     private TemplateView toView(BossOrderTemplate template, BossOrder source) {
         return new TemplateView(template.getId(), template.getTemplateName(), template.getSourceOrderId(),
-                source != null ? source.getOrderTitle() : template.getOrderTitle(),
-                source != null ? source.getType() : template.getSalaryUnit(),
-                source != null ? source.getPostion() : template.getPositionName(),
+                source != null ? source.getOrderTitle() : template.getOrderTitle(), source != null ? source.getOrderContent() : template.getOrderContent(),
+                source != null ? source.getType() : template.getSalaryUnit(), source != null ? source.getIndustryId() : template.getIndustryId(),
+                ids(source != null ? source.getEnterpriseTypeIds() : template.getEnterpriseTypeIds()), ids(source != null ? source.getJobIds() : template.getJobIds()),
+                source != null ? source.getJobCategoryId() : template.getJobCategoryId(), source != null ? source.getPostion() : template.getPositionName(),
+                source != null ? source.getAddress() : template.getAddress(),
                 source != null ? source.getSalary() : template.getSalaryAmount(),
                 source != null ? source.getDuration() : template.getDuration(),
                 source != null ? source.getOrderNum() : template.getRecruitCount(),
@@ -120,6 +126,9 @@ public class BossOrderTemplateService {
                 source != null ? source.getEndTime() : template.getEndTime(),
                 source != null ? source.getTags() : template.getTags(),
                 source != null ? source.getExperience() : template.getExperienceRequirement(),
-                source != null ? source.getGender() : template.getGenderRequirement());
+                source != null ? source.getGender() : template.getGenderRequirement(), source != null ? source.getSignMode() : template.getSignMode(),
+                source != null ? source.getPhoneNotify() : template.getPhoneNotify(), source != null ? source.getSignNotify() : template.getSignNotify(),
+                source != null ? source.getStartRemind() : template.getStartRemind(), source != null ? source.getSettleNotify() : template.getSettleNotify());
     }
+    private java.util.List<Long> ids(String value) { if (!StringUtils.hasText(value)) return java.util.List.of(); return java.util.Arrays.stream(value.replace("[", "").replace("]", "").replace("\"", "").split(",")).map(String::trim).filter(StringUtils::hasText).map(Long::valueOf).toList(); }
 }

@@ -164,7 +164,13 @@
 </template>
 
 <script>
-import { listBossAddresses, searchBossAddresses, createBossAddress, updateBossAddress, deleteBossAddress, useBossAddress } from "@/api/backend";
+import {
+  createBossRecruitAddress,
+  deleteBossRecruitAddress,
+  listBossRecruitAddresses,
+  updateBossRecruitAddress,
+} from "@/api/backend";
+import { handleTokenInvalid } from "@/api/auth";
 export default {
   data() {
     return {
@@ -174,8 +180,12 @@ export default {
       addresses: [], keyword: "", loading: false,
       sheetVisible: false,
       editingIndex: -1,
-      draft: { name: "", detail: "", tags: [] },
+      pendingEditId: null,
+      draft: { name: "", detail: "", tags: [], latitude: null, longitude: null },
       tagPresets: ["电子厂", "有空调", "物流", "仓库", "餐饮", "分拣", "装卸", "包装", "有休息区", "室内"],
+      savingAddress: false,
+      authRedirecting: false,
+      returnAfterSave: false,
     };
   },
   computed: {
@@ -183,12 +193,49 @@ export default {
       return this.addresses[this.selectedIndex] || { name: "", address: "" };
     },
   },
-  onLoad() {
-    this.loadAddresses();
+  async onLoad(options = {}) {
+    this.returnAfterSave = options.returnAfterSave === "1";
+    const id = Number(options.id);
+    this.pendingEditId = Number.isSafeInteger(id) && id > 0 ? id : null;
+    // 新增模式先展示弹层，再异步加载地址列表，避免进入页面时等待接口导致闪烁。
+    if (options.mode === "add") this.addNewAddress();
+    await this.loadAddresses();
+    if (options.mode === "edit" && this.pendingEditId) {
+      const index = this.addresses.findIndex((item) => Number(item.id) === this.pendingEditId);
+      if (index >= 0) this.editAddress(index);
+    }
   },
   methods: {
-    async loadAddresses() { this.loading = true; try { const result = await listBossAddresses(uni.getStorageSync("userId")); this.addresses = (Array.isArray(result) ? result : []).map((item) => ({ ...item, address: item.detail || "", tags: [] })); const i = this.addresses.findIndex((item) => item.isDefault); this.selectedIndex = i >= 0 ? i : 0; } catch (e) { uni.showToast({ title: e?.message || "地址加载失败", icon: "none" }); } finally { this.loading = false; } },
-    async searchAddress() { if (!this.keyword.trim()) return this.loadAddresses(); try { const result = await searchBossAddresses(uni.getStorageSync("userId"), this.keyword.trim()); this.addresses = (Array.isArray(result) ? result : []).map((item) => ({ ...item, address: item.detail || "", tags: [] })); this.selectedIndex = 0; } catch (e) { uni.showToast({ title: e?.message || "地址搜索失败", icon: "none" }); } },
+    async loadAddresses() {
+      this.loading = true;
+      try {
+        const result = await listBossRecruitAddresses();
+        const rows = Array.isArray(result) ? result : result?.records || result?.content || [];
+        this.addresses = rows.map((item) => ({
+          ...item,
+          address: item.detail || item.address || "",
+          tags: Array.isArray(item.tags) ? item.tags : [],
+          latitude: Number(item.latitude ?? item.lat) || null,
+          longitude: Number(item.longitude ?? item.lng) || null,
+        }));
+        const index = this.addresses.findIndex((item) => item.isDefault);
+        this.selectedIndex = index >= 0 ? index : 0;
+      } catch (error) {
+        this.addresses = [];
+        this.handleRequestError(error, "地址加载失败");
+      } finally {
+        this.loading = false;
+      }
+    },
+    async searchAddress() {
+      const keyword = this.keyword.trim().toLowerCase();
+      await this.loadAddresses();
+      if (!keyword) return;
+      this.addresses = this.addresses.filter((item) =>
+        `${item.name || ""}${item.address || ""}`.toLowerCase().includes(keyword),
+      );
+      this.selectedIndex = 0;
+    },
     closePage() {
       uni.navigateBack();
     },
@@ -203,17 +250,61 @@ export default {
     },
     async selectAddress(index) {
       this.selectedIndex = index;
-      if (this.addresses[index]?.id) { try { await useBossAddress(this.addresses[index].id); await this.loadAddresses(); } catch (e) { uni.showToast({ title: e?.message || "地点选择失败", icon: "none" }); } }
     },
     manageAddress() {
       uni.showToast({ title: "管理地址", icon: "none" });
     },
-    addNewAddress() { this.editingIndex = -1; this.draft = { name: "", detail: "", tags: [] }; this.sheetVisible = true; },
-    editAddress(index) { const a = this.addresses[index]; this.editingIndex = index; this.draft = { name: a.name || "", detail: a.address || a.detail || "", tags: Array.isArray(a.tags) ? [...a.tags] : [] }; this.sheetVisible = true; },
+    addNewAddress() { this.editingIndex = -1; this.draft = { name: "", detail: "", tags: [], latitude: null, longitude: null }; this.sheetVisible = true; },
+    editAddress(index) { const a = this.addresses[index]; this.editingIndex = index; this.draft = { ...a, name: a.name || "", detail: a.address || a.detail || "", tags: Array.isArray(a.tags) ? [...a.tags] : [], latitude: a.latitude, longitude: a.longitude }; this.sheetVisible = true; },
     closeAddressSheet() { this.sheetVisible = false; },
     toggleDraftTag(tag) { const tags = new Set(this.draft.tags); tags.has(tag) ? tags.delete(tag) : tags.add(tag); this.draft.tags = [...tags]; },
-    async saveAddressDraft() { const name = this.draft.name.trim(); const detail = this.draft.detail.trim(); if (!name) return uni.showToast({ title: "请输入地点名称", icon: "none" }); if (!detail) return uni.showToast({ title: "请输入详细地址", icon: "none" }); try { if (this.editingIndex === -1) await createBossAddress({ userId: uni.getStorageSync("userId"), name, detail, lat: 0, lng: 0, isDefault: false }); else { const a = this.addresses[this.editingIndex]; await updateBossAddress(a.id, { name, detail, lat: a.lat || 0, lng: a.lng || 0, isDefault: !!a.isDefault }); } this.closeAddressSheet(); await this.loadAddresses(); } catch (e) { uni.showToast({ title: e?.message || "地址保存失败", icon: "none" }); } },
-    removeAddress(index) { const a = this.addresses[index]; uni.showModal({ title: "提示", content: `确定删除“${a.name}”吗？`, success: async ({ confirm }) => { if (!confirm) return; try { await deleteBossAddress(a.id); await this.loadAddresses(); } catch (e) { uni.showToast({ title: e?.message || "地址删除失败", icon: "none" }); } } }); },
+    async saveAddressDraft() {
+      if (this.savingAddress) return;
+      const name = this.draft.name.trim();
+      const detail = this.draft.detail.trim();
+      if (!name) return uni.showToast({ title: "请输入地点名称", icon: "none" });
+      if (!detail) return uni.showToast({ title: "请输入详细地址", icon: "none" });
+      const data = {
+        name,
+        detail,
+        tags: this.draft.tags,
+        contactName: this.draft.contactName || "",
+        contactPhone: this.draft.contactPhone || "",
+        city: this.draft.city || "",
+        district: this.draft.district || "",
+        latitude: this.draft.latitude,
+        longitude: this.draft.longitude,
+        isDefault: this.editingIndex >= 0 ? !!this.addresses[this.editingIndex]?.isDefault : false,
+      };
+      this.savingAddress = true;
+      try {
+        if (this.editingIndex === -1) await createBossRecruitAddress(data);
+        else await updateBossRecruitAddress(this.addresses[this.editingIndex].id, data);
+        this.closeAddressSheet();
+        uni.showToast({ title: "地址已保存", icon: "success" });
+        if (this.returnAfterSave) {
+          setTimeout(() => uni.navigateBack(), 350);
+          return;
+        }
+        await this.loadAddresses();
+      } catch (error) {
+        this.handleRequestError(error, "地址保存失败");
+      } finally {
+        this.savingAddress = false;
+      }
+    },
+    removeAddress(index) { const a = this.addresses[index]; uni.showModal({ title: "提示", content: `确定删除“${a.name}”吗？`, success: async ({ confirm }) => { if (!confirm) return; try { await deleteBossRecruitAddress(a.id); await this.loadAddresses(); } catch (error) { this.handleRequestError(error, "地址删除失败"); } } }); },
+    handleRequestError(error, fallback) {
+      const status = Number(error?.code || error?.statusCode);
+      if (status === 401) {
+        if (!this.authRedirecting) {
+          this.authRedirecting = true;
+          handleTokenInvalid({ role: "boss" }).finally(() => { this.authRedirecting = false; });
+        }
+        return;
+      }
+      uni.showToast({ title: status === 403 ? "无权操作" : status === 404 ? "地址不存在" : error?.message || fallback, icon: "none" });
+    },
     saveLocation() {
       const addr = this.selectedAddress;
       const data = {
@@ -682,8 +773,18 @@ export default {
   box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
 }
 
-.sheet-mask { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, 0.4); }
-.address-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 81; max-height: calc(100vh - 120px); display: flex; flex-direction: column; overflow: hidden; border-radius: 20px 20px 0 0; background: #fff; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15); }
+.sheet-mask { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, 0.4); animation: address-mask-fade-in 180ms ease-out both; }
+.address-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 81; max-height: calc(100vh - 120px); display: flex; flex-direction: column; overflow: hidden; border-radius: 20px 20px 0 0; background: #fff; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15); animation: address-sheet-slide-up 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes address-mask-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes address-sheet-slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .sheet-grip { width: 40px; height: 4px; margin: 10px auto 6px; border-radius: 2px; background: #e5e7eb; }
 .sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 18px 14px; }
 .sheet-title { color: #1f2937; font-size: 17px; font-weight: 700; }

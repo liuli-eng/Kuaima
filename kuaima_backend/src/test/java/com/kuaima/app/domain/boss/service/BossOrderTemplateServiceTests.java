@@ -10,6 +10,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.domain.boss.constant.BossStatus;
@@ -52,6 +54,40 @@ class BossOrderTemplateServiceTests {
         assertEquals(10, result.duration());
         assertEquals(20, result.orderNum());
         assertEquals("包吃住", result.tags());
+    }
+
+    @Test
+    void list_shouldExposeSalaryAndRecruitCountWithFrontendFieldNames() {
+        BossOrderTemplate template = template(10L, 7L, "普工模板");
+        template.setSalaryAmount(220);
+        template.setRecruitCount(12);
+        when(templates.findByOwnerUserIdOrderByIdDesc(org.mockito.ArgumentMatchers.eq(7L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(template)));
+
+        var result = service.list(7L, 0, 20).getContent().get(0);
+
+        assertEquals(220, result.salary());
+        assertEquals(12, result.orderNum());
+    }
+
+    @Test
+    void detail_shouldReturnCompleteTemplateSnapshotWhenSourceOrderIsMissing() {
+        BossOrderTemplate template = template(10L, 7L, "仓库模板");
+        template.setOrderTitle("仓库分拣"); template.setOrderContent("负责货物分拣"); template.setSalaryUnit("daily");
+        template.setIndustryId(1L); template.setEnterpriseTypeIds("[11,12]"); template.setJobIds("21,22"); template.setJobCategoryId(21L);
+        template.setPositionName("分拣员"); template.setAddress("上海市浦东新区"); template.setSalaryAmount(220); template.setDuration(8); template.setRecruitCount(10);
+        template.setSignMode("manual"); template.setPhoneNotify(false); template.setSignNotify(true); template.setStartRemind(false); template.setSettleNotify(true);
+        when(templates.findById(10L)).thenReturn(Optional.of(template));
+        when(orders.findById(100L)).thenReturn(Optional.empty());
+
+        var result = service.detail(7L, 10L);
+
+        assertEquals("负责货物分拣", result.orderContent());
+        assertEquals(java.util.List.of(11L, 12L), result.enterpriseTypeIds());
+        assertEquals(java.util.List.of(21L, 22L), result.jobIds());
+        assertEquals("上海市浦东新区", result.address());
+        assertEquals("manual", result.signMode());
+        assertEquals(false, result.phoneNotify());
     }
 
     @Test

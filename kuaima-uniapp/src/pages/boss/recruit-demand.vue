@@ -222,6 +222,7 @@
 import {
   createOrder,
   getCurrentUser,
+  getBossOrderTemplate,
   getOrder,
   getUser,
   inviteTalent,
@@ -232,6 +233,53 @@ import {
   redirectByPublishEligibility,
 } from "@/api/publish-eligibility";
 import { handleTokenInvalid } from "@/api/auth";
+
+function mergeTemplateSource(detail = {}, source = {}) {
+  const merged = { ...source, ...detail };
+  [
+    "orderContent",
+    "signMode",
+    "phoneNotify",
+    "signNotify",
+    "startRemind",
+    "settleNotify",
+  ].forEach((key) => {
+    if (detail[key] === undefined || detail[key] === null || detail[key] === "") {
+      merged[key] = source[key];
+    }
+  });
+  return merged;
+}
+
+function parseTemplateTaskContent(detail = {}) {
+  const raw = String(detail.orderContent || "").trim();
+  const separatorIndex = raw.indexOf(" - ");
+  return {
+    title: String(
+      detail.workContent ||
+        detail.taskTitle ||
+        (separatorIndex >= 0 ? raw.slice(0, separatorIndex) : raw),
+    ).trim(),
+    desc: String(
+      detail.taskDetail ||
+        detail.contentDetail ||
+        (separatorIndex >= 0 ? raw.slice(separatorIndex + 3) : raw),
+    ).trim(),
+  };
+}
+
+function normalizeSettlementType(value) {
+  return {
+    daily: "daily",
+    DAY: "daily",
+    DAILY: "daily",
+    heldBack: "heldBack",
+    PRESS: "heldBack",
+    month: "month",
+    MONTH: "month",
+    MONTHLY: "month",
+  }[value] || value;
+}
 
 export default {
   data() {
@@ -257,6 +305,7 @@ export default {
       },
       hasExplicitType: false,
       orderId: "",
+      templateId: "",
       selectedInviteCount: 0,
       workTimeVersion: 0,
       contactPhone: "暂无手机号",
@@ -282,7 +331,7 @@ export default {
       return minutes / 60;
     },
   },
-  onLoad(options) {
+  async onLoad(options) {
     try {
       const info =
         typeof uni.getWindowInfo === "function"
@@ -290,6 +339,7 @@ export default {
           : uni.getSystemInfoSync();
       this.statusBarHeight = Number(info.statusBarHeight || 0);
     } catch (_) {}
+    uni.removeStorageSync("recruitDraftSettings");
     if (options?.job) this.jobName = decodeURIComponent(options.job);
     if (options?.id) this.orderId = options.id;
     if (!this.orderId) {
@@ -300,9 +350,11 @@ export default {
       this.hasExplicitType = true;
       this.applyRecruitSettings({ type: options.type });
     }
+    this.templateId = options?.templateId || "";
     uni.$on("recruitSettingsSaved", this.applyRecruitSettings);
     uni.$on("inviteWorkersSelected", this.applyInviteSelection);
     this.loadRecruitSettings();
+    if (this.templateId) await this.loadTemplateDraft(this.templateId);
     if (this.orderId) this.loadOrder(this.orderId);
     this.ensurePublishEligibility();
   },
@@ -317,8 +369,68 @@ export default {
   onUnload() {
     uni.$off("recruitSettingsSaved", this.applyRecruitSettings);
     uni.$off("inviteWorkersSelected", this.applyInviteSelection);
+    uni.removeStorageSync("recruitDraftSettings");
   },
   methods: {
+    async loadTemplateDraft(templateId) {
+      try {
+        const cached = uni.getStorageSync("templatePublishDraft");
+        let detail = (cached?.id || cached?.templateId) && String(cached.id || cached.templateId) === String(templateId)
+          ? cached
+          : await getBossOrderTemplate(templateId);
+        if (!detail || typeof detail !== "object") return;
+        const needsSourceOrder =
+          !detail.orderContent ||
+          !detail.signMode ||
+          ["phoneNotify", "signNotify", "startRemind", "settleNotify"].some(
+            (key) => typeof detail[key] !== "boolean",
+          );
+        if (needsSourceOrder && detail.sourceOrderId) {
+          const source = await getOrder(detail.sourceOrderId).catch(() => null);
+          if (source) detail = mergeTemplateSource(detail, source);
+        }
+        uni.setStorageSync("templatePublishDraft", detail);
+        const taskContent = parseTemplateTaskContent(detail);
+        if (taskContent.title || taskContent.desc) {
+          uni.setStorageSync("taskContent", taskContent);
+        }
+        if (detail.orderNum != null) this.count = Math.max(1, Number(detail.orderNum));
+        const tags = String(detail.tags || "");
+        const hourly = tags.match(/时薪[:：]([\d.]+)/);
+        const piece = tags.match(/计件单价[:：]([\d.]+)/);
+        if (hourly) {
+          this.payType = "hourly";
+          this.salary = Number(hourly[1]);
+          this.hasSalary = this.salary > 0;
+        } else if (piece) {
+          this.payType = "piece";
+          this.piecePrice = Number(piece[1]);
+          this.estOutput = Number(detail.duration || 0);
+          this.hasSalary = false;
+        } else if (detail.salary != null) {
+          const hours = Math.max(1, this.workHours || 8);
+          this.payType = "hourly";
+          this.salary = Number(detail.salary) / hours;
+          this.hasSalary = this.salary > 0;
+        }
+        const templateSettings = {
+          type: normalizeSettlementType(detail.type),
+          settleMode: detail.settleMode,
+          signMode: detail.signMode,
+          phoneNotify: detail.phoneNotify,
+          signNotify: detail.signNotify,
+          startRemind: detail.startRemind,
+          settleNotify: detail.settleNotify,
+        };
+        this.applyRecruitSettings(templateSettings);
+        uni.setStorageSync("recruitDraftSettings", {
+          ...(uni.getStorageSync("recruitDraftSettings") || {}),
+          ...templateSettings,
+        });
+      } catch (error) {
+        uni.showToast({ title: error?.message || "模板数据加载失败", icon: "none" });
+      }
+    },
     async ensurePublishEligibility() {
       if (this._eligibilityPromise) return this._eligibilityPromise;
       if (!uni.getStorageSync("token")) {
@@ -388,7 +500,7 @@ export default {
     },
     navigateTo(page) {
       const query =
-        ["invite-worker", "recruit-settings"].includes(page) && this.orderId
+        page === "invite-worker" && this.orderId
           ? `?orderId=${encodeURIComponent(this.orderId)}`
           : "";
       uni.navigateTo({ url: `/pages/boss/${page}${query}` });
@@ -429,7 +541,9 @@ export default {
       };
     },
     loadRecruitSettings() {
-      const saved = uni.getStorageSync("recruitSettings");
+      const saved =
+        uni.getStorageSync("recruitDraftSettings") ||
+        uni.getStorageSync("recruitSettings");
       if (saved && typeof saved === "object") {
         // 发布页 URL 中的 type 是当前岗位结算方式，不能覆盖本地保存的通知开关。
         this.applyRecruitSettings(
@@ -443,15 +557,17 @@ export default {
         heldBack: "压薪日结",
         month: "月结",
       };
-      if (typeMap[data.type]) {
-        this.settlementType = data.type;
-        this.settlementLabel = data.settleMode || typeMap[data.type];
+      const settlementType = normalizeSettlementType(data.type);
+      if (typeMap[settlementType]) {
+        this.settlementType = settlementType;
+        this.settlementLabel = data.settleMode || typeMap[settlementType];
       }
       const settings = this.recruitSettings || {};
+      const signMode = String(data.signMode || "").toLowerCase();
       this.recruitSettings = {
         ...settings,
-        ...(data.signMode === "auto" || data.signMode === "manual"
-          ? { signMode: data.signMode }
+        ...(signMode === "auto" || signMode === "manual"
+          ? { signMode }
           : {}),
         ...["phoneNotify", "signNotify", "startRemind", "settleNotify"]
           .filter((key) => typeof data[key] === "boolean")

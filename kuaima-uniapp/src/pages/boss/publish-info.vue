@@ -112,7 +112,7 @@
 </template>
 
 <script>
-import { getOrder } from "@/api/backend";
+import { getBossOrderTemplate, getOrder } from "@/api/backend";
 import { checkBossPublishEligibility } from "@/api/publish-eligibility";
 import { handleTokenInvalid } from "@/api/auth";
 
@@ -147,6 +147,62 @@ function formatLocalDate(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function mergeTemplateSource(detail = {}, source = {}) {
+  const merged = { ...source, ...detail };
+  [
+    "orderContent",
+    "industryId",
+    "enterpriseTypeIds",
+    "jobIds",
+    "jobCategoryId",
+    "address",
+    "signMode",
+    "phoneNotify",
+    "signNotify",
+    "startRemind",
+    "settleNotify",
+  ].forEach((key) => {
+    if (detail[key] === undefined || detail[key] === null || detail[key] === "") {
+      merged[key] = source[key];
+    }
+  });
+  return merged;
+}
+
+function parseTemplateTaskContent(detail = {}) {
+  const explicitTitle = detail.workContent || detail.taskTitle || detail.contentTitle;
+  const explicitDesc = detail.taskDetail || detail.contentDetail;
+  const raw = String(detail.orderContent || "").trim();
+  const separatorIndex = raw.indexOf(" - ");
+  const title = String(
+    explicitTitle || (separatorIndex >= 0 ? raw.slice(0, separatorIndex) : raw),
+  ).trim();
+  const desc = String(
+    explicitDesc || (separatorIndex >= 0 ? raw.slice(separatorIndex + 3) : raw),
+  ).trim();
+  return { title, desc };
+}
+
+function getTemplateRecruitSettings(detail = {}) {
+  const type = {
+    DAY: "daily",
+    DAILY: "daily",
+    PRESS: "heldBack",
+    MONTH: "month",
+    MONTHLY: "month",
+  }[detail.type] || detail.type;
+  const signMode = String(detail.signMode || "").toLowerCase();
+  return {
+    type,
+    settleMode: detail.settleMode,
+    signMode: ["auto", "manual"].includes(signMode) ? signMode : undefined,
+    phoneNotify: detail.phoneNotify,
+    signNotify: detail.signNotify,
+    startRemind: detail.startRemind,
+    settleNotify: detail.settleNotify,
+  };
+}
+
 export default {
   data() {
     return {
@@ -161,6 +217,8 @@ export default {
       primaryJobName: "",
       publishType: "",
       orderId: "",
+      templateId: "",
+      templateDraft: null,
       industryId: "",
       enterpriseTypeIds: [],
       jobIds: [],
@@ -169,7 +227,7 @@ export default {
       eligibilityChecking: false,
     };
   },
-  onLoad(options) {
+  async onLoad(options) {
     try {
       const info =
         typeof uni.getWindowInfo === "function"
@@ -203,6 +261,8 @@ export default {
     if (this.jobName || this.jobIds.length) this.saveJobCategorySelection();
     this.publishType = options?.type || "";
     this.orderId = options?.id || "";
+    this.templateId = options?.templateId || "";
+    if (this.templateId) await this.loadTemplate(this.templateId);
     if (this.orderId) this.loadOrder(this.orderId);
     this._eligibilityInitialized = true;
     this.ensurePublishEligibility();
@@ -221,20 +281,88 @@ export default {
       this.ensurePublishEligibility();
     }
     // 编辑已有订单时，岗位详情接口是唯一数据源，避免旧草稿覆盖接口回显。
-    if (!this.orderId) {
+    if (!this.orderId && !this.templateId) {
       const saved = uni.getStorageSync("taskContent");
       if (saved) this.applyTaskContent(saved);
     }
-    const savedGenderAge = uni.getStorageSync("genderAgeSelection");
-    if (savedGenderAge) this.applyGenderAge(savedGenderAge);
-    const savedWorkLocation = uni.getStorageSync("workLocationSelection");
-    if (savedWorkLocation) this.applyWorkLocation(savedWorkLocation);
-    const savedWorkTime = uni.getStorageSync("workTimeSelection");
-    if (savedWorkTime) this.applyWorkTime(savedWorkTime);
-    if (savedWorkTime?.selectedDates?.length)
-      this.applySelectedDates(savedWorkTime.selectedDates);
+    if (!this.templateId) {
+      const savedGenderAge = uni.getStorageSync("genderAgeSelection");
+      if (savedGenderAge) this.applyGenderAge(savedGenderAge);
+      const savedWorkLocation = uni.getStorageSync("workLocationSelection");
+      if (savedWorkLocation) this.applyWorkLocation(savedWorkLocation);
+      const savedWorkTime = uni.getStorageSync("workTimeSelection");
+      if (savedWorkTime) this.applyWorkTime(savedWorkTime);
+      if (savedWorkTime?.selectedDates?.length)
+        this.applySelectedDates(savedWorkTime.selectedDates);
+    }
   },
   methods: {
+    async loadTemplate(id) {
+      try {
+        let detail = await getBossOrderTemplate(id);
+        if (!detail || typeof detail !== "object") return;
+        const needsSourceOrder =
+          !detail.orderContent ||
+          !detail.signMode ||
+          ["phoneNotify", "signNotify", "startRemind", "settleNotify"].some(
+            (key) => typeof detail[key] !== "boolean",
+          );
+        if (needsSourceOrder && detail.sourceOrderId) {
+          const source = await getOrder(detail.sourceOrderId).catch(() => null);
+          if (source) detail = mergeTemplateSource(detail, source);
+        }
+        this.templateDraft = detail;
+        this.jobName = detail.orderTitle || detail.postion || this.jobName;
+        this.jobValue = this.jobName;
+        this.primaryJobName = detail.postion || this.jobName.split("、")[0] || "";
+        this.industryId = detail.industryId || "";
+        this.enterpriseTypeIds = parseIdList(detail.enterpriseTypeIds);
+        this.jobIds = parseIdList(detail.jobIds || detail.jobCategoryIds || detail.jobCategoryId);
+        this.saveJobCategorySelection();
+        const taskContent = parseTemplateTaskContent(detail);
+        this.workContent = taskContent.title;
+        this.taskDetail = taskContent.desc;
+        uni.setStorageSync("taskContent", taskContent);
+        const templateSettings = getTemplateRecruitSettings(detail);
+        this.publishType = templateSettings.type || this.publishType;
+        uni.setStorageSync("recruitDraftSettings", {
+          ...(uni.getStorageSync("recruitDraftSettings") || {}),
+          ...templateSettings,
+        });
+        if (detail.gender || detail.experience) {
+          const gender = detail.gender || "不限";
+          const experience = detail.experience || "不限";
+          this.genderAgeValue = `${gender}、${experience}`;
+          uni.setStorageSync("genderAgeSelection", {
+            gender,
+            experience,
+            display: this.genderAgeValue,
+          });
+        }
+        if (detail.address) {
+          this.workLocationValue = detail.address;
+          uni.setStorageSync("workLocationSelection", {
+            address: detail.address,
+            display: detail.address,
+          });
+        }
+        if (detail.startTime || detail.endTime) {
+          const startDate = String(detail.startTime || detail.endTime).slice(0, 10);
+          const time = {
+            startTime: extractTime(detail.startTime) || "08:00",
+            endTime: extractTime(detail.endTime) || "18:00",
+            display: formatWorkTime(detail.startTime, detail.endTime),
+            selectedDates: startDate ? [startDate] : [],
+          };
+          this.workTimeValue = time.display;
+          uni.setStorageSync("workTimeSelection", time);
+          if (time.selectedDates.length) this.applySelectedDates(time.selectedDates);
+        }
+        uni.setStorageSync("templatePublishDraft", detail);
+      } catch (error) {
+        uni.showToast({ title: error?.message || "模板加载失败", icon: "none" });
+      }
+    },
     async ensurePublishEligibility() {
       if (this._eligibilityPromise) return this._eligibilityPromise;
       if (!uni.getStorageSync("token")) {
@@ -437,7 +565,7 @@ export default {
           : "",
       ].join("");
       uni.navigateTo({
-        url: `/pages/boss/recruit-demand?job=${encodeURIComponent(this.primaryJobName || this.jobName.split("、")[0])}&type=${encodeURIComponent(type)}${this.orderId ? `&id=${encodeURIComponent(this.orderId)}` : ""}${categoryQuery}`,
+        url: `/pages/boss/recruit-demand?job=${encodeURIComponent(this.primaryJobName || this.jobName.split("、")[0])}&type=${encodeURIComponent(type)}${this.orderId ? `&id=${encodeURIComponent(this.orderId)}` : ""}${this.templateId ? `&templateId=${encodeURIComponent(this.templateId)}` : ""}${categoryQuery}`,
       });
     },
   },
