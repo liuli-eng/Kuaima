@@ -153,8 +153,6 @@
           ><text v-else-if="flowMessage" class="flow-message">{{
             flowMessage
           }}</text
-          ><text v-if="isDevTools()" class="mock-mode-badge"
-            >🔧 开发者工具 Mock 模式</text
           ></view
         >
       </view>
@@ -167,7 +165,6 @@
 import { computed, onMounted, ref } from "vue";
 import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { wechatLogin, getCurrentUser } from "@/api/auth";
-import { USE_MOCK } from "@/api/http";
 
 const pages = getCurrentPages();
 const query = pages[pages.length - 1]?.options || {};
@@ -195,7 +192,6 @@ const preparingLogin = ref(false);
 const registrationToken = ref("");
 const preparedLoginResult = ref(null);
 const isLoginPrepareIncomplete = computed(() => {
-  if (USE_MOCK) return false;
   if (!userRole.value) return true;
   if (preparingLogin.value) return false;
   if (preparedLoginResult.value) return false;
@@ -240,13 +236,12 @@ async function doLogin(phoneCode = "") {
     return;
   }
   const role = selectedRole.value === "boss" ? "BOSS" : "USER";
-  if (!USE_MOCK) {
-    // #ifdef MP-WEIXIN
-    loggingIn.value = true;
-    errorMessage.value = "";
-    flowMessage.value = "";
+  // #ifdef MP-WEIXIN
+  loggingIn.value = true;
+  errorMessage.value = "";
+  flowMessage.value = "";
 
-    if (!phoneCode && preparedLoginResult.value) {
+  if (!phoneCode && preparedLoginResult.value) {
       const result = preparedLoginResult.value;
       preparedLoginResult.value = null;
       registrationToken.value = "";
@@ -310,17 +305,10 @@ async function doLogin(phoneCode = "") {
       "真实接口暂仅支持微信小程序登录，请在微信开发者工具中运行";
     return;
     // #endif
-  }
-  const demoRole = selectedRole.value === "boss" ? "BOSS" : "USER";
-  uni.setStorageSync("role", demoRole);
-  uni.setStorageSync("userId", demoRole === "BOSS" ? "3001" : "2001");
-  uni.reLaunch({
-    url: demoRole === "BOSS" ? "/pages/boss/home" : "/pages/worker/home",
-  });
 }
 
 function prepareWechatLogin() {
-  if (USE_MOCK || !userRole.value || preparingLogin.value) return;
+  if (!userRole.value || preparingLogin.value) return;
   // #ifdef MP-WEIXIN
   preparingLogin.value = true;
   registrationToken.value = "";
@@ -721,17 +709,6 @@ async function completeLogin(result) {
   color: #8b6a45;
   font-size: 12px;
   margin-top: 12px;
-}
-.mock-mode-badge {
-  display: block;
-  margin-top: 8px;
-  padding: 4px 10px;
-  background: rgba(255, 193, 7, 0.2);
-  border: 1px solid rgba(255, 193, 7, 0.5);
-  border-radius: 4px;
-  color: #856404;
-  font-size: 11px;
-  text-align: center;
 }
 .page-indicator {
   position: absolute;
