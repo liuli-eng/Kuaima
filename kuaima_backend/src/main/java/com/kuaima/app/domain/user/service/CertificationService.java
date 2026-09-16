@@ -13,6 +13,7 @@ import com.kuaima.app.admin.entity.Certification;
 import com.kuaima.app.admin.repository.CertificationRepository;
 import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.domain.user.constant.CertificationStatus;
+import com.kuaima.app.domain.user.constant.EnterpriseCode;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 
@@ -100,6 +101,7 @@ public class CertificationService {
             user.setRealnameStatus(approved ? CertificationStatus.APPROVED : CertificationStatus.REJECTED);
         } else if (ENTERPRISE.equalsIgnoreCase(type) || "企业认证".equals(type)) {
             user.setEnterpriseStatus(approved ? CertificationStatus.APPROVED : CertificationStatus.REJECTED);
+            if (approved) EnterpriseCode.ensure(user);
         }
         user.setCertType(type);
         user.setCertStatus(status);

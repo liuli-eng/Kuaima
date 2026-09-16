@@ -18,4 +18,8 @@ public interface UserCouponRepository extends JpaRepository<UserCoupon, Long> {
     long countByUserIdAndStatusAndExpireAtIsNull(Long userId, String status);
 
     long countByUserIdAndStatusAndExpireAtGreaterThanEqual(Long userId, String status, java.sql.Date now);
+    long countByCouponId(Long couponId);
+    long countByCouponIdAndStatus(Long couponId, String status);
+    boolean existsByCouponId(Long couponId);
+    long countByCouponIdAndUserId(Long couponId, Long userId);
 }

@@ -13,6 +13,7 @@ import com.kuaima.app.domain.user.repository.UserRepository;
 @Service
 public class BossRecruitSettingsService {
     private static final Pattern PHONE = Pattern.compile("^1\\d{10}$");
+    private static final Pattern STOP_TIME = Pattern.compile("^开工[前后][1-5]小时$");
     private final BossRecruitSettingsRepository repository;
     private final UserRepository userRepository;
     public BossRecruitSettingsService(BossRecruitSettingsRepository repository) { this(repository, null); }
@@ -38,9 +39,9 @@ public class BossRecruitSettingsService {
     public Settings defaults(String backupPhone) { return new Settings("零工需打电话", StringUtils.hasText(backupPhone) ? backupPhone : "", "开工后3小时", false, false, false,
             "按工作设定时间", true, "日结", BossType.DAILY, "auto", true, true, true, true); }
     private void validate(Settings s) {
-        if (!StringUtils.hasText(s.phoneMode()) || !(s.phoneMode().equals("零工需打电话") || s.phoneMode().equals("零工无需打电话"))) throw new IllegalArgumentException("phoneMode 枚举值无效");
+        if (!StringUtils.hasText(s.phoneMode()) || !java.util.Set.of("零工必须打电话", "零工无需打电话", "零工需打电话").contains(s.phoneMode())) throw new IllegalArgumentException("phoneMode 枚举值无效");
         if (StringUtils.hasText(s.backupPhone()) && !PHONE.matcher(s.backupPhone()).matches()) throw new IllegalArgumentException("backupPhone 必须是有效的11位手机号");
-        if (!StringUtils.hasText(s.stopTime()) || !java.util.Set.of("开工时", "开工后1小时", "开工后3小时", "手动停招").contains(s.stopTime())) throw new IllegalArgumentException("stopTime 枚举值无效");
+        if (!StringUtils.hasText(s.stopTime()) || !(java.util.Set.of("开工时", "开工时自动暂停", "手动停招", "不自动暂停").contains(s.stopTime()) || STOP_TIME.matcher(s.stopTime()).matches())) throw new IllegalArgumentException("stopTime 枚举值无效");
         if (!StringUtils.hasText(s.attendanceMode()) || !java.util.Set.of("按工作设定时间", "按实际打卡时间").contains(s.attendanceMode())) throw new IllegalArgumentException("attendanceMode 枚举值无效");
         if (!StringUtils.hasText(s.settleMode()) || !java.util.Set.of("日结", "压薪日结", "月结").contains(s.settleMode())) throw new IllegalArgumentException("settleMode 枚举值无效");
         if (!BossType.isValid(s.type())) throw new IllegalArgumentException("type 枚举值无效");

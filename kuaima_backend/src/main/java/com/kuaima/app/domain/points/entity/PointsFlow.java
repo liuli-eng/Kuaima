@@ -28,4 +28,13 @@ public class PointsFlow extends BaseEntity {
 
     @Column(length = 200, comment = "备注")
     private String remark;
+
+    @Column(comment = "变动后余额")
+    private Integer balanceAfter;
+
+    @Column(length = 64, comment = "关联业务订单号")
+    private String bizNo;
+
+    @Column(comment = "操作管理员")
+    private Long operatorId;
 }

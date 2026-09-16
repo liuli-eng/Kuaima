@@ -28,6 +28,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByRoleAndCity(String role, String city);
 
+
     /** 按角色分页查询 */
     Page<User> findByRole(String role, Pageable pageable);
 
@@ -45,7 +46,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("""
             select u from User u
-            where u.role = 'USER'
+            where coalesce(u.enterpriseStatus, '') <> 'APPROVED'
+              and not (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and coalesce(u.certStatus, '') = '已通过')
               and (:keyword is null or u.username like concat('%', :keyword, '%') or u.nickname like concat('%', :keyword, '%') or u.phone like concat('%', :keyword, '%') or u.skills like concat('%', :keyword, '%'))
               and (:category is null or u.skills like concat('%', :category, '%'))
               and (:minYears is null or coalesce(u.workYears, 0) >= :minYears)
@@ -66,7 +68,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             where u.role = :role
               and (:status is null or u.status = :status)
               and (:enterpriseStatus is null or u.enterpriseStatus = :enterpriseStatus)
-              and ((:keyword is null) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%) or (u.companyName like %:keyword%))
+              and ((:keyword is null) or (u.companyCode like %:keyword%) or (u.companyName like %:keyword%) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%))
             """)
     Page<User> searchBosses(@Param("role") String role,
                             @Param("status") String status,

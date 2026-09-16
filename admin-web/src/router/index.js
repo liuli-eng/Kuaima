@@ -77,6 +77,24 @@ const routes = [
         component: () => import('@/views/job/JobAudit.vue'),
         meta: { title: '招工审核', icon: 'fa-check-circle', permKey: 'permJob.j2' }
       },
+      {
+        path: 'point-purchase',
+        name: 'PointPurchase',
+        component: () => import('@/views/point/PointPurchase.vue'),
+        meta: { title: '积分管理', icon: 'fa-coins' }
+      },
+      {
+        path: 'coupon-manage',
+        name: 'CouponManage',
+        component: () => import('@/views/point/CouponManage.vue'),
+        meta: { title: '优惠券管理', icon: 'fa-ticket-alt' }
+      },
+      {
+        path: 'reward-manage',
+        name: 'RewardManage',
+        component: () => import('@/views/point/RewardManage.vue'),
+        meta: { title: '奖励金管理', icon: 'fa-gift' }
+      },
       // 订单结算
       {
         path: 'orders',

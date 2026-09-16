@@ -20,17 +20,20 @@ import com.kuaima.app.domain.boss.entity.BossOrderTemplate;
 import com.kuaima.app.domain.boss.model.BossOrderTemplateModels.CreateRequest;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderTemplateRepository;
+import com.kuaima.app.domain.message.repository.MessageRepository;
 
 class BossOrderTemplateServiceTests {
     private BossOrderTemplateRepository templates;
     private BossOrderRespository orders;
     private BossOrderTemplateService service;
+    private MessageRepository messages;
 
     @BeforeEach
     void setUp() {
         templates = mock(BossOrderTemplateRepository.class);
         orders = mock(BossOrderRespository.class);
-        service = new BossOrderTemplateService(templates, orders);
+        messages = mock(MessageRepository.class);
+        service = new BossOrderTemplateService(templates, orders, messages);
     }
 
     @Test
@@ -42,6 +45,8 @@ class BossOrderTemplateServiceTests {
         order.setTags("包吃住"); order.setExperience("EXPERIENCED"); order.setGender("不限");
         when(templates.findById(10L)).thenReturn(Optional.of(template));
         when(orders.findById(100L)).thenReturn(Optional.of(order));
+        when(messages.findDistinctUserIdsByTypeAndBizTypeAndBizId("BOSS_INVITE", "order", 100L))
+                .thenReturn(java.util.List.of(21L, 22L));
 
         var result = service.detail(7L, 10L);
 
@@ -54,6 +59,7 @@ class BossOrderTemplateServiceTests {
         assertEquals(10, result.duration());
         assertEquals(20, result.orderNum());
         assertEquals("包吃住", result.tags());
+        assertEquals(java.util.List.of(21L, 22L), result.invitedWorkerIds());
     }
 
     @Test
@@ -77,6 +83,7 @@ class BossOrderTemplateServiceTests {
         template.setIndustryId(1L); template.setEnterpriseTypeIds("[11,12]"); template.setJobIds("21,22"); template.setJobCategoryId(21L);
         template.setPositionName("分拣员"); template.setAddress("上海市浦东新区"); template.setSalaryAmount(220); template.setDuration(8); template.setRecruitCount(10);
         template.setSignMode("manual"); template.setPhoneNotify(false); template.setSignNotify(true); template.setStartRemind(false); template.setSettleNotify(true);
+        template.setInvitedWorkerIds("[31,32]");
         when(templates.findById(10L)).thenReturn(Optional.of(template));
         when(orders.findById(100L)).thenReturn(Optional.empty());
 
@@ -88,6 +95,7 @@ class BossOrderTemplateServiceTests {
         assertEquals("上海市浦东新区", result.address());
         assertEquals("manual", result.signMode());
         assertEquals(false, result.phoneNotify());
+        assertEquals(java.util.List.of(31L, 32L), result.invitedWorkerIds());
     }
 
     @Test
@@ -125,6 +133,8 @@ class BossOrderTemplateServiceTests {
         when(orders.findById(100L)).thenReturn(Optional.of(order));
         when(templates.findByOwnerUserIdAndTemplateName(7L, "模板")).thenReturn(Optional.empty());
         when(templates.save(any(BossOrderTemplate.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messages.findDistinctUserIdsByTypeAndBizTypeAndBizId("BOSS_INVITE", "order", 100L))
+                .thenReturn(java.util.List.of(41L));
 
         BossOrderTemplate result = service.create(7L, 100L, new CreateRequest("模板", false));
 
@@ -132,6 +142,7 @@ class BossOrderTemplateServiceTests {
         assertEquals("分拣", result.getOrderTitle());
         assertEquals("daily", result.getSalaryUnit());
         assertEquals(8, result.getDuration());
+        assertEquals("[41]", result.getInvitedWorkerIds());
     }
 
     private BossOrderTemplate template(Long id, Long owner, String name) {

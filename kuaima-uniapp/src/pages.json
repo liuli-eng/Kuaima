@@ -358,6 +358,10 @@
       "path": "pages/boss/recruit-settings",
       "style": { "navigationStyle": "custom" }
     },
+    {
+      "path": "pages/boss/recruit-set",
+      "style": { "navigationStyle": "custom" }
+    },
     { "path": "pages/boss/reward", "style": { "navigationStyle": "custom" } },
     {
       "path": "pages/boss/schedule-stats",

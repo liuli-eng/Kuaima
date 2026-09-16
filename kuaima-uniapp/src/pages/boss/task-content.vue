@@ -142,6 +142,8 @@
 </template>
 
 <script>
+import { getBossOrderTemplate, getOrder } from "@/api/backend";
+
 export default {
   data() {
     return {
@@ -170,7 +172,7 @@ export default {
       ],
     };
   },
-  onLoad() {
+  async onLoad(options = {}) {
     try {
       const info =
         typeof uni.getWindowInfo === "function"
@@ -180,20 +182,83 @@ export default {
     } catch (_) {}
     const saved = uni.getStorageSync("taskContent");
     if (saved && typeof saved === "object") {
-      this.jobTitle = saved.title || this.jobTitle;
-      this.jobDesc = saved.desc || this.jobDesc;
-      this.benefits = saved.benefits
-        ? String(saved.benefits).split("、").filter(Boolean)
-        : this.benefits;
-      this.exp = saved.exp
-        ? String(saved.exp).split("、").filter(Boolean).slice(0, 1)
-        : this.exp;
-      this.requirements = saved.requirements
-        ? String(saved.requirements).split("、").filter(Boolean)
-        : this.requirements;
+      this.applyTaskContent(saved);
+    }
+    if (options.id) {
+      try {
+        const detail = await getOrder(options.id);
+        this.applyTaskContentFromOrder(detail);
+      } catch (error) {
+        uni.showToast({
+          title: error?.message || "任务内容加载失败",
+          icon: "none",
+        });
+      }
+    }
+    if (options.templateId) {
+      try {
+        let detail = await getBossOrderTemplate(options.templateId);
+        if (
+          detail?.sourceOrderId &&
+          (!detail.orderContent || !detail.orderRemark)
+        ) {
+          detail = {
+            ...(await getOrder(detail.sourceOrderId).catch(() => ({}))),
+            ...detail,
+          };
+        }
+        this.applyTaskContentFromOrder(detail);
+      } catch (error) {
+        uni.showToast({
+          title: error?.message || "模板内容加载失败",
+          icon: "none",
+        });
+      }
     }
   },
   methods: {
+    applyTaskContent(data = {}) {
+      this.jobTitle = data.title || this.jobTitle;
+      this.jobDesc = data.desc || this.jobDesc;
+      this.benefits = splitTags(data.benefits, this.benefitTags);
+      this.exp = splitTags(data.exp, this.expTags).slice(0, 1);
+      this.requirements = splitTags(data.requirements, this.requirementTags);
+    },
+    applyTaskContentFromOrder(detail = {}) {
+      const raw = String(detail.orderContent || "").trim();
+      const separatorIndex = raw.indexOf(" - ");
+      const allTags = splitTags(detail.orderRemark, [
+        ...this.benefitTags,
+        ...this.expTags,
+        ...this.requirementTags,
+      ]);
+      this.applyTaskContent({
+        title: String(
+          detail.workContent ||
+            detail.taskTitle ||
+            (separatorIndex >= 0 ? raw.slice(0, separatorIndex) : raw),
+        ).trim(),
+        desc: String(
+          detail.taskDetail ||
+            detail.contentDetail ||
+            (separatorIndex >= 0 ? raw.slice(separatorIndex + 3) : ""),
+        ).trim(),
+        benefits: allTags
+          .filter((tag) => this.benefitTags.includes(tag))
+          .join("、"),
+        exp: allTags.filter((tag) => this.expTags.includes(tag)).join("、"),
+        requirements: allTags
+          .filter((tag) => this.requirementTags.includes(tag))
+          .join("、"),
+      });
+      uni.setStorageSync("taskContent", {
+        title: this.jobTitle,
+        desc: this.jobDesc,
+        benefits: this.benefits.join("、"),
+        exp: this.exp.join("、"),
+        requirements: this.requirements.join("、"),
+      });
+    },
     closePage() {
       uni.navigateBack();
     },
@@ -243,6 +308,16 @@ export default {
     },
   },
 };
+
+function splitTags(value, allowed = []) {
+  const values = String(value || "")
+    .split(/[、,，;；]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return allowed.length
+    ? values.filter((item) => allowed.includes(item))
+    : values;
+}
 </script>
 
 <style lang="scss" scoped>

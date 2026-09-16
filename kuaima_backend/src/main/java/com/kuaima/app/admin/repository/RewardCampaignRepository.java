@@ -1,0 +1,3 @@
+package com.kuaima.app.admin.repository;
+import java.time.LocalDateTime;import java.util.List;import org.springframework.data.domain.*;import org.springframework.data.jpa.repository.*;import org.springframework.data.repository.query.Param;import com.kuaima.app.admin.entity.RewardCampaign;
+public interface RewardCampaignRepository extends JpaRepository<RewardCampaign,Long>{@Query("select c from RewardCampaign c where (:status is null or c.status=:status) order by c.createdAt desc,c.id desc")Page<RewardCampaign> search(@Param("status")String status,Pageable p);List<RewardCampaign> findByStatusAndSendAtLessThanEqual(String status,LocalDateTime now);long countByStatus(String status);}

@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <AppNavBar title="订单" :show-back="true" />
-    <view class="notice">ⓘ 订单状态分为：已报名、已录用、已到岗、已完成</view>
+    <view class="notice">ⓘ 订单状态分为：工作中、已完成、已取消</view>
     <view class="filter-panel">
       <view class="type-tabs"
         ><text
@@ -27,7 +27,7 @@
           v-for="item in statuses"
           :key="item.key"
           :class="['status-tab', { active: status === item.key }]"
-          @click="status = item.key"
+          @click="changeStatus(item.key)"
           >{{ item.label }}</text
         ></scroll-view
       >
@@ -40,7 +40,7 @@
               order.type
             }}</text
             ><text class="title">{{ order.title }}</text></view
-          ><text :class="['order-status', order.status]">{{
+          ><text :class="['order-status', order.statusGroup]">{{
             order.statusText
           }}</text></view
         >
@@ -72,7 +72,30 @@
             >
               {{ operatingIds.includes(order.id) ? "取消中" : "取消报名" }}
             </button>
-            <button class="detail" @click="open(order)">详情</button></view
+            <button class="detail" @click="open(order)">详情</button>
+            <button
+              v-if="order.action === 'check-in'"
+              class="attendance"
+              :disabled="operatingIds.includes(order.id)"
+              @click="enterAttendanceCode(order, 'work')"
+            >
+              输入开工码
+            </button>
+            <button
+              v-if="order.action === 'early-leave'"
+              class="attendance"
+              :disabled="operatingIds.includes(order.id)"
+              @click="enterAttendanceCode(order, 'leave')"
+            >
+              输入早退码
+            </button>
+            <button
+              v-if="order.action === 'review'"
+              class="review"
+              @click="reviewEmployer(order)"
+            >
+              评价老板
+            </button></view
           ></view
         >
       </view>
@@ -88,7 +111,12 @@
 import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
-import { cancelOrderItem, listWorkerOrders } from "@/api/backend";
+import {
+  cancelOrderItem,
+  listWorkerOrders,
+  workerCheckIn,
+  workerEarlyLeave,
+} from "@/api/backend";
 const types = [
   { key: "day", label: "日结" },
   { key: "press", label: "压薪日结" },
@@ -97,10 +125,9 @@ const types = [
 const dates = createDateTabs();
 const statuses = [
   { key: "all", label: "全部状态" },
-  { key: "applied", label: "已报名" },
-  { key: "hired", label: "已录用" },
-  { key: "arrived", label: "已到岗" },
+  { key: "working", label: "工作中" },
   { key: "done", label: "已完成" },
+  { key: "cancelled", label: "已取消" },
 ];
 const orderType = ref("day"),
   date = ref("all"),
@@ -112,21 +139,34 @@ const filtered = computed(() =>
     (i) =>
       i.group === orderType.value &&
       (date.value === "all" || i.date === date.value) &&
-      (status.value === "all" || i.status === status.value),
+      (status.value === "all" || i.statusGroup === status.value),
   ),
 );
-onMounted(async () => {
+onMounted(loadOrders);
+async function loadOrders() {
   try {
-    const r = await listWorkerOrders({ page: 0, size: 50 });
-    const items = Array.isArray(r) ? r : r?.records || r?.content || [];
-    if (Array.isArray(items)) {
-      mock.value = items.map(normalizeOrder);
+    const params = { page: 0, size: 50 };
+    if (status.value !== "all") {
+      params.status =
+        status.value === "working"
+          ? "工作中"
+          : status.value === "done"
+            ? "已完成"
+            : "已取消";
     }
+    const r = await listWorkerOrders(params);
+    const items = Array.isArray(r) ? r : r?.records || r?.content || [];
+    mock.value = Array.isArray(items) ? items.map(normalizeOrder) : [];
   } catch (error) {
     mock.value = [];
     uni.showToast({ title: error.message || "订单列表加载失败", icon: "none" });
   }
-});
+}
+async function changeStatus(value) {
+  if (status.value === value) return;
+  status.value = value;
+  await loadOrders();
+}
 function open(o) {
   const orderId = o.orderId || "";
   uni.navigateTo({
@@ -142,10 +182,8 @@ function cancel(o) {
       operatingIds.value.push(o.id);
       try {
         await cancelOrderItem(o.id, "零工主动取消报名");
-        o.status = "cancelled";
-        o.statusText = "取消报名";
-        o.canCancel = false;
         uni.showToast({ title: "已取消报名", icon: "success" });
+        await loadOrders();
       } catch (e) {
         uni.showToast({ title: e.message || "取消失败", icon: "none" });
       } finally {
@@ -154,11 +192,43 @@ function cancel(o) {
     },
   });
 }
+
+function enterAttendanceCode(order, type) {
+  const isWork = type === "work";
+  const label = isWork ? "开工码" : "早退码";
+  uni.showModal({
+    title: `输入${label}`,
+    editable: true,
+    placeholderText: `请输入${label}`,
+    success: async ({ confirm, content }) => {
+      if (!confirm) return;
+      const code = String(content || "").trim();
+      if (!code) return uni.showToast({ title: `请输入${label}`, icon: "none" });
+      if (operatingIds.value.includes(order.id)) return;
+      operatingIds.value.push(order.id);
+      try {
+        if (isWork) await workerCheckIn(order.orderId, code);
+        else await workerEarlyLeave(order.orderId, code);
+        uni.showToast({ title: `${label}成功`, icon: "success" });
+        await loadOrders();
+      } catch (error) {
+        uni.showToast({ title: error?.message || `${label}失败`, icon: "none" });
+      } finally {
+        operatingIds.value = operatingIds.value.filter((id) => id !== order.id);
+      }
+    },
+  });
+}
+
+function reviewEmployer() {
+  uni.showToast({ title: "评价功能开发中", icon: "none" });
+}
+
 function normalizeOrder(item) {
-  const statusMeta = normalizeOrderStatus(item);
   const hourlyMatch = String(item.tags || "").match(/时薪:([\d.]+)/);
   const pieceMatch = String(item.tags || "").match(/计件单价:([\d.]+)/);
   const pieceUnitMatch = String(item.tags || "").match(/计件单位:([^,]+)/);
+  const orderStatus = String(item.status || "");
   return {
     ...item,
     title: item.orderTitle || item.title || `订单 ${item.orderId || item.id}`,
@@ -199,37 +269,27 @@ function normalizeOrder(item) {
         : item.type === "month"
           ? "元/月"
           : "元/天",
-    status: statusMeta.key,
-    statusText: statusMeta.text,
-    canCancel: statusMeta.canCancel,
+    status: orderStatus,
+    statusText: orderStatus || "状态未知",
+    statusGroup: getStatusGroup(orderStatus),
+    action: getStatusAction(orderStatus),
+    canCancel: ["已报名", "已录用"].includes(orderStatus),
     date: normalizeDateKey(item.workDate || item.startTime),
   };
 }
 
-function normalizeOrderStatus(item) {
-  const rawStatus = item.statusText || item.itemStatus || item.status || "";
-  const normalized = String(rawStatus).trim().toUpperCase();
-  const statusMap = {
-    APPLIED: { key: "applied", text: "已报名", canCancel: true },
-    已报名: { key: "applied", text: "已报名", canCancel: true },
-    HIRED: { key: "hired", text: "已录用", canCancel: true },
-    已录用: { key: "hired", text: "已录用", canCancel: true },
-    ARRIVED: { key: "arrived", text: "已到岗", canCancel: false },
-    已到岗: { key: "arrived", text: "已到岗", canCancel: false },
-    COMPLETED: { key: "done", text: "已完成", canCancel: false },
-    SETTLED: { key: "done", text: "已完成", canCancel: false },
-    已完成: { key: "done", text: "已完成", canCancel: false },
-    CANCELLED: { key: "cancelled", text: "取消报名", canCancel: false },
-    取消报名: { key: "cancelled", text: "取消报名", canCancel: false },
-    取消招工: { key: "cancelled", text: "取消招工", canCancel: false },
-  };
-  const meta = statusMap[normalized] || statusMap[rawStatus];
-  if (meta) return meta;
-  return {
-    key: "unknown",
-    text: rawStatus || "状态未知",
-    canCancel: false,
-  };
+function getStatusGroup(status) {
+  if (status === "已完成") return "done";
+  if (status === "已取消") return "cancelled";
+  return "working";
+}
+
+function getStatusAction(status) {
+  const value = String(status || "");
+  if (value === "已录用") return "check-in";
+  if (value === "工作中") return "early-leave";
+  if (value === "已完成") return "review";
+  return "detail";
 }
 
 function createDateTabs() {
@@ -475,6 +535,15 @@ function toDateKey(date) {
 .detail {
   background: #eb8a59;
   color: #fff;
+}
+.attendance {
+  border: 1rpx solid #eb8a59;
+  background: #fff;
+  color: #eb7950;
+}
+.review {
+  background: #fff1eb;
+  color: #eb7950;
 }
 .cancel {
   border: 1rpx solid #ddd;

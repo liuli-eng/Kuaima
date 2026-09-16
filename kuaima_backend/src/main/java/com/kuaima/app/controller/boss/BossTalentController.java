@@ -59,7 +59,7 @@ public class BossTalentController {
     public Result<Map<String, Object>> favorite(@PathVariable Long workerId, @RequestBody(required = false) Map<String, Object> body, Authentication authentication) {
         Long bossId = bossId(authentication);
         User worker = users.findById(workerId).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("人才不存在: " + workerId));
-        if (!UserRole.USER.equals(worker.getRole())) throw new jakarta.persistence.EntityNotFoundException("人才不存在: " + workerId);
+        if (UserRole.hasApprovedEnterprise(worker)) throw new jakarta.persistence.EntityNotFoundException("人才不存在: " + workerId);
         boolean nowFavorite;
         boolean exists = favorites.existsByBossIdAndWorkerId(bossId, workerId);
         Object requested = body == null ? null : body.get("favorite");
@@ -78,7 +78,7 @@ public class BossTalentController {
                                                Authentication authentication) {
         Long bossId = bossId(authentication);
         User worker = users.findById(workerId).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("人才不存在: " + workerId));
-        if (!UserRole.USER.equals(worker.getRole())) throw new jakarta.persistence.EntityNotFoundException("人才不存在: " + workerId);
+        if (UserRole.hasApprovedEnterprise(worker)) throw new jakarta.persistence.EntityNotFoundException("人才不存在: " + workerId);
         Long orderId = body == null ? null : toLong(body.get("orderId"), "orderId");
         if (orderId != null) {
             BossOrder order = orders.findById(orderId).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("订单不存在: " + orderId));

@@ -36,4 +36,6 @@ public class BossOrderTemplate extends BaseEntity {
     private Boolean signNotify;
     private Boolean startRemind;
     private Boolean settleNotify;
+    /** 创建模板时关联订单已邀请的零工 ID 快照（JSON 数组）。 */
+    @Column(length=2000) private String invitedWorkerIds;
 }

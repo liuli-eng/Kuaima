@@ -164,6 +164,7 @@ import {
   listOrders,
   listOrderItems,
   hireOrderItem,
+  rejectOrderItem,
   confirmOrderItemWork,
   finishOrderItem,
   readMessage,
@@ -204,6 +205,7 @@ export default {
       targetItemId: "",
       targetMessageId: "",
       orderId: "",
+      actionLoadingId: "",
     };
   },
   onLoad(options = {}) {
@@ -269,6 +271,7 @@ export default {
           已录用: "accepted",
           已到岗: "arrived",
           已完成: "completed",
+          已拒绝: "rejected",
           取消报名: "rejected",
         };
         this.records = visibleItems.map((item, index) => {
@@ -340,6 +343,7 @@ export default {
       return "";
     },
     async handleRecord(id, action) {
+      if (this.actionLoadingId) return;
       const record = this.records.find((r) => r.id === id);
       if (!record) return;
 
@@ -351,21 +355,41 @@ export default {
       }[action];
       const applicant = this.applicants[record.applicantId];
 
+      if (action === "reject") {
+        uni.showModal({
+          title: "拒绝报名",
+          content: `确定拒绝「${applicant?.name || "该零工"}」的报名吗？`,
+          confirmText: "确定拒绝",
+          cancelText: "取消",
+          success: async ({ confirm }) => {
+            if (!confirm || this.actionLoadingId) return;
+            await this.performRecordAction(id, action, applicant, actionText);
+          },
+        });
+        return;
+      }
+
+      await this.performRecordAction(id, action, applicant, actionText);
+    },
+    async performRecordAction(id, action, applicant, actionText) {
+      if (this.actionLoadingId) return;
+      this.actionLoadingId = id;
+
       try {
         if (action === "accept") await hireOrderItem(id);
+        else if (action === "reject") await rejectOrderItem(id);
         else if (action === "arrive") await confirmOrderItemWork(id);
         else if (action === "complete") await finishOrderItem(id);
-        else if (action === "reject") {
-          return uni.showToast({ title: "后端暂未提供拒绝报名接口", icon: "none" });
-        }
       } catch (error) {
-        return uni.showToast({
+        uni.showToast({
           title: error.message || "操作失败",
           icon: "none",
         });
+        this.actionLoadingId = "";
+        return;
       }
       uni.showToast({
-        title: `已${actionText}「${applicant.name}」`,
+        title: `已${actionText}「${applicant?.name || "该零工"}」`,
         icon: "success",
       });
 
@@ -381,7 +405,11 @@ export default {
       else if (action === "reject") record.status = "rejected";
       else if (action === "arrive") record.status = "arrived";
       else if (action === "complete") record.status = "completed";
-      await this.loadApplicants();
+      try {
+        await this.loadApplicants();
+      } finally {
+        this.actionLoadingId = "";
+      }
     },
   },
 };

@@ -760,6 +760,23 @@ export function updateNotificationSettings(userId, data) {
 export function getPoints(userId) {
   return request({ url: `/points/${userId}` });
 }
+
+/** 老板端积分余额、积分套餐和规则，身份由当前 JWT 判断。 */
+export function getBossPointsOverview() {
+  return request({ url: "/boss/points", skipUserIdHeader: true });
+}
+
+/** 老板端赠送积分给零工，身份由当前 JWT 判断。 */
+export function giftBossPoints(data = {}, idempotencyKey = "") {
+  return request({
+    url: "/boss/points/gift",
+    method: "POST",
+    data,
+    header: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    skipUserIdHeader: true,
+  });
+}
+
 export function listPointFlows(userId, params = {}) {
   return request({
     url: `/points/${userId}/flows?${query({ page: 0, size: 20, ...params })}`,

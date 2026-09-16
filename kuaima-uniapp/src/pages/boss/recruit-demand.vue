@@ -243,6 +243,11 @@ function mergeTemplateSource(detail = {}, source = {}) {
     "signNotify",
     "startRemind",
     "settleNotify",
+    "inviteWorkerIds",
+    "invitedWorkerIds",
+    "workerIds",
+    "inviteWorkers",
+    "invitedWorkers",
   ].forEach((key) => {
     if (detail[key] === undefined || detail[key] === null || detail[key] === "") {
       merged[key] = source[key];
@@ -281,6 +286,31 @@ function normalizeSettlementType(value) {
   }[value] || value;
 }
 
+function getSettlementLabel(value) {
+  return {
+    daily: "日结",
+    heldBack: "压薪日结",
+    month: "月结",
+  }[normalizeSettlementType(value)] || "";
+}
+
+function extractInviteWorkerIds(detail = {}) {
+  const source =
+    detail.inviteWorkerIds ||
+    detail.invitedWorkerIds ||
+    detail.workerIds ||
+    detail.inviteWorkers ||
+    detail.invitedWorkers ||
+    [];
+  const rows = Array.isArray(source) ? source : String(source).split(",");
+  return [...new Set(
+    rows
+      .map((item) => item?.workerId || item?.userId || item?.id || item)
+      .map((id) => String(id || "").trim())
+      .filter(Boolean),
+  )];
+}
+
 export default {
   data() {
     return {
@@ -305,6 +335,7 @@ export default {
       },
       hasExplicitType: false,
       orderId: "",
+      sourceOrderId: "",
       templateId: "",
       selectedInviteCount: 0,
       workTimeVersion: 0,
@@ -342,6 +373,7 @@ export default {
     uni.removeStorageSync("recruitDraftSettings");
     if (options?.job) this.jobName = decodeURIComponent(options.job);
     if (options?.id) this.orderId = options.id;
+    this.sourceOrderId = options?.sourceOrderId || "";
     if (!this.orderId) {
       uni.removeStorageSync("pendingInviteWorkerIds");
       this.selectedInviteCount = 0;
@@ -355,7 +387,8 @@ export default {
     uni.$on("inviteWorkersSelected", this.applyInviteSelection);
     this.loadRecruitSettings();
     if (this.templateId) await this.loadTemplateDraft(this.templateId);
-    if (this.orderId) this.loadOrder(this.orderId);
+    if (this.orderId) await this.loadOrder(this.orderId);
+    if (this.sourceOrderId) await this.loadOrder(this.sourceOrderId);
     this.ensurePublishEligibility();
   },
   onShow() {
@@ -382,6 +415,7 @@ export default {
         const needsSourceOrder =
           !detail.orderContent ||
           !detail.signMode ||
+          extractInviteWorkerIds(detail).length === 0 ||
           ["phoneNotify", "signNotify", "startRemind", "settleNotify"].some(
             (key) => typeof detail[key] !== "boolean",
           );
@@ -405,7 +439,8 @@ export default {
         } else if (piece) {
           this.payType = "piece";
           this.piecePrice = Number(piece[1]);
-          this.estOutput = Number(detail.duration || 0);
+          this.pieceUnit = String(tags.match(/计件单位[:：]([^,，]+)/)?.[1] || this.pieceUnit);
+          this.estOutput = parsePieceOutput(detail, this.piecePrice);
           this.hasSalary = false;
         } else if (detail.salary != null) {
           const hours = Math.max(1, this.workHours || 8);
@@ -415,7 +450,7 @@ export default {
         }
         const templateSettings = {
           type: normalizeSettlementType(detail.type),
-          settleMode: detail.settleMode,
+          settleMode: detail.settleMode || getSettlementLabel(detail.type),
           signMode: detail.signMode,
           phoneNotify: detail.phoneNotify,
           signNotify: detail.signNotify,
@@ -427,6 +462,9 @@ export default {
           ...(uni.getStorageSync("recruitDraftSettings") || {}),
           ...templateSettings,
         });
+        const inviteWorkerIds = extractInviteWorkerIds(detail);
+        uni.setStorageSync("pendingInviteWorkerIds", inviteWorkerIds);
+        this.applyInviteSelection(inviteWorkerIds);
       } catch (error) {
         uni.showToast({ title: error?.message || "模板数据加载失败", icon: "none" });
       }
@@ -583,6 +621,22 @@ export default {
         this.settlementType = detail.type || this.settlementType;
         // 编辑岗位时优先使用详情接口返回的通知配置，避免沿用其他岗位的本地缓存。
         this.applyRecruitSettings({ ...detail, type: this.settlementType });
+        const settlementLabels = {
+          daily: "日结",
+          heldBack: "压薪日结",
+          month: "月结",
+        };
+        uni.setStorageSync("recruitDraftSettings", {
+          ...(uni.getStorageSync("recruitDraftSettings") || {}),
+          type: normalizeSettlementType(this.settlementType),
+          settleMode:
+            detail.settleMode || settlementLabels[normalizeSettlementType(this.settlementType)],
+          signMode: detail.signMode,
+          phoneNotify: detail.phoneNotify,
+          signNotify: detail.signNotify,
+          startRemind: detail.startRemind,
+          settleNotify: detail.settleNotify,
+        });
         const hourly = String(detail.tags || "").match(/时薪:([\d.]+)/);
         const piece = String(detail.tags || "").match(/计件单价:([\d.]+)/);
         if (hourly) {
@@ -592,7 +646,8 @@ export default {
         } else if (piece) {
           this.payType = "piece";
           this.piecePrice = Number(piece[1]);
-          this.estOutput = Number(detail.duration || 0);
+          this.pieceUnit = String(String(detail.tags || "").match(/计件单位[:：]([^,，]+)/)?.[1] || this.pieceUnit);
+          this.estOutput = parsePieceOutput(detail, this.piecePrice);
         }
       } catch (_) {}
     },
@@ -666,6 +721,7 @@ export default {
             : formatLocalDate(new Date());
         const workLocation = uni.getStorageSync("workLocationSelection") || {};
         const taskContent = uni.getStorageSync("taskContent") || {};
+        const genderAge = uni.getStorageSync("genderAgeSelection") || {};
         const durationMatch = String(workTime.duration || "").match(/[\d.]+/);
         const workHours = Math.max(1, Number(durationMatch?.[0] || 8));
         const workDays = Math.max(
@@ -680,7 +736,7 @@ export default {
         const payTags =
           this.payType === "hourly"
             ? `计时,时薪:${Number(this.salary)}`
-            : `计件,计件单价:${Number(this.piecePrice)},计件单位:${this.pieceUnit}`;
+            : `计件,计件单价:${Number(this.piecePrice)},计件单位:${this.pieceUnit},日产量:${Number(this.estOutput)}`;
         const payload = {
           orderTitle: this.jobName,
           type: this.settlementType,
@@ -693,6 +749,8 @@ export default {
           endTime: `${dateText} ${workTime.endTime || "18:00"}:00`,
           salary,
           orderContent: composeTaskContent(taskContent),
+          gender: genderAge.gender || "不限",
+          experience: formatAgeRequirement(genderAge),
           orderRemark: [
             taskContent.benefits,
             taskContent.exp,
@@ -755,6 +813,25 @@ function composeTaskContent(data = {}) {
   const desc = String(data.desc || "").trim();
   if (title && desc && title !== desc) return `${title} - ${desc}`;
   return title || desc;
+}
+
+function parsePieceOutput(detail = {}, piecePrice = 0) {
+  const tags = String(detail.tags || "");
+  const tagged = tags.match(/日产量[:：]([\d.]+)/)?.[1];
+  if (tagged) return Number(tagged) || 0;
+  const explicit = detail.estimatedDailyOutput ?? detail.dailyOutput ?? detail.estOutput;
+  if (explicit != null && explicit !== "") return Number(explicit) || 0;
+  const salary = Number(detail.salary || 0);
+  return piecePrice > 0 && salary > 0 ? Number((salary / piecePrice).toFixed(2)) : 0;
+}
+
+function formatAgeRequirement(selection = {}) {
+  const ageMin = Number(selection.ageMin || 18);
+  const rawAgeMax = selection.ageMax;
+  const ageMax = rawAgeMax === "不限" || Number(rawAgeMax) >= 60
+    ? "不限"
+    : Number(rawAgeMax || 60);
+  return `${ageMin}岁~${ageMax === "不限" ? "不限" : `${ageMax}岁`}`;
 }
 
 function formatLocalDate(date) {

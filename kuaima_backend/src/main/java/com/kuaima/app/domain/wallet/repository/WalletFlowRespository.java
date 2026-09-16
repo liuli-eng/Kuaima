@@ -5,6 +5,8 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.kuaima.app.domain.wallet.entity.WalletFlow;
 
@@ -18,4 +20,7 @@ public interface WalletFlowRespository extends JpaRepository<WalletFlow, Long> {
 
     /** 按用户+方向查流水（按 id 倒序） */
     List<WalletFlow> findByUserIdAndDirectionOrderByIdDesc(Long userId, String direction);
+
+    @Query("select coalesce(sum(f.amount),0) from WalletFlow f where f.userId=:userId and f.direction='income' and f.bizType=:bizType")
+    Long sumIncomeByUserIdAndBizType(@Param("userId") Long userId, @Param("bizType") String bizType);
 }

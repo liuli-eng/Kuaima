@@ -13,6 +13,10 @@ import com.kuaima.app.domain.boss.model.BossOrderTemplateModels.CreateRequest;
 import com.kuaima.app.domain.boss.model.BossOrderTemplateModels.TemplateView;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderTemplateRepository;
+import com.kuaima.app.domain.message.constant.BizType;
+import com.kuaima.app.domain.message.constant.MessageType;
+import com.kuaima.app.domain.message.repository.MessageRepository;
+import com.alibaba.fastjson2.JSON;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -20,11 +24,21 @@ import jakarta.persistence.EntityNotFoundException;
 public class BossOrderTemplateService {
     private final BossOrderTemplateRepository templateRepository;
     private final BossOrderRespository orderRepository;
+    private final MessageRepository messageRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public BossOrderTemplateService(BossOrderTemplateRepository templateRepository,
-                                    BossOrderRespository orderRepository) {
+                                    BossOrderRespository orderRepository,
+                                    MessageRepository messageRepository) {
         this.templateRepository = templateRepository;
         this.orderRepository = orderRepository;
+        this.messageRepository = messageRepository;
+    }
+
+    /** 保留已有单元测试及非 Spring 调用构造方式。 */
+    BossOrderTemplateService(BossOrderTemplateRepository templateRepository,
+                             BossOrderRespository orderRepository) {
+        this(templateRepository, orderRepository, null);
     }
 
     @Transactional
@@ -110,6 +124,7 @@ public class BossOrderTemplateService {
         template.setExperienceRequirement(order.getExperience());
         template.setTags(order.getTags());
         template.setSignMode(order.getSignMode()); template.setPhoneNotify(order.getPhoneNotify()); template.setSignNotify(order.getSignNotify()); template.setStartRemind(order.getStartRemind()); template.setSettleNotify(order.getSettleNotify());
+        template.setInvitedWorkerIds(JSON.toJSONString(invitedWorkerIds(order.getId())));
     }
 
     private TemplateView toView(BossOrderTemplate template, BossOrder source) {
@@ -128,7 +143,20 @@ public class BossOrderTemplateService {
                 source != null ? source.getExperience() : template.getExperienceRequirement(),
                 source != null ? source.getGender() : template.getGenderRequirement(), source != null ? source.getSignMode() : template.getSignMode(),
                 source != null ? source.getPhoneNotify() : template.getPhoneNotify(), source != null ? source.getSignNotify() : template.getSignNotify(),
-                source != null ? source.getStartRemind() : template.getStartRemind(), source != null ? source.getSettleNotify() : template.getSettleNotify());
+                source != null ? source.getStartRemind() : template.getStartRemind(), source != null ? source.getSettleNotify() : template.getSettleNotify(),
+                templateInvitedWorkerIds(template, source));
     }
     private java.util.List<Long> ids(String value) { if (!StringUtils.hasText(value)) return java.util.List.of(); return java.util.Arrays.stream(value.replace("[", "").replace("]", "").replace("\"", "").split(",")).map(String::trim).filter(StringUtils::hasText).map(Long::valueOf).toList(); }
+    private java.util.List<Long> invitedWorkerIds(Long orderId) {
+        if (orderId == null || messageRepository == null) return java.util.List.of();
+        return messageRepository.findDistinctUserIdsByTypeAndBizTypeAndBizId(
+                MessageType.BOSS_INVITE, BizType.ORDER, orderId);
+    }
+    private java.util.List<Long> templateInvitedWorkerIds(BossOrderTemplate template, BossOrder source) {
+        if (StringUtils.hasText(template.getInvitedWorkerIds())) {
+            try { return JSON.parseArray(template.getInvitedWorkerIds(), Long.class); }
+            catch (RuntimeException ignored) { return java.util.List.of(); }
+        }
+        return source == null ? java.util.List.of() : invitedWorkerIds(source.getId());
+    }
 }

@@ -1,0 +1,3 @@
+package com.kuaima.app.admin.scheduler;
+import java.time.*;import org.springframework.scheduling.annotation.Scheduled;import org.springframework.stereotype.Component;import com.kuaima.app.admin.repository.RewardCampaignRepository;import com.kuaima.app.admin.service.AdminRewardService;
+@Component public class RewardCampaignScheduler {private final RewardCampaignRepository repo;private final AdminRewardService service;public RewardCampaignScheduler(RewardCampaignRepository r,AdminRewardService s){repo=r;service=s;}@Scheduled(fixedDelay=60000)public void executeDue(){for(var c:repo.findByStatusAndSendAtLessThanEqual("待发放",LocalDateTime.now(ZoneId.of("Asia/Shanghai"))))try{service.execute(c.getId());}catch(Exception e){service.recordFailure(c.getId(),e.getMessage());}}}

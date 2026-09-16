@@ -89,6 +89,10 @@ public class User extends BaseEntity {
     @Column(length = 100)
     private String companyName;
 
+    /** 企业认证通过后生成的唯一运营编号。 */
+    @Column(name = "company_code", unique = true, length = 32)
+    private String companyCode;
+
     /** 行业类型（仅 BOSS） */
     @Column(length = 50)
     private String industry;

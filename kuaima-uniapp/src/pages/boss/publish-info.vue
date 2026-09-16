@@ -203,6 +203,50 @@ function getTemplateRecruitSettings(detail = {}) {
   };
 }
 
+function normalizeGender(value) {
+  const gender = String(value || "").trim();
+  if (!gender || ["不限", "男女不限", "男女均可", "性别不限"].includes(gender)) {
+    return "不限";
+  }
+  if (["男", "男性", "男性优先", "男性优选", "仅限男性"].includes(gender)) {
+    return "男性优选";
+  }
+  if (["女", "女性", "女性优先", "女性优选", "仅限女性"].includes(gender)) {
+    return "女性优选";
+  }
+  return gender;
+}
+
+function parseGenderAge(detail = {}) {
+  const requirement = String(
+    detail.ageRequirement || detail.experience || "",
+  ).trim();
+  const ages = requirement.match(/\d+/g)?.map(Number) || [];
+  const ageMin = Number(detail.ageMin ?? detail.minAge ?? ages[0] ?? 18);
+  const rawAgeMax = detail.ageMax ?? detail.maxAge ?? ages[1];
+  const ageMax =
+    rawAgeMax === undefined ||
+    rawAgeMax === null ||
+    rawAgeMax === "" ||
+    rawAgeMax === "不限" ||
+    /不限/.test(requirement)
+      ? "不限"
+      : Number(rawAgeMax);
+  const gender = normalizeGender(detail.gender);
+  return {
+    gender,
+    ageMin: Number.isFinite(ageMin) ? ageMin : 18,
+    ageMax: ageMax === "不限" || !Number.isFinite(ageMax) ? "不限" : ageMax,
+  };
+}
+
+function formatGenderAge(selection = {}) {
+  const gender = normalizeGender(selection.gender);
+  const ageMin = Number(selection.ageMin || 18);
+  const ageMax = selection.ageMax === "不限" ? "不限" : Number(selection.ageMax || 60);
+  return `${gender}、${ageMin}岁~${ageMax === "不限" || ageMax >= 60 ? "不限" : `${ageMax}岁`}`;
+}
+
 export default {
   data() {
     return {
@@ -217,6 +261,7 @@ export default {
       primaryJobName: "",
       publishType: "",
       orderId: "",
+      sourceOrderId: "",
       templateId: "",
       templateDraft: null,
       industryId: "",
@@ -240,16 +285,29 @@ export default {
     uni.$on("workLocationSelected", this.applyWorkLocation);
     uni.$on("workTimeSelected", this.applyWorkTime);
     uni.$on("jobsSelected", this.applyJobsSelected);
-    const saved = uni.getStorageSync("taskContent");
-    if (saved) this.applyTaskContent(saved);
-    const savedGenderAge = uni.getStorageSync("genderAgeSelection");
-    if (savedGenderAge) this.applyGenderAge(savedGenderAge);
-    const savedWorkLocation = uni.getStorageSync("workLocationSelection");
-    if (savedWorkLocation) this.applyWorkLocation(savedWorkLocation);
-    const savedWorkTime = uni.getStorageSync("workTimeSelection");
-    if (savedWorkTime) this.applyWorkTime(savedWorkTime);
-    if (savedWorkTime?.selectedDates?.length)
-      this.applySelectedDates(savedWorkTime.selectedDates);
+    this.orderId = options?.id || "";
+    this.sourceOrderId = options?.sourceOrderId || "";
+    this.templateId = options?.templateId || "";
+    if (this.orderId || this.sourceOrderId || this.templateId) {
+      [
+        "taskContent",
+        "genderAgeSelection",
+        "workLocationSelection",
+        "workTimeSelection",
+        "jobCategorySelection",
+      ].forEach((key) => uni.removeStorageSync(key));
+    } else {
+      const saved = uni.getStorageSync("taskContent");
+      if (saved) this.applyTaskContent(saved);
+      const savedGenderAge = uni.getStorageSync("genderAgeSelection");
+      if (savedGenderAge) this.applyGenderAge(savedGenderAge);
+      const savedWorkLocation = uni.getStorageSync("workLocationSelection");
+      if (savedWorkLocation) this.applyWorkLocation(savedWorkLocation);
+      const savedWorkTime = uni.getStorageSync("workTimeSelection");
+      if (savedWorkTime) this.applyWorkTime(savedWorkTime);
+      if (savedWorkTime?.selectedDates?.length)
+        this.applySelectedDates(savedWorkTime.selectedDates);
+    }
     if (options?.job) {
       this.jobName = decodeURIComponent(options.job);
       this.jobValue = this.jobName;
@@ -260,10 +318,9 @@ export default {
     this.jobIds = parseIdList(options?.jobIds || options?.jobId);
     if (this.jobName || this.jobIds.length) this.saveJobCategorySelection();
     this.publishType = options?.type || "";
-    this.orderId = options?.id || "";
-    this.templateId = options?.templateId || "";
     if (this.templateId) await this.loadTemplate(this.templateId);
-    if (this.orderId) this.loadOrder(this.orderId);
+    if (this.orderId) await this.loadOrder(this.orderId);
+    if (this.sourceOrderId) await this.loadOrder(this.sourceOrderId);
     this._eligibilityInitialized = true;
     this.ensurePublishEligibility();
   },
@@ -281,7 +338,7 @@ export default {
       this.ensurePublishEligibility();
     }
     // 编辑已有订单时，岗位详情接口是唯一数据源，避免旧草稿覆盖接口回显。
-    if (!this.orderId && !this.templateId) {
+    if (!this.orderId && !this.templateId && !this.sourceOrderId) {
       const saved = uni.getStorageSync("taskContent");
       if (saved) this.applyTaskContent(saved);
     }
@@ -329,15 +386,8 @@ export default {
           ...(uni.getStorageSync("recruitDraftSettings") || {}),
           ...templateSettings,
         });
-        if (detail.gender || detail.experience) {
-          const gender = detail.gender || "不限";
-          const experience = detail.experience || "不限";
-          this.genderAgeValue = `${gender}、${experience}`;
-          uni.setStorageSync("genderAgeSelection", {
-            gender,
-            experience,
-            display: this.genderAgeValue,
-          });
+        if (detail.gender || detail.experience || detail.ageMin != null || detail.ageMax != null) {
+          this.applyGenderAge(parseGenderAge(detail));
         }
         if (detail.address) {
           this.workLocationValue = detail.address;
@@ -426,18 +476,20 @@ export default {
           detail.jobIds || detail.jobCategoryIds || detail.jobCategoryId || this.jobIds,
         );
         this.saveJobCategorySelection();
-        this.workContent = detail.orderContent || "";
-        this.taskDetail = detail.orderContent || "";
+        const taskContent = parseTemplateTaskContent(detail);
+        this.workContent = taskContent.title;
+        this.taskDetail = taskContent.desc;
         this.workLocationValue = detail.address || "";
         this.workTimeValue = formatWorkTime(detail.startTime, detail.endTime);
+        this.applyGenderAge(parseGenderAge(detail));
         const orderDate = String(detail.startTime || "").slice(0, 10);
         if (orderDate) this.applySelectedDates([orderDate]);
         this.publishType = detail.type || this.publishType;
         if (detail.orderContent) {
           uni.setStorageSync("taskContent", {
             ...(uni.getStorageSync("taskContent") || {}),
-            title: this.workContent,
-            desc: detail.orderContent,
+            title: taskContent.title,
+            desc: taskContent.desc,
           });
         }
         if (detail.address) {
@@ -481,7 +533,14 @@ export default {
           })),
         });
       }
-      uni.navigateTo({ url: `/pages/boss/${page}` });
+      const contentOrderId = this.orderId || this.sourceOrderId;
+      const contentParams = [];
+      if (contentOrderId) contentParams.push(`id=${encodeURIComponent(contentOrderId)}`);
+      if (page === "task-content" && this.templateId) {
+        contentParams.push(`templateId=${encodeURIComponent(this.templateId)}`);
+      }
+      const query = contentParams.length ? `?${contentParams.join("&")}` : "";
+      uni.navigateTo({ url: `/pages/boss/${page}${query}` });
     },
     editJob() {
       const query = this.orderId
@@ -517,7 +576,19 @@ export default {
       });
     },
     applyGenderAge(data = {}) {
-      if (data.display) this.genderAgeValue = data.display;
+      const selection = {
+        gender: normalizeGender(data.gender),
+        ageMin: Number(data.ageMin || 18),
+        ageMax:
+          data.ageMax === "不限" || Number(data.ageMax) >= 60
+            ? "不限"
+            : Number(data.ageMax || 60),
+      };
+      this.genderAgeValue = data.display || formatGenderAge(selection);
+      uni.setStorageSync("genderAgeSelection", {
+        ...selection,
+        display: this.genderAgeValue,
+      });
     },
     applyWorkLocation(data = {}) {
       if (data.display) this.workLocationValue = data.display;
@@ -564,8 +635,8 @@ export default {
           ? `&jobIds=${encodeURIComponent(this.jobIds.join(","))}`
           : "",
       ].join("");
-      uni.navigateTo({
-        url: `/pages/boss/recruit-demand?job=${encodeURIComponent(this.primaryJobName || this.jobName.split("、")[0])}&type=${encodeURIComponent(type)}${this.orderId ? `&id=${encodeURIComponent(this.orderId)}` : ""}${this.templateId ? `&templateId=${encodeURIComponent(this.templateId)}` : ""}${categoryQuery}`,
+      uni.redirectTo({
+        url: `/pages/boss/recruit-demand?job=${encodeURIComponent(this.primaryJobName || this.jobName.split("、")[0])}&type=${encodeURIComponent(type)}${this.orderId ? `&id=${encodeURIComponent(this.orderId)}` : ""}${this.sourceOrderId ? `&sourceOrderId=${encodeURIComponent(this.sourceOrderId)}` : ""}${this.templateId ? `&templateId=${encodeURIComponent(this.templateId)}` : ""}${categoryQuery}`,
       });
     },
   },

@@ -24,6 +24,7 @@ import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.user.constant.CertificationStatus;
+import com.kuaima.app.domain.user.constant.EnterpriseCode;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
@@ -78,7 +79,7 @@ public class AdminUserController {
     }
 
     /** 雇主列表（附加 jobsCount 招工数，使用 fastjson 序列化确保 password 不泄露） */
-    @Operation(summary = "雇主列表分页", description = "参数：status(正常/冻结)、enterpriseStatus(UNVERIFIED/PENDING/APPROVED/REJECTED)、keyword(企业名/手机号模糊)、page、size。附加 jobsCount")
+    @Operation(summary = "雇主列表分页", description = "参数：status(正常/冻结)、enterpriseStatus(UNVERIFIED/PENDING/APPROVED/REJECTED)、keyword(企业编号/企业名称/手机号模糊)、page、size。返回 companyCode、companyName，附加 jobsCount")
     @GetMapping("/bosses")
     public Result<Page<JSONObject>> bosses(@RequestParam(required = false) String status,
                                      @RequestParam(required = false) String enterpriseStatus,
@@ -100,6 +101,9 @@ public class AdminUserController {
 
         Page<JSONObject> views = result.map(u -> {
             JSONObject obj = (JSONObject) JSON.toJSON(u);
+            // 企业字段属于老板列表固定契约；未认证用户也必须明确返回 null，不能由序列化器省略。
+            obj.put("companyCode", u.getCompanyCode());
+            obj.put("companyName", u.getCompanyName());
             obj.put("jobsCount", jobsMap.getOrDefault(u.getId(), 0L));
             return obj;
         });
@@ -114,6 +118,8 @@ public class AdminUserController {
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
         JSONObject obj = (JSONObject) JSON.toJSON(u);
         obj.remove("password");
+        obj.put("companyCode", u.getCompanyCode());
+        obj.put("companyName", u.getCompanyName());
         // 附加完成订单数
         Map<Long, Long> completedMap = new HashMap<>();
         Set<Long> uid = Set.of(id);
@@ -178,6 +184,7 @@ public class AdminUserController {
         u.setEnterpriseStatus(CertificationStatus.APPROVED);
         u.setCertStatus("已通过");
         u.setCertType("ENTERPRISE");
+        EnterpriseCode.ensure(u);
         return Result.success(userRepository.save(u));
     }
 

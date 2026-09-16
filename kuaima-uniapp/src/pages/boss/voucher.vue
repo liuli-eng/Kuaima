@@ -1,376 +1,295 @@
 <template>
   <view class="container">
-    <!-- 状态栏 -->
-    <view class="status-bar">
-      <text>19:53</text>
-      <view class="status-icons">
-        <text>📶</text>
-        <text>📡</text>
-        <text>🔋</text>
-      </view>
-    </view>
-
-    <!-- 导航栏 -->
+    <view :style="{ height: `${statusBarHeight}px` }" />
     <view class="nav-bar">
       <view class="nav-back" @click="goBack">
-        <text>←</text>
+        <image class="nav-back-icon" :src="arrowLeftIcon" mode="aspectFit" />
       </view>
       <text class="nav-title">券包</text>
-      <view class="nav-right">
-        <view class="nav-btn">
-          <text style="font-size: 10px; color: #555">⋯</text>
-        </view>
-        <view class="nav-divider"></view>
-        <view class="nav-btn">
-          <text style="font-size: 10px; color: #555">●</text>
-        </view>
-      </view>
+      <view class="nav-placeholder" />
     </view>
 
-    <scroll-view scroll-y class="content">
-      <!-- 汇总卡片 -->
+    <scroll-view
+      scroll-y
+      class="content"
+      refresher-enabled
+      :refresher-triggered="refreshing"
+      @refresherrefresh="refreshCoupons"
+    >
       <view class="summary-card">
         <view class="summary-item">
           <text class="summary-value">{{ summary.available }}</text>
           <text class="summary-label">可用券</text>
         </view>
-        <view class="summary-divider"></view>
+        <view class="summary-divider" />
         <view class="summary-item">
           <text class="summary-value">{{ summary.used }}</text>
           <text class="summary-label">已使用</text>
         </view>
-        <view class="summary-divider"></view>
+        <view class="summary-divider" />
         <view class="summary-item">
           <text class="summary-value">{{ summary.expired }}</text>
           <text class="summary-label">已过期</text>
         </view>
       </view>
 
-      <!-- Tab切换 -->
       <view class="tab-switch">
         <text
+          v-for="tab in tabs"
+          :key="tab.value"
           class="tab-switch-item"
-          :class="{ active: currentTab === 'available' }"
-          @click="currentTab = 'available'"
-          >待使用</text
+          :class="{ active: currentTab === tab.value }"
+          @click="currentTab = tab.value"
         >
-        <text
-          class="tab-switch-item"
-          :class="{ active: currentTab === 'used' }"
-          @click="currentTab = 'used'"
-          >已使用</text
-        >
-        <text
-          class="tab-switch-item"
-          :class="{ active: currentTab === 'expired' }"
-          @click="currentTab = 'expired'"
-          >已过期</text
-        >
+          {{ tab.label }}
+        </text>
       </view>
 
-      <!-- 优惠券列表 -->
-      <view class="coupon-list">
+      <view v-if="loading" class="page-state">券包加载中...</view>
+      <view v-else-if="loadError" class="page-state error" @click="loadCoupons">
+        {{ loadError }}，点击重试
+      </view>
+      <view v-else-if="!filteredCoupons.length" class="empty-state">
+        <text class="empty-text">{{ emptyText }}</text>
+      </view>
+
+      <view v-else class="coupon-list">
         <view
-          class="coupon-item"
           v-for="coupon in filteredCoupons"
           :key="coupon.id"
-          :class="{ disabled: coupon.disabled }"
+          class="coupon-item"
+          :class="{ disabled: coupon.status !== 'available' }"
         >
           <view class="coupon-left">
             <view class="coupon-amount">
-              <text style="font-size: 14px">¥</text>{{ coupon.amount }}
+              <text class="currency">¥</text>
+              <text>{{ coupon.amountText }}</text>
             </view>
-            <text class="coupon-condition">{{
-              coupon.condition || `满${coupon.minAmount || 0}元可用`
-            }}</text>
-            <text class="coupon-name">{{
-              coupon.name || coupon.title || "优惠券"
-            }}</text>
-            <text class="coupon-expire">{{ coupon.expire }}</text>
+            <text class="coupon-condition">{{ coupon.condition }}</text>
+            <text class="coupon-name">{{ coupon.name }}</text>
+            <text class="coupon-expire">{{ coupon.expireText }}</text>
           </view>
           <button
             class="coupon-use"
-            :disabled="coupon.disabled"
+            :disabled="coupon.status !== 'available'"
             @click="useCoupon(coupon)"
           >
-            {{ coupon.disabled ? "已过期" : "去使用" }}
+            {{ coupon.actionText }}
           </button>
         </view>
       </view>
+      <view class="content-bottom" />
     </scroll-view>
   </view>
 </template>
 
 <script>
-import { listCoupons } from "@/api/backend";
+import { getCurrentUser, listCoupons } from "@/api/backend";
+import { handleTokenInvalid } from "@/api/auth";
+import arrowLeftIcon from "/static/icons/boss-points/arrow-left-dark.svg";
+
+function unwrapRows(result) {
+  if (Array.isArray(result)) return result;
+  return result?.records || result?.content || result?.data || [];
+}
+
+function normalizeStatus(value, expireAt) {
+  const status = String(value || "UNUSED").toUpperCase();
+  if (["USED", "已使用"].includes(status)) return "used";
+  if (["EXPIRED", "已过期"].includes(status)) return "expired";
+  if (expireAt) {
+    const expiry = new Date(String(expireAt).replace(/-/g, "/"));
+    if (!Number.isNaN(expiry.getTime()) && expiry.getTime() < Date.now()) {
+      return "expired";
+    }
+  }
+  return "available";
+}
+
+function formatDate(value) {
+  return value ? String(value).slice(0, 10) : "-";
+}
+
+function normalizeCoupon(item = {}) {
+  const detail = item.coupon || item.couponInfo || item.template || {};
+  const expireAt = item.expireAt || item.expireTime || detail.validEnd || detail.endTime;
+  const status = normalizeStatus(item.status, expireAt);
+  const amount = detail.amount ?? item.amount ?? detail.value ?? item.value;
+  const threshold = detail.threshold ?? detail.minSpend ?? item.threshold ?? item.minAmount;
+  const couponId = item.couponId || detail.id || item.id;
+  const userCouponId = item.userCouponId || item.id;
+  const amountNumber = Number(amount);
+  const thresholdNumber = Number(threshold);
+  return {
+    ...item,
+    id: userCouponId || couponId,
+    couponId,
+    userCouponId,
+    status,
+    amount: Number.isFinite(amountNumber) ? amountNumber : null,
+    amountText: Number.isFinite(amountNumber) ? amountNumber : "--",
+    condition: Number.isFinite(thresholdNumber)
+      ? `满${thresholdNumber}元可用`
+      : detail.condition || item.condition || "使用条件以结算页为准",
+    name:
+      detail.name ||
+      detail.title ||
+      item.name ||
+      item.title ||
+      `优惠券${couponId ? ` #${couponId}` : ""}`,
+    expireAt,
+    expireText:
+      status === "expired"
+        ? `已过期 ${formatDate(expireAt)}`
+        : status === "used"
+          ? `已使用${item.usedAt ? ` ${formatDate(item.usedAt)}` : ""}`
+          : expireAt
+            ? `有效期至 ${formatDate(expireAt)}`
+            : "长期有效",
+    actionText: status === "used" ? "已使用" : status === "expired" ? "已过期" : "去使用",
+  };
+}
+
 export default {
   data() {
     return {
+      arrowLeftIcon,
+      statusBarHeight: 0,
       currentTab: "available",
-      summary: { available: 0, used: 0, expired: 0 },
+      tabs: [
+        { label: "待使用", value: "available" },
+        { label: "已使用", value: "used" },
+        { label: "已过期", value: "expired" },
+      ],
       coupons: [],
+      loading: false,
+      refreshing: false,
+      loadError: "",
     };
   },
   computed: {
+    summary() {
+      return {
+        available: this.coupons.filter((item) => item.status === "available").length,
+        used: this.coupons.filter((item) => item.status === "used").length,
+        expired: this.coupons.filter((item) => item.status === "expired").length,
+      };
+    },
     filteredCoupons() {
-      if (this.currentTab === "available")
-        return this.coupons.filter((c) => !c.disabled);
-      if (this.currentTab === "expired")
-        return this.coupons.filter((c) => c.disabled);
-      return [];
+      return this.coupons.filter((item) => item.status === this.currentTab);
+    },
+    emptyText() {
+      return {
+        available: "暂无待使用优惠券",
+        used: "暂无已使用优惠券",
+        expired: "暂无已过期优惠券",
+      }[this.currentTab];
     },
   },
   onLoad() {
+    try {
+      const info = typeof uni.getWindowInfo === "function"
+        ? uni.getWindowInfo()
+        : uni.getSystemInfoSync();
+      this.statusBarHeight = Number(info.statusBarHeight || 0);
+    } catch (_) {}
     this.loadCoupons();
   },
   methods: {
     async loadCoupons() {
+      if (this.loading) return;
+      this.loading = !this.refreshing;
+      this.loadError = "";
       try {
-        const result = await listCoupons(
-          uni.getStorageSync("userId") || "2001",
-        );
-        const rows = Array.isArray(result)
-          ? result
-          : result?.records || result?.content || [];
-        this.coupons = rows.map((item) => ({
-          ...item,
-          amount: item.amount ?? item.value ?? "0.00",
-          expire:
-            item.expire || `有效期至 ${item.endTime || item.expireTime || "-"}`,
-          disabled:
-            item.disabled ??
-            ["USED", "EXPIRED", "已使用", "已过期"].includes(item.status),
-        }));
-        this.summary = {
-          available: this.coupons.filter((c) => !c.disabled).length,
-          used: this.coupons.filter((c) =>
-            ["USED", "已使用"].includes(c.status),
-          ).length,
-          expired: this.coupons.filter(
-            (c) => c.disabled && !["USED", "已使用"].includes(c.status),
-          ).length,
-        };
+        const currentUser = await getCurrentUser();
+        const userId = currentUser?.id || currentUser?.userId;
+        if (!userId) throw new Error("未获取到当前老板账号");
+        const result = await listCoupons(userId);
+        const rows = unwrapRows(result);
+        this.coupons = Array.isArray(rows) ? rows.map(normalizeCoupon) : [];
       } catch (error) {
-        uni.showToast({
-          title: error.message || "优惠券加载失败",
-          icon: "none",
-        });
+        this.coupons = [];
+        if (error?.statusCode === 401) {
+          await handleTokenInvalid({ role: "boss" });
+          return;
+        }
+        this.loadError = error?.statusCode === 403
+          ? "无权查看券包"
+          : error?.message || "优惠券加载失败";
+        uni.showToast({ title: this.loadError, icon: "none" });
+      } finally {
+        this.loading = false;
+        this.refreshing = false;
       }
+    },
+    refreshCoupons() {
+      if (this.loading || this.refreshing) return;
+      this.refreshing = true;
+      this.loadCoupons();
     },
     goBack() {
       uni.navigateBack();
     },
     useCoupon(coupon) {
-      uni.showToast({ title: "跳转发布订单页面使用优惠券", icon: "none" });
+      const selection = {
+        couponId: coupon.couponId,
+        userCouponId: coupon.userCouponId,
+        name: coupon.name,
+        amount: coupon.amount,
+        condition: coupon.condition,
+        expireAt: coupon.expireAt,
+      };
+      uni.setStorageSync("bossCouponSelection", selection);
+      const query = [
+        coupon.couponId ? `couponId=${encodeURIComponent(coupon.couponId)}` : "",
+        coupon.userCouponId
+          ? `userCouponId=${encodeURIComponent(coupon.userCouponId)}`
+          : "",
+      ].filter(Boolean).join("&");
+      uni.navigateTo({
+        url: `/pages/boss/publish-info${query ? `?${query}` : ""}`,
+        fail: () => uni.showToast({ title: "发布页面打开失败", icon: "none" }),
+      });
     },
   },
 };
 </script>
 
 <style lang="scss" scoped>
-.container {
-  width: 100%;
-  height: 100vh;
-  background: #fff8e6;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: transparent;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.nav-bar {
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  background: #fff8e6;
-}
-
-.nav-back {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: #333;
-}
-
-.nav-right {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  border-radius: 9999px;
-  padding: 3px 6px;
-  gap: 2px;
-}
-
-.nav-btn {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-divider {
-  width: 1px;
-  height: 10px;
-  background: #ddd;
-}
-
-.content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-}
-
-.summary-card {
-  background: white;
-  border-radius: 14px;
-  padding: 20px;
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.summary-item {
-  text-align: center;
-}
-
-.summary-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: #ff6b35;
-  display: block;
-}
-
-.summary-label {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-  display: block;
-}
-
-.summary-divider {
-  width: 1px;
-  background: #f0f0f0;
-}
-
-.tab-switch {
-  display: flex;
-  background: white;
-  border-radius: 10px;
-  padding: 4px;
-  margin-bottom: 16px;
-}
-
-.tab-switch-item {
-  flex: 1;
-  text-align: center;
-  padding: 8px;
-  font-size: 14px;
-  color: #666;
-  border-radius: 8px;
-}
-
-.tab-switch-item.active {
-  background: #ff6b35;
-  color: white;
-  font-weight: 600;
-}
-
-.coupon-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.coupon-item {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  position: relative;
-  overflow: hidden;
-}
-
-.coupon-item.disabled {
-  opacity: 0.5;
-}
-
-.coupon-left {
-  flex: 1;
-  padding-right: 16px;
-}
-
-.coupon-amount {
-  font-size: 24px;
-  font-weight: 700;
-  color: #ff6b35;
-}
-
-.coupon-condition {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-  display: block;
-}
-
-.coupon-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  margin-top: 6px;
-  display: block;
-}
-
-.coupon-expire {
-  font-size: 11px;
-  color: #bbb;
-  margin-top: 4px;
-  display: block;
-}
-
-.coupon-use {
-  width: 64px;
-  height: 32px;
-  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
-  color: white;
-  border: none;
-  border-radius: 16px;
-  font-size: 13px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.coupon-item.disabled .coupon-use {
-  background: #ccc;
-}
+.container { width: 100%; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #f5f5f5; }
+.nav-bar { position: relative; height: 50px; display: flex; align-items: center; padding: 0 16px; flex-shrink: 0; background: #f5f5f5; box-sizing: border-box; }
+.nav-back, .nav-placeholder { width: 32px; height: 32px; }
+.nav-back { display: flex; align-items: center; justify-content: center; }
+.nav-back-icon { width: 18px; height: 18px; }
+.nav-title { position: absolute; left: 50%; transform: translateX(-50%); color: #333; font-size: 17px; font-weight: 600; }
+.nav-placeholder { margin-left: auto; }
+.content { flex: 1; min-height: 0; padding: 16px; box-sizing: border-box; }
+.summary-card { display: flex; justify-content: space-around; margin-bottom: 16px; padding: 20px; background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); }
+.summary-item { flex: 1; text-align: center; }
+.summary-value, .summary-label { display: block; }
+.summary-value { color: #ff6b35; font-size: 22px; font-weight: 700; }
+.summary-label { margin-top: 4px; color: #999; font-size: 12px; }
+.summary-divider { width: 1px; background: #f0f0f0; }
+.tab-switch { display: flex; margin-bottom: 16px; padding: 4px; background: #fff; border-radius: 10px; }
+.tab-switch-item { flex: 1; padding: 8px; color: #666; font-size: 14px; text-align: center; border-radius: 8px; }
+.tab-switch-item.active { color: #fff; font-weight: 600; background: #ff6b35; }
+.coupon-list { display: flex; flex-direction: column; gap: 12px; }
+.coupon-item { position: relative; display: flex; align-items: center; min-height: 120px; padding: 16px; overflow: hidden; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); box-sizing: border-box; }
+.coupon-item::before { position: absolute; top: 0; bottom: 0; left: 80px; width: 1px; content: ""; background-image: radial-gradient(circle, #ddd 3px, transparent 3px); background-size: 1px 8px; }
+.coupon-item.disabled { opacity: .5; }
+.coupon-left { flex: 1; min-width: 0; padding-right: 16px; }
+.coupon-amount { display: flex; align-items: baseline; color: #ff6b35; font-size: 24px; font-weight: 700; }
+.currency { margin-right: 2px; font-size: 14px; }
+.coupon-condition, .coupon-name, .coupon-expire { display: block; }
+.coupon-condition { margin-top: 4px; color: #999; font-size: 12px; }
+.coupon-name { margin-top: 6px; overflow: hidden; color: #333; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.coupon-expire { margin-top: 4px; color: #bbb; font-size: 11px; }
+.coupon-use { width: 64px; height: 32px; margin: 0; padding: 0; flex-shrink: 0; color: #fff; font-size: 13px; font-weight: 500; line-height: 32px; background: linear-gradient(135deg, #ff6b35, #ff8c5a); border: 0; border-radius: 16px; }
+.coupon-use::after { border: 0; }
+.coupon-use[disabled] { color: #fff; background: #ccc; }
+.page-state, .empty-state { padding: 60px 0; text-align: center; }
+.page-state { color: #999; font-size: 14px; }
+.page-state.error { color: #ff6b35; }
+.empty-text { color: #999; font-size: 14px; }
+.content-bottom { height: calc(16px + env(safe-area-inset-bottom)); }
 </style>

@@ -12,7 +12,8 @@ public final class BossOrderTemplateModels {
                                Integer salary, Integer duration, Integer orderNum,
                                Date startTime, Date endTime, String tags,
                                String experience, String gender, String signMode,
-                               Boolean phoneNotify, Boolean signNotify, Boolean startRemind, Boolean settleNotify) {}
+                               Boolean phoneNotify, Boolean signNotify, Boolean startRemind, Boolean settleNotify,
+                               java.util.List<Long> invitedWorkerIds) {}
 
     public record CreateRequest(String templateName, Boolean overwrite) {}
     public record RenameRequest(String templateName) {}

@@ -3,6 +3,8 @@ package com.kuaima.app.domain.points.repository;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 import com.kuaima.app.domain.points.entity.PointsAccount;
 
@@ -10,4 +12,8 @@ public interface PointsAccountRepository extends JpaRepository<PointsAccount, Lo
 
     /** 按用户查积分账户 */
     Optional<PointsAccount> findByUserId(Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select a from PointsAccount a where a.userId = :userId")
+    Optional<PointsAccount> findByUserIdForUpdate(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

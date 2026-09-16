@@ -96,4 +96,9 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Modifying
     @Query("update Message m set m.readFlag = true, m.readTime = :now where m.userId = :userId and m.readFlag = false")
     int markAllRead(@Param("userId") Long userId, @Param("now") LocalDateTime now);
+
+    @Query("select distinct m.userId from Message m where m.type = :type and m.bizType = :bizType and m.bizId = :bizId and m.userId is not null order by m.userId")
+    List<Long> findDistinctUserIdsByTypeAndBizTypeAndBizId(@Param("type") String type,
+                                                            @Param("bizType") String bizType,
+                                                            @Param("bizId") Long bizId);
 }

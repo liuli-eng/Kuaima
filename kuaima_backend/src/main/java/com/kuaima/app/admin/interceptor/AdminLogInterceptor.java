@@ -62,6 +62,9 @@ public class AdminLogInterceptor implements HandlerInterceptor {
         MODULE_MAP.put("/admin/service", "消息客服/客服管理");
         MODULE_MAP.put("/admin/reports", "消息客服/举报处理");
         MODULE_MAP.put("/admin/orders", "订单结算/用工订单");
+        MODULE_MAP.put("/admin/point-purchase", "营销管理/积分购买");
+        MODULE_MAP.put("/admin/coupons", "营销管理/优惠券管理");
+        MODULE_MAP.put("/admin/rewards", "营销管理/奖励金管理");
         MODULE_MAP.put("/admin/auth", "后台登录");
     }
 

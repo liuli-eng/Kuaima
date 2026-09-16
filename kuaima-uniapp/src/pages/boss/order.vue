@@ -62,7 +62,7 @@
             <text>筛选</text>
             <text class="filter-arrow">⌄</text>
           </view>
-          <view class="applicant-btn" @click="openApplicantPicker">
+          <view class="applicant-btn" @click="navigateTo('applicant-info')">
             <text>✓</text>
             <text>报名信息</text>
           </view>
@@ -169,7 +169,7 @@
                 >
               </template>
               <text
-                v-if="['pending', 'recruiting', 'ended', 'settling'].includes(job.status)"
+                v-if="['pending', 'recruiting'].includes(job.status)"
                 class="job-btn btn-danger"
                 @click="cancelJob(job.id)"
                 >取消招工</text
@@ -347,6 +347,7 @@ function getSafeArea() {
 
 const statusByBackend = {
   待审核: "pending",
+  审核中: "pending",
   审核拒绝: "rejected",
   招工中: "recruiting",
   招工结束: "ended",
@@ -857,23 +858,6 @@ export default {
     },
     repeatOrder(job) {
       this.navigateTo("publish-info", { sourceOrderId: job.id });
-    },
-    openApplicantPicker() {
-      if (this.jobList.length === 0) {
-        uni.showToast({ title: "暂无招工订单", icon: "none" });
-        return;
-      }
-      if (this.jobList.length === 1) {
-        this.navigateTo("applicant-info", { orderId: this.jobList[0].id });
-        return;
-      }
-      uni.showActionSheet({
-        itemList: this.jobList.slice(0, 6).map((job) => job.title),
-        success: ({ tapIndex }) => {
-          const job = this.jobList[tapIndex];
-          if (job) this.navigateTo("applicant-info", { orderId: job.id });
-        },
-      });
     },
     switchTab(tab) {
       if (tab === "workbench")

@@ -50,6 +50,9 @@ public class BaseOrderItem extends BaseEntity {
     @Column(comment = "取消原因")
     private String cancelReason;
 
+    @Column(name = "early_leave", comment = "是否通过早退流程提前完工")
+    private Boolean earlyLeave = false;
+
     /** 报名用户昵称（查询返回字段，不落库）。 */
     @Transient
     private String nickname;

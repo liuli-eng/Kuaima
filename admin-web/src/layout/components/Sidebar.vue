@@ -85,6 +85,15 @@ const menuGroups = [
     ]
   },
   {
+    id: 'marketing',
+    name: '营销管理',
+    items: [
+      { path: '/admin/point-purchase', name: '积分管理', icon: 'fa-coins' },
+      { path: '/admin/coupon-manage', name: '优惠券管理', icon: 'fa-ticket-alt' },
+      { path: '/admin/reward-manage', name: '奖励金管理', icon: 'fa-gift' }
+    ]
+  },
+  {
     id: 'order',
     name: '订单结算',
     items: [

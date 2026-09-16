@@ -34,4 +34,6 @@ public class UserCoupon extends BaseEntity {
 
     @Column(comment = "使用时间")
     private Timestamp usedAt;
+
+    private Long useOrderId;
 }

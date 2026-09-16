@@ -14,10 +14,10 @@
             <image :src="profile.avatar || userIcon" mode="aspectFill" />
           </view>
           <view class="user-info-main">
-            <text class="user-name">{{ profile.name }} | 老板</text>
+            <text class="user-name" @click.stop="openIdentitySwitch">{{ profile.name }} | 老板</text>
             <image class="chevron-icon" :src="chevronRightIcon" mode="aspectFit" />
           </view>
-          <view class="switch-btn" @click.stop="navigateTo('switch-account')">
+          <view class="switch-btn" @click.stop="openIdentitySwitch">
             <image :src="exchangeIcon" mode="aspectFit" />
             <text>我要找工作</text>
           </view>
@@ -73,13 +73,6 @@
           <text class="cert-desc">{{ profile.enterpriseApproved ? '认证信息已生效' : '曝光加权·优先推荐熟练零工接单' }}</text>
         </view>
         <text class="cert-btn">{{ profile.enterpriseApproved ? '查看认证' : '立即认证' }}</text>
-      </view>
-
-      <!-- 项目管理入口 -->
-      <view class="entry-card projects" @click="navigateTo('projects')">
-        <view class="entry-name">项目管理</view>
-        <view class="entry-desc">签到考勤 入职离职</view>
-        <text class="entry-icon">🗂</text>
       </view>
 
       <!-- 我的服务 -->
@@ -279,6 +272,9 @@ export default {
     this.loadProfile()
   },
   methods: {
+    openIdentitySwitch() {
+      uni.navigateTo({ url: '/pages/worker/switch-identity?role=boss' })
+    },
     async loadProfile() {
       try {
         const userId = uni.getStorageSync('userId')
@@ -332,9 +328,7 @@ export default {
         'sub-account', 'suspend-settle', 'switch-account', 'invite-code', 'blacklist', 
         'all-jobs', 'boss-filter', 'settlement', 'contract', 'system-notice', 'missed-call', 
         'signup-notice', 'invite-friend',         'service-chat', 'insurance', 'realname', 
-        'personal-info',
-        'projects', 'project-detail', 'proj-members', 'proj-attendance',
-        'proj-checkin', 'proj-onboard', 'proj-onsite', 'proj-onsite-add', 'proj-settings'
+        'personal-info', 'points'
       ]
       const sharedPageMap = {
         'rule': '/pages/worker/rule',
@@ -730,23 +724,4 @@ export default {
 .tab-icon-wrap image { width: 22px; height: 22px; }
 .tab-item.active .tab-icon-wrap image { opacity: 1; }
 
-.entry-card {
-  border-radius: 16px;
-  padding: 16px 14px;
-  margin-bottom: 16px;
-  position: relative;
-  overflow: hidden;
-  min-height: 80px;
-  box-shadow: 0 6px 16px rgba(240, 165, 0, 0.22);
-}
-.entry-card.projects { background: linear-gradient(135deg, #f0a500 0%, #ffc53d 100%); }
-.entry-name { font-size: 17px; font-weight: 700; color: #fff; }
-.entry-desc { font-size: 11px; color: rgba(255, 255, 255, 0.9); margin-top: 6px; }
-.entry-icon {
-  position: absolute;
-  right: 12px;
-  bottom: 8px;
-  font-size: 32px;
-  color: rgba(255, 255, 255, 0.35);
-}
 </style>

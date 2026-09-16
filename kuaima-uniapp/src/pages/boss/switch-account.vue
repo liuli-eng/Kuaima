@@ -3,37 +3,36 @@
     <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="nav-inner">
         <button class="nav-back" @click="goBack">‹</button>
-        <text class="nav-title">切换身份</text>
+        <text class="nav-title">更换账号</text>
         <view class="nav-space" />
       </view>
     </view>
 
     <scroll-view scroll-y class="content-area">
-      <view class="avatar-section">
-        <view class="avatar-circle"><text class="avatar-text">晴</text></view>
+      <view class="account-card">
+        <text class="account-title">已登录账号</text>
+        <view v-for="account in accounts" :key="account.id" class="account-item">
+          <view class="account-avatar" :class="account.current ? 'orange' : 'blue'">{{ (account.name || '账').slice(0, 1) }}</view>
+          <view class="account-info">
+            <text class="account-name">{{ account.name || '招聘账号' }} <text v-if="account.current" class="current-badge">当前账号</text></text>
+            <text class="account-phone">{{ account.workCode ? `开工码 ${account.workCode}` : formatAuthorization(account.authorizationType) }}</text>
+          </view>
+        </view>
+        <view v-if="!accounts.length" class="account-empty">暂无可切换账号</view>
       </view>
-      <text class="identity-text">你当前身份是老板</text>
-      <view class="btn-section">
-        <button
-          class="btn-primary"
-          :disabled="switching"
-          @click="switchToWorker"
-        >
-          切换为零工身份
-        </button>
-        <button class="btn-secondary" @click="stayHere">暂不切换</button>
-      </view>
+      <view class="add-btn" @click="addAccount">＋ 添加新账号</view>
+      <button class="logout-btn" :disabled="loggingOut" @click="logoutAccount">{{ loggingOut ? '退出中…' : '退出登录' }}</button>
+      <text class="tips">切换账号将保留各自的订单、消息和设置数据</text>
     </scroll-view>
   </view>
 </template>
 
 <script>
-import { wechatLogin } from "@/api/auth";
-import { USE_MOCK } from "@/api/http";
+import { getCurrentUser, logout } from "@/api/auth";
 
 export default {
   data() {
-    return { statusBarHeight: 0, switching: false };
+    return { statusBarHeight: 0, loggingOut: false, accounts: [] };
   },
   onLoad() {
     try {
@@ -43,63 +42,50 @@ export default {
           : uni.getSystemInfoSync();
       this.statusBarHeight = Number(info.statusBarHeight || 0);
     } catch (_) {}
+    this.loadAccounts();
   },
   methods: {
     goBack() {
       uni.navigateBack();
     },
-    switchToWorker() {
-      if (this.switching) return;
-      this.switching = true;
-      if (USE_MOCK) {
-        this.finishSwitch({
-          role: "USER",
-          userId: uni.getStorageSync("userId") || "2001",
-          accessToken: uni.getStorageSync("token"),
-        });
-        return;
+    async loadAccounts() {
+      try {
+        const cached = uni.getStorageSync("userInfo") || {};
+        const result = await getCurrentUser().catch(() => cached);
+        const account = { ...cached, ...(result || {}) };
+        const name = account.nickname || account.name || account.realName || "当前账号";
+        const phone = account.phone || account.phoneNumber || uni.getStorageSync("userPhone") || "";
+        this.accounts = [{
+          id: account.id || uni.getStorageSync("userId") || "current",
+          name,
+          phone: maskPhone(phone),
+          current: true,
+        }];
+      } catch (error) {
+        uni.showToast({ title: error?.message || "账号加载失败", icon: "none" });
       }
-      // API.md 规定身份切换复用微信登录接口，必须用新的 wx.login code 换取带目标角色的 JWT。
-      // #ifdef MP-WEIXIN
-      uni.login({
-        provider: "weixin",
-        success: async ({ code }) => {
-          try {
-            const result = await wechatLogin({ code, role: "USER" });
-            this.finishSwitch(result);
-          } catch (error) {
-            this.switching = false;
-            uni.showToast({
-              title: error.message || "身份切换失败",
-              icon: "none",
-            });
-          }
-        },
-        fail: () => {
-          this.switching = false;
-          uni.showToast({ title: "无法获取微信登录凭证", icon: "none" });
-        },
-      });
-      return;
-      // #endif
-      // #ifdef H5
-      this.switching = false;
-      uni.showToast({ title: "请在微信小程序中完成身份切换", icon: "none" });
-      // #endif
     },
-    finishSwitch(result = {}) {
-      if (result.accessToken) uni.setStorageSync("token", result.accessToken);
-      if (result.userId !== undefined)
-        uni.setStorageSync("userId", String(result.userId));
-      uni.setStorageSync("role", result.role || "USER");
-      uni.showToast({ title: "已切换为零工身份", icon: "success" });
-      setTimeout(() => uni.reLaunch({ url: "/pages/worker/home" }), 500);
+    addAccount() {
+      uni.showToast({ title: "添加账号功能暂未开放", icon: "none" });
     },
-    stayHere() {
-      uni.navigateBack();
+    async logoutAccount() {
+      if (this.loggingOut) return;
+      uni.showModal({ title: "退出登录", content: "确定退出当前账号吗？", success: async ({ confirm }) => {
+        if (!confirm) return;
+        this.loggingOut = true;
+        await logout();
+        this.loggingOut = false;
+      }});
     },
   },
 };
+
+function maskPhone(value) {
+  const phone = String(value || "");
+  return /^(\d{3})\d{4}(\d{4})$/.test(phone)
+    ? phone.replace(/^(\d{3})\d{4}(\d{4})$/, "$1****$2")
+    : phone || "手机号未绑定";
+}
 </script>
 
 <style lang="scss" scoped>
@@ -147,8 +133,8 @@ export default {
   line-height: 28px;
 }
 .nav-back::after,
-.btn-primary::after,
-.btn-secondary::after {
+.switch-btn::after,
+.logout-btn::after {
   border: 0;
 }
 .content-area {
@@ -156,64 +142,23 @@ export default {
   height: 0;
   min-height: 0;
   box-sizing: border-box;
-  background: #fff;
+  background: #f5f5f5;
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
-.avatar-section {
-  display: flex;
-  justify-content: center;
-  padding: 60px 0 30px;
-}
-.avatar-circle {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffe4b5, #ffd966);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.avatar-text {
-  color: #ff6b35;
-  font-size: 48px;
-  font-weight: 700;
-}
-.identity-text {
-  display: block;
-  margin-bottom: 60px;
-  color: #333;
-  font-size: 22px;
-  font-weight: 600;
-  text-align: center;
-}
-.btn-section {
-  padding: 0 24px;
-}
-.btn-primary,
-.btn-secondary {
-  width: 100%;
-  height: 56px;
-  margin: 0 0 16px;
-  padding: 0;
-  border-radius: 28px;
-  font-size: 16px;
-  line-height: 56px;
-  text-align: center;
-  box-sizing: border-box;
-}
-.btn-primary {
-  color: #fff;
-  background: linear-gradient(135deg, #ffd700, #ffa500);
-  font-weight: 600;
-  box-shadow: 0 8px 20px rgba(255, 180, 50, 0.35);
-}
-.btn-primary[disabled] {
-  opacity: 0.6;
-}
-.btn-secondary {
-  color: #666;
-  background: #fff;
-  border: 1px solid #eee;
-  font-weight: 500;
-}
+.account-card { margin: 12px 16px; padding: 16px; border-radius: 12px; background: #fff; }
+.account-title { display: block; margin-bottom: 12px; color: #333; font-size: 15px; font-weight: 600; }
+.account-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+.account-item:last-child { border-bottom: 0; }
+.account-avatar { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; color: #fff; font-weight: 600; }
+.account-avatar.orange { background: linear-gradient(135deg, #ff6b35, #ff8c5a); }
+.account-avatar.blue { background: linear-gradient(135deg, #1890ff, #40a9ff); }
+.account-info { flex: 1; min-width: 0; }
+.account-name { display: block; color: #333; font-size: 14px; font-weight: 600; }
+.account-phone { display: block; margin-top: 2px; color: #999; font-size: 12px; }
+.current-badge { padding: 2px 6px; border-radius: 4px; color: #ff6b35; background: #fff3ed; font-size: 11px; font-weight: 400; }
+.switch-btn { width: auto; height: 30px; margin: 0; padding: 0 12px; border: 0; border-radius: 15px; color: #ff6b35; background: #fff3ed; font-size: 12px; line-height: 30px; }
+.account-empty { padding: 24px 0; color: #aaa; font-size: 13px; text-align: center; }
+.add-btn { display: flex; align-items: center; justify-content: center; margin: 12px 16px; padding: 14px; border: 1px dashed #ddd; border-radius: 10px; color: #666; background: #fff; font-size: 14px; }
+.logout-btn { width: calc(100% - 32px); height: 46px; margin: 24px 16px 12px; padding: 0; border: 0; border-radius: 23px; color: #ff4d4f; background: #fff; font-size: 15px; line-height: 46px; }
+.tips { display: block; padding: 0 16px; color: #bbb; font-size: 12px; line-height: 1.6; text-align: center; }
 </style>

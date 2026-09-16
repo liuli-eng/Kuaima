@@ -29,6 +29,20 @@ public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, L
     /** 查询某用户报名过的订单记录 */
     List<BaseOrderItem> findByUserId(Long userId);
 
+    long countByUserIdAndStatus(Long userId, String status);
+
+    long countByUserIdAndStatusAndEarlyLeaveTrue(Long userId, String status);
+
+    @Query("""
+            select count(i) from BaseOrderItem i
+            join BossOrder o on i.orderId = o.id
+            where i.userId = :userId
+              and i.status = '已录用'
+              and i.workDate is null
+              and o.endTime < :now
+            """)
+    long countNoShowByUserId(@Param("userId") Long userId, @Param("now") java.util.Date now);
+
     /** 零工订单聚合列表：报名记录与订单类型、状态一起分页查询。statuses 为空则不过滤状态。 */
     @Query("""
             select i from BaseOrderItem i

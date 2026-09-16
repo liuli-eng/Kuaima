@@ -125,6 +125,7 @@ public class AuthController {
             newUser.setRole(role);
             newUser.setOpenid(info.openid());
             String rawNickname = info.nickname() != null ? info.nickname() : dto.getNickname();
+            // 昵称可沿用注册页选择的展示称呼，但实际权限身份仍由企业认证决定。
             newUser.setNickname(StringUtils.hasText(rawNickname) ? rawNickname : nextDefaultNickname(role));
             newUser.setAvatar(info.avatar() != null ? info.avatar() : dto.getAvatar());
             newUser.setPhone(phone);
@@ -138,11 +139,8 @@ public class AuthController {
             }
         }
 
-        // 老用户身份以本次选择为准，直接切换
-        if (!role.equals(user.getRole())) {
-            user.setRole(role);
-            user = userRepository.save(user);
-        }
+        // 小程序选择的当前身份由 role 表示；企业认证只在发布招工等业务权限处校验。
+        if (!role.equals(user.getRole())) { user.setRole(role); user = userRepository.save(user); }
         return Result.success(buildTokenResponse(user));
     }
 
@@ -203,10 +201,7 @@ public class AuthController {
         }
         User user = userRepository.findById(uid)
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + uid));
-        if (!role.equals(user.getRole())) {
-            user.setRole(role);
-            user = userRepository.save(user);
-        }
+        if (!role.equals(user.getRole())) { user.setRole(role); user = userRepository.save(user); }
         return Result.success(buildTokenResponse(user));
     }
 
