@@ -147,6 +147,7 @@
     { "path": "pages/worker/follow", "style": { "navigationStyle": "custom" } },
     { "path": "pages/worker/record", "style": { "navigationStyle": "custom" } },
     { "path": "pages/worker/coupon", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/worker/checkin", "style": { "navigationStyle": "custom" } },
     { "path": "pages/worker/invite", "style": { "navigationStyle": "custom" } },
     {
       "path": "pages/worker/appeal-submit",
@@ -422,6 +423,8 @@
     { "path": "pages/boss/voucher", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/projects", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/project-detail", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/sign-code", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/workbench", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/proj-members", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/proj-attendance", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/proj-checkin", "style": { "navigationStyle": "custom" } },

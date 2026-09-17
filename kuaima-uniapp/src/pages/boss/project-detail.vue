@@ -139,7 +139,7 @@ export default {
       uni.navigateTo({ url: `/pages/boss/proj-onboard?id=${this.projectId}` });
     },
     showSignCode() {
-      uni.showToast({ title: "签到码功能即将上线", icon: "none" });
+      uni.navigateTo({ url: `/pages/boss/sign-code?id=${this.projectId}` });
     },
   },
 };

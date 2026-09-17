@@ -382,11 +382,10 @@ export default {
       uni.navigateTo({ url });
     },
     switchTab(tab) {
-      if (tab === "workbench")
-        return uni.showToast({ title: "工作台页面暂未开放", icon: "none" });
       const tabPages = {
         home: "/pages/boss/home",
         order: "/pages/boss/order",
+        workbench: "/pages/boss/workbench",
         message: "/pages/boss/message",
         profile: "/pages/boss/profile",
       };
