@@ -19,12 +19,10 @@
 
     <!-- 二维码 -->
     <view class="qr-card">
-      <canvas
-        id="qrCanvas"
-        canvas-id="qrCanvas"
-        class="qr-canvas"
-        style="width: 218px; height: 218px"
-      ></canvas>
+      <image v-if="qrImageUrl" :src="qrImageUrl" class="qr-image" mode="aspectFit"></image>
+      <view v-else class="qr-loading">
+        <text>生成中...</text>
+      </view>
       <view class="qr-mask">
         <text class="fingerprint-ico">👆</text>
       </view>
@@ -38,19 +36,22 @@
     <view class="expire-tip">
       <text>签到码有效期：{{ expireMinutes }}分钟</text>
     </view>
+
+    <!-- 刷新按钮 -->
+    <view class="refresh-btn" @click="refreshQR">
+      <text>刷新签到码</text>
+    </view>
   </view>
 </template>
 
 <script>
-import BossPageHeader from "@/components/BossPageHeader.vue";
-
 export default {
-  components: { BossPageHeader },
   data() {
     return {
       project: {},
       expireMinutes: 60,
       qrContent: "",
+      qrImageUrl: "",
     };
   },
   onLoad(options) {
@@ -58,9 +59,6 @@ export default {
     if (projectId) {
       this.loadProject(projectId);
     }
-  },
-  onReady() {
-    this.generateQR();
   },
   methods: {
     async loadProject(id) {
@@ -72,100 +70,29 @@ export default {
         this.generateQR();
       } catch (e) {
         console.warn("加载项目失败", e);
+        // 即使加载失败也生成二维码
+        this.generateQR();
       }
     },
     generateQR() {
-      // 生成签到URL
+      // 生成签到URL - 包含项目ID和用户信息
       const projectId = this.project.id || "0";
       const timestamp = Date.now();
-      this.qrContent = `https://kuaima.com/checkin?projectId=${projectId}&t=${timestamp}`;
-
-      // 使用 canvas 绘制二维码
-      this.$nextTick(() => {
-        this.drawQRCode();
-      });
+      // 使用微信小程序的URL Scheme或网页链接
+      this.qrContent = `https://kuaima.com/checkin?projectId=${projectId}&t=${timestamp}&auto=1`;
+      
+      // 使用在线QR码生成服务
+      this.generateQRImageUrl();
     },
-    drawQRCode() {
-      const query = uni.createSelectorQuery().in(this);
-      query
-        .select("#qrCanvas")
-        .fields({ node: true, size: true })
-        .exec((res) => {
-          if (!res || !res[0] || !res[0].node) {
-            this.drawQRFallback();
-            return;
-          }
-          const canvas = res[0].node;
-          const ctx = canvas.getContext("2d");
-          const size = 218;
-          canvas.width = size;
-          canvas.height = size;
-
-          // 简化的二维码绘制（实际项目建议使用 uqrcode 库）
-          this.drawSimpleQR(ctx, size);
-        });
+    generateQRImageUrl() {
+      // 使用 Google Charts API 生成二维码
+      const content = encodeURIComponent(this.qrContent);
+      const size = 300;
+      this.qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${content}`;
     },
-    drawSimpleQR(ctx, size) {
-      const cellCount = 25;
-      const cellSize = size / cellCount;
-
-      // 白色背景
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, size, size);
-
-      // 使用固定种子生成确定性图案
-      let seed = this.project.id || 12345;
-      const rand = () => {
-        seed = (seed * 9301 + 49297) % 233280;
-        return seed / 233280;
-      };
-
-      ctx.fillStyle = "#1a1a1a";
-
-      // 绘制定位图案（三个角的方块）
-      const drawFinder = (x, y) => {
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize * 7, cellSize * 7);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(
-          (x + 1) * cellSize,
-          (y + 1) * cellSize,
-          cellSize * 5,
-          cellSize * 5
-        );
-        ctx.fillStyle = "#1a1a1a";
-        ctx.fillRect(
-          (x + 2) * cellSize,
-          (y + 2) * cellSize,
-          cellSize * 3,
-          cellSize * 3
-        );
-      };
-
-      drawFinder(0, 0);
-      drawFinder(cellCount - 7, 0);
-      drawFinder(0, cellCount - 7);
-
-      // 绘制数据点
-      for (let y = 0; y < cellCount; y++) {
-        for (let x = 0; x < cellCount; x++) {
-          const inFinder =
-            (x < 8 && y < 8) ||
-            (x >= cellCount - 8 && y < 8) ||
-            (x < 8 && y >= cellCount - 8);
-          if (!inFinder && rand() > 0.52) {
-            ctx.fillRect(
-              Math.floor(x * cellSize),
-              Math.floor(y * cellSize),
-              Math.ceil(cellSize),
-              Math.ceil(cellSize)
-            );
-          }
-        }
-      }
-    },
-    drawQRFallback() {
-      // 降级方案：显示提示文字
-      console.log("Canvas 不可用，使用降级方案");
+    refreshQR() {
+      this.generateQR();
+      uni.showToast({ title: "签到码已刷新", icon: "success" });
     },
     goBack() {
       uni.navigateBack();
@@ -275,9 +202,19 @@ export default {
   position: relative;
 }
 
-.qr-canvas {
+.qr-image {
   width: 218px;
   height: 218px;
+}
+
+.qr-loading {
+  width: 218px;
+  height: 218px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 14px;
 }
 
 .qr-mask {
@@ -318,5 +255,19 @@ export default {
   font-size: 12px;
   color: rgba(74, 53, 0, 0.6);
   margin-top: 16px;
+}
+
+.refresh-btn {
+  margin-top: 20px;
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  font-size: 13px;
+  color: #4a3500;
+  border: 1px solid rgba(74, 53, 0, 0.2);
+}
+
+.refresh-btn:active {
+  background: rgba(255, 255, 255, 0.5);
 }
 </style>

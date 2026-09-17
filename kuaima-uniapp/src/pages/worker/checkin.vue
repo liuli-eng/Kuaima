@@ -34,15 +34,20 @@
           </view>
         </view>
 
+        <!-- 自动签到提示 -->
+        <view v-if="autoCheckin" class="auto-tip">
+          <text>正在自动签到...</text>
+        </view>
+
         <!-- 签到状态 -->
         <view v-if="alreadyCheckedIn" class="status-box success">
           <text class="status-icon">✓</text>
-          <text class="status-text">今日已签到</text>
+          <text class="status-text">签到成功</text>
           <text class="status-time">签到时间：{{ checkInTime }}</text>
         </view>
 
         <!-- 签到按钮 -->
-        <view v-else class="checkin-actions">
+        <view v-else-if="!autoCheckin" class="checkin-actions">
           <view class="btn-sign-in" @click="handleSignIn">
             <text class="btn-icon">👆</text>
             <text class="btn-text">签到打卡</text>
@@ -69,10 +74,12 @@ export default {
       loading: true,
       alreadyCheckedIn: false,
       checkInTime: "",
+      autoCheckin: false,
     };
   },
   onLoad(options) {
     this.projectId = options.projectId || options.id || "";
+    this.autoCheckin = options.auto === "1" || options.auto === 1;
     // 获取用户ID（实际应从登录状态获取）
     this.userId = uni.getStorageSync("userId") || "";
     if (this.projectId) {
@@ -106,9 +113,16 @@ export default {
         if (myRecord) {
           this.alreadyCheckedIn = true;
           this.checkInTime = myRecord.signInTime || "";
+        } else if (this.autoCheckin && this.userId) {
+          // 自动签到
+          this.handleSignIn();
         }
       } catch (e) {
         console.warn("检查签到状态失败", e);
+        // 如果检查失败且是自动签到模式，尝试签到
+        if (this.autoCheckin && this.userId) {
+          this.handleSignIn();
+        }
       }
     },
     async handleSignIn() {
@@ -229,6 +243,16 @@ export default {
 .info-value {
   font-size: 14px;
   color: #333;
+}
+
+.auto-tip {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fff7e6;
+  border-radius: 8px;
+  text-align: center;
+  color: #ff6b35;
+  font-size: 14px;
 }
 
 .status-box {
