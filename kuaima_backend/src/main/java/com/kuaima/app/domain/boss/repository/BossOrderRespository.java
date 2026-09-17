@@ -47,6 +47,11 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, Jp
     List<BossOrder> findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(
             Long createBy, Date startInclusive, Date endExclusive);
 
+    @Query("select o from BossOrder o where o.createBy in :owners and o.startTime < :endExclusive and (o.endTime is null or o.endTime >= :startInclusive) order by o.id desc")
+    List<BossOrder> findByCreateByInAndOverlappingTime(@Param("owners") Collection<Long> owners,
+                                                        @Param("startInclusive") Date startInclusive,
+                                                        @Param("endExclusive") Date endExclusive);
+
     /** 某老板的草稿订单列表 */
     List<BossOrder> findByOrderStatusAndCreateByOrderByIdDesc(String orderStatus, Long createBy);
 

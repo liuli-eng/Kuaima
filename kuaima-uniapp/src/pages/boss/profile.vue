@@ -43,9 +43,16 @@
             <view class="stat-col"><text class="stat-val">{{ stats.settleRate }}%</text><text>24小时结算率</text></view>
           </view>
           <view class="employer-footer">
-            <text>累计支付报酬 <b>{{ stats.totalPayment }}</b>元</text>
+            <view class="footer-item">
+              <text>累计支付报酬 </text>
+              <text class="footer-value">{{ formatMoney(stats.totalPayment) }}</text>
+              <text>元</text>
+            </view>
             <text class="sep">|</text>
-            <text>完单数 <b>{{ stats.completedOrders }}</b></text>
+            <view class="footer-item">
+              <text>完单数 </text>
+              <text class="footer-value">{{ formatCount(stats.completedOrders) }}</text>
+            </view>
           </view>
         </view>
       </view>
@@ -272,8 +279,15 @@ export default {
     this.loadProfile()
   },
   methods: {
+    formatMoney(value) {
+      const cents = Number(value)
+      return Number.isFinite(cents) ? (cents / 100).toFixed(2) : '--'
+    },
+    formatCount(value) {
+      return value === null || value === undefined || value === '' ? '--' : value
+    },
     openIdentitySwitch() {
-      uni.navigateTo({ url: '/pages/worker/switch-identity?role=boss' })
+      uni.navigateTo({ url: '/pages/worker/switch-identity?currentRole=boss' })
     },
     async loadProfile() {
       try {
@@ -328,7 +342,7 @@ export default {
         'sub-account', 'suspend-settle', 'switch-account', 'invite-code', 'blacklist', 
         'all-jobs', 'boss-filter', 'settlement', 'contract', 'system-notice', 'missed-call', 
         'signup-notice', 'invite-friend',         'service-chat', 'insurance', 'realname', 
-        'personal-info', 'points'
+        'personal-info', 'points', 'voucher', 'reward'
       ]
       const sharedPageMap = {
         'rule': '/pages/worker/rule',
@@ -536,7 +550,8 @@ export default {
 .stat-col { flex:1; text-align:center; display:flex; flex-direction:column; gap:4px; color:#fff; font-size:11px; }
 .stat-val { color:#333; font-size:20px; font-weight:700; }
 .employer-footer { display:flex; align-items:center; gap:10px; font-size:12px; opacity:.85; }
-.employer-footer b { color:#FFD96F; }
+.footer-item { display:flex; align-items:center; }
+.footer-value { color:#FFD96F; font-weight:700; }
 .employer-footer .sep { opacity:.4; }
 .auth-row { border-bottom:1px solid #F0E6D2; padding:12px 16px; color:#333; font-size:13px; background:#FFF8E7; }
 .auth-row em { margin-left:8px; padding:3px 7px; background:#fff2e8; color:#FF6B35; font-size:10px; font-style:normal; border-radius:4px; }

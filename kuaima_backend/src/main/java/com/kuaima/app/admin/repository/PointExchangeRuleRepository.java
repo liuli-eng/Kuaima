@@ -1,0 +1,1 @@
+package com.kuaima.app.admin.repository; import java.util.*; import org.springframework.data.jpa.repository.*; import com.kuaima.app.admin.entity.PointExchangeRule; public interface PointExchangeRuleRepository extends JpaRepository<PointExchangeRule,Long>{List<PointExchangeRule> findAllByOrderBySortDescIdAsc();}

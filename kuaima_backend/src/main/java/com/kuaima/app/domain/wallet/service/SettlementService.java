@@ -69,15 +69,18 @@ public class SettlementService {
     }
 
     /**
-     * 创建结算单：报名记录必须已完成；同一报名记录不允许重复结算。
+     * 创建结算单：报名记录必须处于「待结算」（历史兼容「已完成」）；
+     * 结算单创建成功后将报名记录推进为「已完成」（老板点击"去结算"后岗位状态变为已完成）。
+     * 同一报名记录不允许重复结算。
      *
      * @param workDays 实际工作天数，为空时由 到岗日~完成日 自动推导（最小 1 天）
      */
     @Transactional
     public Settlement createSettlement(Long itemId, Integer workDays) {
         BaseOrderItem item = getItemOrThrow(itemId);
-        if (!BossStatus.ITEM_FINISHED.equals(item.getStatus())) {
-            throw new IllegalStateException("仅已完成的报名记录可以发起结算");
+        if (!BossStatus.ITEM_PENDING_SETTLE.equals(item.getStatus())
+                && !BossStatus.ITEM_FINISHED.equals(item.getStatus())) {
+            throw new IllegalStateException("仅待结算的报名记录可以发起结算");
         }
         if (settlementRepository.existsByItemIdAndStatusIn(itemId,
                 List.of(SettlementStatus.PENDING, SettlementStatus.PAID))) {
@@ -88,9 +91,8 @@ public class SettlementService {
         if (order.getSalary() == null || order.getSalary() <= 0) {
             throw new IllegalStateException("订单工资未设置，无法结算");
         }
-        // 实际工作天数：优先取传入值，否则按 到岗日~完成日 推导
         int days = resolveWorkDays(item, workDays);
-        long wage = order.getSalary() * (long) days * 100L; // 元 -> 分
+        long wage = order.getSalary() * (long) days * 100L;
         long serviceFee = calculateServiceFee(wage);
         long total = wage + serviceFee;
 
@@ -103,7 +105,13 @@ public class SettlementService {
         s.setServiceFee(serviceFee);
         s.setTotalAmount(total);
         s.setStatus(SettlementStatus.PENDING);
-        return settlementRepository.save(s);
+        Settlement saved = settlementRepository.save(s);
+
+        if (!BossStatus.ITEM_FINISHED.equals(item.getStatus())) {
+            item.setStatus(BossStatus.ITEM_FINISHED);
+            itemRepository.save(item);
+        }
+        return saved;
     }
 
     /**
@@ -112,6 +120,11 @@ public class SettlementService {
     @Transactional
     public Settlement mockPay(Long settlementId) {
         Settlement s = getSettlementOrThrow(settlementId);
+        if (SettlementStatus.PAID.equals(s.getStatus())) {
+            // 支付回调/前端重试必须幂等：不重复入账，只补偿历史状态同步。
+            synchronizePaidItemAndOrder(s);
+            return s;
+        }
         if (!SettlementStatus.PENDING.equals(s.getStatus())) {
             throw new IllegalStateException("仅待支付的结算单可以支付");
         }
@@ -120,7 +133,7 @@ public class SettlementService {
         s.setPayTime(LocalDateTime.now());
         settlementRepository.save(s);
 
-        markOrderCompletedIfSettled(s.getOrderId());
+        synchronizePaidItemAndOrder(s);
 
         // 工资入零工钱包
         walletService.credit(s.getWorkerId(), s.getWage(), WalletService.BIZ_WAGE,
@@ -132,6 +145,16 @@ public class SettlementService {
         return s;
     }
 
+    private void synchronizePaidItemAndOrder(Settlement settlement) {
+        BaseOrderItem paidItem = itemRepository.findById(settlement.getItemId()).orElse(null);
+        if (paidItem != null && (BossStatus.ITEM_ON_WORK.equals(paidItem.getStatus())
+                || BossStatus.ITEM_PENDING_SETTLE.equals(paidItem.getStatus()))) {
+            paidItem.setStatus(BossStatus.ITEM_FINISHED);
+            itemRepository.save(paidItem);
+        }
+        markOrderCompletedIfSettled(settlement.getOrderId());
+    }
+
     /** 所有有效录取人员均已完成且结算单全部支付后，订单自动变为已完成。 */
     private void markOrderCompletedIfSettled(Long orderId) {
         BossOrder order = orderRepository.findById(orderId).orElse(null);
@@ -141,6 +164,7 @@ public class SettlementService {
         List<BaseOrderItem> activeItems = itemRepository.findByOrderId(orderId).stream()
                 .filter(i -> BossStatus.ITEM_HIRED.equals(i.getStatus())
                         || BossStatus.ITEM_ON_WORK.equals(i.getStatus())
+                        || BossStatus.ITEM_PENDING_SETTLE.equals(i.getStatus())
                         || BossStatus.ITEM_FINISHED.equals(i.getStatus()))
                 .toList();
         if (activeItems.isEmpty() || activeItems.stream().anyMatch(i ->
@@ -207,7 +231,9 @@ public class SettlementService {
                     .findFirst().orElse(null);
             boolean paid = itemSettlements.stream().anyMatch(s -> SettlementStatus.PAID.equals(s.getStatus()));
             if (paid && pending == null) continue;
-            if (pending == null && !BossStatus.ITEM_FINISHED.equals(item.getStatus())) continue;
+            if (pending == null
+                    && !BossStatus.ITEM_PENDING_SETTLE.equals(item.getStatus())
+                    && !BossStatus.ITEM_FINISHED.equals(item.getStatus())) continue;
             PendingSettlementItem view = pending == null
                     ? estimateItem(item, order, usersById.get(item.getUserId()))
                     : toPendingItem(pending, usersById.get(item.getUserId()));

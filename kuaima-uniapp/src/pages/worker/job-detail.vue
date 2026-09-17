@@ -410,12 +410,15 @@ function normalizeJob(item) {
 </script>
 <style scoped>
 .page {
-  min-height: 100vh;
+  height: 100vh;
   background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
 }
 .content {
-  height: 100vh;
-  padding-bottom: calc(220rpx + env(safe-area-inset-bottom));
+  flex: 1;
+  min-height: 0;
+  padding-bottom: calc(170rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   background: #f5f5f5;
 }
@@ -674,13 +677,14 @@ function normalizeJob(item) {
   width: 24rpx;
   height: 24rpx;
 }
-.bottom-space { height: 160rpx; }
+.bottom-space { height: 40rpx; }
 /* 底部操作栏 */
 .bottom-bar {
   background: #fff;
   display: flex;
   align-items: center;
   padding: 20rpx 32rpx;
+  margin: 0 -32rpx;
   border-top: 1rpx solid #f0f0f0;
   gap: 20rpx;
 }

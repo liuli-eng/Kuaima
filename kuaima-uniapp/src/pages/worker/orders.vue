@@ -91,10 +91,10 @@
             </button>
             <button
               v-if="order.action === 'review'"
-              class="review"
+              :class="['review', { reviewed: order.reviewed }]"
               @click="reviewEmployer(order)"
             >
-              评价老板
+              {{ order.reviewed ? "修改评价" : "评价老板" }}
             </button></view
           ></view
         >
@@ -104,6 +104,60 @@
         ><text>找日结 上快马</text><text>— 真老板 真工价 真日结 —</text></view
       >
     </scroll-view>
+    <view v-if="reviewVisible" class="review-mask" @click="closeReview" />
+    <view :class="['review-sheet', { show: reviewVisible }]">
+      <view class="review-grip" />
+      <view class="review-head">
+        <view>
+          <text class="review-title">{{
+            activeOrder?.reviewed ? "修改评价" : "评价老板"
+          }}</text>
+          <text class="review-sub"
+            >{{ activeOrder?.employer }} · {{ activeOrder?.title }}</text
+          >
+        </view>
+        <button class="review-close" @click="closeReview">
+          <image :src="xmarkIcon" mode="aspectFit" />
+        </button>
+      </view>
+      <view v-for="dimension in reviewDimensions" :key="dimension.key" class="rate-row">
+        <text class="rate-label">{{ dimension.label }}</text>
+        <view class="stars">
+          <button
+            v-for="value in 5"
+            :key="value"
+            class="star-button"
+            :aria-label="`${dimension.label}${value}星`"
+            @click="setReviewScore(dimension.key, value)"
+          >
+            <image
+              :src="reviewScores[dimension.key] >= value ? starActiveIcon : starInactiveIcon"
+              mode="aspectFit"
+            />
+          </button>
+        </view>
+      </view>
+      <textarea
+        v-model="reviewText"
+        class="review-textarea"
+        maxlength="200"
+        placeholder="说说老板的沟通态度、工资发放是否准时、工作环境怎么样吧～"
+      />
+      <text class="review-count">{{ reviewText.length }}/200</text>
+      <button
+        class="review-submit"
+        :disabled="reviewSubmitting"
+        @click="submitReview"
+      >
+        {{
+          reviewSubmitting
+            ? "提交中..."
+            : activeOrder?.reviewed
+              ? "更新评价"
+              : "提交评价"
+        }}
+      </button>
+    </view>
     <WorkerTabBar current="orders" />
   </view>
 </template>
@@ -111,9 +165,13 @@
 import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
+import starActiveIcon from "/static/icons/worker-orders/star-active.svg";
+import starInactiveIcon from "/static/icons/worker-orders/star-inactive.svg";
+import xmarkIcon from "/static/icons/worker-orders/xmark-gray.svg";
 import {
-  cancelOrderItem,
+  cancelWorkerItem,
   listWorkerOrders,
+  saveWorkerBossReview,
   workerCheckIn,
   workerEarlyLeave,
 } from "@/api/backend";
@@ -134,6 +192,16 @@ const orderType = ref("day"),
   status = ref("all");
 const mock = ref([]);
 const operatingIds = ref([]);
+const reviewVisible = ref(false);
+const reviewSubmitting = ref(false);
+const activeOrder = ref(null);
+const reviewText = ref("");
+const reviewScores = ref(createEmptyReviewScores());
+const reviewDimensions = [
+  { key: "attitude", label: "沟通态度" },
+  { key: "settle", label: "工资结算" },
+  { key: "env", label: "工作环境" },
+];
 const filtered = computed(() =>
   mock.value.filter(
     (i) =>
@@ -181,7 +249,7 @@ function cancel(o) {
       if (!confirm || operatingIds.value.includes(o.id)) return;
       operatingIds.value.push(o.id);
       try {
-        await cancelOrderItem(o.id, "零工主动取消报名");
+        await cancelWorkerItem(o.id, "零工主动取消报名");
         uni.showToast({ title: "已取消报名", icon: "success" });
         await loadOrders();
       } catch (e) {
@@ -220,8 +288,54 @@ function enterAttendanceCode(order, type) {
   });
 }
 
-function reviewEmployer() {
-  uni.showToast({ title: "评价功能开发中", icon: "none" });
+function reviewEmployer(order) {
+  activeOrder.value = order;
+  const review = order.review || {};
+  reviewScores.value = {
+    attitude: Number(review.attitude) || 0,
+    settle: Number(review.settle) || 0,
+    env: Number(review.env) || 0,
+  };
+  reviewText.value = String(review.text || "").slice(0, 200);
+  reviewVisible.value = true;
+}
+
+function closeReview() {
+  if (reviewSubmitting.value) return;
+  reviewVisible.value = false;
+  activeOrder.value = null;
+}
+
+function setReviewScore(dimension, value) {
+  reviewScores.value = { ...reviewScores.value, [dimension]: value };
+}
+
+async function submitReview() {
+  if (reviewSubmitting.value || !activeOrder.value) return;
+  if (reviewDimensions.some(({ key }) => !reviewScores.value[key])) {
+    uni.showToast({ title: "请先为三个维度打分", icon: "none" });
+    return;
+  }
+  reviewSubmitting.value = true;
+  try {
+    const order = activeOrder.value;
+    const payload = {
+      attitudeScore: reviewScores.value.attitude,
+      settlementScore: reviewScores.value.settle,
+      environmentScore: reviewScores.value.env,
+      content: reviewText.value.trim(),
+    };
+    const result = await saveWorkerBossReview(order.itemId || order.id, payload);
+    order.review = normalizeBossReview(result || payload);
+    order.reviewed = true;
+    reviewVisible.value = false;
+    activeOrder.value = null;
+    uni.showToast({ title: "评价提交成功", icon: "success" });
+  } catch (error) {
+    uni.showToast({ title: error?.message || "评价提交失败", icon: "none" });
+  } finally {
+    reviewSubmitting.value = false;
+  }
 }
 
 function normalizeOrder(item) {
@@ -229,7 +343,7 @@ function normalizeOrder(item) {
   const pieceMatch = String(item.tags || "").match(/计件单价:([\d.]+)/);
   const pieceUnitMatch = String(item.tags || "").match(/计件单位:([^,]+)/);
   const orderStatus = String(item.status || "");
-  return {
+  const normalized = {
     ...item,
     title: item.orderTitle || item.title || `订单 ${item.orderId || item.id}`,
     type:
@@ -275,6 +389,26 @@ function normalizeOrder(item) {
     action: getStatusAction(orderStatus),
     canCancel: ["已报名", "已录用"].includes(orderStatus),
     date: normalizeDateKey(item.workDate || item.startTime),
+  };
+  normalized.review = normalizeBossReview(item.bossReview || item.review);
+  normalized.reviewed = Boolean(item.reviewed || normalized.review);
+  return normalized;
+}
+
+function createEmptyReviewScores() {
+  return { attitude: 0, settle: 0, env: 0 };
+}
+
+function normalizeBossReview(review) {
+  if (!review || typeof review !== "object") return null;
+  return {
+    id: review.id,
+    attitude: Number(review.attitudeScore ?? review.attitude) || 0,
+    settle: Number(review.settlementScore ?? review.settle) || 0,
+    env: Number(review.environmentScore ?? review.env) || 0,
+    text: String(review.content ?? review.text ?? "").slice(0, 200),
+    createdAt: review.createdAt || review.time || "",
+    updatedAt: review.updatedAt || review.time || "",
   };
 }
 
@@ -542,8 +676,14 @@ function toDateKey(date) {
   color: #eb7950;
 }
 .review {
-  background: #fff1eb;
-  color: #eb7950;
+  border: 1rpx solid #ffb896;
+  background: #fff;
+  color: #ff6b35;
+}
+.review.reviewed {
+  border-color: #ececec;
+  background: #f5f5f5;
+  color: #999;
 }
 .cancel {
   border: 1rpx solid #ddd;
@@ -572,5 +712,154 @@ function toDateKey(date) {
 .slogan text + text {
   margin-top: 12rpx;
   font-size: 22rpx;
+}
+.review-mask {
+  position: fixed;
+  z-index: 92;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+.review-sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 93;
+  max-height: 86vh;
+  padding: 20rpx 36rpx calc(52rpx + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  box-sizing: border-box;
+  border-radius: 40rpx 40rpx 0 0;
+  background: #fff;
+  transform: translateY(100%);
+  visibility: hidden;
+  transition:
+    transform 0.25s ease,
+    visibility 0.25s;
+}
+.review-sheet.show {
+  transform: translateY(0);
+  visibility: visible;
+}
+.review-grip {
+  width: 72rpx;
+  height: 8rpx;
+  margin: 0 auto 24rpx;
+  border-radius: 4rpx;
+  background: #e5e5e5;
+}
+.review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+.review-title,
+.review-sub {
+  display: block;
+}
+.review-title {
+  color: #222;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+.review-sub {
+  max-width: 580rpx;
+  margin-top: 6rpx;
+  overflow: hidden;
+  color: #999;
+  font-size: 24rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.review-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.review-close::after,
+.star-button::after {
+  border: 0;
+}
+.review-close image {
+  width: 28rpx;
+  height: 36rpx;
+}
+.rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 92rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+.rate-row:last-of-type {
+  border-bottom: 0;
+}
+.rate-label {
+  color: #333;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+.stars {
+  display: flex;
+  gap: 12rpx;
+}
+.star-button {
+  width: 52rpx;
+  height: 52rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 1;
+}
+.star-button image {
+  width: 52rpx;
+  height: 52rpx;
+}
+.review-textarea {
+  width: 100%;
+  height: 192rpx;
+  margin-top: 32rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+  border: 1rpx solid #eee;
+  border-radius: 24rpx;
+  background: #fafafa;
+  color: #333;
+  font-size: 28rpx;
+}
+.review-count {
+  display: block;
+  margin: 12rpx 4rpx 28rpx;
+  color: #bbb;
+  font-size: 24rpx;
+  text-align: right;
+}
+.review-submit {
+  width: 100%;
+  height: 92rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 46rpx;
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  box-shadow: 0 12rpx 28rpx rgba(255, 107, 53, 0.3);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 92rpx;
+}
+.review-submit::after {
+  border: 0;
+}
+.review-submit[disabled] {
+  opacity: 0.65;
 }
 </style>

@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.boss.entity;
 
 import java.sql.Date;
+import java.time.LocalDateTime;
 
 import com.kuaima.app.domain.base.entity.BaseEntity;
 
@@ -43,6 +44,9 @@ public class BaseOrderItem extends BaseEntity {
 
     @Column(comment = "完成时间")
     private Date finishDate;
+
+    @Column(name = "finish_at", comment = "确认完工时间，供24小时结算率精确统计")
+    private LocalDateTime finishAt;
 
     @Column(comment = "取消时间")
     private Date cancelDate;

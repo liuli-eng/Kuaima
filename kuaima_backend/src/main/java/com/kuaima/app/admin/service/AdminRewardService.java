@@ -8,6 +8,7 @@ import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.entity.*;
 import com.kuaima.app.domain.wallet.repository.*;
+import com.kuaima.app.domain.reward.service.RewardLedgerService;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -29,12 +30,15 @@ public class AdminRewardService {
     private final UserRepository users;
     private final WalletRespository wallets;
     private final WalletFlowRespository walletFlows;
+    private final RewardLedgerService rewardLedger;
 
     public AdminRewardService(RewardCampaignRepository campaigns, RewardGrantRepository grants,
-            RewardFundAccountRepository funds, RewardFundFlowRepository fundFlows,
-            UserRepository users, WalletRespository wallets, WalletFlowRespository walletFlows) {
+                              RewardFundAccountRepository funds, RewardFundFlowRepository fundFlows,
+                              UserRepository users, WalletRespository wallets, WalletFlowRespository walletFlows,
+                              RewardLedgerService rewardLedger) {
         this.campaigns = campaigns; this.grants = grants; this.funds = funds;
         this.fundFlows = fundFlows; this.users = users; this.wallets = wallets; this.walletFlows = walletFlows;
+        this.rewardLedger = rewardLedger;
     }
 
     @Transactional
@@ -132,7 +136,10 @@ public class AdminRewardService {
             walletCredit(userId, value, id, c.getRemark());
             RewardGrant grant = new RewardGrant(); grant.setCampaignId(id); grant.setUserId(userId); grant.setAmount(value);
             grant.setUserRole(user.getRole()); grant.setStatus("SUCCESS");
-            grant.setGrantedAt(LocalDateTime.now(ZONE)); grants.save(grant); success++; sum += value;
+            grant.setGrantedAt(LocalDateTime.now(ZONE)); grants.save(grant);
+            if (rewardLedger != null) rewardLedger.credit(userId, value, "ADMIN_REWARD", id,
+                    "平台奖励金", c.getRemark(), "ADMIN_REWARD:" + id + ":" + userId);
+            success++; sum += value;
         }
         if (required > 0) {
             fund.setBalance(fund.getBalance() - required); funds.save(fund);

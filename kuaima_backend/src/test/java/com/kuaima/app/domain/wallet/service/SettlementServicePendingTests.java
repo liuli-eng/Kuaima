@@ -104,6 +104,98 @@ class SettlementServicePendingTests {
         verify(orderRepository).save(order);
     }
 
+    @Test
+    void pay_shouldAdvanceAutoCreatedPendingItemAndCompleteOrder() {
+        BossOrder order = order(14L, 1L, 200);
+        order.setOrderStatus(BossStatus.ORDER_PENDING_SETTLE);
+        BaseOrderItem pendingItem = item(105L, 14L, 24L, BossStatus.ITEM_PENDING_SETTLE);
+        Settlement pending = settlement(204L, 105L, 14L, 24L, 20000L,
+                SettlementStatus.PENDING, 1);
+        pending.setWage(20000L);
+        when(settlementRepository.findById(204L)).thenReturn(Optional.of(pending));
+        when(settlementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemRepository.findById(105L)).thenReturn(Optional.of(pendingItem));
+        when(itemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.findById(14L)).thenReturn(Optional.of(order));
+        when(itemRepository.findByOrderId(14L)).thenReturn(List.of(pendingItem));
+        when(settlementRepository.findByOrderIdOrderByIdDesc(14L)).thenReturn(List.of(pending));
+        when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.mockPay(204L);
+
+        assertEquals(BossStatus.ITEM_FINISHED, pendingItem.getStatus());
+        assertEquals(BossStatus.ORDER_COMPLETED, order.getOrderStatus());
+        verify(itemRepository).save(pendingItem);
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void paidRetry_shouldRepairOnWorkItemWithoutCreditingWalletAgain() {
+        WalletService walletService = mock(WalletService.class);
+        service = new SettlementService(
+                settlementRepository, orderRepository, itemRepository,
+                walletService, mock(MessageService.class), userRepository);
+        BossOrder order = order(47L, 1L, 160);
+        order.setOrderStatus(BossStatus.ORDER_PENDING_SETTLE);
+        BaseOrderItem onWork = item(37L, 47L, 30L, BossStatus.ITEM_ON_WORK);
+        Settlement paid = settlement(22L, 37L, 47L, 30L, 16000L,
+                SettlementStatus.PAID, 1);
+        paid.setWage(16000L);
+        when(settlementRepository.findById(22L)).thenReturn(Optional.of(paid));
+        when(itemRepository.findById(37L)).thenReturn(Optional.of(onWork));
+        when(itemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.findById(47L)).thenReturn(Optional.of(order));
+        when(itemRepository.findByOrderId(47L)).thenReturn(List.of(onWork));
+        when(settlementRepository.findByOrderIdOrderByIdDesc(47L)).thenReturn(List.of(paid));
+        when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.mockPay(22L);
+
+        assertEquals(BossStatus.ITEM_FINISHED, onWork.getStatus());
+        assertEquals(BossStatus.ORDER_COMPLETED, order.getOrderStatus());
+        verify(walletService, org.mockito.Mockito.never()).credit(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createSettlement_shouldAdvanceItemFromPendingSettleToFinished() {
+        BaseOrderItem pendingSettle = item(110L, 12L, 25L, BossStatus.ITEM_PENDING_SETTLE);
+        pendingSettle.setWorkDate(Date.valueOf("2026-09-10"));
+        pendingSettle.setFinishDate(Date.valueOf("2026-09-10"));
+        BossOrder order = order(12L, 2L, 300);
+        when(itemRepository.findById(110L)).thenReturn(Optional.of(pendingSettle));
+        when(settlementRepository.existsByItemIdAndStatusIn(eq(110L), any())).thenReturn(false);
+        when(orderRepository.findById(12L)).thenReturn(Optional.of(order));
+        when(settlementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Settlement s = service.createSettlement(110L, null);
+
+        assertEquals(SettlementStatus.PENDING, s.getStatus());
+        assertEquals(30000L, s.getWage());
+        assertEquals(30000L, s.getTotalAmount());
+        assertEquals(BossStatus.ITEM_FINISHED, pendingSettle.getStatus());
+        verify(itemRepository).save(pendingSettle);
+    }
+
+    @Test
+    void listPendingByBoss_shouldIncludePendingSettleItems() {
+        BossOrder order = order(13L, 1L, 200);
+        BaseOrderItem pendingSettle = item(104L, 13L, 24L, BossStatus.ITEM_PENDING_SETTLE);
+        pendingSettle.setWorkDate(Date.valueOf("2026-09-10"));
+        pendingSettle.setFinishDate(Date.valueOf("2026-09-10"));
+        User worker = user(24L, "赵师傅");
+        when(orderRepository.findByCreateByOrderByIdDesc(1L)).thenReturn(List.of(order));
+        when(itemRepository.findByBossIdJoinOrder(1L)).thenReturn(List.of(pendingSettle));
+        when(userRepository.findAllById(any())).thenReturn(List.of(worker));
+        when(settlementRepository.findByItemIdInOrderByIdDesc(any())).thenReturn(List.of());
+
+        List<PendingSettlementOrder> result = service.listPendingByBoss(1L);
+
+        assertEquals(1, result.size());
+        assertEquals(1, result.get(0).items().size());
+        assertEquals(20000L, result.get(0).items().get(0).amountFen());
+    }
+
     private BossOrder order(Long id, Long bossId, int salary) {
         BossOrder order = new BossOrder();
         order.setId(id);

@@ -23,6 +23,10 @@
       "style": { "navigationStyle": "custom" }
     },
     {
+      "path": "pages/worker/points",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/worker/user-info",
       "style": { "navigationStyle": "custom" }
     },
@@ -332,6 +336,7 @@
       "style": { "navigationStyle": "custom" }
     },
     { "path": "pages/boss/points", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/points-detail", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/profile", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/publish", "style": { "navigationStyle": "custom" } },
     {

@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS boss_review (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    item_id BIGINT NOT NULL,
+    order_id BIGINT NOT NULL,
+    worker_id BIGINT NOT NULL,
+    boss_id BIGINT NOT NULL,
+    attitude_score TINYINT NOT NULL,
+    settlement_score TINYINT NOT NULL,
+    environment_score TINYINT NOT NULL,
+    content VARCHAR(200) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_boss_review_item (item_id),
+    KEY idx_boss_review_boss_created (boss_id, created_at),
+    KEY idx_boss_review_worker_created (worker_id, created_at),
+    CONSTRAINT chk_boss_review_attitude CHECK (attitude_score BETWEEN 1 AND 5),
+    CONSTRAINT chk_boss_review_settlement CHECK (settlement_score BETWEEN 1 AND 5),
+    CONSTRAINT chk_boss_review_environment CHECK (environment_score BETWEEN 1 AND 5)
+);

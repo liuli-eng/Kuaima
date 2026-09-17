@@ -35,7 +35,7 @@ class AdminRewardServiceTests {
         users = mock(UserRepository.class);
         wallets = mock(WalletRespository.class);
         walletFlows = mock(WalletFlowRespository.class);
-        service = new AdminRewardService(campaigns, grants, funds, fundFlows, users, wallets, walletFlows);
+        service = new AdminRewardService(campaigns, grants, funds, fundFlows, users, wallets, walletFlows, null);
     }
 
     @Test

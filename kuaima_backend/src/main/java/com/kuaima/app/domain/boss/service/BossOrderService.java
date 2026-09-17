@@ -3,6 +3,7 @@ package com.kuaima.app.domain.boss.service;
 import java.sql.Date;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Map;
@@ -38,6 +39,7 @@ import com.kuaima.app.domain.user.service.CertificationService;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
+import com.kuaima.app.domain.coupon.service.BossCouponService;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -51,6 +53,7 @@ public class BossOrderService {
     private final SettlementRespository settlementRespository;
     private final CertificationService certificationService;
     private final BossRecruitSettingsRepository recruitSettingsRepository;
+    private final BossCouponService bossCouponService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public BossOrderService(BossOrderRespository orderRepository,
@@ -59,7 +62,8 @@ public class BossOrderService {
                             MessageService messageService,
                             SettlementRespository settlementRespository,
                             CertificationService certificationService,
-                            BossRecruitSettingsRepository recruitSettingsRepository) {
+                            BossRecruitSettingsRepository recruitSettingsRepository,
+                            BossCouponService bossCouponService) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
@@ -67,6 +71,7 @@ public class BossOrderService {
         this.settlementRespository = settlementRespository;
         this.certificationService = certificationService;
         this.recruitSettingsRepository = recruitSettingsRepository;
+        this.bossCouponService = bossCouponService;
     }
 
     public BossOrderService(BossOrderRespository orderRepository,
@@ -75,7 +80,7 @@ public class BossOrderService {
                             MessageService messageService,
                             SettlementRespository settlementRespository) {
         this(orderRepository, itemRepository, userRepository, messageService,
-                settlementRespository, null, null);
+                settlementRespository, null, null, null);
     }
 
     // ==================== 订单管理 ====================
@@ -111,7 +116,9 @@ public class BossOrderService {
             order.setTrialDuration(null);
         }
         order.setOrderStatus(BossStatus.ORDER_PENDING_AUDIT);
-        return orderRepository.save(order);
+        BossOrder saved = orderRepository.save(order);
+        if (bossCouponService != null) bossCouponService.redeem(saved.getCreateBy(), order.getUserCouponId(), saved);
+        return saved;
     }
 
     /** admin 审核通过：订单从"待审核"变为"招工中"，并发岗位广播 */
@@ -483,20 +490,40 @@ public class BossOrderService {
         return saved;
     }
 
-    /** 完成：已到岗 -> 已完成 */
+    /** 完成：已到岗 -> 待结算（等待老板发起结算；结算成功后才为「已完成」） */
     @Transactional
     public BaseOrderItem finishItem(Long itemId) {
         BaseOrderItem item = getItemOrThrow(itemId);
         if (!BossStatus.ITEM_ON_WORK.equals(item.getStatus())) {
             throw new IllegalStateException("仅已到岗的记录可以完成");
         }
-        item.setStatus(BossStatus.ITEM_FINISHED);
+        item.setStatus(BossStatus.ITEM_PENDING_SETTLE);
         item.setFinishDate(Date.valueOf(LocalDate.now()));
+        item.setFinishAt(LocalDateTime.now());
         BaseOrderItem saved = itemRepository.save(item);
         BossOrder order = getOrderOrThrow(item.getOrderId());
         if (BossStatus.ORDER_PENDING_SETTLE.equals(order.getOrderStatus())) {
             createPendingSettlements(order);
         }
+        return saved;
+    }
+
+    /** 早退码确认：报名记录状态 -> 待结算（earlyLeave=true 标记早退），订单立即进入待结算并生成待结算单。 */
+    @Transactional
+    public BossOrder finishByEarlyLeave(Long itemId) {
+        BaseOrderItem item = getItemOrThrow(itemId);
+        if (!BossStatus.ITEM_ON_WORK.equals(item.getStatus())) {
+            throw new IllegalStateException("仅已到岗的记录可以早退");
+        }
+        item.setStatus(BossStatus.ITEM_PENDING_SETTLE);
+        item.setEarlyLeave(true);
+        item.setFinishDate(Date.valueOf(LocalDate.now()));
+        item.setFinishAt(LocalDateTime.now());
+        itemRepository.save(item);
+        BossOrder order = getOrderOrThrow(item.getOrderId());
+        order.setOrderStatus(BossStatus.ORDER_PENDING_SETTLE);
+        BossOrder saved = orderRepository.save(order);
+        createPendingSettlements(saved);
         return saved;
     }
 
@@ -519,6 +546,16 @@ public class BossOrderService {
                         + (StringUtils.hasText(reason) ? "，原因：" + reason : ""),
                 BizType.ITEM, item.getId());
         return saved;
+    }
+
+    /** 零工取消自己的报名，先校验条目归属，避免越权操作。 */
+    @Transactional
+    public BaseOrderItem cancelWorkerItem(Long itemId, Long userId, String reason) {
+        BaseOrderItem item = getItemOrThrow(itemId);
+        if (item.getUserId() == null || !item.getUserId().equals(userId)) {
+            throw new com.kuaima.app.common.ForbiddenBusinessException("无权操作该报名记录");
+        }
+        return cancelItem(itemId, reason);
     }
 
     /** 某订单的报名列表 */
@@ -663,13 +700,14 @@ public class BossOrderService {
                 .orElseThrow(() -> new EntityNotFoundException("报名记录不存在: " + id));
     }
 
-    /** 订单进入待结算时，为已到岗/已完成零工生成待支付结算单。 */
+    /** 订单进入待结算时，为已到岗/待结算/已完成零工生成待支付结算单。 */
     private void createPendingSettlements(BossOrder order) {
         if (order.getSalary() == null || order.getSalary() <= 0) {
             throw new IllegalStateException("订单工资未设置，无法生成结算单");
         }
         for (BaseOrderItem item : itemRepository.findByOrderId(order.getId())) {
             if (!BossStatus.ITEM_ON_WORK.equals(item.getStatus())
+                    && !BossStatus.ITEM_PENDING_SETTLE.equals(item.getStatus())
                     && !BossStatus.ITEM_FINISHED.equals(item.getStatus())) {
                 continue;
             }

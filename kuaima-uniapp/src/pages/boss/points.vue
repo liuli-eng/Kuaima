@@ -28,6 +28,17 @@
         <image class="gift-arrow" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
       </view>
 
+      <view class="gift-entry detail-entry" @click="openPointsDetail">
+        <view class="gift-icon detail-icon">
+          <image src="/static/icons/boss-profile/clipboard-list.svg" mode="aspectFit" />
+        </view>
+        <view class="gift-info">
+          <text class="gift-title">积分明细</text>
+          <text class="gift-desc">查看积分兑换与购买记录</text>
+        </view>
+        <image class="gift-arrow" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
+      </view>
+
       <!-- 选择积分包 -->
       <text class="section-title">选择积分包</text>
       <view class="package-grid">
@@ -175,6 +186,9 @@ export default {
   methods: {
     goBack() {
       uni.navigateBack()
+    },
+    openPointsDetail() {
+      uni.navigateTo({ url: "/pages/boss/points-detail" });
     },
     buy(pkg) {
       uni.showModal({
@@ -346,6 +360,10 @@ export default {
 
 .gift-entry { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 14px 16px; border-radius: 12px; background: #fff; }
 .gift-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: linear-gradient(135deg, #ffd700, #ff8c00); font-size: 20px; }
+.gift-icon image { width: 19px; height: 19px; }
+.detail-entry { background: #fff8f0; }
+.detail-icon { background: #fff0e8; }
+.detail-icon image { width: 18px; height: 20px; }
 .gift-info { flex: 1; }
 .gift-title { display: block; color: #333; font-size: 14px; font-weight: 600; }
 .gift-desc { display: block; margin-top: 2px; color: #999; font-size: 12px; }

@@ -8,6 +8,19 @@ export function getCurrentUser() {
   return request({ url: "/auth/me" });
 }
 
+/** 发送手机短信验证码。 */
+export function sendSmsCode(phone) {
+  const value = String(phone || "").trim();
+  if (!/^1[3-9]\d{9}$/.test(value)) {
+    throw new Error("请输入正确的手机号");
+  }
+  return request({
+    url: `/auth/sms/send?phone=${encodeURIComponent(value)}`,
+    method: "GET",
+    skipUserIdHeader: true,
+  });
+}
+
 export const LOGIN_STORAGE_KEYS = [
   "token",
   "userId",

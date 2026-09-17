@@ -22,6 +22,7 @@ public final class BossStatus {
     public static final String ITEM_APPLIED = "已报名";
     public static final String ITEM_HIRED = "已录用";
     public static final String ITEM_ON_WORK = "已到岗";
+    public static final String ITEM_PENDING_SETTLE = "待结算";
     public static final String ITEM_FINISHED = "已完成";
     public static final String ITEM_CANCELED = "取消报名";
     public static final String ITEM_REJECTED = "已拒绝";

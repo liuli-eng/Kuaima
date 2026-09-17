@@ -226,10 +226,11 @@ public class AuthController {
     }
 
     /**
-     * 发送短信验证码：POST /auth/sms/send?phone=13800000000
-     * 需登录，60秒重发限制，验证码5分钟有效
+     * 发送短信验证码：GET|POST /auth/sms/send?phone=13800000000
+     * 需登录，60秒重发和每日上限限制，验证码5分钟有效
      */
-    @Operation(summary = "发送短信验证码", description = "需登录，向指定手机号发送6位验证码；60秒重发限制，5分钟有效")
+    @Operation(summary = "发送短信验证码", description = "需登录，向指定手机号发送6位验证码；60秒重发、每日上限限制，5分钟有效")
+    @GetMapping("/sms/send")
     @PostMapping("/sms/send")
     public Result<Void> sendSmsCode(@RequestParam String phone) {
         String err = smsService.sendCode(phone);

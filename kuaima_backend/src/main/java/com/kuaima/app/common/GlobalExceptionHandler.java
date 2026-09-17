@@ -3,6 +3,7 @@ package com.kuaima.app.common;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -25,6 +26,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public Result<Void> handleForbidden(ForbiddenBusinessException e) {
         return Result.error(403, e.getMessage());
+    }
+
+    /** 业务异常按异常携带的 HTTP 状态码返回，避免统一落入 500。 */
+    @ExceptionHandler(BusinessHttpException.class)
+    public ResponseEntity<Result<Void>> handleBusinessHttp(BusinessHttpException e) {
+        return ResponseEntity.status(e.getStatus()).body(Result.error(e.getStatus().value(), e.getMessage()));
     }
 
     /** 数据不存在 */

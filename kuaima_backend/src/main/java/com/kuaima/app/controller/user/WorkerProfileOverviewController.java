@@ -20,7 +20,7 @@ public class WorkerProfileOverviewController {
     public WorkerProfileOverviewController(WorkerProfileOverviewService service) { this.service = service; }
 
     @GetMapping("/overview")
-    @Operation(summary = "零工个人页聚合数据", description = "身份只从JWT获取；比例范围0-100，金额单位为分")
+    @Operation(summary = "零工个人页聚合数据", description = "身份只从JWT获取；完成率=已完成/全部报名，取消率=取消报名/全部报名，失约率=录用后未到岗/全部录用，早退率=早退工作天数/全部结算工作天数；比例范围0-100，金额单位为分")
     public Result<WorkerProfileOverview> overview(Authentication authentication) {
         return Result.success(service.overview(currentWorkerId(authentication)));
     }

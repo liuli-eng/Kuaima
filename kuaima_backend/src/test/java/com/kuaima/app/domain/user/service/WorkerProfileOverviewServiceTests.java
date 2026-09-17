@@ -31,12 +31,17 @@ class WorkerProfileOverviewServiceTests {
         PointsAccount account = new PointsAccount(); account.setBalance(500);
         UserStarLevel level = new UserStarLevel(); level.setLevel(3);
         when(users.findById(30L)).thenReturn(Optional.of(user));
+        when(items.countByUserId(30L)).thenReturn(10L);
         when(items.countByUserIdAndStatus(30L, BossStatus.ITEM_FINISHED)).thenReturn(8L);
         when(items.countByUserIdAndStatusAndEarlyLeaveTrue(30L, BossStatus.ITEM_FINISHED)).thenReturn(1L);
         when(items.countByUserIdAndStatus(30L, BossStatus.ITEM_CANCELED)).thenReturn(1L);
+        when(items.countByUserIdAndHireDateIsNotNull(30L)).thenReturn(10L);
         when(items.countNoShowByUserId(eq(30L), any())).thenReturn(1L);
+        when(settlements.sumWorkDaysByWorkerId(30L)).thenReturn(20L);
+        when(settlements.sumEarlyLeaveWorkDaysByWorkerId(30L)).thenReturn(2L);
         when(settlements.sumPaidWageByWorkerId(30L)).thenReturn(123400L);
-        when(points.findByUserId(30L)).thenReturn(Optional.of(account));
+        when(points.findByUserIdAndRole(30L, com.kuaima.app.domain.user.constant.UserRole.USER))
+                .thenReturn(Optional.of(account));
         when(levels.findByUserId(30L)).thenReturn(Optional.of(level));
         when(walletFlows.sumIncomeByUserIdAndBizType(30L, "REWARD")).thenReturn(5000L);
 
@@ -45,7 +50,7 @@ class WorkerProfileOverviewServiceTests {
         assertEquals(3, result.level()); assertEquals(88, result.creditScore());
         assertEquals(70, result.completionRate()); assertEquals(10, result.cancellationRate());
         assertEquals(10, result.noShowRate()); assertEquals(10, result.earlyLeaveRate());
-        assertEquals(123400L, result.totalIncome()); assertEquals(8L, result.completedOrders());
+        assertEquals(123400L, result.totalIncome()); assertEquals(7L, result.completedOrders());
         assertEquals(500, result.points()); assertEquals(5000L, result.rewardAmount());
     }
 

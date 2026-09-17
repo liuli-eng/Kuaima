@@ -24,6 +24,9 @@ import com.kuaima.app.domain.user.model.WorkerProfileModels.UpdateWorkerProfileR
 import com.kuaima.app.domain.user.model.WorkerProfileModels.WorkerProfile;
 import com.kuaima.app.domain.user.model.WorkerOrderModels.WorkerOrder;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.review.entity.BossReview;
+import com.kuaima.app.domain.review.model.BossReviewModels.ReviewSummary;
+import com.kuaima.app.domain.review.repository.BossReviewRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -33,13 +36,16 @@ public class WorkerProfileService {
     private final UserRepository userRepository;
     private final BaseOrderItemRespository itemRepository;
     private final BossOrderRespository orderRepository;
+    private final BossReviewRepository reviewRepository;
 
     public WorkerProfileService(UserRepository userRepository,
                                 BaseOrderItemRespository itemRepository,
-                                BossOrderRespository orderRepository) {
+                                BossOrderRespository orderRepository,
+                                BossReviewRepository reviewRepository) {
         this.userRepository = userRepository;
         this.itemRepository = itemRepository;
         this.orderRepository = orderRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     @Transactional(readOnly = true)
@@ -84,13 +90,16 @@ public class WorkerProfileService {
         Map<Long, User> bosses = userRepository.findAllById(orders.values().stream()
                         .map(BossOrder::getCreateBy).filter(id -> id != null).distinct().toList())
                 .stream().collect(Collectors.toMap(User::getId, Function.identity()));
-        return items.map(item -> toWorkerOrder(item, orders.get(item.getOrderId()), bosses));
+        Map<Long, BossReview> reviews = reviewRepository.findByItemIdIn(
+                        items.getContent().stream().map(BaseOrderItem::getId).toList())
+                .stream().collect(Collectors.toMap(BossReview::getItemId, Function.identity()));
+        return items.map(item -> toWorkerOrder(item, orders.get(item.getOrderId()), bosses, reviews.get(item.getId())));
     }
 
     /**
      * 零工端整合三大状态 ↔ 底层报名状态的映射（0912 产品调整）。
      * <ul>
-     *   <li>工作中 → 已报名 / 已录用 / 已到岗（进行中全部）</li>
+     *   <li>工作中 → 已报名 / 已录用 / 已到岗 / 待结算（进行中全部）</li>
      *   <li>已完成 → 已完成</li>
      *   <li>已取消 → 取消报名 / 已拒绝 / 取消招工（老板取消订单统一置为此）</li>
      *   <li>其他值（向后兼容，直接传底层状态）→ 单值集合</li>
@@ -104,7 +113,8 @@ public class WorkerProfileService {
         }
         return switch (trimmed) {
             case BossStatus.GROUP_WORKING ->
-                    Arrays.asList(BossStatus.ITEM_APPLIED, BossStatus.ITEM_HIRED, BossStatus.ITEM_ON_WORK);
+                    Arrays.asList(BossStatus.ITEM_APPLIED, BossStatus.ITEM_HIRED,
+                            BossStatus.ITEM_ON_WORK, BossStatus.ITEM_PENDING_SETTLE);
             case BossStatus.GROUP_COMPLETED ->
                     List.of(BossStatus.ITEM_FINISHED);
             case BossStatus.GROUP_CANCELED ->
@@ -114,7 +124,7 @@ public class WorkerProfileService {
         };
     }
 
-    private WorkerOrder toWorkerOrder(BaseOrderItem item, BossOrder order, Map<Long, User> bosses) {
+    private WorkerOrder toWorkerOrder(BaseOrderItem item, BossOrder order, Map<Long, User> bosses, BossReview review) {
         if (order == null) {
             throw new EntityNotFoundException("报名关联的订单不存在: " + item.getOrderId());
         }
@@ -123,7 +133,9 @@ public class WorkerProfileService {
                 item.getApplyDate(), item.getHireDate(), item.getWorkDate(), item.getFinishDate(),
                 order.getOrderTitle(), order.getType(), order.getSalary(), order.getAddress(),
                 order.getStartTime(), order.getEndTime(), boss == null ? null : boss.getCompanyName(),
-                order.getPostion(), order.getOrderStatus(), order.getDuration(), order.getTags());
+                order.getPostion(), order.getOrderStatus(), order.getDuration(), order.getTags(), review != null,
+                review == null ? null : new ReviewSummary(review.getAttitudeScore(), review.getSettlementScore(),
+                        review.getEnvironmentScore(), review.getContent(), review.getUpdatedAt()));
     }
 
     /**

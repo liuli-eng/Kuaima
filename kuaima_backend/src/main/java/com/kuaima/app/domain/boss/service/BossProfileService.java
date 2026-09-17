@@ -20,6 +20,8 @@ import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
+import com.kuaima.app.domain.review.repository.BossReviewRepository;
+import com.kuaima.app.domain.review.entity.BossReview;
 
 @Service
 public class BossProfileService {
@@ -27,21 +29,24 @@ public class BossProfileService {
     private final BaseOrderItemRespository itemRepository;
     private final SettlementRespository settlementRepository;
     private final UserRepository userRepository;
+    private final BossReviewRepository reviewRepository;
 
     public BossProfileService(BossOrderRespository orderRepository,
                               BaseOrderItemRespository itemRepository,
                               SettlementRespository settlementRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              BossReviewRepository reviewRepository) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.settlementRepository = settlementRepository;
         this.userRepository = userRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     /**
      * 个人页统计：统计当前老板全部历史订单，不按分页、不设时间上限。
-     * goodRate 因当前模型没有评价表暂返回 0；arrivalRate=已完成报名/已录用及之后有效报名；
-     * settleRate=完成日期到支付时间不超过24小时的已支付结算单/已完成报名记录；totalPayment单位为分。
+     * goodRate=三项均为5分的评价条目/全部已完成条目；arrivalRate=正常完工人数/到岗人数；
+     * settleRate=完工确认后24小时内已支付人数/全部确认完工人数；totalPayment单位为分。
      */
     public ProfileStats stats(Long bossId) {
         List<BossOrder> orders = orderRepository.findByCreateByOrderByIdDesc(bossId);
@@ -49,23 +54,31 @@ public class BossProfileService {
         List<BaseOrderItem> items = orderIds.isEmpty() ? List.of() : itemRepository.findAllByBossId(bossId);
         List<Settlement> settlements = orderIds.isEmpty() ? List.of() : settlementRepository.findByOrderIdIn(orderIds);
 
-        long validHired = items.stream().filter(this::isValid).filter(i ->
-                BossStatus.ITEM_HIRED.equals(i.getStatus()) || BossStatus.ITEM_ON_WORK.equals(i.getStatus())
-                        || BossStatus.ITEM_FINISHED.equals(i.getStatus())).count();
-        long completedItems = items.stream().filter(i -> BossStatus.ITEM_FINISHED.equals(i.getStatus())).count();
-        int arrivalRate = validHired == 0 ? 0 : percent(completedItems, validHired);
+        long arrivedItems = items.stream().filter(i -> i.getWorkDate() != null).count();
+        long completedItems = items.stream().filter(i -> BossStatus.ITEM_FINISHED.equals(i.getStatus())
+                && !Boolean.TRUE.equals(i.getEarlyLeave())).count();
+        int arrivalRate = arrivedItems == 0 ? 0 : percent(completedItems, arrivedItems);
         List<Settlement> paid = settlements.stream().filter(s -> SettlementStatus.PAID.equals(s.getStatus())).toList();
         Map<Long, BaseOrderItem> itemById = items.stream().filter(i -> i.getId() != null)
                 .collect(Collectors.toMap(BaseOrderItem::getId, Function.identity(), (a, b) -> a));
+        long confirmedFinished = items.stream().filter(i -> finishTime(i) != null).count();
         long settledWithin24h = paid.stream().filter(s -> settledWithin24h(s, itemById)).count();
-        int settleRate = completedItems == 0 ? 0 : percent(settledWithin24h, completedItems);
+        int settleRate = confirmedFinished == 0 ? 0 : percent(settledWithin24h, confirmedFinished);
         long totalPayment = paid.stream().mapToLong(s -> s.getTotalAmount() == null ? 0 : s.getTotalAmount()).sum();
         long applicants = items.stream().filter(this::isValid).count();
         long recruiting = orders.stream().filter(o -> BossStatus.ORDER_RECRUITING.equals(o.getOrderStatus())).count();
         long completedOrders = orders.stream().filter(o -> BossStatus.ORDER_COMPLETED.equals(o.getOrderStatus())).count();
         int integrity = userRepository.findById(bossId).map(User::getCreditScore).orElse(0);
+        List<Long> completedItemIds = items.stream().filter(i -> BossStatus.ITEM_FINISHED.equals(i.getStatus()))
+                .map(BaseOrderItem::getId).filter(java.util.Objects::nonNull).toList();
+        List<BossReview> reviews = completedItemIds.isEmpty() ? List.of()
+                : reviewRepository.findByItemIdIn(completedItemIds);
+        long fiveStarReviews = reviews.stream().filter(r -> Integer.valueOf(5).equals(r.getAttitudeScore())
+                && Integer.valueOf(5).equals(r.getSettlementScore())
+                && Integer.valueOf(5).equals(r.getEnvironmentScore())).count();
+        int goodRate = completedItemIds.isEmpty() ? 0 : percent(fiveStarReviews, completedItemIds.size());
         return new ProfileStats(orders.size(), recruiting, applicants, totalPayment / 100.0,
-                Math.max(0, integrity), 0, arrivalRate, settleRate, totalPayment, completedOrders);
+                Math.max(0, integrity), goodRate, arrivalRate, settleRate, totalPayment, completedOrders);
     }
 
     private boolean isValid(BaseOrderItem item) {
@@ -77,10 +90,16 @@ public class BossProfileService {
     private boolean settledWithin24h(Settlement settlement, Map<Long, BaseOrderItem> itemById) {
         if (settlement.getPayTime() == null) return false;
         BaseOrderItem item = itemById.get(settlement.getItemId());
-        if (item == null || item.getFinishDate() == null) return false;
-        LocalDateTime finishedAt = item.getFinishDate().toLocalDate().atStartOfDay();
+        LocalDateTime finishedAt = finishTime(item);
+        if (finishedAt == null) return false;
         return !settlement.getPayTime().isBefore(finishedAt)
-                && Duration.between(finishedAt, settlement.getPayTime()).toHours() <= 24;
+                && Duration.between(finishedAt, settlement.getPayTime()).compareTo(Duration.ofHours(24)) <= 0;
+    }
+
+    private LocalDateTime finishTime(BaseOrderItem item) {
+        if (item == null) return null;
+        if (item.getFinishAt() != null) return item.getFinishAt();
+        return item.getFinishDate() == null ? null : item.getFinishDate().toLocalDate().atStartOfDay();
     }
 
     private int percent(long numerator, long denominator) {

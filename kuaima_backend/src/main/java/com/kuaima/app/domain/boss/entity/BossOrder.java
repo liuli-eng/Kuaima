@@ -110,4 +110,8 @@ public class BossOrder extends BaseEntity {
     @Transient
     private Long currentApply;
 
+    /** 发布订单时选择的用户优惠券领取记录 ID，仅作为请求参数，不落订单表。 */
+    @Transient
+    private Long userCouponId;
+
 }

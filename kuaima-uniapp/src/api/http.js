@@ -37,6 +37,19 @@ function mockResponse(url, method = "GET", data) {
   if (url.includes("/worker/jobs")) {
     return null;
   }
+  if (url === "/worker/profile/overview")
+    return {
+      level: 1,
+      creditScore: 30,
+      completionRate: 70,
+      cancellationRate: 10,
+      noShowRate: 10,
+      earlyLeaveRate: 10,
+      totalIncome: 16000,
+      completedOrders: 7,
+      points: 9900,
+      rewardAmount: 0,
+    };
   if (url.includes("/worker/profile"))
     return { name: "晴时见禾", nickname: "晴时见禾", availableAmount: "0.00" };
   if (url === "/worker/wallet" || url.startsWith("/worker/wallet?"))

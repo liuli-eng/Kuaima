@@ -176,6 +176,15 @@ export function getBossRecruitAccounts() {
   return request({ url: "/boss/recruit-accounts", skipUserIdHeader: true });
 }
 
+export function addBossRecruitAccount(data = {}) {
+  return request({
+    url: "/boss/recruit-accounts",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
 export function switchBossRecruitAccount(accountId) {
   return request({
     url: "/boss/recruit-accounts/current",
@@ -225,9 +234,34 @@ export function listWorkerItems(userId) {
   });
 }
 
+/** 零工端查询当前登录零工本人的报名条目（岗位维度）列表。 */
+export function listWorkerApplications(userId) {
+  const uid = userId || uni.getStorageSync("userId");
+  return request({
+    url: `/worker/items${uid ? `?userId=${encodeURIComponent(uid)}` : ""}`,
+  });
+}
+
+/** 零工端取消自己的报名条目；reason 可为空字符串。 */
+export function cancelWorkerItem(id, reason) {
+  const r = String(reason || "").trim();
+  return request({
+    url: `/worker/items/${normalizeId(id, "itemId")}/cancel${r ? `?reason=${encodeURIComponent(r)}` : ""}`,
+    method: "PUT",
+  });
+}
+
 /** 当前登录零工的个人资料，身份由 JWT 获取。 */
 export function getWorkerProfile() {
   return request({ url: "/worker/profile" });
+}
+
+/** 零工端“我的”页面统计概览，身份由当前 JWT 获取。 */
+export function getWorkerProfileOverview() {
+  return request({
+    url: "/worker/profile/overview",
+    skipUserIdHeader: true,
+  });
 }
 
 export function updateWorkerProfile(data = {}) {
@@ -238,6 +272,15 @@ export function updateWorkerProfile(data = {}) {
 export function listWorkerOrders(params = {}) {
   return request({
     url: `/worker/orders?${query({ page: 0, size: 20, ...params })}`,
+  });
+}
+
+/** 零工评价订单所属老板；同一报名条目重复提交时更新原评价。 */
+export function saveWorkerBossReview(itemId, data) {
+  return request({
+    url: `/worker/items/${normalizeId(itemId, "itemId")}/boss-review`,
+    method: "PUT",
+    data,
   });
 }
 
@@ -774,6 +817,15 @@ export function giftBossPoints(data = {}, idempotencyKey = "") {
     data,
     header: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
     skipUserIdHeader: true,
+  });
+}
+
+/** 老板端积分明细，身份由当前 JWT 判断，支持兑换/购买分类和分页。 */
+export function listBossPointRecords(params = {}) {
+  return request({
+    url: `/boss/points/records?${query({ page: 0, size: 20, category: "EXCHANGE", ...params })}`,
+    skipUserIdHeader: true,
+    rawResponse: true,
   });
 }
 

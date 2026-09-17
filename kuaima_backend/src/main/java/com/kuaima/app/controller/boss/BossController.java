@@ -320,6 +320,14 @@ public class BossController {
         return Result.success(bossProfileService.stats(currentBossId));
     }
 
+    /** 老板个人页统计（推荐）：身份只从JWT获取，不传userId。 */
+    @Operation(summary = "当前老板个人页统计", description = "好评率、到达完成率、24小时结算率均由真实订单、评价及支付数据计算")
+    @GetMapping("/profile/stats")
+    public Result<com.kuaima.app.domain.boss.model.BossProfileModels.ProfileStats> getCurrentBossProfileStats(
+            Authentication authentication) {
+        return Result.success(bossProfileService.stats(requireCurrentBossId(authentication)));
+    }
+
     /** 老板个人页资产汇总：余额、积分、未使用券包和已发放邀请奖励金。 */
     @Operation(summary = "老板资产汇总", description = "返回 balance(分)、points、couponCount、rewardAmount(分)；仅允许当前老板查询本人")
     @GetMapping("/profile/{userId}/assets")
@@ -328,7 +336,8 @@ public class BossController {
         if (!current.equals(userId)) throw new ForbiddenBusinessException("只能查询当前老板账号资产");
         Map<String, Object> data = new HashMap<>();
         data.put("balance", walletService.getOrCreateWallet(userId).getBalance());
-        data.put("points", pointsAccountRepository.findByUserId(userId).map(a -> a.getBalance() == null ? 0 : a.getBalance()).orElse(0));
+        data.put("points", pointsAccountRepository.findByUserIdAndRole(userId, UserRole.BOSS)
+                .map(a -> a.getBalance() == null ? 0 : a.getBalance()).orElse(0));
         Date now = new Date(System.currentTimeMillis());
         long coupons = userCouponRepository.countByUserIdAndStatusAndExpireAtIsNull(userId, "UNUSED")
                 + userCouponRepository.countByUserIdAndStatusAndExpireAtGreaterThanEqual(userId, "UNUSED", now);

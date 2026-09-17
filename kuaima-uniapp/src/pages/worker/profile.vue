@@ -26,7 +26,7 @@
       </view>
 
       <view class="asset-card">
-        <view class="asset-item" @click="openUnavailable('积分明细')"><view><text class="asset-label">积分</text><text class="asset-value">{{ display(assets.points) }}</text></view><image :src="chevronGrayIcon" mode="aspectFit" /></view>
+        <view class="asset-item" @click="go('/pages/worker/points')"><view><text class="asset-label">积分</text><text class="asset-value">{{ display(assets.points) }}</text></view><image :src="chevronGrayIcon" mode="aspectFit" /></view>
         <view class="asset-item" @click="openUnavailable('奖励金')"><view><text class="asset-label">奖励金(元)</text><text class="asset-value">{{ moneyOrDash(assets.rewardAmount, false) }}</text></view><image :src="chevronGrayIcon" mode="aspectFit" /></view>
       </view>
 
@@ -50,8 +50,7 @@
 import { computed, reactive, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
-import { request } from "@/api/http";
-import { getCredit, getPoints, getStarLevel, getWorkerProfile } from "@/api/backend";
+import { getWorkerProfile, getWorkerProfileOverview } from "@/api/backend";
 import defaultWorkerAvatar from "/static/avatars/default-worker-avatar.png";
 import chevronBrownIcon from "/static/icons/worker-profile/chevron-right-brown.svg";
 import chevronGrayIcon from "/static/icons/worker-profile/chevron-right-gray.svg";
@@ -92,15 +91,39 @@ const otherMenus = [
 onShow(loadProfile);
 
 async function loadProfile() {
-  const userId = uni.getStorageSync("userId");
-  const tasks = [getWorkerProfile(), request({ url: "/worker/wallet" }), userId ? getPoints(userId) : Promise.resolve(null), userId ? getStarLevel(userId) : Promise.resolve(null), userId ? getCredit(userId) : Promise.resolve(null)];
-  const [profileResult, walletResult, pointsResult, starResult, creditResult] = await Promise.allSettled(tasks);
+  const [profileResult, overviewResult] = await Promise.allSettled([
+    getWorkerProfile(),
+    getWorkerProfileOverview(),
+  ]);
   const cached = uni.getStorageSync("userInfo") || {};
   profile.value = profileResult.status === "fulfilled" ? { ...cached, ...(profileResult.value || {}) } : cached;
-  if (pointsResult.status === "fulfilled" && pointsResult.value) assets.points = pointsResult.value.balance ?? pointsResult.value.points ?? null;
-  if (starResult.status === "fulfilled" && starResult.value) stats.level = starResult.value.level ?? null;
-  if (creditResult.status === "fulfilled" && creditResult.value) stats.creditScore = creditResult.value.creditScore ?? creditResult.value.score ?? null;
-  if (walletResult.status === "fulfilled" && walletResult.value) stats.totalIncome = walletResult.value.totalIncome == null ? null : Number(walletResult.value.totalIncome) / 100;
+  if (overviewResult.status === "fulfilled" && overviewResult.value) {
+    applyOverview(overviewResult.value);
+  } else if (overviewResult.status === "rejected") {
+    uni.showToast({
+      title: overviewResult.reason?.message || "我的数据加载失败",
+      icon: "none",
+    });
+  }
+}
+
+function applyOverview(data) {
+  stats.level = data.level ?? null;
+  stats.creditScore = data.creditScore ?? null;
+  stats.completionRate = data.completionRate ?? 0;
+  stats.cancellationRate = data.cancellationRate ?? 0;
+  stats.noShowRate = data.noShowRate ?? 0;
+  stats.earlyLeaveRate = data.earlyLeaveRate ?? 0;
+  stats.totalIncome = fromCents(data.totalIncome);
+  stats.completedOrders = data.completedOrders ?? 0;
+  assets.points = data.points ?? 0;
+  assets.rewardAmount = fromCents(data.rewardAmount);
+}
+
+function fromCents(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const cents = Number(value);
+  return Number.isFinite(cents) ? cents / 100 : null;
 }
 
 function chineseLevel(value) { return ["零", "一", "二", "三", "四", "五"][Number(value)] || String(value); }

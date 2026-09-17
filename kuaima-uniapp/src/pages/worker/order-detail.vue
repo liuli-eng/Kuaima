@@ -61,10 +61,10 @@ import { onLoad } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import {
-  cancelOrderItem,
-  getOrder,
+  cancelWorkerItem,
+  getPublicJob,
   listSettlements,
-  listWorkerItems,
+  listWorkerApplications,
   workerCheckIn,
   workerEarlyLeave,
 } from "@/api/backend";
@@ -98,7 +98,7 @@ onLoad(async (options = {}) => {
     let orderId = options.orderId;
     const userId = uni.getStorageSync("userId");
     if (userId) {
-      const items = await listWorkerItems(userId);
+      const items = await listWorkerApplications(userId);
       const matched = (Array.isArray(items) ? items : []).find(
         (row) => String(row.id) === String(options.id),
       );
@@ -106,7 +106,7 @@ onLoad(async (options = {}) => {
       orderId = matched?.orderId || orderId;
     }
     if (!orderId) throw new Error("订单关联岗位不存在");
-    const detail = await getOrder(orderId);
+    const detail = await getPublicJob(orderId);
     order.value = normalizeOrderDetail(
       item || { id: options.id, orderId },
       detail || {},
@@ -231,7 +231,7 @@ function cancel() {
       if (!confirm) return;
       operating.value = true;
       try {
-        await cancelOrderItem(order.value.id);
+        await cancelWorkerItem(order.value.id);
         order.value.status = "cancelled";
         order.value.statusText = "已取消";
         uni.showToast({ title: "已取消报名", icon: "success" });

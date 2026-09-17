@@ -33,6 +33,9 @@ import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.model.WorkerOrderModels.WorkerOrder;
 import com.kuaima.app.domain.user.model.WorkerProfileModels.UpdateWorkerProfileRequest;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.review.repository.BossReviewRepository;
+import com.kuaima.app.domain.review.entity.BossReview;
+import java.time.LocalDateTime;
 
 class WorkerProfileServiceTests {
 
@@ -40,13 +43,16 @@ class WorkerProfileServiceTests {
     private BaseOrderItemRespository itemRepository;
     private BossOrderRespository orderRepository;
     private WorkerProfileService service;
+    private BossReviewRepository reviewRepository;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         itemRepository = mock(BaseOrderItemRespository.class);
         orderRepository = mock(BossOrderRespository.class);
-        service = new WorkerProfileService(userRepository, itemRepository, orderRepository);
+        reviewRepository = mock(BossReviewRepository.class);
+        service = new WorkerProfileService(userRepository, itemRepository, orderRepository, reviewRepository);
+        when(reviewRepository.findByItemIdIn(any())).thenReturn(List.of());
     }
 
     @Test
@@ -82,7 +88,7 @@ class WorkerProfileServiceTests {
     }
 
     @Test
-    void listOrders_groupStatus_working_shouldExpandToThreeUnderlyingStatuses() {
+    void listOrders_groupStatus_working_shouldExpandToFourUnderlyingStatuses() {
         ArgumentCaptor<Collection<String>> captor = ArgumentCaptor.forClass(Collection.class);
         Page<BaseOrderItem> empty = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
         when(itemRepository.findWorkerOrders(eq(1L), eq(null), captor.capture(), any(Pageable.class)))
@@ -91,9 +97,10 @@ class WorkerProfileServiceTests {
         service.listOrders(1L, null, BossStatus.GROUP_WORKING, PageRequest.of(0, 20));
 
         Collection<String> actual = captor.getValue();
-        assertEquals(3, actual.size());
+        assertEquals(4, actual.size());
         assertTrue(actual.containsAll(Arrays.asList(
-                BossStatus.ITEM_APPLIED, BossStatus.ITEM_HIRED, BossStatus.ITEM_ON_WORK)));
+                BossStatus.ITEM_APPLIED, BossStatus.ITEM_HIRED,
+                BossStatus.ITEM_ON_WORK, BossStatus.ITEM_PENDING_SETTLE)));
     }
 
     @Test
@@ -174,6 +181,10 @@ class WorkerProfileServiceTests {
         when(itemRepository.findWorkerOrders(eq(1L), eq(null), any(), eq(pageable))).thenReturn(page);
         when(orderRepository.findAllById(any())).thenReturn(List.of(order1, order2, order3));
         when(userRepository.findAllById(any())).thenReturn(List.of(boss2, boss3));
+        BossReview review = new BossReview(); review.setItemId(103L); review.setAttitudeScore(5);
+        review.setSettlementScore(4); review.setEnvironmentScore(5); review.setContent("很好");
+        review.setUpdatedAt(LocalDateTime.of(2026, 9, 17, 12, 0));
+        when(reviewRepository.findByItemIdIn(any())).thenReturn(List.of(review));
 
         Page<WorkerOrder> result = service.listOrders(1L, null, null, pageable);
 
@@ -182,5 +193,8 @@ class WorkerProfileServiceTests {
         assertEquals(BossStatus.DISPLAY_ON_WORK, list.get(0).status()); // 已到岗 → 工作中
         assertEquals(BossStatus.GROUP_CANCELED, list.get(1).status()); // 取消招工 → 已取消
         assertEquals(BossStatus.ITEM_FINISHED, list.get(2).status()); // 已完成 → 不变
+        assertEquals(false, list.get(0).reviewed());
+        assertEquals(true, list.get(2).reviewed());
+        assertEquals(5, list.get(2).bossReview().attitudeScore());
     }
 }

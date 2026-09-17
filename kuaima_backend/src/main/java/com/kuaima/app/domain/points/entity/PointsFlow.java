@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 积分流水：每次积分变动（增加/扣减）记录一条流水，bizType 标识业务来源。
+ * 积分流水：记录某个身份下的积分变动，bizType 标识业务来源。
  */
 @Entity
 @Table(name = "points_flow")
@@ -19,6 +19,10 @@ public class PointsFlow extends BaseEntity {
 
     @Column(comment = "用户ID")
     private Long userId;
+
+    /** 积分所属身份：BOSS（老板）/ USER（零工）。 */
+    @Column(length = 20, nullable = false)
+    private String role = "BOSS";
 
     @Column(comment = "变动积分(正数加/负数减)")
     private Integer delta;

@@ -18,14 +18,25 @@
 
 <script setup>
 import { ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { wechatLogin } from "@/api/auth";
 import { USE_MOCK } from "@/api/http";
 
-const pages = getCurrentPages();
-const query = pages[pages.length - 1]?.options || {};
-const current = ref(query.role === "boss" ? "boss" : "worker");
+function normalizeCurrentRole(value) {
+  const role = String(value || "").trim().toUpperCase();
+  return role === "BOSS" ? "boss" : "worker";
+}
+
+const storedRole =
+  uni.getStorageSync("currentRole") || uni.getStorageSync("role");
+const current = ref(normalizeCurrentRole(storedRole));
 const switching = ref(false);
+
+onLoad((options = {}) => {
+  const routeRole = options.role || options.currentRole;
+  current.value = normalizeCurrentRole(routeRole || storedRole);
+});
 
 function switchRole() {
   const target = current.value === "worker" ? "boss" : "worker";

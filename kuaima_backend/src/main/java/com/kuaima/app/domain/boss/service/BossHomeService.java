@@ -35,7 +35,7 @@ import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 
 @Service
 public class BossHomeService {
-    private static final ZoneId SERVER_ZONE = ZoneId.systemDefault();
+    private static final ZoneId SERVER_ZONE = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     private final BossOrderRespository orderRepository;
@@ -71,11 +71,12 @@ public class BossHomeService {
         String resolvedCity = resolveCity(bossId, city);
         BossRecruitAccount account = resolveAccount(bossId, accountId);
         LocalDate today = LocalDate.now(SERVER_ZONE);
+        List<Long> owners = accountScope(bossId, accountId);
         List<ScheduleDay> days = List.of(
-                scheduleDay(bossId, today.minusDays(1), "昨天"),
-                scheduleDay(bossId, today, "今天"),
-                scheduleDay(bossId, today.plusDays(1), "明天"),
-                scheduleDay(bossId, today.plusDays(2), "后天"));
+                scheduleDay(owners, today.minusDays(1), "昨天"),
+                scheduleDay(owners, today, "今天"),
+                scheduleDay(owners, today.plusDays(1), "明天"),
+                scheduleDay(owners, today.plusDays(2), "后天"));
         long nearbyWorkers = StringUtils.hasText(resolvedCity)
                 ? userRepository.countByRoleAndCity(UserRole.USER, resolvedCity)
                 : userRepository.countByRole(UserRole.USER);
@@ -85,10 +86,8 @@ public class BossHomeService {
 
     @Transactional(readOnly = true)
     public Schedule schedule(Long bossId, LocalDate date, Long accountId) {
-        if (accountId != null && accountRepository.findByIdAndOwnerUserId(accountId, bossId).isEmpty()) {
-            throw new ForbiddenBusinessException("招聘账号不属于当前老板");
-        }
-        List<BossOrder> orders = ordersOn(bossId, date);
+        List<Long> owners = accountScope(bossId, accountId);
+        List<BossOrder> orders = ordersOn(owners, date);
         List<Long> orderIds = orders.stream().map(BossOrder::getId).toList();
         List<BaseOrderItem> items = orderIds.isEmpty() ? List.of() : itemRepository.findByOrderIdIn(orderIds);
         List<Long> itemIds = items.stream().map(BaseOrderItem::getId).toList();
@@ -97,10 +96,12 @@ public class BossHomeService {
         Map<Long, List<BaseOrderItem>> itemsByOrder = items.stream()
                 .collect(Collectors.groupingBy(BaseOrderItem::getOrderId));
 
-        long accepted = count(items, List.of(BossStatus.ITEM_HIRED, BossStatus.ITEM_ON_WORK));
-        long arrived = count(items, List.of(BossStatus.ITEM_ON_WORK));
-        long working = arrived;
-        long finished = count(items, List.of(BossStatus.ITEM_FINISHED));
+        long accepted = count(items, List.of(BossStatus.ITEM_HIRED, BossStatus.ITEM_ON_WORK,
+                BossStatus.ITEM_PENDING_SETTLE, BossStatus.ITEM_FINISHED));
+        long arrived = count(items, List.of(BossStatus.ITEM_ON_WORK, BossStatus.ITEM_PENDING_SETTLE,
+                BossStatus.ITEM_FINISHED));
+        long working = count(items, List.of(BossStatus.ITEM_ON_WORK));
+        long finished = count(items, List.of(BossStatus.ITEM_PENDING_SETTLE, BossStatus.ITEM_FINISHED));
         // 结算口径：待支付和已支付均表示已生成有效结算单；按报名 item 去重，排除已取消。
         long settled = settlements.stream()
                 .filter(s -> SettlementStatus.PENDING.equals(s.getStatus()) || SettlementStatus.PAID.equals(s.getStatus()))
@@ -115,21 +116,31 @@ public class BossHomeService {
                 new ScheduleStats(accepted, arrived, working, finished, settled), records);
     }
 
-    private ScheduleDay scheduleDay(Long bossId, LocalDate date, String label) {
-        int demand = ordersOn(bossId, date).stream().map(BossOrder::getOrderNum)
+    private ScheduleDay scheduleDay(List<Long> owners, LocalDate date, String label) {
+        int demand = ordersOn(owners, date).stream().map(BossOrder::getOrderNum)
                 .filter(java.util.Objects::nonNull).mapToInt(Integer::intValue).sum();
         return new ScheduleDay(date, label, demand);
     }
 
-    private List<BossOrder> ordersOn(Long bossId, LocalDate date) {
+    private List<BossOrder> ordersOn(List<Long> owners, LocalDate date) {
         Date start = Date.from(date.atStartOfDay(SERVER_ZONE).toInstant());
         Date end = Date.from(date.plusDays(1).atStartOfDay(SERVER_ZONE).toInstant());
-        return orderRepository.findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(
-                bossId, start, end).stream()
+        return orderRepository.findByCreateByInAndOverlappingTime(owners, start, end).stream()
                 .filter(order -> !BossStatus.ORDER_CANCELED.equals(order.getOrderStatus()))
                 .filter(order -> !BossStatus.ORDER_DRAFT.equals(order.getOrderStatus()))
                 .filter(order -> !BossStatus.ORDER_AUDIT_REJECT.equals(order.getOrderStatus()))
                 .toList();
+    }
+
+    private List<Long> accountScope(Long bossId, Long accountId) {
+        if (accountId != null) {
+            BossRecruitAccount account = accountRepository.findByIdAndOwnerUserId(accountId, bossId)
+                    .orElseThrow(() -> new ForbiddenBusinessException("招聘账号不属于当前老板"));
+            return List.of(account.getTargetUserId() == null ? bossId : account.getTargetUserId());
+        }
+        List<Long> ids = accountRepository.findByOwnerUserIdOrderByIdAsc(bossId).stream()
+                .map(a -> a.getTargetUserId() == null ? bossId : a.getTargetUserId()).filter(java.util.Objects::nonNull).distinct().toList();
+        return ids.isEmpty() ? List.of(bossId) : ids;
     }
 
     private BossRecruitAccount resolveAccount(Long bossId, Long requestedId) {

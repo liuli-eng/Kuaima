@@ -26,6 +26,14 @@ public interface SettlementRespository extends JpaRepository<Settlement, Long> {
     @Query("select coalesce(sum(s.wage),0) from Settlement s where s.workerId = :workerId and s.status = '已支付'")
     Long sumPaidWageByWorkerId(@Param("workerId") Long workerId);
 
+    /** 已形成结算记录的实际总工作天数。 */
+    @Query("select coalesce(sum(s.workDays),0) from Settlement s where s.workerId = :workerId and s.status in ('待支付','已支付')")
+    Long sumWorkDaysByWorkerId(@Param("workerId") Long workerId);
+
+    /** 通过早退流程结束的实际工作天数。 */
+    @Query("select coalesce(sum(s.workDays),0) from Settlement s join BaseOrderItem i on s.itemId = i.id where s.workerId = :workerId and i.earlyLeave = true and s.status in ('待支付','已支付')")
+    Long sumEarlyLeaveWorkDaysByWorkerId(@Param("workerId") Long workerId);
+
     /** 某报名记录是否存在待支付/已支付的结算单（防重复结算） */
     boolean existsByItemIdAndStatusIn(Long itemId, java.util.Collection<String> statuses);
 

@@ -7,7 +7,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import com.kuaima.app.domain.user.entity.User;
 
@@ -16,6 +18,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
 
     Optional<User> findByOpenid(String openid);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id=:id")
+    Optional<User> findByIdForUpdate(@Param("id") Long id);
 
     /** 按手机号查询（可能多个用户共用同一手机号） */
     List<User> findByPhone(String phone);

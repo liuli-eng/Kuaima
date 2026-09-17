@@ -73,13 +73,13 @@ public class PointPurchaseService {
 
     private void grant(PointPurchaseOrder o) {
         if (Boolean.TRUE.equals(o.getPointsGranted())) return;
-        PointsAccount account = accountRepo.findByUserIdForUpdate(o.getBossId()).orElseGet(() -> {
-            PointsAccount a = new PointsAccount(); a.setUserId(o.getBossId()); a.setBalance(0); return accountRepo.saveAndFlush(a);
+        PointsAccount account = accountRepo.findByUserIdAndRoleForUpdate(o.getBossId(), UserRole.BOSS).orElseGet(() -> {
+            PointsAccount a = new PointsAccount(); a.setUserId(o.getBossId()); a.setRole(UserRole.BOSS); a.setBalance(0); return accountRepo.saveAndFlush(a);
         });
         long before = account.getBalance() == null ? 0 : account.getBalance(); long after = before + o.getPoints();
         if (after > Integer.MAX_VALUE) throw new IllegalArgumentException("积分余额超出系统上限");
         account.setBalance((int) after); accountRepo.save(account);
-        PointsFlow flow = new PointsFlow(); flow.setUserId(o.getBossId()); flow.setDelta(Math.toIntExact(o.getPoints())); flow.setBizType("ADMIN_PURCHASE"); flow.setRemark("积分购买订单 " + o.getOrderNo() + "，余额=" + after); flow.setBalanceAfter((int) after); flow.setBizNo(o.getOrderNo()); flow.setOperatorId(o.getOperatorId()); flowRepo.save(flow);
+        PointsFlow flow = new PointsFlow(); flow.setUserId(o.getBossId()); flow.setRole(UserRole.BOSS); flow.setDelta(Math.toIntExact(o.getPoints())); flow.setBizType("ADMIN_PURCHASE"); flow.setRemark("积分购买订单 " + o.getOrderNo() + "，余额=" + after); flow.setBalanceAfter((int) after); flow.setBizNo(o.getOrderNo()); flow.setOperatorId(o.getOperatorId()); flowRepo.save(flow);
         o.setPointsGranted(true); orderRepo.save(o);
     }
 

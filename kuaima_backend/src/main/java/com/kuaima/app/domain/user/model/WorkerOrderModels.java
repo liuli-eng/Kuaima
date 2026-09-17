@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.user.model;
 
 import java.util.Date;
+import com.kuaima.app.domain.review.model.BossReviewModels.ReviewSummary;
 
 public final class WorkerOrderModels {
 
@@ -23,7 +24,9 @@ public final class WorkerOrderModels {
             String postion,
             String orderStatus,
             Integer duration,
-            String tags) {
+            String tags,
+            boolean reviewed,
+            ReviewSummary bossReview) {
     }
 
     private WorkerOrderModels() {

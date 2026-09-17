@@ -8,11 +8,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 
 public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from BaseOrderItem i where i.id = :id")
+    Optional<BaseOrderItem> findByIdForUpdate(@Param("id") Long id);
 
     /** 查询某订单的所有报名记录 */
     List<BaseOrderItem> findByOrderId(Long orderId);
@@ -31,13 +37,17 @@ public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, L
 
     long countByUserIdAndStatus(Long userId, String status);
 
+    long countByUserId(Long userId);
+
+    long countByUserIdAndHireDateIsNotNull(Long userId);
+
     long countByUserIdAndStatusAndEarlyLeaveTrue(Long userId, String status);
 
     @Query("""
             select count(i) from BaseOrderItem i
             join BossOrder o on i.orderId = o.id
             where i.userId = :userId
-              and i.status = '已录用'
+              and i.hireDate is not null
               and i.workDate is null
               and o.endTime < :now
             """)
