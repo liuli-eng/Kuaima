@@ -22,6 +22,8 @@ import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.constant.CertificationStatus;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.enterprise.entity.EnterpriseMember;
+import com.kuaima.app.domain.enterprise.repository.EnterpriseMemberRepository;
 import com.kuaima.app.security.dto.WechatLoginDto;
 import com.kuaima.app.security.model.LoginUser;
 import com.kuaima.app.security.util.JwtUtil;
@@ -41,29 +43,60 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final WechatService wechatService;
     private final SmsService smsService;
+    private final EnterpriseMemberRepository enterpriseMemberRepository;
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           JwtUtil jwtUtil,
                           WechatService wechatService,
                           SmsService smsService) {
+        this(userRepository, passwordEncoder, jwtUtil, wechatService, smsService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AuthController(UserRepository userRepository,
+                          PasswordEncoder passwordEncoder,
+                          JwtUtil jwtUtil,
+                          WechatService wechatService,
+                          SmsService smsService,
+                          EnterpriseMemberRepository enterpriseMemberRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.wechatService = wechatService;
         this.smsService = smsService;
+        this.enterpriseMemberRepository = enterpriseMemberRepository;
     }
 
     private Map<String, Object> buildTokenResponse(User user) {
-        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), user.getRole(), user.getId());
+        return buildTokenResponse(user, user.getRole());
+    }
+
+    private Map<String, Object> buildTokenResponse(User user, String sessionRole) {
+        Long enterpriseId = null;
+        String memberRole = null;
+        if (enterpriseMemberRepository != null) {
+            java.util.Optional<EnterpriseMember> membership = enterpriseMemberRepository
+                    .findFirstByUserIdAndStatusOrderByIdAsc(user.getId(), "ACTIVE");
+            if (membership != null && membership.isPresent()) {
+                enterpriseId = membership.get().getEnterpriseId();
+                memberRole = membership.get().getMemberRole();
+            }
+        }
+        String accessToken = enterpriseMemberRepository == null
+                ? jwtUtil.generateAccessToken(user.getUsername(), sessionRole, user.getId())
+                : jwtUtil.generateAccessToken(user.getUsername(), sessionRole, user.getId(),
+                        null, enterpriseId, memberRole);
         Map<String, Object> data = new HashMap<>();
         data.put("needPhoneNumber", false);
         data.put("accessToken", accessToken);
         data.put("userId", user.getId());
         data.put("username", user.getUsername());
-        data.put("role", user.getRole());
+        data.put("role", sessionRole);
         data.put("phone", user.getPhone());
         data.put("certStatus", user.getCertStatus());
+        data.put("enterpriseId", enterpriseId);
+        data.put("memberRole", memberRole);
         return data;
     }
 
@@ -139,9 +172,8 @@ public class AuthController {
             }
         }
 
-        // 小程序选择的当前身份由 role 表示；企业认证只在发布招工等业务权限处校验。
-        if (!role.equals(user.getRole())) { user.setRole(role); user = userRepository.save(user); }
-        return Result.success(buildTokenResponse(user));
+        // role 只表示本次登录端，不再覆盖用户的历史业务身份字段。
+        return Result.success(buildTokenResponse(user, role));
     }
 
     /** 为未提供昵称的新用户生成按身份递增的默认昵称。 */
@@ -201,8 +233,7 @@ public class AuthController {
         }
         User user = userRepository.findById(uid)
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + uid));
-        if (!role.equals(user.getRole())) { user.setRole(role); user = userRepository.save(user); }
-        return Result.success(buildTokenResponse(user));
+        return Result.success(buildTokenResponse(user, role));
     }
 
     /**

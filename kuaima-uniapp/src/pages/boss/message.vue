@@ -177,11 +177,10 @@ export default {
       uni.navigateTo({ url: "/pages/boss/history-message" });
     },
     switchTab(tab) {
-      if (tab === "workbench")
-        return uni.showToast({ title: "工作台页面暂未开放", icon: "none" });
       const target = {
         home: "/pages/boss/home",
         order: "/pages/boss/order",
+        workbench: "/pages/boss/workbench",
         profile: "/pages/boss/profile",
       }[tab];
       if (!target) return;

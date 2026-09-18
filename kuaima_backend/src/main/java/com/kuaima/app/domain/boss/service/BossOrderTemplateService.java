@@ -66,6 +66,48 @@ public class BossOrderTemplateService {
     }
 
     @Transactional(readOnly = true)
+    public Page<TemplateView> listByEnterprise(Long enterpriseId, int page, int size) {
+        return templateRepository.findByEnterpriseIdOrderByIdDesc(enterpriseId,
+                PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100)))
+                .map(template -> toView(template, null));
+    }
+
+    @Transactional
+    public BossOrderTemplate createByEnterprise(Long enterpriseId, Long operatorId, Long orderId, CreateRequest request) {
+        BossOrder order = orderRepository.findById(orderId).orElseThrow(() -> new EntityNotFoundException("订单不存在"));
+        if (!java.util.Objects.equals(order.getEnterpriseId(), enterpriseId)
+                && !java.util.Objects.equals(order.getCreateBy(), operatorId)) throw new ForbiddenBusinessException("无权操作该订单");
+        String name = validName(request == null ? null : request.templateName());
+        BossOrderTemplate template = templateRepository.findByEnterpriseIdAndTemplateName(enterpriseId, name).map(existing -> {
+            if (!Boolean.TRUE.equals(request.overwrite())) throw new IllegalArgumentException("模板名称已存在"); return existing;
+        }).orElseGet(BossOrderTemplate::new);
+        template.setEnterpriseId(enterpriseId); template.setOwnerUserId(operatorId); template.setTemplateName(name); copyOrder(template, order);
+        return templateRepository.save(template);
+    }
+
+    @Transactional(readOnly = true)
+    public TemplateView detailByEnterprise(Long enterpriseId, Long id) {
+        BossOrderTemplate template = templateRepository.findByIdAndEnterpriseId(id, enterpriseId)
+                .orElseThrow(() -> new ForbiddenBusinessException("无权操作该模板"));
+        BossOrder source = template.getSourceOrderId() == null ? null : orderRepository.findById(template.getSourceOrderId()).orElse(null);
+        return toView(template, source);
+    }
+
+    @Transactional
+    public TemplateView renameByEnterprise(Long enterpriseId, Long id, String name) {
+        BossOrderTemplate template = templateRepository.findByIdAndEnterpriseId(id, enterpriseId)
+                .orElseThrow(() -> new ForbiddenBusinessException("无权操作该模板"));
+        String valid = validName(name); if (templateRepository.existsByEnterpriseIdAndTemplateNameAndIdNot(enterpriseId, valid, id)) throw new IllegalArgumentException("模板名称已存在");
+        template.setTemplateName(valid); BossOrderTemplate saved = templateRepository.save(template); BossOrder source = saved.getSourceOrderId() == null ? null : orderRepository.findById(saved.getSourceOrderId()).orElse(null); return toView(saved, source);
+    }
+
+    @Transactional
+    public void deleteByEnterprise(Long enterpriseId, Long id) {
+        BossOrderTemplate template = templateRepository.findByIdAndEnterpriseId(id, enterpriseId).orElseThrow(() -> new EntityNotFoundException("模板不存在"));
+        templateRepository.delete(template);
+    }
+
+    @Transactional(readOnly = true)
     public TemplateView detail(Long bossId, Long id) {
         BossOrderTemplate template = owned(bossId, id);
         BossOrder source = template.getSourceOrderId() == null ? null

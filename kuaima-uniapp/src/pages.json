@@ -136,10 +136,19 @@
       "style": { "navigationStyle": "custom" }
     },
     {
+      "path": "pages/worker/classroom-rule",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/worker/course-rule-detail",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/worker/course-detail",
       "style": { "navigationStyle": "custom" }
     },
     { "path": "pages/worker/exam", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/worker/quiz", "style": { "navigationStyle": "custom" } },
     {
       "path": "pages/worker/exam-result",
       "style": { "navigationStyle": "custom" }
@@ -406,6 +415,10 @@
       "style": { "navigationStyle": "custom" }
     },
     {
+      "path": "pages/boss/authorize",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/boss/suspend-settle",
       "style": { "navigationStyle": "custom" }
     },
@@ -426,6 +439,7 @@
       "style": { "navigationStyle": "custom" }
     },
     { "path": "pages/boss/voucher", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/coupon-use", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/projects", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/project-detail", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/sign-code", "style": { "navigationStyle": "custom" } },

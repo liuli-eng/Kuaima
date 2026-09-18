@@ -47,6 +47,7 @@ import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.constant.BossStatus;
+import com.kuaima.app.domain.enterprise.service.EnterpriseContextService;
 
 @RestController
 @RequestMapping("/boss")
@@ -63,13 +64,15 @@ public class BossController {
     private final BossOrderRespository orderRepository;
     private final BaseOrderItemRespository itemRepository;
     private final BossProfileService bossProfileService;
+    private final EnterpriseContextService enterpriseContexts;
 
     @Autowired
     public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService,
                           CertificationService certificationService, WalletService walletService,
                           PointsAccountRepository pointsAccountRepository, UserCouponRepository userCouponRepository,
                           InviteRelationRepository inviteRelationRepository, BossOrderRespository orderRepository,
-                          BaseOrderItemRespository itemRepository, BossProfileService bossProfileService) {
+                          BaseOrderItemRespository itemRepository, BossProfileService bossProfileService,
+                          EnterpriseContextService enterpriseContexts) {
         this.bossOrderService = bossOrderService;
         this.jobCategoryService = jobCategoryService;
         this.certificationService = certificationService;
@@ -80,12 +83,13 @@ public class BossController {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.bossProfileService = bossProfileService;
+        this.enterpriseContexts = enterpriseContexts;
     }
 
     /** 兼容既有单元测试及其他直接构造调用。 */
     public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService,
                           CertificationService certificationService) {
-        this(bossOrderService, jobCategoryService, certificationService, null, null, null, null, null, null, null);
+        this(bossOrderService, jobCategoryService, certificationService, null, null, null, null, null, null, null, null);
     }
 
     @Operation(summary = "招工订单运营统计", description = "按订单工作日期及零工报名状态统计当前老板可见订单；跨天订单按开始日期归属")
@@ -112,9 +116,9 @@ public class BossController {
     @Operation(summary = "发布招工订单", description = "创建 BossOrder，初始状态自动为「待审核」，admin 审核通过后变为「招工中」并广播新岗位消息。必填：orderTitle、type、postion、orderNum、duration、salary")
     @PostMapping("/order")
     public Result<BossOrder> createOrder(@RequestBody BossOrder order, Authentication authentication) {
-        Long bossId = requireCurrentBossId(authentication);
-        certificationService.requirePublishEligibility(bossId);
-        order.setCreateBy(bossId);
+        EnterpriseContextService.Context context = requireEnterprise(authentication, "ORDER_CREATE");
+        order.setCreateBy(context.user().getId());
+        order.setEnterpriseId(context.enterprise().getId());
         return Result.success(bossOrderService.createOrder(order));
     }
 
@@ -150,8 +154,8 @@ public class BossController {
     @GetMapping("/order")
     public Result<List<BossOrder>> listOrders(@ModelAttribute BossOrderQuery query,
                                                Authentication authentication) {
-        Long bossId = requireCurrentBossId(authentication);
-        Page<BossOrder> result = bossOrderService.listOrders(bossId, query);
+        EnterpriseContextService.Context context = requireEnterprise(authentication, "ORDER_VIEW");
+        Page<BossOrder> result = bossOrderService.listOrdersByEnterprise(context.enterprise().getId(), query);
         return Result.success(result.getContent(), result.getNumber(), result.getTotalElements());
     }
 
@@ -185,13 +189,24 @@ public class BossController {
     }
 
     private BossOrder requireOwnedOrder(Long orderId, Authentication authentication) {
-        Long bossId = requireCurrentBossId(authentication);
+        EnterpriseContextService.Context context = requireEnterprise(authentication, "ORDER_VIEW");
         BossOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("订单不存在"));
-        if (!bossId.equals(order.getCreateBy())) {
+        boolean currentEnterprise = order.getEnterpriseId() != null
+                && order.getEnterpriseId().equals(context.enterprise().getId());
+        boolean legacyOwner = order.getEnterpriseId() == null
+                && context.user().getId().equals(order.getCreateBy());
+        if (!currentEnterprise && !legacyOwner) {
             throw new ForbiddenBusinessException("无权操作该订单");
         }
         return order;
+    }
+
+    private EnterpriseContextService.Context requireEnterprise(Authentication authentication, String permission) {
+        if (enterpriseContexts == null) {
+            throw new ForbiddenBusinessException("企业上下文服务未配置");
+        }
+        return enterpriseContexts.require(authentication, permission);
     }
 
     // ==================== 报名记录 ====================

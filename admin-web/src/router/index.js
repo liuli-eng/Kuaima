@@ -35,6 +35,12 @@ const routes = [
         meta: { title: '零工管理', icon: 'fa-user', permKey: 'permUser.u1' }
       },
       {
+        path: 'workers/detail/:id',
+        name: 'WorkerDetail',
+        component: () => import('@/views/user/WorkerDetail.vue'),
+        meta: { title: '零工详情', icon: 'fa-eye', hidden: true, permKey: 'permUser.u1' }
+      },
+      {
         path: 'bosses',
         name: 'Bosses',
         component: () => import('@/views/user/Bosses.vue'),
@@ -51,6 +57,12 @@ const routes = [
         name: 'EnterpriseCert',
         component: () => import('@/views/user/EnterpriseCert.vue'),
         meta: { title: '企业认证', icon: 'fa-id-card', permKey: 'permUser.u2' }
+      },
+      {
+        path: 'academy',
+        name: 'Academy',
+        component: () => import('@/views/content/Academy.vue'),
+        meta: { title: '学堂管理', icon: 'fa-graduation-cap' }
       },
       // 招工管理
       {

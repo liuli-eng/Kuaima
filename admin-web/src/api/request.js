@@ -54,6 +54,10 @@ request.interceptors.response.use(
           ElMessage.error('登录已过期，请重新登录')
           router.push('/login')
         }
+      } else if (status === 403) {
+        ElMessage.error(err.response.data?.message || '仅管理员可操作')
+      } else if (status === 400) {
+        ElMessage.error(err.response.data?.message || '请求参数错误')
       } else {
         ElMessage.error(`请求失败 (${status})`)
       }

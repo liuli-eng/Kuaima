@@ -1,10 +1,52 @@
 <template>
   <view class="page">
     <scroll-view scroll-y class="scroll">
-      <view class="header" :style="{ paddingTop: `${statusBarHeight + 8}px` }">
+      <view class="header" :style="{ paddingTop: `${headerPaddingTop}px` }">
         <view class="brand">
-          <text class="brand-title">快马日结</text>
-          <text class="slogan">真老板·真工价·真日结</text>
+          <view class="brand-copy">
+            <text class="brand-title">快马日结</text>
+            <text class="slogan">真老板 | 真工价 | 真日结</text>
+          </view>
+          <view class="header-actions">
+            <view class="header-action" @click="openHeaderPage('rule')">
+              <image
+                class="header-action-icon"
+                src="/static/icons/worker-home/scale-balanced-brown.svg"
+                mode="aspectFit"
+              />
+              <text>规则</text>
+            </view>
+            <view class="header-action" @click="openHeaderPage('classroom')">
+              <image
+                class="header-action-icon"
+                src="/static/icons/worker-home/graduation-cap-brown.svg"
+                mode="aspectFit"
+              />
+              <text>课堂</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="home-notice">
+        <image
+          class="notice-icon"
+          src="/static/icons/worker-home/bullhorn-green.svg"
+          mode="aspectFit"
+        />
+        <view class="notice-viewport">
+          <view class="notice-track">
+            <view v-for="(notice, index) in notices" :key="index" class="notice-item">
+              <text>{{ notice.prefix }}</text>
+              <text class="notice-emphasis">{{ notice.emphasis }}</text>
+              <text>{{ notice.suffix }}</text>
+            </view>
+            <view class="notice-item">
+              <text>{{ notices[0].prefix }}</text>
+              <text class="notice-emphasis">{{ notices[0].emphasis }}</text>
+              <text>{{ notices[0].suffix }}</text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -131,7 +173,14 @@ const tabs = [
 
 const activeTab = ref("DAY");
 const statusBarHeight = ref(0);
+const headerPaddingTop = ref(8);
 const location = ref("松江洞照路");
+const notices = [
+  { prefix: "魏*洁提现 ", emphasis: "2538.6 元", suffix: "，已到账" },
+  { prefix: "张*强今日完工到账 ", emphasis: "320 元", suffix: "" },
+  { prefix: "李*明提现 ", emphasis: "860 元", suffix: "，已到账" },
+  { prefix: "王*芳日结工资 ", emphasis: "1526.8 元", suffix: "，已到账" },
+];
 const loading = ref(false);
 const error = ref(false);
 const jobs = ref([]);
@@ -388,6 +437,15 @@ function search() {
   uni.navigateTo({ url: "/pages/worker/search" });
 }
 
+function openHeaderPage(page) {
+  const routes = {
+    rule: "/pages/worker/rule",
+    classroom: "/pages/worker/classroom",
+  };
+  const url = routes[page];
+  if (url) uni.navigateTo({ url });
+}
+
 function switchTab(key) {
   activeTab.value = key;
   loadJobs();
@@ -436,6 +494,13 @@ onMounted(() => {
         ? uni.getWindowInfo()
         : uni.getSystemInfoSync();
     statusBarHeight.value = Number(info.statusBarHeight || 0);
+    headerPaddingTop.value = statusBarHeight.value + 8;
+    if (typeof uni.getMenuButtonBoundingClientRect === "function") {
+      const menuButton = uni.getMenuButtonBoundingClientRect();
+      if (menuButton?.bottom) {
+        headerPaddingTop.value = Number(menuButton.bottom) + 8;
+      }
+    }
   } catch (_) {}
   loadJobs();
 });
@@ -453,10 +518,22 @@ onMounted(() => {
 
 .header {
   position: relative;
-  min-height: 140rpx;
+  min-height: 156rpx;
   box-sizing: border-box;
   padding: 8px 32rpx 40rpx;
   background: linear-gradient(180deg, #ffd59e 0%, #ffe4b5 50%, #fffbf5 100%);
+}
+
+.brand {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
 }
 
 .brand-title {
@@ -473,6 +550,95 @@ onMounted(() => {
   color: #8b4513;
   font-size: 22rpx;
   font-weight: 500;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 36rpx;
+  padding-top: 2rpx;
+}
+
+.header-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rpx;
+  color: #8b4513;
+  font-size: 20rpx;
+  font-weight: 500;
+}
+
+.header-action-icon {
+  width: 34rpx;
+  height: 34rpx;
+}
+
+.home-notice {
+  height: 36rpx;
+  margin: 16rpx 32rpx 0;
+  padding: 18rpx 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  overflow: hidden;
+  border-radius: 28rpx;
+  background: #fff;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+
+.notice-icon {
+  width: 28rpx;
+  height: 28rpx;
+  flex-shrink: 0;
+}
+
+.notice-viewport {
+  position: relative;
+  flex: 1;
+  height: 36rpx;
+  overflow: hidden;
+}
+
+.notice-track {
+  animation: notice-roll 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.notice-item {
+  height: 36rpx;
+  overflow: hidden;
+  color: #333;
+  font-size: 26rpx;
+  line-height: 36rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice-emphasis {
+  color: #57bc7a;
+  font-weight: 700;
+}
+
+@keyframes notice-roll {
+  0%,
+  18% {
+    transform: translateY(0);
+  }
+  25%,
+  43% {
+    transform: translateY(-36rpx);
+  }
+  50%,
+  68% {
+    transform: translateY(-72rpx);
+  }
+  75%,
+  93% {
+    transform: translateY(-108rpx);
+  }
+  100% {
+    transform: translateY(-144rpx);
+  }
 }
 
 .tabs {

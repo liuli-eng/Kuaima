@@ -6,6 +6,8 @@ import static org.mockito.Mockito.*;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import com.kuaima.app.domain.boss.entity.BossAttendanceCode;
 import com.kuaima.app.domain.boss.model.BossRecruitSettingsModels.Settings;
 import com.kuaima.app.domain.boss.repository.BossAttendanceCodeRepository;
@@ -14,6 +16,16 @@ import com.kuaima.app.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 
 class BossAttendanceCodeServiceTests {
+    @Test
+    void dailyCodeMethods_shouldUseIndependentTransactionToAvoidConcurrentDuplicateInsert() throws Exception {
+        for (var method : BossAttendanceCodeService.class.getDeclaredMethods()) {
+            if (!java.util.Set.of("today", "refresh", "verify").contains(method.getName())) continue;
+            Transactional transactional = method.getAnnotation(Transactional.class);
+            assertNotNull(transactional);
+            assertEquals(Propagation.REQUIRES_NEW, transactional.propagation());
+        }
+    }
+
     @Test
     void todayShouldLockBossBeforeFindOrCreateAndReuseExistingRow() {
         BossAttendanceCodeRepository codes = mock(BossAttendanceCodeRepository.class);

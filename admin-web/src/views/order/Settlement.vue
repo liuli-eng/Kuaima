@@ -2,77 +2,166 @@
   <div>
     <div class="page-header">
       <h1 class="page-title">结算管理</h1>
-      <p class="page-desc">管理订单结算流程，支持确认结算、批量结算、导出报表</p>
+      <p class="page-desc">订单结算、财务核对、支付记录</p>
+    </div>
+
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-title">待结算订单</span>
+          <div class="stat-card-icon yellow"><i class="fas fa-hourglass-half"></i></div>
+        </div>
+        <div class="stat-card-value">{{ formatNumber(stats.pendingCount) }}</div>
+        <div class="stat-card-change"><span class="text-muted">需要处理</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-title">结算金额</span>
+          <div class="stat-card-icon"><i class="fas fa-yen-sign"></i></div>
+        </div>
+        <div class="stat-card-value">¥{{ formatNumber(stats.settledAmount) }}</div>
+        <div class="stat-card-change"><span class="text-muted">今日结算总额</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-title">已结算</span>
+          <div class="stat-card-icon green"><i class="fas fa-check-double"></i></div>
+        </div>
+        <div class="stat-card-value">{{ formatNumber(stats.settledCount) }}</div>
+        <div class="stat-card-change"><span class="text-muted">结算笔数</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-title">结算成功率</span>
+          <div class="stat-card-icon blue"><i class="fas fa-percentage"></i></div>
+        </div>
+        <div class="stat-card-value">{{ stats.successRate }}%</div>
+        <div class="stat-card-change"><span class="text-muted">本周平均</span></div>
+      </div>
+    </div>
+
+    <div class="batch-action-bar">
+      <div class="batch-action-info">
+        共 <strong>{{ formatNumber(stats.totalCount) }}</strong> 条结算记录，其中
+        <strong class="warning-text">{{ formatNumber(stats.pendingCount) }}</strong> 条待结算
+      </div>
+      <div class="batch-actions">
+        <el-button type="primary" :disabled="!pendingRows.length" @click="handleBatchSettle">
+          <i class="fas fa-coins"></i> 批量结算
+        </el-button>
+        <el-button><i class="fas fa-download"></i> 导出报表</el-button>
+      </div>
     </div>
 
     <div class="card">
       <div class="filter-bar">
-        <el-select v-model="statusFilter" placeholder="结算状态" clearable style="width: 120px;">
+        <el-select v-model="cycleFilter" placeholder="结算周期" clearable style="width: 110px">
+          <el-option label="今日" value="today" />
+          <el-option label="本周" value="week" />
+          <el-option label="本月" value="month" />
+        </el-select>
+        <el-select v-model="statusFilter" placeholder="结算状态" clearable style="width: 110px">
           <el-option label="待结算" value="待结算" />
           <el-option label="结算中" value="结算中" />
           <el-option label="已结算" value="已结算" />
-          <el-option label="结算失败" value="结算失败" />
+          <el-option label="已失败" value="结算失败" />
         </el-select>
-        <el-select v-model="methodFilter" placeholder="支付方式" clearable style="width: 120px;">
-          <el-option label="微信" value="微信" />
+        <el-select v-model="methodFilter" placeholder="支付方式" clearable style="width: 110px">
+          <el-option label="微信支付" value="微信支付" />
           <el-option label="支付宝" value="支付宝" />
           <el-option label="银行卡" value="银行卡" />
           <el-option label="现金" value="现金" />
         </el-select>
-        <div class="date-picker-wrap" style="width: 240px;">
-          <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 100%;" />
-        </div>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          style="width: 250px"
+          value-format="YYYY-MM-DD"
+        />
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
-        <div style="margin-left: auto; display: flex; gap: 8px;">
-          <button class="btn btn-primary btn-sm" :disabled="!selectedRows.length" :style="{ opacity: !selectedRows.length ? 0.5 : 1, cursor: !selectedRows.length ? 'not-allowed' : 'pointer' }">批量结算 ({{ selectedRows.length }})</button>
-          <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出报表</button>
-        </div>
+        <div class="filter-space"></div>
+        <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出数据</button>
       </div>
 
-      <el-table :data="settlementData" stripe @selection-change="handleSelectionChange" :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column type="selection" width="50" />
-        <el-table-column prop="id" label="结算单号" show-overflow-tooltip />
-        <el-table-column prop="orderId" label="订单号" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span style="color: var(--primary); font-family: monospace;">{{ row.orderId }}</span>
-          </template>
+      <div class="quick-filter-bar">
+        <button
+          v-for="item in quickFilters"
+          :key="item.value"
+          class="quick-filter"
+          :class="{ active: statusFilter === item.value }"
+          @click="quickFilter(item.value)"
+        >
+          {{ item.label }}
+        </button>
+      </div>
+
+      <el-table
+        :data="settlementData"
+        stripe
+        class="settlement-table"
+        :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }"
+      >
+        <el-table-column label="结算单号" width="110" fixed="left">
+          <template #default="{ row }"><span class="settle-id-cell">{{ settlementNo(row) }}</span></template>
         </el-table-column>
-        <el-table-column prop="employer" label="雇主" show-overflow-tooltip />
-        <el-table-column prop="worker" label="零工" show-overflow-tooltip />
-        <el-table-column label="结算金额" show-overflow-tooltip>
+        <el-table-column label="订单号" width="110">
+          <template #default="{ row }"><span class="settle-id-cell">{{ orderNo(row) }}</span></template>
+        </el-table-column>
+        <el-table-column label="雇主" width="180" show-overflow-tooltip>
           <template #default="{ row }">
-            <div>
-              <div style="font-weight: 600;">¥{{ row.amount }}</div>
-              <div class="text-muted" style="font-size: 12px;">平台费 ¥{{ row.platformFee }}</div>
+            <div class="employer-cell">
+              <span class="employer-logo" :style="{ background: avatarBackground(row.id, row.employerName) }">{{ avatarText(row.employerName) }}</span>
+              <span class="employer-name-text">{{ row.employerName || '-' }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="actualAmount" label="实付金额" show-overflow-tooltip>
+        <el-table-column label="零工" width="150" show-overflow-tooltip>
           <template #default="{ row }">
-            <span style="font-weight: 600; color: var(--success);">¥{{ row.actualAmount }}</span>
+            <div class="worker-cell">
+              <span class="worker-avatar" :style="{ background: avatarBackground(row.workerId, row.workerName) }">{{ avatarText(row.workerName) }}</span>
+              <span class="worker-name-text">{{ row.workerName || '-' }}</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="method" label="支付方式" show-overflow-tooltip />
-        <el-table-column label="状态" show-overflow-tooltip>
+        <el-table-column label="结算金额" width="110" align="right">
+          <template #default="{ row }"><span class="money-cell primary">¥{{ formatMoney(row.amount) }}</span></template>
+        </el-table-column>
+        <el-table-column label="平台费" width="100" align="right">
+          <template #default="{ row }"><span class="money-cell danger">¥{{ formatMoney(row.platformFee) }}</span></template>
+        </el-table-column>
+        <el-table-column label="优惠券抵扣金额" width="140" align="right">
           <template #default="{ row }">
-            <span :class="['status-badge', row.statusClass]">{{ row.status }}</span>
+            <div class="coupon-cell">
+              <span class="money-cell success">-¥{{ formatMoney(row.couponAmount) }}</span>
+              <span v-if="row.couponName" class="coupon-name">{{ row.couponName }}</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="time" label="时间" show-overflow-tooltip />
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="实付金额" width="110" align="right">
+          <template #default="{ row }"><span class="money-cell success">¥{{ formatMoney(row.actualAmount) }}</span></template>
+        </el-table-column>
+        <el-table-column label="结算状态" width="100">
+          <template #default="{ row }"><span class="status-badge" :class="row.statusClass">{{ row.status }}</span></template>
+        </el-table-column>
+        <el-table-column label="结算时间" width="170">
+          <template #default="{ row }">{{ formatDateTime(row.time) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
-            <div class="action-cell">
-              <el-button link type="primary" size="small" @click="handleDetail(row)">详情</el-button>
+            <div class="action-btns">
+              <el-button link type="primary" size="small" @click="openDetail(row)">详情</el-button>
               <el-button v-if="row.status === '待结算'" link type="success" size="small" @click="handleSettlePay(row)">结算</el-button>
-              <el-button v-if="row.status === '结算失败'" link type="warning" size="small" @click="handleSettlePay(row)">重试</el-button>
             </div>
           </template>
         </el-table-column>
       </el-table>
 
       <div class="pagination">
-        <div class="pagination-info">共 {{ total }} 条记录</div>
+        <div class="pagination-info">共 {{ formatNumber(total) }} 条结算记录</div>
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
@@ -85,76 +174,163 @@
         />
       </div>
     </div>
+
+    <el-dialog v-model="detailVisible" title="结算详情" width="760px" class="settlement-detail-dialog">
+      <div class="settle-summary">
+        <div class="settle-summary-item"><div class="label">结算金额</div><div class="value primary">¥{{ formatMoney(detailRow.amount) }}</div></div>
+        <div class="settle-summary-item"><div class="label">平台服务费</div><div class="value danger">¥{{ formatMoney(detailRow.platformFee) }}</div></div>
+        <div class="settle-summary-item"><div class="label">实付金额</div><div class="value success">¥{{ formatMoney(detailRow.actualAmount) }}</div></div>
+      </div>
+
+      <div class="detail-section-title">结算信息</div>
+      <div class="detail-info-grid">
+        <div class="detail-info-item"><span class="label">结算单号</span><span class="value">{{ settlementNo(detailRow) }}</span></div>
+        <div class="detail-info-item"><span class="label">关联订单号</span><span class="value">{{ orderNo(detailRow) }}</span></div>
+        <div class="detail-info-item"><span class="label">结算周期</span><span class="value">{{ cycleText(detailRow) }}</span></div>
+        <div class="detail-info-item"><span class="label">支付方式</span><span class="value">{{ detailRow.payMethod || '-' }}</span></div>
+        <div class="detail-info-item"><span class="label">结算时间</span><span class="value">{{ formatDateTime(detailRow.time) }}</span></div>
+        <div class="detail-info-item"><span class="label">支付流水号</span><span class="value">{{ detailRow.payNo || '-' }}</span></div>
+      </div>
+
+      <div class="detail-section-title">雇主信息</div>
+      <div class="detail-info-grid">
+        <div class="detail-info-item"><span class="label">雇主名称</span><span class="value">{{ detailRow.employerName || '-' }}</span></div>
+        <div class="detail-info-item"><span class="label">联系电话</span><span class="value">{{ detailRow.employerPhone || '-' }}</span></div>
+      </div>
+
+      <div class="detail-section-title">零工信息</div>
+      <div class="detail-info-grid">
+        <div class="detail-info-item"><span class="label">零工姓名</span><span class="value">{{ detailRow.workerName || '-' }}</span></div>
+        <div class="detail-info-item"><span class="label">联系电话</span><span class="value">{{ detailRow.workerPhone || '-' }}</span></div>
+        <div class="detail-info-item"><span class="label">工作天数</span><span class="value">{{ detailRow.workDays ?? '-' }} 天</span></div>
+        <div class="detail-info-item"><span class="label">岗位</span><span class="value">{{ detailRow.jobTitle || detailRow.postion || '-' }}</span></div>
+      </div>
+
+      <div class="detail-section-title">费用明细</div>
+      <div class="fee-box">
+        <div class="fee-row"><span>订单金额</span><strong>¥{{ formatMoney(detailRow.amount) }}</strong></div>
+        <div class="fee-row"><span>平台服务费</span><strong class="danger">¥{{ formatMoney(detailRow.platformFee) }}</strong></div>
+        <div class="fee-row"><span>优惠券抵扣</span><strong class="success">-¥{{ formatMoney(detailRow.couponAmount) }}</strong></div>
+        <div class="fee-row total"><span>实付金额</span><strong class="success">¥{{ formatMoney(detailRow.actualAmount) }}</strong></div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="detailVisible = false">关闭</el-button>
+          <el-button v-if="detailRow.status === '待结算'" type="primary" @click="handleSettlePay(detailRow)">财务确认结算</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listSettlements, settlePay } from '@/api/settlement'
+import { getSettlementDetail, getSettlementStats, listSettlements, settlePay } from '@/api/settlement'
 
-const router = useRouter()
-
+const cycleFilter = ref('')
 const statusFilter = ref('')
 const methodFilter = ref('')
 const dateRange = ref([])
-const selectedRows = ref([])
-
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-
 const settlementData = ref([])
+const stats = ref({ pendingCount: 0, settledAmount: 0, settledCount: 0, successRate: 0, totalCount: 0 })
+const detailVisible = ref(false)
+const detailRow = ref({})
+
+const quickFilters = [
+  { label: '全部', value: '' },
+  { label: '待结算', value: '待结算' },
+  { label: '结算中', value: '结算中' },
+  { label: '已结算', value: '已结算' },
+  { label: '已失败', value: '结算失败' }
+]
+
+const pendingRows = computed(() => settlementData.value.filter(item => item.status === '待结算'))
 
 const statusClassMap = {
   '待结算': 'warning',
   '结算中': 'info',
   '已结算': 'success',
-  '结算失败': 'danger',
+  '结算失败': 'danger'
 }
 
-const formatTime = (t) => {
-  if (!t) return '-'
-  if (typeof t === 'number') {
-    const d = new Date(t)
-    if (isNaN(d.getTime())) return '-'
-    const Y = d.getFullYear()
-    const M = String(d.getMonth() + 1).padStart(2, '0')
-    const D = String(d.getDate()).padStart(2, '0')
-    return `${Y}-${M}-${D}`
-  }
-  const s = String(t).replace('T', ' ')
-  return s.length > 10 ? s.substring(0, 10) : s
+const formatNumber = value => Number(value ?? 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+const formatMoney = value => Number(value ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const formatDateTime = value => {
+  if (!value) return '-'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('zh-CN', { hour12: false })
+}
+const settlementNo = row => `JS${String(row?.id ?? 0).padStart(6, '0')}`
+const orderNo = row => `ORD${String(row?.orderId ?? 0).padStart(6, '0')}`
+const cycleText = row => {
+  const time = row?.time ? new Date(row.time) : null
+  return Number.isNaN(time?.getTime?.()) ? '-' : `${time.getFullYear()}年第${Math.ceil((time.getMonth() + 1) / 3)}季度`
+}
+const avatarText = value => String(value || '快').slice(0, 1)
+const avatarBackground = (id, name) => {
+  const palette = [
+    'linear-gradient(135deg,#3B82F6,#2563EB)',
+    'linear-gradient(135deg,#F59E0B,#D97706)',
+    'linear-gradient(135deg,#10B981,#059669)',
+    'linear-gradient(135deg,#8B5CF6,#7C3AED)',
+    'linear-gradient(135deg,#EC4899,#BE185D)'
+  ]
+  const key = String(name || '') + String(id || '')
+  let hash = 0
+  for (const char of key) hash = (hash * 31 + char.charCodeAt()) % palette.length
+  return palette[hash]
 }
 
-const normalizeSettlement = (item) => ({
-  id: item.id,
-  orderId: item.orderId,
-  employer: item.employerName || '-',
-  worker: item.workerName || '-',
-  amount: item.amount ?? '-',
-  platformFee: item.platformFee ?? '-',
-  actualAmount: item.actualAmount ?? '-',
-  method: item.method ?? item.payMethod ?? '-',
+const normalizeSettlement = item => ({
+  ...item,
+  employerName: item.employerName || '-',
+  workerName: item.workerName || '-',
+  amount: Number(item.amount ?? 0),
+  platformFee: Number(item.platformFee ?? 0),
+  couponAmount: Number(item.couponAmount ?? 0),
+  actualAmount: Number(item.actualAmount ?? 0),
   status: item.status || '-',
-  statusClass: statusClassMap[item.status] ?? 'default',
-  time: formatTime(item.time),
+  statusClass: statusClassMap[item.status] || 'default'
 })
 
-const handleDetail = (row) => {
-  router.push(`/admin/settlement/detail/${row.id}`)
+const rows = result => {
+  const data = result?.data
+  return Array.isArray(data) ? data : (data?.content || data?.list || [])
+}
+
+const totalOf = result => Number(result?.total ?? result?.data?.totalElements ?? result?.data?.total ?? 0)
+
+const loadStats = async () => {
+  try {
+    const result = await getSettlementStats()
+    stats.value = { ...stats.value, ...(result?.data || {}) }
+  } catch (error) {
+    console.warn('[Settlement] 加载统计失败:', error)
+  }
 }
 
 const loadSettlements = async () => {
   try {
-    const res = await listSettlements({ page: currentPage.value - 1, size: pageSize.value })
-    const d = res.data
-    const list = Array.isArray(d) ? d : (d?.content || d?.list || [])
-    total.value = res.total ?? d?.totalElements ?? d?.total ?? list.length
-    settlementData.value = list.map(normalizeSettlement)
-  } catch (err) {
-    console.warn('[Settlement] API 加载失败:', err.message)
+    const [start, end] = dateRange.value || []
+    const result = await listSettlements({
+      status: statusFilter.value || undefined,
+      cycle: cycleFilter.value || undefined,
+      startDate: start || undefined,
+      endDate: end || undefined,
+      page: currentPage.value - 1,
+      size: pageSize.value
+    })
+    settlementData.value = rows(result)
+      .map(normalizeSettlement)
+      .filter(item => !methodFilter.value || item.payMethod === methodFilter.value)
+    total.value = totalOf(result)
+  } catch (error) {
+    console.warn('[Settlement] API 加载失败:', error)
     settlementData.value = []
     total.value = 0
     ElMessage.error('加载结算列表失败')
@@ -167,83 +343,142 @@ const handleSearch = () => {
 }
 
 const handleReset = () => {
+  cycleFilter.value = ''
   statusFilter.value = ''
   methodFilter.value = ''
   dateRange.value = []
   handleSearch()
 }
 
-const handlePageChange = (page) => {
-  currentPage.value = page
-  loadSettlements()
+const quickFilter = status => {
+  statusFilter.value = status
+  handleSearch()
 }
 
-const onSizeChange = (size) => {
+const onSizeChange = size => {
   pageSize.value = size
   currentPage.value = 1
   loadSettlements()
 }
 
-const onPageChange = (page) => {
+const onPageChange = page => {
   currentPage.value = page
   loadSettlements()
 }
 
-const handleSelectionChange = (rows) => {
-  selectedRows.value = rows
+const openDetail = async row => {
+  detailRow.value = normalizeSettlement(row)
+  detailVisible.value = true
+  try {
+    const result = await getSettlementDetail(row.id)
+    detailRow.value = normalizeSettlement({ ...row, ...(result?.data || {}) })
+  } catch (error) {
+    console.warn('[Settlement] 加载详情失败:', error)
+  }
 }
 
-const handleSettlePay = async (row) => {
+const payOne = async row => {
+  await settlePay(row.id)
+}
+
+const handleSettlePay = async row => {
   try {
-    await ElMessageBox.confirm(`确认对结算单 ${row.id} 进行支付结算？`, '结算确认', {
+    await ElMessageBox.confirm(`确认对结算单 ${settlementNo(row)} 进行支付结算？此操作不可撤销。`, '财务确认结算', {
       confirmButtonText: '确认结算',
       cancelButtonText: '取消',
-      type: 'warning',
+      type: 'warning'
     })
   } catch {
     return
   }
   try {
-    await settlePay(row.id)
+    await payOne(row)
     ElMessage.success('结算成功')
-    loadSettlements()
-  } catch (err) {
-    console.warn('[Settlement] settlePay API 调用失败:', err.message)
+    detailVisible.value = false
+    await Promise.all([loadSettlements(), loadStats()])
+  } catch (error) {
+    console.warn('[Settlement] settlePay API 调用失败:', error)
     ElMessage.error('结算失败，请重试')
   }
 }
 
-onMounted(loadSettlements)
+const handleBatchSettle = async () => {
+  const pending = pendingRows.value
+  if (!pending.length) return
+  try {
+    await ElMessageBox.confirm(`将批量确认当前页 ${pending.length} 笔待结算订单，是否继续？`, '批量结算', {
+      confirmButtonText: '确认结算',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+  let success = 0
+  for (const row of pending) {
+    try {
+      await payOne(row)
+      success += 1
+    } catch (error) {
+      console.warn('[Settlement] 批量结算单失败:', row.id, error)
+    }
+  }
+  ElMessage.success(`批量结算完成，成功 ${success} 笔`)
+  await Promise.all([loadSettlements(), loadStats()])
+}
+
+onMounted(() => {
+  loadSettlements()
+  loadStats()
+})
 </script>
 
 <style scoped>
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 16px;
-}
-
-.action-cell {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-.action-cell .el-button {
-  margin-left: 0;
-  margin-right: 8px;
-  padding: 0;
-}
-.action-cell .el-button:last-child {
-  margin-right: 0;
-}
+.filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-space { flex: 1; }
+.quick-filter-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.quick-filter { padding: 5px 12px; border: 1px solid #E5E7EB; border-radius: 16px; background: #fff; color: var(--text-secondary,#4B5563); font-size: 13px; cursor: pointer; }
+.quick-filter:hover { border-color: var(--primary); color: var(--primary); }
+.quick-filter.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+.batch-action-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; background: #FFF8E6; }
+.batch-action-info { color: var(--text-secondary,#4B5563); font-size: 13px; }
+.warning-text { color: var(--warning,#D97706); }
+.batch-actions { display: flex; gap: 10px; }
+.settlement-table :deep(.el-table__row) { height: 56px; }
+.settle-id-cell { color: var(--primary); font-family: monospace; font-weight: 500; }
+.employer-cell { display: flex; align-items: center; gap: 8px; }
+.employer-logo { width: 32px; height: 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 600; }
+.employer-name-text { overflow: hidden; max-width: 140px; color: var(--text-primary,#111827); font-weight: 500; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.worker-cell { display: flex; align-items: center; gap: 8px; }
+.worker-avatar { width: 32px; height: 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 600; }
+.worker-name-text { color: var(--text-primary,#111827); font-weight: 500; font-size: 13px; }
+.money-cell { color: var(--text-primary,#111827); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.money-cell.primary { color: var(--primary); }
+.money-cell.success { color: var(--success,#059669); }
+.money-cell.danger { color: var(--danger,#DC2626); }
+.coupon-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.coupon-name { overflow: hidden; max-width: 120px; color: var(--text-muted,#9CA3AF); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.action-btns { display: flex; gap: 2px; white-space: nowrap; }
+.pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+.pagination-info { color: var(--text-secondary,#4B5563); font-size: 13px; }
+.settle-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-bottom: 20px; }
+.settle-summary-item { padding: 14px 16px; border-radius: 10px; background: #F9FAFB; }
+.settle-summary-item .label { margin-bottom: 4px; color: var(--text-secondary,#4B5563); font-size: 12px; }
+.settle-summary-item .value { color: #111827; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.settle-summary-item .primary { color: var(--primary); }
+.settle-summary-item .success { color: var(--success,#059669); }
+.settle-summary-item .danger { color: var(--danger,#DC2626); }
+.detail-section-title { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #E5E7EB; color: #111827; font-size: 14px; font-weight: 700; }
+.detail-info-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-bottom: 20px; }
+.detail-info-item { display: flex; flex-direction: column; gap: 4px; }
+.detail-info-item .label { color: var(--text-muted,#9CA3AF); font-size: 12px; }
+.detail-info-item .value { overflow: hidden; color: #111827; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.fee-box { padding: 16px; border-radius: 10px; background: #F9FAFB; }
+.fee-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #E5E7EB; color: var(--text-secondary,#4B5563); font-size: 13px; }
+.fee-row strong { color: #111827; font-variant-numeric: tabular-nums; }
+.fee-row .danger { color: var(--danger,#DC2626); }
+.fee-row .success { color: var(--success,#059669); }
+.fee-row.total { margin-top: 4px; padding-bottom: 0; border-bottom: 0; color: #111827; font-weight: 700; }
+.fee-row.total strong { font-size: 16px; }
+.dialog-footer { display: flex; justify-content: flex-end; gap: 12px; }
 </style>

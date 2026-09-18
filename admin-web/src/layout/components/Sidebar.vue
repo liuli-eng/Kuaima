@@ -114,6 +114,7 @@ const menuGroups = [
     name: '内容管理',
     items: [
       { path: '/admin/notices', name: '公告管理', icon: 'fa-bullhorn', permKey: 'permContent.c3' },
+      { path: '/admin/academy', name: '学堂管理', icon: 'fa-graduation-cap' },
       { path: '/admin/rules', name: '规则管理', icon: 'fa-book', permKey: 'permContent.c4' },
       // { path: '/admin/banners', name: 'Banner管理', icon: 'fa-image', permKey: 'permContent.c2' }
     ]

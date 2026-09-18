@@ -50,6 +50,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
                             @Param("keyword") String keyword,
                             Pageable pageable);
 
+    @Query("select u from User u where (:role is null or u.role = :role) and (:keyword is null or u.username like concat('%', :keyword, '%') or u.nickname like concat('%', :keyword, '%') or u.phone like concat('%', :keyword, '%') or u.companyName like concat('%', :keyword, '%'))")
+    Page<User> searchRecipients(@Param("role") String role, @Param("keyword") String keyword, Pageable pageable);
+
+    @Query("select u from User u where (u.enterpriseStatus = 'APPROVED' or (upper(coalesce(u.certType,'')) = 'ENTERPRISE' and u.certStatus = '已通过')) and (:keyword is null or u.username like concat('%', :keyword, '%') or u.nickname like concat('%', :keyword, '%') or u.phone like concat('%', :keyword, '%') or u.companyName like concat('%', :keyword, '%'))")
+    Page<User> searchBossIdentityRecipients(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("select u from User u where not (u.enterpriseStatus = 'APPROVED' or (upper(coalesce(u.certType,'')) = 'ENTERPRISE' and u.certStatus = '已通过')) and (:keyword is null or u.username like concat('%', :keyword, '%') or u.nickname like concat('%', :keyword, '%') or u.phone like concat('%', :keyword, '%') or u.companyName like concat('%', :keyword, '%'))")
+    Page<User> searchWorkerIdentityRecipients(@Param("keyword") String keyword, Pageable pageable);
+
     @Query("""
             select u from User u
             where coalesce(u.enterpriseStatus, '') <> 'APPROVED'
@@ -68,17 +77,26 @@ public interface UserRepository extends JpaRepository<User, Long> {
                              @Param("bossId") Long bossId,
                              Pageable pageable);
 
-    /** 按 角色/状态/企业认证状态/关键词 组合过滤分页查询（用于雇主列表企业认证筛选） */
+    /**
+     * 按老板业务身份/状态/企业认证状态/行业/关键词分页查询。
+     *
+     * role 是当前登录角色，不等同于业务身份；已完成企业认证的用户即使当前
+     * role 仍为 USER，也必须出现在后台老板列表中。
+     */
     @Query("""
             select u from User u
-            where u.role = :role
+            where (u.role = :role
+                   or u.enterpriseStatus = 'APPROVED'
+                   or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
               and (:status is null or u.status = :status)
               and (:enterpriseStatus is null or u.enterpriseStatus = :enterpriseStatus)
+              and (:industry is null or u.industry = :industry)
               and ((:keyword is null) or (u.companyCode like %:keyword%) or (u.companyName like %:keyword%) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%))
             """)
     Page<User> searchBosses(@Param("role") String role,
                             @Param("status") String status,
                             @Param("enterpriseStatus") String enterpriseStatus,
+                            @Param("industry") String industry,
                             @Param("keyword") String keyword,
                             Pageable pageable);
 }

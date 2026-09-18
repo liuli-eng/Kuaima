@@ -24,10 +24,21 @@ public final class BossOrderSpecifications {
     }
 
     public static Specification<BossOrder> from(Long bossId, BossOrderQuery filter) {
+        return fromOwner(bossId, null, filter);
+    }
+
+    public static Specification<BossOrder> fromEnterprise(Long enterpriseId, BossOrderQuery filter) {
+        return fromOwner(null, enterpriseId, filter);
+    }
+
+    private static Specification<BossOrder> fromOwner(Long bossId, Long enterpriseId, BossOrderQuery filter) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (bossId != null) {
                 predicates.add(cb.equal(root.get("createBy"), bossId));
+            }
+            if (enterpriseId != null) {
+                predicates.add(cb.equal(root.get("enterpriseId"), enterpriseId));
             }
             if (StringUtils.hasText(filter.getType())) {
                 predicates.add(cb.equal(root.get("type"), filter.getType().trim()));

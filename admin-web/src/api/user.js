@@ -6,13 +6,28 @@ export function listWorkers({ status, keyword, page = 0, size = 10 } = {}) {
 }
 
 // 雇主列表
-export function listBosses({ status, enterpriseStatus, keyword, page = 0, size = 10 } = {}) {
-  return request.get('/admin/users/bosses', { params: { status, enterpriseStatus, keyword, page, size } })
+export function listBosses({ status, enterpriseStatus, industry, keyword, page = 0, size = 10 } = {}) {
+  return request.get('/admin/users/bosses', { params: { status, enterpriseStatus, industry, keyword, page, size } })
 }
 
 // 用户详情
 export function getUser(id) {
   return request.get(`/admin/users/${id}`)
+}
+
+// 老板详情-积分明细
+export function getBossPointRecords(id, { type = 'ALL', page = 0, size = 5 } = {}) {
+  return request.get(`/admin/users/${id}/points`, { params: { type, page, size } })
+}
+
+// 老板详情-奖励金明细
+export function getBossRewardRecords(id, { type = 'ALL', page = 0, size = 5 } = {}) {
+  return request.get(`/admin/users/${id}/rewards`, { params: { type, page, size } })
+}
+
+// 老板详情-优惠券
+export function getBossCouponRecords(id, { status = 'ALL', page = 0, size = 5 } = {}) {
+  return request.get(`/admin/users/${id}/coupons`, { params: { status, page, size } })
 }
 
 // 冻结

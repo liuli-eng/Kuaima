@@ -3,12 +3,16 @@ package com.kuaima.app.domain.boss.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +23,7 @@ import com.kuaima.app.domain.boss.constant.BossStatus;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.entity.BossRecruitAccount;
+import com.kuaima.app.domain.boss.model.BossRecruitSettingsModels.Settings;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.repository.BossRecruitAccountRepository;
@@ -34,7 +39,14 @@ class BossHomeServiceTests {
     private SettlementRespository settlements;
     private BossRecruitAccountRepository accounts;
     private UserRepository users;
+    private BossAttendanceCodeService attendanceCodes;
+    private BossRecruitSettingsService recruitSettings;
     private BossHomeService service;
+
+    private Settings view(boolean startCode, boolean earlyCode) {
+        return new Settings("零工需打电话", null, "开工后3小时", false, startCode, earlyCode,
+                "按工作设定时间", true, "日结", "daily", "auto", true, true, true, true);
+    }
 
     @BeforeEach
     void setUp() {
@@ -43,7 +55,10 @@ class BossHomeServiceTests {
         settlements = mock(SettlementRespository.class);
         accounts = mock(BossRecruitAccountRepository.class);
         users = mock(UserRepository.class);
-        service = new BossHomeService(orders, items, settlements, accounts, users);
+        attendanceCodes = mock(BossAttendanceCodeService.class);
+        recruitSettings = mock(BossRecruitSettingsService.class);
+        service = new BossHomeService(orders, items, settlements, accounts, users,
+                attendanceCodes, recruitSettings);
     }
 
     @Test
@@ -53,8 +68,11 @@ class BossHomeServiceTests {
         when(users.findById(1L)).thenReturn(Optional.of(boss));
         when(users.countByRoleAndCity("USER", "松江")).thenReturn(23L);
         when(accounts.findByOwnerUserIdOrderByIdAsc(1L)).thenReturn(List.of(account));
-        when(orders.findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(any(), any(), any()))
+        when(orders.findByCreateByInAndOverlappingTime(any(), any(), any()))
                 .thenReturn(List.of());
+        when(recruitSettings.get(1L)).thenReturn(view(true, true));
+        when(attendanceCodes.today(1L)).thenReturn(Map.of(
+                "workCode", "1633", "leaveCode", "7788"));
 
         var result = service.overview(1L, null, null);
 
@@ -68,12 +86,68 @@ class BossHomeServiceTests {
     }
 
     @Test
+    void overview_shouldNotLoadOrCreateAttendanceCodesWhenBothConfigurationsDisabled() {
+        User boss = new User(); boss.setId(1L); boss.setCity("松江");
+        BossRecruitAccount account = account(10L, 1L, true);
+        account.setWorkCode("1633"); account.setLeaveCode("7788");
+        when(users.findById(1L)).thenReturn(Optional.of(boss));
+        when(users.countByRole("USER")).thenReturn(0L);
+        when(accounts.findByOwnerUserIdOrderByIdAsc(1L)).thenReturn(List.of(account));
+        when(orders.findByCreateByInAndOverlappingTime(any(), any(), any())).thenReturn(List.of());
+        when(recruitSettings.get(1L)).thenReturn(view(false, false));
+
+        var result = service.overview(1L, null, null);
+
+        assertEquals("", result.account().workCode());
+        assertEquals("", result.account().leaveCode());
+        verify(recruitSettings).get(1L);
+        verifyNoInteractions(attendanceCodes);
+    }
+
+    @Test
+    void overview_shouldOnlyReturnEnabledAttendanceCode() {
+        User boss = new User(); boss.setId(1L); boss.setCity("松江");
+        BossRecruitAccount account = account(10L, 1L, true);
+        when(users.findById(1L)).thenReturn(Optional.of(boss));
+        when(users.countByRole("USER")).thenReturn(0L);
+        when(accounts.findByOwnerUserIdOrderByIdAsc(1L)).thenReturn(List.of(account));
+        when(orders.findByCreateByInAndOverlappingTime(any(), any(), any())).thenReturn(List.of());
+        when(recruitSettings.get(1L)).thenReturn(view(true, false));
+        when(attendanceCodes.today(1L)).thenReturn(Map.of(
+                "workCode", "1633", "leaveCode", "7788"));
+
+        var result = service.overview(1L, null, null);
+
+        assertEquals("1633", result.account().workCode());
+        assertEquals("", result.account().leaveCode());
+        verify(attendanceCodes).today(1L);
+    }
+
+    @Test
+    void quickLoginOverview_shouldReadAccountsFromOriginalGroupButUseTargetForCityAndOrders() {
+        User target = new User(); target.setId(31L); target.setCity("上海");
+        BossRecruitAccount account = account(10L, 7L, true);
+        account.setTargetUserId(31L);
+        when(users.findById(31L)).thenReturn(Optional.of(target));
+        when(users.countByRoleAndCity("USER", "上海")).thenReturn(9L);
+        when(accounts.findByOwnerUserIdOrderByIdAsc(7L)).thenReturn(List.of(account));
+        when(orders.findByCreateByInAndOverlappingTime(any(), any(), any())).thenReturn(List.of());
+
+        var result = service.overview(31L, 7L, null, null);
+
+        assertEquals(9L, result.nearbyWorkers());
+        assertEquals(10L, result.currentAccountId());
+        verify(accounts, times(2)).findByOwnerUserIdOrderByIdAsc(7L);
+        verify(orders, times(4)).findByCreateByInAndOverlappingTime(eq(List.of(31L)), any(), any());
+    }
+
+    @Test
     void schedule_shouldAggregateStatusesAndSettlementsWithoutCanceledItems() {
         LocalDate date = LocalDate.of(2026, 9, 14);
         BossOrder first = order(1001L, 20, BossStatus.ORDER_RECRUITING);
         BossOrder second = order(1002L, 10, BossStatus.ORDER_PENDING_SETTLE);
         when(accounts.findByIdAndOwnerUserId(10L, 1L)).thenReturn(Optional.of(account(10L, 1L, true)));
-        when(orders.findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(any(), any(), any()))
+        when(orders.findByCreateByInAndOverlappingTime(any(), any(), any()))
                 .thenReturn(List.of(first, second));
         BaseOrderItem applied = item(1L, 1001L, BossStatus.ITEM_APPLIED);
         BaseOrderItem hired = item(2L, 1001L, BossStatus.ITEM_HIRED);
@@ -91,8 +165,8 @@ class BossHomeServiceTests {
         var result = service.schedule(1L, date, 10L);
 
         assertEquals(30, result.demand());
-        assertEquals(2, result.stats().accepted());
-        assertEquals(1, result.stats().arrived());
+        assertEquals(3, result.stats().accepted());
+        assertEquals(2, result.stats().arrived());
         assertEquals(1, result.stats().working());
         assertEquals(1, result.stats().finished());
         assertEquals(2, result.stats().settled());
@@ -106,7 +180,7 @@ class BossHomeServiceTests {
         when(accounts.findByOwnerUserIdOrderByIdAsc(1L)).thenReturn(List.of(account));
         when(users.findById(1L)).thenReturn(Optional.empty());
         when(users.countByRole("USER")).thenReturn(0L);
-        when(orders.findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(any(), any(), any()))
+        when(orders.findByCreateByInAndOverlappingTime(any(), any(), any()))
                 .thenReturn(List.of(order(1L, 12, BossStatus.ORDER_RECRUITING)),
                         List.of(order(2L, 30, BossStatus.ORDER_RECRUITING)),
                         List.of(order(3L, 8, BossStatus.ORDER_RECRUITING)),

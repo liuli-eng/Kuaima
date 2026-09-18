@@ -6,7 +6,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.kuaima.app.domain.boss.entity.BossOrderTemplate;
 public interface BossOrderTemplateRepository extends JpaRepository<BossOrderTemplate,Long> {
  Page<BossOrderTemplate> findByOwnerUserIdOrderByIdDesc(Long ownerUserId, Pageable pageable);
+ Page<BossOrderTemplate> findByEnterpriseIdOrderByIdDesc(Long enterpriseId, Pageable pageable);
  Optional<BossOrderTemplate> findByOwnerUserIdAndTemplateName(Long ownerUserId,String templateName);
  Optional<BossOrderTemplate> findByIdAndOwnerUserId(Long id,Long ownerUserId);
  boolean existsByOwnerUserIdAndTemplateNameAndIdNot(Long ownerUserId,String templateName,Long id);
+ Optional<BossOrderTemplate> findByIdAndEnterpriseId(Long id, Long enterpriseId);
+ Optional<BossOrderTemplate> findByEnterpriseIdAndTemplateName(Long enterpriseId, String templateName);
+ boolean existsByEnterpriseIdAndTemplateNameAndIdNot(Long enterpriseId, String templateName, Long id);
 }

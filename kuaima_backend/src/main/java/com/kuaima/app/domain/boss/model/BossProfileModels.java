@@ -13,6 +13,8 @@ public final class BossProfileModels {
     public record RecruitAccounts(boolean hasAuthorizedEmployee, long authorizedEmployeeCount,
                                   Long currentAccountId, java.util.List<AccountView> accounts) {}
 
+    public record SwitchAccountRequest(Long accountId) {}
+
     public record AccountView(Long id, String name, String avatar, String phone,
                               String authorizationType, String workCode, String leaveCode,
                               boolean current) {}
@@ -26,4 +28,7 @@ public final class BossProfileModels {
                                    boolean newlyRegistered) {}
 
     public record AddAccountResponse(AddedAccountView account, Long currentAccountId) {}
+
+    public record QuickLoginResponse(String accessToken, Long userId, String username, String role,
+                                     String phone, String certStatus) {}
 }

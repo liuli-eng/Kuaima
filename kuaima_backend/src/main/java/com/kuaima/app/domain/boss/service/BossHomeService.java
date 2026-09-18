@@ -24,9 +24,11 @@ import com.kuaima.app.domain.boss.model.BossHomeModels.Schedule;
 import com.kuaima.app.domain.boss.model.BossHomeModels.ScheduleDay;
 import com.kuaima.app.domain.boss.model.BossHomeModels.ScheduleRecord;
 import com.kuaima.app.domain.boss.model.BossHomeModels.ScheduleStats;
+import com.kuaima.app.domain.boss.model.BossRecruitSettingsModels.Settings;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.repository.BossRecruitAccountRepository;
+import com.kuaima.app.domain.enterprise.repository.EnterpriseMemberRepository;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
@@ -44,6 +46,8 @@ public class BossHomeService {
     private final BossRecruitAccountRepository accountRepository;
     private final UserRepository userRepository;
     private final BossAttendanceCodeService attendanceCodeService;
+    private final BossRecruitSettingsService recruitSettingsService;
+    private final EnterpriseMemberRepository enterpriseMembers;
 
     public BossHomeService(BossOrderRespository orderRepository,
                            BaseOrderItemRespository itemRepository,
@@ -52,26 +56,56 @@ public class BossHomeService {
                            UserRepository userRepository) {
         this(orderRepository, itemRepository, settlementRepository, accountRepository, userRepository, null);
     }
-    @org.springframework.beans.factory.annotation.Autowired
     public BossHomeService(BossOrderRespository orderRepository,
                            BaseOrderItemRespository itemRepository,
                            SettlementRespository settlementRepository,
                            BossRecruitAccountRepository accountRepository,
                            UserRepository userRepository, BossAttendanceCodeService attendanceCodeService) {
+        this(orderRepository, itemRepository, settlementRepository, accountRepository, userRepository,
+                attendanceCodeService, null);
+    }
+
+    public BossHomeService(BossOrderRespository orderRepository,
+                           BaseOrderItemRespository itemRepository,
+                           SettlementRespository settlementRepository,
+                           BossRecruitAccountRepository accountRepository,
+                           UserRepository userRepository,
+                           BossAttendanceCodeService attendanceCodeService,
+                           BossRecruitSettingsService recruitSettingsService) {
+        this(orderRepository, itemRepository, settlementRepository, accountRepository, userRepository,
+                attendanceCodeService, recruitSettingsService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BossHomeService(BossOrderRespository orderRepository,
+                           BaseOrderItemRespository itemRepository,
+                           SettlementRespository settlementRepository,
+                           BossRecruitAccountRepository accountRepository,
+                           UserRepository userRepository,
+                           BossAttendanceCodeService attendanceCodeService,
+                           BossRecruitSettingsService recruitSettingsService,
+                           EnterpriseMemberRepository enterpriseMembers) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.settlementRepository = settlementRepository;
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
         this.attendanceCodeService = attendanceCodeService;
+        this.recruitSettingsService = recruitSettingsService;
+        this.enterpriseMembers = enterpriseMembers;
     }
 
     @Transactional
     public Overview overview(Long bossId, String city, Long accountId) {
+        return overview(bossId, bossId, city, accountId);
+    }
+
+    @Transactional
+    public Overview overview(Long bossId, Long accountGroupOwnerId, String city, Long accountId) {
         String resolvedCity = resolveCity(bossId, city);
-        BossRecruitAccount account = resolveAccount(bossId, accountId);
+        BossRecruitAccount account = resolveAccount(accountGroupOwnerId, accountId);
         LocalDate today = LocalDate.now(SERVER_ZONE);
-        List<Long> owners = accountScope(bossId, accountId);
+        List<Long> owners = accountScope(bossId, accountGroupOwnerId, accountId);
         List<ScheduleDay> days = List.of(
                 scheduleDay(owners, today.minusDays(1), "昨天"),
                 scheduleDay(owners, today, "今天"),
@@ -86,8 +120,34 @@ public class BossHomeService {
 
     @Transactional(readOnly = true)
     public Schedule schedule(Long bossId, LocalDate date, Long accountId) {
-        List<Long> owners = accountScope(bossId, accountId);
+        return schedule(bossId, bossId, date, accountId);
+    }
+
+    @Transactional(readOnly = true)
+    public Schedule schedule(Long bossId, Long accountGroupOwnerId, LocalDate date, Long accountId) {
+        List<Long> owners = accountScope(bossId, accountGroupOwnerId, accountId);
         List<BossOrder> orders = ordersOn(owners, date);
+        return aggregateSchedule(date, orders);
+    }
+
+    /** 企业成员共享企业订单统计；accountId 仅作为兼容筛选，不能扩大企业数据范围。 */
+    @Transactional(readOnly = true)
+    public Schedule scheduleByEnterprise(Long enterpriseId, Long operatorId, LocalDate date, Long accountId) {
+        List<BossOrder> orders = ordersOnEnterprise(enterpriseId, date);
+        if (accountId != null) {
+            // 旧招聘账号仍以 targetUserId 记录实际操作账号，必须同时满足企业归属。
+            BossRecruitAccount account = accountRepository.findById(accountId)
+                    .filter(a -> enterpriseMembers == null || (a.getTargetUserId() != null
+                            && enterpriseMembers.existsByEnterpriseIdAndUserIdAndStatus(enterpriseId,
+                                    a.getTargetUserId(), "ACTIVE")))
+                    .orElseThrow(() -> new com.kuaima.app.common.ForbiddenBusinessException("招聘账号不属于当前企业"));
+            Long target = account.getTargetUserId();
+            orders = orders.stream().filter(o -> target == null || target.equals(o.getCreateBy())).toList();
+        }
+        return aggregateSchedule(date, orders);
+    }
+
+    private Schedule aggregateSchedule(LocalDate date, List<BossOrder> orders) {
         List<Long> orderIds = orders.stream().map(BossOrder::getId).toList();
         List<BaseOrderItem> items = orderIds.isEmpty() ? List.of() : itemRepository.findByOrderIdIn(orderIds);
         List<Long> itemIds = items.stream().map(BaseOrderItem::getId).toList();
@@ -116,8 +176,31 @@ public class BossHomeService {
                 new ScheduleStats(accepted, arrived, working, finished, settled), records);
     }
 
+    @Transactional
+    public Overview overviewByEnterprise(Long enterpriseId, Long currentAccountId, String city, Long accountId) {
+        LocalDate today = LocalDate.now(SERVER_ZONE);
+        List<ScheduleDay> days = List.of(
+                scheduleDayEnterprise(enterpriseId, today.minusDays(1), "昨天"),
+                scheduleDayEnterprise(enterpriseId, today, "今天"),
+                scheduleDayEnterprise(enterpriseId, today.plusDays(1), "明天"),
+                scheduleDayEnterprise(enterpriseId, today.plusDays(2), "后天"));
+        List<BossRecruitAccount> accounts = accountRepository.findByOwnerUserIdOrderByIdAsc(currentAccountId);
+        BossRecruitAccount selected = accountId == null ? accounts.stream().filter(a -> Boolean.TRUE.equals(a.getCurrent())).findFirst().orElse(accounts.isEmpty() ? null : accounts.get(0))
+                : accounts.stream().filter(a -> accountId.equals(a.getId())).findFirst().orElseThrow(() -> new ForbiddenBusinessException("招聘账号不属于当前企业"));
+        if (selected == null) {
+            selected = new BossRecruitAccount(); selected.setId(currentAccountId); selected.setName("企业账号"); selected.setAuthorizationType("ENTERPRISE");
+        }
+        return new Overview(city == null ? "" : city, 0, 0, selected.getId(), toEnterpriseAccount(selected, enterpriseId, currentAccountId), days);
+    }
+
     private ScheduleDay scheduleDay(List<Long> owners, LocalDate date, String label) {
         int demand = ordersOn(owners, date).stream().map(BossOrder::getOrderNum)
+                .filter(java.util.Objects::nonNull).mapToInt(Integer::intValue).sum();
+        return new ScheduleDay(date, label, demand);
+    }
+
+    private ScheduleDay scheduleDayEnterprise(Long enterpriseId, LocalDate date, String label) {
+        int demand = ordersOnEnterprise(enterpriseId, date).stream().map(BossOrder::getOrderNum)
                 .filter(java.util.Objects::nonNull).mapToInt(Integer::intValue).sum();
         return new ScheduleDay(date, label, demand);
     }
@@ -132,27 +215,38 @@ public class BossHomeService {
                 .toList();
     }
 
-    private List<Long> accountScope(Long bossId, Long accountId) {
+    private List<BossOrder> ordersOnEnterprise(Long enterpriseId, LocalDate date) {
+        Date start = Date.from(date.atStartOfDay(SERVER_ZONE).toInstant());
+        Date end = Date.from(date.plusDays(1).atStartOfDay(SERVER_ZONE).toInstant());
+        return orderRepository.findByEnterpriseIdAndOverlappingTime(enterpriseId, start, end).stream()
+                .filter(order -> !BossStatus.ORDER_CANCELED.equals(order.getOrderStatus()))
+                .filter(order -> !BossStatus.ORDER_DRAFT.equals(order.getOrderStatus()))
+                .filter(order -> !BossStatus.ORDER_AUDIT_REJECT.equals(order.getOrderStatus()))
+                .toList();
+    }
+
+    private List<Long> accountScope(Long bossId, Long accountGroupOwnerId, Long accountId) {
         if (accountId != null) {
-            BossRecruitAccount account = accountRepository.findByIdAndOwnerUserId(accountId, bossId)
+            BossRecruitAccount account = accountRepository.findByIdAndOwnerUserId(accountId, accountGroupOwnerId)
                     .orElseThrow(() -> new ForbiddenBusinessException("招聘账号不属于当前老板"));
             return List.of(account.getTargetUserId() == null ? bossId : account.getTargetUserId());
         }
-        List<Long> ids = accountRepository.findByOwnerUserIdOrderByIdAsc(bossId).stream()
-                .map(a -> a.getTargetUserId() == null ? bossId : a.getTargetUserId()).filter(java.util.Objects::nonNull).distinct().toList();
+        List<Long> ids = accountRepository.findByOwnerUserIdOrderByIdAsc(accountGroupOwnerId).stream()
+                .map(a -> a.getTargetUserId() == null ? accountGroupOwnerId : a.getTargetUserId())
+                .filter(java.util.Objects::nonNull).distinct().toList();
         return ids.isEmpty() ? List.of(bossId) : ids;
     }
 
-    private BossRecruitAccount resolveAccount(Long bossId, Long requestedId) {
-        List<BossRecruitAccount> accounts = accountRepository.findByOwnerUserIdOrderByIdAsc(bossId);
+    private BossRecruitAccount resolveAccount(Long accountGroupOwnerId, Long requestedId) {
+        List<BossRecruitAccount> accounts = accountRepository.findByOwnerUserIdOrderByIdAsc(accountGroupOwnerId);
         if (requestedId != null) {
             return accounts.stream().filter(a -> requestedId.equals(a.getId())).findFirst()
                     .orElseThrow(() -> new ForbiddenBusinessException("招聘账号不属于当前老板"));
         }
         if (accounts.isEmpty()) {
             BossRecruitAccount account = new BossRecruitAccount();
-            account.setOwnerUserId(bossId);
-            account.setName(userRepository.findById(bossId)
+            account.setOwnerUserId(accountGroupOwnerId);
+            account.setName(userRepository.findById(accountGroupOwnerId)
                     .map(u -> StringUtils.hasText(u.getRealName()) ? u.getRealName()
                             : StringUtils.hasText(u.getNickname()) ? u.getNickname() : "个人账号")
                     .orElse("个人账号"));
@@ -193,8 +287,35 @@ public class BossHomeService {
     }
 
     private Account toAccount(BossRecruitAccount account, Long bossId) {
-        String workCode = account.getWorkCode(), leaveCode = account.getLeaveCode();
-        if (attendanceCodeService != null) { var state = attendanceCodeService.today(bossId); workCode = String.valueOf(state.get("workCode")); leaveCode = String.valueOf(state.get("leaveCode")); }
+        String workCode = "", leaveCode = "";
+        if (attendanceCodeService != null && recruitSettingsService != null) {
+            Settings settings = recruitSettingsService.get(bossId);
+            boolean startCodeEnabled = settings != null && Boolean.TRUE.equals(settings.startCodeEnabled());
+            boolean earlyCodeEnabled = settings != null && Boolean.TRUE.equals(settings.earlyCodeEnabled());
+            // 首页只按配置展示已开启的考勤码；两者都关闭时不触发生成/查询，避免自动建当日记录。
+            if (startCodeEnabled || earlyCodeEnabled) {
+                var state = attendanceCodeService.today(bossId);
+                workCode = startCodeEnabled ? String.valueOf(state.get("workCode")) : "";
+                leaveCode = earlyCodeEnabled ? String.valueOf(state.get("leaveCode")) : "";
+            }
+        }
+        return new Account(account.getId(), text(account.getName()), account.getAvatar(),
+                text(account.getAuthorizationType()), text(workCode), text(leaveCode));
+    }
+
+    private Account toEnterpriseAccount(BossRecruitAccount account, Long enterpriseId, Long operatorId) {
+        String workCode = "", leaveCode = "";
+        if (attendanceCodeService != null && recruitSettingsService != null) {
+            Settings settings = recruitSettingsService.getByEnterprise(enterpriseId,
+                    userRepository.findById(operatorId).map(u -> u.getPhone()).orElse(null));
+            boolean start = settings != null && Boolean.TRUE.equals(settings.startCodeEnabled());
+            boolean early = settings != null && Boolean.TRUE.equals(settings.earlyCodeEnabled());
+            if (start || early) {
+                var state = attendanceCodeService.todayByEnterprise(enterpriseId, operatorId);
+                workCode = start ? String.valueOf(state.get("workCode")) : "";
+                leaveCode = early ? String.valueOf(state.get("leaveCode")) : "";
+            }
+        }
         return new Account(account.getId(), text(account.getName()), account.getAvatar(),
                 text(account.getAuthorizationType()), text(workCode), text(leaveCode));
     }

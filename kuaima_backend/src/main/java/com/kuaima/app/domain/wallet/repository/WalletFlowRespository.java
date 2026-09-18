@@ -23,4 +23,7 @@ public interface WalletFlowRespository extends JpaRepository<WalletFlow, Long> {
 
     @Query("select coalesce(sum(f.amount),0) from WalletFlow f where f.userId=:userId and f.direction='income' and f.bizType=:bizType")
     Long sumIncomeByUserIdAndBizType(@Param("userId") Long userId, @Param("bizType") String bizType);
+
+    @Query("select coalesce(sum(f.amount),0) from WalletFlow f where f.userId=:userId and f.direction='income'")
+    Long sumIncomeByUserId(@Param("userId") Long userId);
 }

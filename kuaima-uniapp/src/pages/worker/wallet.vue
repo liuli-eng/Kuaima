@@ -1,467 +1,483 @@
 <template>
-  <view class="page"
-    ><AppNavBar title="钱包" :show-back="true" /><scroll-view
-      scroll-y
-      class="content"
-    >
-      <view class="balance"
-        ><view
-          ><text class="label">可提现余额(元)</text
-          ><text class="amount">{{ balance }}</text
-          ><text class="desc"
-            >累计收入 ¥{{ total }} · 可提现 ¥{{ balance }}</text
+  <view class="page">
+    <view class="hero" :style="{ paddingTop: `${statusBarHeight}px` }">
+      <view class="nav"
+        ><view class="back" @click="goBack">‹</view><text>我的钱包</text
+        ><view class="back"
+      /></view>
+      <text class="label">钱包余额 ？</text>
+      <view class="amount"
+        ><text>¥</text><text class="num">{{ balance }}</text></view
+      >
+      <text class="tip-white">可提现到银行卡，预计 1-2 个工作日到账</text>
+    </view>
+    <scroll-view scroll-y class="content">
+      <view class="panel">
+        <view class="tabs"
+          ><view
+            :class="{ active: activeTab === 'withdraw' }"
+            @click="activeTab = 'withdraw'"
+            >发起提现</view
+          ><view
+            :class="{ active: activeTab === 'records' }"
+            @click="activeTab = 'records'"
+            >提现明细</view
           ></view
-        ><button class="withdraw" @click="submit">↓ 立即提现</button></view
-      >
-      <view class="tabs"
-        ><view
-          class="tab"
-          :class="{ active: activeTab === 'withdraw' }"
-          @click="activeTab = 'withdraw'"
-          >申请提现</view
-        ><view
-          class="tab"
-          :class="{ active: activeTab === 'records' }"
-          @click="activeTab = 'records'"
-          >提现记录</view
-        ></view
-      >
-      <view v-if="activeTab === 'withdraw'" class="withdraw-view"
-        ><view class="form"
-          ><text class="form-title">填写提现信息</text
-          ><text class="form-label"
-            >提现金额<text class="required">*</text></text
-          ><view class="amount-input"
+        >
+        <view v-if="activeTab === 'withdraw'" class="body">
+          <view class="balance-row"
+            ><text>钱包余额（可提现）</text><text>¥{{ balance }}</text></view
+          >
+          <view class="amount-input"
             ><text>¥</text
             ><input
               v-model="amount"
-              type="number"
+              type="digit"
               placeholder="请输入提现金额"
             /><text class="all" @click="amount = balance">全部提现</text></view
-          ><text class="form-label"
-            >提现账号<text class="required">*</text></text
-          ><view
-            v-for="item in accounts"
-            :key="item.type"
-            class="account"
-            @click="selected = item.type"
-            ><text class="account-icon" :class="item.type">{{ item.icon }}</text
+          >
+          <text class="tip">ⓘ 单笔最低提现 ¥10，每日限提现 3 次</text
+          ><text class="method-title">选择提现方式</text>
+          <template v-for="item in accounts" :key="item.type"
             ><view
-              ><text class="account-name">{{ item.name }}</text
-              ><text class="account-desc">{{ item.desc }}</text></view
-            ><text class="radio" :class="{ checked: selected === item.type }"
-              >●</text
+              class="account"
+              :class="{ active: selected === item.type }"
+              @click="toggleAccount(item.type)"
+              ><view class="account-icon" :class="item.type">{{
+                item.icon
+              }}</view
+              ><view class="account-info"
+                ><text>{{ item.name }}</text
+                ><text class="desc">{{ item.desc }}</text></view
+              ><view class="radio"
+                ><view v-if="selected === item.type" /></view></view
+            ><view v-if="selected === item.type" class="account-detail"
+              ><text>{{ item.account }}</text
+              ><text>{{ profileName || "待完善实名信息" }}</text></view
+            ></template
+          >
+          <button
+            class="submit"
+            :disabled="!canSubmit || submitting"
+            @click="submit"
+          >
+            {{ submitting ? "提交中…" : "确认提现" }}
+          </button>
+        </view>
+        <view v-else class="body records"
+          ><view v-for="item in withdrawRecords" :key="item.id" class="record"
+            ><view class="record-icon">¥</view
+            ><view class="record-main"
+              ><text>{{ item.name }}</text
+              ><text class="desc">{{ item.time }}</text></view
+            ><view class="record-right"
+              ><text>-¥{{ item.amount }}</text
+              ><text :class="{ pending: isPending(item.status) }">{{
+                item.status
+              }}</text></view
             ></view
-          ><view class="tip"
-            >ⓘ 提现金额将在1-3个工作日内到账，请确保填写的账号信息正确。</view
-          ><button class="submit" @click="submit">确认提现</button></view
-        ><view class="detail-section"
-          ><text class="detail-title">收支明细</text
-          ><view v-for="item in details" :key="item.id" class="detail-item"
-            ><text class="detail-icon" :class="item.type">{{
-              item.type === "income" ? "●" : "↓"
-            }}</text
-            ><view class="detail-info"
-              ><text>{{ item.title }}</text
-              ><text>{{ item.time }}</text></view
-            ><text class="detail-amount" :class="item.type"
-              >{{ item.type === "income" ? "+" : "-" }}{{ item.amount }}</text
-            ></view
+          ><text v-if="!withdrawRecords.length" class="empty"
+            >暂无提现记录</text
           ></view
-        ></view
-      >
-      <view v-else class="records"
-        ><view
-          v-for="item in withdrawRecords"
-          :key="item.id"
-          class="record-item"
-          ><text class="record-icon">↓</text
-          ><view
-            ><text class="record-name">{{ item.name }}</text
-            ><text class="record-time">{{ item.time }}</text></view
-          ><view class="record-right"
-            ><text>-{{ item.amount }}</text
-            ><text>{{ item.status }}</text></view
-          ></view
-        ><text v-if="!withdrawRecords.length" class="empty"
-          >暂无提现记录</text
-        ></view
-      >
-    </scroll-view></view
-  >
+        >
+      </view>
+      <view class="bottom-space" />
+    </scroll-view>
+  </view>
 </template>
+
 <script setup>
-import { onMounted, ref } from "vue";
-import AppNavBar from "@/components/AppNavBar.vue";
+import { computed, onMounted, ref } from "vue";
 import { request } from "@/api/http";
 import { applyWithdraw } from "@/api/backend";
+const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 const balance = ref("0.00"),
-  total = ref("0.00"),
   amount = ref(""),
-  selected = ref("wechat"),
-  activeTab = ref("withdraw");
-const details = ref([]);
-const withdrawRecords = ref([]);
+  selected = ref(null),
+  activeTab = ref("withdraw"),
+  submitting = ref(false),
+  withdrawRecords = ref([]);
+const userInfo = uni.getStorageSync("userInfo") || {},
+  profileName = userInfo.realName || userInfo.nickname || userInfo.name || "";
 const accounts = [
-  { type: "wechat", icon: "微", name: "微信支付账号", desc: "提现到微信零钱" },
-  { type: "alipay", icon: "支", name: "支付宝账号", desc: "提现到支付宝余额" },
-  { type: "bank", icon: "行", name: "银行账号", desc: "提现到绑定的银行卡" },
+  {
+    type: "wechat",
+    icon: "微",
+    name: "微信账户",
+    desc: "微信已绑定 · 预计实时到账",
+    account: "138****2266",
+  },
+  {
+    type: "alipay",
+    icon: "支",
+    name: "支付宝账户",
+    desc: "支付宝已绑定 · 预计实时到账",
+    account: "138****2266",
+  },
+  {
+    type: "bank",
+    icon: "行",
+    name: "银行卡账户",
+    desc: "招商银行 · 尾号 8823 · 1-2 工作日到账",
+    account: "6222 **** **** 8823",
+  },
 ];
-onMounted(async () => {
+const canSubmit = computed(
+  () =>
+    Number(amount.value) >= 10 &&
+    Number(amount.value) <= Number(balance.value) &&
+    Boolean(selected.value),
+);
+onMounted(loadWallet);
+async function loadWallet() {
   try {
-    const data = await request({ url: "/worker/wallet" });
-    if (data) {
-      balance.value = fromCents(data.balance ?? data.available ?? 0);
-      total.value = fromCents(data.totalIncome ?? data.total ?? 0);
-    }
-    const [flows, withdraws] = await Promise.all([
-      request({ url: "/worker/wallet/records" }),
+    const [wallet, records] = await Promise.all([
+      request({ url: "/worker/wallet" }),
       request({ url: "/worker/wallet/withdraw-records" }),
     ]);
-    if (Array.isArray(flows)) details.value = flows.map(normalizeFlow);
-    if (Array.isArray(withdraws))
-      withdrawRecords.value = withdraws.map(normalizeWithdraw);
-  } catch (_) {}
-});
-function fromCents(value) {
+    if (wallet)
+      balance.value = cents(
+        wallet.balance ?? wallet.available ?? wallet.availableBalance ?? 0,
+      );
+    if (Array.isArray(records)) withdrawRecords.value = records.map(normalize);
+  } catch (e) {
+    uni.showToast({ title: e?.message || "钱包加载失败", icon: "none" });
+  }
+}
+function cents(value) {
   return (Number(value || 0) / 100).toFixed(2);
 }
-function normalizeFlow(item) {
-  const income = item.direction === "income";
+function normalize(item) {
   return {
     ...item,
-    title: item.remark || (item.bizType === "WAGE" ? "订单收入" : "提现"),
-    time: item.createTime || item.updateTime || "",
-    amount: fromCents(item.amount),
-    type: income ? "income" : "out",
+    name: item.accountName || item.account || "提现申请",
+    time: item.applyTime || item.createTime || "",
+    amount: cents(item.amount),
+    status: item.statusText || item.status || "申请中",
   };
 }
-function normalizeWithdraw(item) {
-  return {
-    ...item,
-    name: item.account || "提现申请",
-    time: item.applyTime || item.createTime || "",
-    amount: fromCents(item.amount),
-    status: item.status,
-    statusText: item.status || "申请中",
-  };
+function toggleAccount(type) {
+  selected.value = selected.value === type ? null : type;
+}
+function isPending(status) {
+  return (
+    ["处理中", "申请中", "PENDING", "PROCESSING"].includes(
+      String(status || "").toUpperCase(),
+    ) || ["处理中", "申请中"].includes(status)
+  );
+}
+function goBack() {
+  uni.navigateBack();
 }
 async function submit() {
   const value = Number(amount.value);
-  if (!value || value <= 0)
-    return uni.showToast({ title: "请输入有效提现金额", icon: "none" });
+  if (value < 10)
+    return uni.showToast({ title: "单笔最低提现10元", icon: "none" });
   if (value > Number(balance.value))
-    return uni.showToast({ title: "提现金额不能超过可提现余额", icon: "none" });
+    return uni.showToast({ title: "提现金额不能超过钱包余额", icon: "none" });
+  if (!selected.value)
+    return uni.showToast({ title: "请选择提现方式", icon: "none" });
+  submitting.value = true;
   try {
     await applyWithdraw({
-      userId: uni.getStorageSync("userId") || "2001",
+      userId: uni.getStorageSync("userId"),
       amount: value,
       account: selected.value,
     });
     amount.value = "";
     uni.showToast({ title: "提现申请已提交", icon: "success" });
-    const withdraws = await request({ url: "/worker/wallet/withdraw-records" });
-    if (Array.isArray(withdraws))
-      withdrawRecords.value = withdraws.map(normalizeWithdraw);
+    await loadWallet();
     activeTab.value = "records";
-  } catch (error) {
-    uni.showToast({ title: error.message || "提现失败", icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: e?.message || "提现失败", icon: "none" });
+  } finally {
+    submitting.value = false;
   }
 }
 </script>
+
 <style scoped>
 .page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #f5f5f5;
 }
-.content {
-  height: calc(100vh - 176rpx);
-  padding: 24rpx;
-  box-sizing: border-box;
+.hero {
+  padding-bottom: 40rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+  border-radius: 0 0 48rpx 48rpx;
 }
-.balance {
+.nav {
+  height: 100rpx;
+  padding: 0 32rpx;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 34rpx 32rpx;
-  min-height: 210rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #ffe4b5, #ffd700);
+  justify-content: space-between;
+  font-size: 34rpx;
+  font-weight: 600;
 }
-.label {
+.back {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 54rpx;
+  font-weight: 400;
+}
+.label,
+.tip-white {
   display: block;
-  color: #666;
+  margin-left: 40rpx;
+  color: rgba(255, 255, 255, 0.85);
   font-size: 26rpx;
 }
 .amount {
-  display: block;
-  margin: 10rpx 0;
-  color: #333;
-  font-size: 60rpx;
-  font-weight: 700;
-}
-.desc {
-  color: #888;
-  font-size: 22rpx;
-}
-.withdraw,
-.submit {
-  border: 0;
-  border-radius: 40rpx;
-  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
-  color: #fff;
-  font-size: 28rpx;
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+  margin: 8rpx 40rpx 0;
+  font-size: 36rpx;
   font-weight: 600;
 }
-.withdraw {
-  margin: 0;
-  padding: 0 30rpx;
-  height: 72rpx;
-  line-height: 72rpx;
+.num {
+  font-size: 76rpx;
+  font-weight: 800;
 }
-.withdraw::after,
-.submit::after {
-  border: 0;
+.tip-white {
+  margin-top: 10rpx;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 24rpx;
+}
+.content {
+  flex: 1;
+  min-height: 0;
+  margin-top: -24rpx;
+}
+.panel {
+  position: relative;
+  z-index: 2;
+  margin: 0 32rpx;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 32rpx;
+  box-shadow: 0 8rpx 40rpx rgba(0, 0, 0, 0.06);
 }
 .tabs {
   display: flex;
-  margin-top: 24rpx;
-  border-radius: 20rpx 20rpx 0 0;
-  background: #fff;
+  border-bottom: 1rpx solid #f0f0f0;
 }
-.tab {
+.tabs > view {
   position: relative;
   flex: 1;
   padding: 28rpx 0;
-  text-align: center;
-  color: #666;
+  color: #999;
   font-size: 30rpx;
+  text-align: center;
 }
-.tab.active {
+.tabs .active {
   color: #ff6b35;
   font-weight: 600;
 }
-.tab.active:after {
-  content: "";
+.tabs .active:after {
   position: absolute;
   bottom: 0;
   left: 50%;
-  width: 60rpx;
+  width: 56rpx;
   height: 6rpx;
-  border-radius: 6rpx;
+  content: "";
   background: #ff6b35;
+  border-radius: 3rpx;
   transform: translateX(-50%);
 }
-.form {
-  padding: 32rpx;
-  border-radius: 0 0 20rpx 20rpx;
-  background: #fff;
+.body {
+  padding: 32rpx 36rpx 40rpx;
 }
-.form-title {
-  display: block;
-  margin-bottom: 28rpx;
-  color: #333;
-  font-size: 34rpx;
-  font-weight: 700;
-}
-.form-label {
-  display: block;
-  margin: 22rpx 0 12rpx;
+.balance-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 20rpx 0 28rpx;
   color: #666;
   font-size: 26rpx;
+  border-bottom: 1rpx dashed #eee;
 }
-.required {
-  color: #ff4d4f;
+.balance-row text:last-child {
+  color: #ff6b35;
+  font-weight: 600;
 }
 .amount-input {
+  height: 96rpx;
+  margin-top: 28rpx;
+  padding: 0 28rpx;
   display: flex;
   align-items: center;
-  height: 96rpx;
-  padding: 0 24rpx;
-  border: 2rpx solid #ddd;
-  border-radius: 20rpx;
-  color: #333;
+  gap: 18rpx;
+  background: #fafafa;
+  border-radius: 24rpx;
   font-size: 40rpx;
+  font-weight: 700;
 }
 .amount-input input {
   flex: 1;
-  margin-left: 16rpx;
-  font-size: 30rpx;
+  min-width: 0;
+  font-size: 42rpx;
+  font-weight: 700;
 }
 .all {
+  padding: 8rpx 20rpx;
   color: #ff6b35;
   font-size: 22rpx;
+  background: #fff3ed;
+  border-radius: 999rpx;
+}
+.tip,
+.desc {
+  display: block;
+  color: #999;
+  font-size: 22rpx;
+}
+.tip {
+  margin-top: 16rpx;
+}
+.method-title {
+  display: block;
+  margin: 30rpx 0 18rpx;
+  color: #666;
+  font-size: 26rpx;
 }
 .account {
   display: flex;
   align-items: center;
-  padding: 24rpx;
-  border: 2rpx solid #eee;
-  border-radius: 20rpx;
-  margin-top: 16rpx;
+  gap: 24rpx;
+  margin-top: 18rpx;
+  padding: 24rpx 28rpx;
+  border: 3rpx solid #eee;
+  border-radius: 24rpx;
+}
+.account.active {
+  background: #fff9f5;
+  border-color: #ff6b35;
 }
 .account-icon {
+  width: 80rpx;
+  height: 80rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 88rpx;
-  height: 88rpx;
-  margin-right: 20rpx;
-  border-radius: 22rpx;
-  font-size: 34rpx;
+  color: #fff;
+  border-radius: 20rpx;
+  font-size: 32rpx;
 }
 .wechat {
-  background: #e8f8e8;
-  color: #09bb07;
+  background: #10b981;
 }
 .alipay {
-  background: #e6f0ff;
-  color: #1677ff;
+  background: #3b82f6;
 }
 .bank {
-  background: #fff5e6;
-  color: #ff8c00;
+  background: #6b7280;
 }
-.account-name,
-.account-desc {
-  display: block;
+.account-info {
+  flex: 1;
+  font-size: 28rpx;
 }
-.account-name {
-  color: #333;
-  font-size: 30rpx;
-}
-.account-desc {
+.account-info .desc {
   margin-top: 6rpx;
-  color: #999;
-  font-size: 22rpx;
 }
 .radio {
-  margin-left: auto;
-  color: #ddd;
-  font-size: 34rpx;
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3rpx solid #ddd;
+  border-radius: 50%;
 }
-.radio.checked {
-  color: #ff6b35;
+.active .radio {
+  border-color: #ff6b35;
 }
-.tip {
-  margin: 24rpx 0;
-  color: #999;
-  font-size: 22rpx;
-  line-height: 1.6;
+.radio view {
+  width: 20rpx;
+  height: 20rpx;
+  background: #ff6b35;
+  border-radius: 50%;
+}
+.account-detail {
+  display: flex;
+  justify-content: space-between;
+  padding: 16rpx 28rpx;
+  color: #666;
+  font-size: 23rpx;
+  background: #fff9f5;
+  border: 3rpx solid #ffe0d0;
+  border-top: 0;
+  border-radius: 0 0 24rpx 24rpx;
 }
 .submit {
   width: 100%;
-  height: 84rpx;
-  line-height: 84rpx;
-}
-.records {
-  min-height: 360rpx;
-  padding: 80rpx 0;
-  border-radius: 0 0 20rpx 20rpx;
-  background: #fff;
-}
-.detail-section {
-  margin-top: 24rpx;
-  padding: 28rpx 24rpx;
-  background: #fff;
-}
-.detail-title {
-  display: block;
-  margin-bottom: 16rpx;
-  color: #333;
-  font-size: 32rpx;
-  font-weight: 700;
-}
-.detail-item {
-  display: flex;
-  align-items: center;
-  padding: 22rpx 0;
-  border-bottom: 1rpx solid #f2f2f2;
-}
-.detail-icon {
-  width: 64rpx;
-  height: 64rpx;
-  margin-right: 18rpx;
-  border-radius: 50%;
-  text-align: center;
-  line-height: 64rpx;
-  background: #e6f7ff;
-  color: #1890ff;
-  font-size: 28rpx;
-}
-.detail-icon.out {
-  background: #fff1f0;
-  color: #ff4d4f;
-}
-.detail-info {
-  flex: 1;
-}
-.detail-info text {
-  display: block;
-}
-.detail-info text:first-child {
-  color: #333;
-  font-size: 27rpx;
-}
-.detail-info text:last-child {
-  margin-top: 6rpx;
-  color: #999;
-  font-size: 22rpx;
-}
-.detail-amount {
-  color: #ff6b35;
+  height: 92rpx;
+  margin-top: 38rpx;
+  color: #fff;
   font-size: 30rpx;
-  font-weight: 600;
+  line-height: 92rpx;
+  background: linear-gradient(135deg, #ff8c5a, #ff6b35);
+  border: 0;
+  border-radius: 46rpx;
 }
-.detail-amount.out {
-  color: #999;
+.submit:after {
+  border: 0;
 }
-.record-item {
+.submit[disabled] {
+  opacity: 0.5;
+}
+.record {
   display: flex;
   align-items: center;
-  padding: 24rpx 0;
-  border-bottom: 1rpx solid #f2f2f2;
+  gap: 24rpx;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
 }
 .record-icon {
-  width: 64rpx;
-  height: 64rpx;
-  margin-right: 18rpx;
-  border-radius: 50%;
-  background: #fff1f0;
-  color: #ff4d4f;
-  text-align: center;
-  line-height: 64rpx;
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  background: #e6f0ff;
+  border-radius: 24rpx;
   font-size: 30rpx;
 }
-.record-name,
-.record-time,
-.record-right text {
+.record-main {
+  flex: 1;
+}
+.record-right {
+  text-align: right;
+}
+.record-right > text {
   display: block;
 }
-.record-name {
-  color: #333;
-  font-size: 27rpx;
+.record-right > text:first-child {
+  font-size: 30rpx;
+  font-weight: 700;
 }
-.record-time {
-  margin-top: 6rpx;
+.record-right > text:last-child {
+  margin-top: 4rpx;
   color: #999;
   font-size: 22rpx;
 }
-.record-right {
-  margin-left: auto;
-  text-align: right;
-  color: #999;
-  font-size: 24rpx;
-}
-.record-right text:last-child {
-  margin-top: 6rpx;
-  color: #52c41a;
-  font-size: 21rpx;
+.record-right .pending {
+  color: #d97706;
 }
 .empty {
   display: block;
-  text-align: center;
+  padding: 120rpx 0;
   color: #999;
-  font-size: 26rpx;
+  text-align: center;
+}
+.bottom-space {
+  height: 48rpx;
 }
 </style>

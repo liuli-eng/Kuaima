@@ -35,7 +35,7 @@ onMounted(async () => {
   loading.value = true;
   try {
     const userId = uni.getStorageSync("userId");
-    const result = await listSystemMessages(userId, { role: "WORKER" });
+    const result = await listSystemMessages(userId, { role: "USER" });
     notices.value = (Array.isArray(result) ? result : []).map(normalizeNotice);
   } catch (error) {
     notices.value = [];
@@ -47,7 +47,7 @@ onMounted(async () => {
 });
 
 function open(item) {
-  if (item.id) readMessage(item.id, uni.getStorageSync("userId")).then(() => unreadMessages(uni.getStorageSync("userId"), "WORKER")).catch(() => {});
+  if (item.id) readMessage(item.id, uni.getStorageSync("userId")).then(() => unreadMessages(uni.getStorageSync("userId"), "USER")).catch(() => {});
   if (item.bizType && item.bizId) return openBusiness(item);
   uni.navigateTo({
     url: `/pages/worker/notification-detail?id=${item.id}&title=${encodeURIComponent(item.title)}&desc=${encodeURIComponent(item.content)}`,

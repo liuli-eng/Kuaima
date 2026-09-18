@@ -52,6 +52,11 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, Jp
                                                         @Param("startInclusive") Date startInclusive,
                                                         @Param("endExclusive") Date endExclusive);
 
+    @Query("select o from BossOrder o where o.enterpriseId = :enterpriseId and o.startTime < :endExclusive and (o.endTime is null or o.endTime >= :startInclusive) order by o.id desc")
+    List<BossOrder> findByEnterpriseIdAndOverlappingTime(@Param("enterpriseId") Long enterpriseId,
+                                                          @Param("startInclusive") Date startInclusive,
+                                                          @Param("endExclusive") Date endExclusive);
+
     /** 某老板的草稿订单列表 */
     List<BossOrder> findByOrderStatusAndCreateByOrderByIdDesc(String orderStatus, Long createBy);
 

@@ -247,6 +247,20 @@ public class BossOrderService {
         return result;
     }
 
+    /** 企业维度订单列表；createBy 仅作为操作人，不再作为数据租户边界。 */
+    public Page<BossOrder> listOrdersByEnterprise(Long enterpriseId, BossOrderQuery query) {
+        if (enterpriseId == null) throw new IllegalArgumentException("enterpriseId 不能为空");
+        BossOrderQuery safe = query == null ? new BossOrderQuery() : query;
+        int page = safe.getPage();
+        int size = safe.getSize();
+        if (page < 0 || size < 1 || size > 100) throw new IllegalArgumentException("page 或 size 参数无效");
+        Page<BossOrder> result = orderRepository.findAll(BossOrderSpecifications.fromEnterprise(enterpriseId, safe),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")));
+        fillCurrentApply(result.getContent());
+        result.getContent().forEach(this::normalizeRecruitSettings);
+        return result;
+    }
+
     /** 兼容现有服务层调用。 */
     public Page<BossOrder> listOrders(Long bossId, String type, String status, String title, int page, int size) {
         BossOrderQuery query = new BossOrderQuery();

@@ -24,6 +24,10 @@ import lombok.Setter;
 @Getter
 public class BossOrder extends BaseEntity {
 
+    /** 订单所属企业；createBy 继续保留为实际操作人。 */
+    @Column(name = "enterprise_id")
+    private Long enterpriseId;
+
     @Column(comment = "订单标题")
     private String orderTitle;
 

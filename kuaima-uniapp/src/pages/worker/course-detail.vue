@@ -11,7 +11,12 @@
           mode="aspectFill"
         />
         <text class="title">{{ course.title }}</text
-        ><text class="para">{{ course.intro || "暂无课程介绍" }}</text
+        ><rich-text
+          v-if="courseContentHtml"
+          class="para"
+          :nodes="courseContentHtml"
+        />
+        <text v-else class="para">{{ courseContentText }}</text
         ><view
           v-for="video in videos"
           :key="video.id"
@@ -32,7 +37,7 @@
   >
 </template>
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { getCourse } from "@/api/backend";
@@ -41,6 +46,19 @@ const id = pages[pages.length - 1]?.options?.id;
 const loading = ref(false);
 const course = ref(null);
 const videos = ref([]);
+const courseContent = computed(() =>
+  String(
+    course.value?.content ||
+      course.value?.body ||
+      course.value?.details ||
+      course.value?.intro ||
+      "暂无课程介绍",
+  ),
+);
+const courseContentHtml = computed(() =>
+  /<([a-z][\s\S]*?)>/i.test(courseContent.value) ? courseContent.value : "",
+);
+const courseContentText = computed(() => courseContent.value);
 onMounted(async () => {
   if (!id) return;
   loading.value = true;

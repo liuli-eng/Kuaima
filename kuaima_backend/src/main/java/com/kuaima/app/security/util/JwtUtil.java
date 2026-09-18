@@ -23,6 +23,9 @@ public class JwtUtil {
 
     private final SecretKey key;
     private final long accessExpiration;
+    public static final String CLAIM_ACCOUNT_GROUP_OWNER_ID = "accountGroupOwnerId";
+    public static final String CLAIM_ENTERPRISE_ID = "enterpriseId";
+    public static final String CLAIM_MEMBER_ROLE = "memberRole";
 
     public JwtUtil(@Value("${jwt.secret}") String secret,
                    @Value("${jwt.expiration:1800000}") long accessExpiration) {
@@ -32,6 +35,17 @@ public class JwtUtil {
     }
 
     public String generateAccessToken(String username, String role, Long uid) {
+        return generateAccessToken(username, role, uid, null);
+    }
+
+    /** 快速登录签发的 token 保留账号组归属，切换后仍能读取原账号组。 */
+    public String generateAccessToken(String username, String role, Long uid, Long accountGroupOwnerId) {
+        return generateAccessToken(username, role, uid, accountGroupOwnerId, null, null);
+    }
+
+    /** 老板端 token 携带当前企业及企业成员角色，role 仅表示本次进入的端。 */
+    public String generateAccessToken(String username, String role, Long uid, Long accountGroupOwnerId,
+                                      Long enterpriseId, String memberRole) {
         Date now = new Date();
         io.jsonwebtoken.JwtBuilder builder = Jwts.builder()
                 .subject(username)
@@ -43,6 +57,11 @@ public class JwtUtil {
         if (uid != null) {
             builder.claim("uid", uid);
         }
+        if (accountGroupOwnerId != null) {
+            builder.claim(CLAIM_ACCOUNT_GROUP_OWNER_ID, accountGroupOwnerId);
+        }
+        if (enterpriseId != null) builder.claim(CLAIM_ENTERPRISE_ID, enterpriseId);
+        if (memberRole != null) builder.claim(CLAIM_MEMBER_ROLE, memberRole);
         return builder.compact();
     }
 
@@ -86,6 +105,26 @@ public class JwtUtil {
     public String getRole(String token) {
         Object role = parseClaims(token).get("role");
         return role == null ? null : role.toString();
+    }
+
+    /** token 载荷中的账号组归属；普通登录 token 缺失时返回 null。 */
+    public Long getAccountGroupOwnerId(String token) {
+        Object value = parseClaims(token).get(CLAIM_ACCOUNT_GROUP_OWNER_ID);
+        if (value instanceof Number number) return number.longValue();
+        if (value != null) return Long.parseLong(value.toString());
+        return null;
+    }
+
+    public Long getEnterpriseId(String token) {
+        Object value = parseClaims(token).get(CLAIM_ENTERPRISE_ID);
+        if (value instanceof Number number) return number.longValue();
+        if (value != null) return Long.parseLong(value.toString());
+        return null;
+    }
+
+    public String getMemberRole(String token) {
+        Object value = parseClaims(token).get(CLAIM_MEMBER_ROLE);
+        return value == null ? null : value.toString();
     }
 
     public boolean isAccessToken(String token) {

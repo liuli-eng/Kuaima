@@ -61,21 +61,16 @@
           :class="{ disabled: coupon.status !== 'available' }"
         >
           <view class="coupon-left">
-            <view class="coupon-amount">
-              <text class="currency">¥</text>
-              <text>{{ coupon.amountText }}</text>
-            </view>
+            <view class="coupon-amount"><text class="currency">¥</text><text>{{ coupon.amountText }}</text></view>
             <text class="coupon-condition">{{ coupon.condition }}</text>
-            <text class="coupon-name">{{ coupon.name }}</text>
-            <text class="coupon-expire">{{ coupon.expireText }}</text>
           </view>
-          <button
-            class="coupon-use"
-            :disabled="coupon.status !== 'available'"
-            @click="useCoupon(coupon)"
-          >
-            {{ coupon.actionText }}
-          </button>
+          <view class="coupon-right">
+            <view class="coupon-detail">
+              <text class="coupon-name">{{ coupon.name }}</text>
+              <text class="coupon-expire">{{ coupon.expireText }}</text>
+            </view>
+            <button class="coupon-use" :disabled="coupon.status !== 'available'" @click="useCoupon(coupon)">{{ coupon.actionText }}</button>
+          </view>
         </view>
       </view>
       <view class="content-bottom" />
@@ -245,10 +240,16 @@ export default {
         coupon.userCouponId
           ? `userCouponId=${encodeURIComponent(coupon.userCouponId)}`
           : "",
+        coupon.amount !== null && coupon.amount !== undefined
+          ? `amount=${encodeURIComponent(coupon.amount)}`
+          : "",
+        coupon.condition ? `condition=${encodeURIComponent(coupon.condition)}` : "",
+        coupon.name ? `name=${encodeURIComponent(coupon.name)}` : "",
+        coupon.expireAt ? `expire=${encodeURIComponent(formatDate(coupon.expireAt))}` : "",
       ].filter(Boolean).join("&");
       uni.navigateTo({
-        url: `/pages/boss/publish-info${query ? `?${query}` : ""}`,
-        fail: () => uni.showToast({ title: "发布页面打开失败", icon: "none" }),
+        url: `/pages/boss/coupon-use${query ? `?${query}` : ""}`,
+        fail: () => uni.showToast({ title: "优惠券使用页面打开失败", icon: "none" }),
       });
     },
   },
@@ -274,19 +275,22 @@ export default {
 .tab-switch-item { flex: 1; padding: 8px; color: #666; font-size: 14px; text-align: center; border-radius: 8px; }
 .tab-switch-item.active { color: #fff; font-weight: 600; background: #ff6b35; }
 .coupon-list { display: flex; flex-direction: column; gap: 12px; }
-.coupon-item { position: relative; display: flex; align-items: center; min-height: 120px; padding: 16px; overflow: hidden; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); box-sizing: border-box; }
-.coupon-item::before { position: absolute; top: 0; bottom: 0; left: 80px; width: 1px; content: ""; background-image: radial-gradient(circle, #ddd 3px, transparent 3px); background-size: 1px 8px; }
-.coupon-item.disabled { opacity: .5; }
-.coupon-left { flex: 1; min-width: 0; padding-right: 16px; }
-.coupon-amount { display: flex; align-items: baseline; color: #ff6b35; font-size: 24px; font-weight: 700; }
+.coupon-item { position: relative; display: flex; align-items: stretch; min-height: 104px; padding: 0; overflow: hidden; background: #f3f4f6; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); box-sizing: border-box; }
+.coupon-item::before { position: absolute; top: 0; bottom: 0; left: 120px; z-index: 2; width: 1px; content: ""; background-image: radial-gradient(circle, #fff 3px, transparent 3px); background-size: 1px 8px; }
+.coupon-item.disabled { opacity: .65; }
+.coupon-left { width: 120px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; padding: 16px 14px 16px 16px; box-sizing: border-box; color: #fff; background: #ff7743; }
+.coupon-item.disabled .coupon-left { background: #ccc; }
+.coupon-right { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 16px 16px 16px 20px; box-sizing: border-box; }
+.coupon-detail { flex: 1; min-width: 0; }
+.coupon-amount { display: flex; align-items: baseline; color: #fff; font-size: 28px; font-weight: 700; line-height: 1; }
 .currency { margin-right: 2px; font-size: 14px; }
 .coupon-condition, .coupon-name, .coupon-expire { display: block; }
-.coupon-condition { margin-top: 4px; color: #999; font-size: 12px; }
-.coupon-name { margin-top: 6px; overflow: hidden; color: #333; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.coupon-expire { margin-top: 4px; color: #bbb; font-size: 11px; }
-.coupon-use { width: 64px; height: 32px; margin: 0; padding: 0; flex-shrink: 0; color: #fff; font-size: 13px; font-weight: 500; line-height: 32px; background: linear-gradient(135deg, #ff6b35, #ff8c5a); border: 0; border-radius: 16px; }
+.coupon-condition { margin-top: 6px; color: rgba(255, 255, 255, .85); font-size: 12px; }
+.coupon-name { overflow: hidden; color: #333; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.coupon-expire { margin-top: 6px; color: #999; font-size: 11px; }
+.coupon-use { width: 64px; height: 32px; margin: 0; padding: 0; flex-shrink: 0; color: #fff; font-size: 13px; font-weight: 500; line-height: 32px; background: #ff7743; border: 0; border-radius: 16px; }
 .coupon-use::after { border: 0; }
-.coupon-use[disabled] { color: #fff; background: #ccc; }
+.coupon-item.disabled .coupon-use { color: #999; background: #ddd; }
 .page-state, .empty-state { padding: 60px 0; text-align: center; }
 .page-state { color: #999; font-size: 14px; }
 .page-state.error { color: #ff6b35; }

@@ -8,7 +8,6 @@ export function getCurrentUser() {
   return request({ url: "/auth/me" });
 }
 
-/** 发送手机短信验证码。 */
 export function sendSmsCode(phone) {
   const value = String(phone || "").trim();
   if (!/^1[3-9]\d{9}$/.test(value)) {
@@ -16,7 +15,7 @@ export function sendSmsCode(phone) {
   }
   return request({
     url: `/auth/sms/send?phone=${encodeURIComponent(value)}`,
-    method: "GET",
+    method: "POST",
     skipUserIdHeader: true,
   });
 }

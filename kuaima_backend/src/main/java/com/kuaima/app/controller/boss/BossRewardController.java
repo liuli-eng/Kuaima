@@ -51,8 +51,8 @@ public class BossRewardController {
 
     private Long bossId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof LoginUser user
-                && user.id() != null && UserRole.BOSS.equals(user.role())) return user.id();
-        throw new ForbiddenBusinessException("当前登录账号不是老板身份");
+                && user.id() != null) return user.id();
+        throw new ForbiddenBusinessException("当前登录账号无效");
     }
     private void validatePage(int page, int size) {
         if (page < 0 || size < 1 || size > 100) throw new IllegalArgumentException("page 必须大于等于0，size范围为1-100");

@@ -57,46 +57,53 @@
         <button class="btn btn-outline btn-sm" style="margin-left: auto;"><i class="fas fa-download"></i> 导出</button>
       </div>
 
-      <el-table :data="tableData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column type="selection" show-overflow-tooltip />
+      <el-table class="workers-table" :data="tableData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
         <el-table-column prop="id" label="零工ID" show-overflow-tooltip />
-        <el-table-column label="用户" show-overflow-tooltip>
+        <el-table-column label="头像+姓名" min-width="170" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="user-cell">
               <span class="mini-avatar" :style="{ background: row.avatarColor || getAvatarColor(row.name) }">{{ getAvatarLetter(row.name) }}</span>
-              <div>
-                <div style="font-weight: 500;">{{ row.name }}</div>
-                <div v-if="row.nickname && row.nickname !== row.name" class="text-muted" style="font-size: 12px;">{{ row.nickname }}</div>
-                <div class="text-muted" style="font-size: 12px;">{{ row.phone }}</div>
+              <div class="worker-info">
+                <div class="worker-name">{{ row.name }}</div>
+                <div class="worker-id">ID: {{ row.id }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="certStatus" label="实名认证" show-overflow-tooltip>
+        <el-table-column prop="phone" label="手机号" min-width="130" show-overflow-tooltip />
+        <el-table-column prop="certStatus" label="实名状态" min-width="105" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag :type="isPhoneVerified(row) ? 'success' : 'info'" effect="light">{{ isPhoneVerified(row) ? '手机号已验证' : '手机号未验证' }}</el-tag>
+            <span :class="['realname-status', isPhoneVerified(row) ? 'verified' : 'unverified']"><i :class="['fas', isPhoneVerified(row) ? 'fa-check-circle' : 'fa-clock']"></i>{{ isPhoneVerified(row) ? '已认证' : '未认证' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="技能标签" show-overflow-tooltip>
+        <el-table-column label="技能标签" min-width="170" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag v-for="(skill, idx) in normalizeSkills(row.skills)" :key="idx" style="margin-right: 4px; margin-bottom: 2px;" type="warning" effect="light" size="small">{{ skill }}</el-tag>
+            <div class="skill-tags"><span v-for="(skill, idx) in normalizeSkills(row.skills)" :key="idx" class="worker-tag" :class="`worker-tag-${idx % 4}`">{{ skill }}</span><span v-if="!normalizeSkills(row.skills).length" class="text-muted">-</span></div>
           </template>
         </el-table-column>
-        <el-table-column prop="orders" label="完成订单" show-overflow-tooltip>
+        <el-table-column label="信用分" min-width="95" show-overflow-tooltip>
+          <template #default="{ row }"><span v-if="row.creditScore != null" :class="['credit-tag', creditLevel(row.creditScore)]">{{ row.creditScore }} {{ creditLabel(row.creditScore) }}</span><span v-else>-</span></template>
+        </el-table-column>
+        <el-table-column label="奖励金余额" min-width="110" show-overflow-tooltip>
+          <template #default="{ row }"><span class="asset-num">{{ formatMoney(row.rewardBalance ?? row.rewardAmount ?? row.reward ?? null) }}</span></template>
+        </el-table-column>
+        <el-table-column label="积分余额" min-width="95" show-overflow-tooltip>
+          <template #default="{ row }"><span class="asset-num points">{{ formatNumber(row.pointsBalance ?? row.pointBalance ?? row.points ?? null) }}</span></template>
+        </el-table-column>
+        <el-table-column prop="orders" label="完成订单" min-width="95" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.completedOrders ?? 0 }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="registerTime" label="注册时间" show-overflow-tooltip>
+        <el-table-column prop="registerTime" label="注册时间" min-width="115" show-overflow-tooltip>
           <template #default="{ row }">{{ formatDateTime(row.registerTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="190" fixed="right">
+        <el-table-column label="操作" width="205" fixed="right">
           <template #default="{ row }">
             <div class="action-cell">
-              <el-button link type="primary" size="small" @click="handleDetail(row)">显示</el-button>
+              <el-button link type="primary" size="small" @click="handleDetail(row)">查看</el-button>
               <el-button link type="warning" size="small" v-if="isNormal(row.status)" @click="handleFreeze(row)">冻结</el-button>
               <el-button link type="success" size="small" v-else @click="handleUnfreeze(row)">解冻</el-button>
-              <el-button link type="danger" size="small">重置密码</el-button>
             </div>
           </template>
         </el-table-column>
@@ -117,126 +124,16 @@
       </div>
     </div>
 
-    <!-- 零工详情弹窗 -->
-    <el-dialog v-model="detailVisible" width="680px" :show-close="false" class="worker-detail-dialog" v-loading="detailLoading">
-      <div class="detail-dialog-header">
-        <span class="detail-dialog-title">零工详情</span>
-        <div class="detail-dialog-close" @click="detailVisible = false"><i class="fas fa-times"></i></div>
-      </div>
-      <div class="detail-dialog-body" v-if="detailData.id">
-        <!-- 头像区域 -->
-        <div class="detail-avatar-section">
-          <div class="detail-avatar" :style="{ background: getAvatarColor(detailData.nickname || detailData.username) }">{{ getAvatarLetter(detailData.nickname || detailData.realName || detailData.username) }}</div>
-          <div class="detail-basic-info">
-            <h3>{{ detailData.nickname || detailData.realName || detailData.username || '-' }}</h3>
-            <p><i class="fas fa-mobile-alt"></i> <span>{{ detailData.phone || '-' }}</span></p>
-            <p>
-              <i class="fas fa-id-card"></i>
-              <span :style="{ color: detailData.realnameStatus === 'APPROVED' ? 'var(--success)' : 'var(--text-muted)' }">
-                {{ formatRealnameStatus(detailData.realnameStatus) }}
-              </span>
-            </p>
-            <div style="margin-top: 8px;">
-              <span :class="['status-badge', isNormal(detailData.status) ? 'success' : 'danger']">
-                {{ formatStatus(detailData.status) }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 基本信息 -->
-        <div class="detail-section-title">基本信息</div>
-        <div class="detail-info-grid" style="margin-bottom: 20px;">
-          <div class="detail-info-item">
-            <span class="detail-info-label">零工ID</span>
-            <span class="detail-info-value">{{ detailData.id }}</span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">性别</span>
-            <span class="detail-info-value">{{ formatGender(detailData.gender) }}</span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">年龄</span>
-            <span class="detail-info-value">{{ detailData.age || '-' }}</span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">城市</span>
-            <span class="detail-info-value">{{ detailData.city || '-' }}</span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">注册时间</span>
-            <span class="detail-info-value">{{ formatDateTimeFull(detailData.date) }}</span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">最近活跃</span>
-            <span class="detail-info-value">{{ formatDateTimeFull(detailData.timestamp) }}</span>
-          </div>
-        </div>
-
-        <!-- 技能与数据 -->
-        <div class="detail-section-title">技能与数据</div>
-        <div class="detail-info-grid" style="margin-bottom: 20px;">
-          <div class="detail-info-item" style="grid-column: span 2;">
-            <span class="detail-info-label">技能标签</span>
-            <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
-              <template v-if="detailData.skills">
-                <span v-for="s in String(detailData.skills).split(',')" :key="s" class="detail-tag detail-tag-blue">{{ s.trim() }}</span>
-              </template>
-              <span v-else class="text-muted">-</span>
-            </div>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">完成订单</span>
-            <span class="detail-info-value">{{ detailData.completedOrders ?? 0 }}</span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">信用分</span>
-            <span class="detail-info-value" :style="{ color: getCreditColor(detailData.creditScore) }">{{ detailData.creditScore ?? '-' }}</span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">钱包余额</span>
-            <span class="detail-info-value">{{ detailData.balance != null ? `¥${(detailData.balance / 100).toFixed(2)}` : '-' }}</span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">工作年限</span>
-            <span class="detail-info-value">{{ detailData.workYears != null ? `${detailData.workYears}年` : '-' }}</span>
-          </div>
-        </div>
-
-        <!-- 账户状态 -->
-        <div class="detail-section-title">账户状态</div>
-        <div class="detail-info-grid">
-          <div class="detail-info-item">
-            <span class="detail-info-label">实名状态</span>
-            <span class="detail-info-value" :style="{ color: detailData.realnameStatus === 'APPROVED' ? 'var(--success)' : 'inherit' }">
-              {{ formatRealnameStatus(detailData.realnameStatus) }}
-            </span>
-          </div>
-          <div class="detail-info-item">
-            <span class="detail-info-label">账户状态</span>
-            <span class="detail-info-value" :style="{ color: isNormal(detailData.status) ? 'var(--success)' : '#EF4444' }">
-              {{ formatStatus(detailData.status) }}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div class="detail-dialog-footer">
-        <button class="btn btn-outline" @click="detailVisible = false">关闭</button>
-        <button v-if="isNormal(detailData.status)" class="btn btn-danger" @click="handleFreeze(detailData); detailVisible = false">
-          <i class="fas fa-ban"></i> 冻结账户
-        </button>
-        <button v-else class="btn btn-success" @click="handleUnfreeze(detailData); detailVisible = false">
-          <i class="fas fa-lock-open"></i> 解冻账户
-        </button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listWorkers, getUser, freezeUser, unfreezeUser } from '@/api/user'
+import { listWorkers, freezeUser, unfreezeUser } from '@/api/user'
+
+const router = useRouter()
 
 const searchKeyword = ref('')
 const statusFilter = ref('')
@@ -250,11 +147,6 @@ const tableData = ref([])
 
 // 统计数据
 const stats = ref({ total: '-', normal: '-', frozen: '-', certified: '-' })
-
-// 详情弹窗
-const detailVisible = ref(false)
-const detailLoading = ref(false)
-const detailData = ref({})
 
 // 加载统计
 const loadStats = async () => {
@@ -280,9 +172,9 @@ const loadStats = async () => {
 const normalizeWorker = (item) => {
   return {
     ...item,
-    name: item.username || item.phone,
+    name: item.realName || item.nickname || item.username || item.phone,
     nickname: item.nickname || '',
-    registerTime: item.date || item.timestamp,
+    registerTime: item.date || item.createdAt || item.timestamp,
   }
 }
 
@@ -338,6 +230,16 @@ const getCreditColor = (score) => {
   if (score >= 60) return '#F59E0B'
   return '#EF4444'
 }
+const creditLevel = (score) => {
+  if (score >= 80) return 'lv-excellent'
+  if (score >= 70) return 'lv-good'
+  if (score >= 60) return 'lv-normal'
+  return 'lv-low'
+}
+const creditLabel = (score) => score >= 80 ? '优秀' : score >= 70 ? '良好' : score >= 60 ? '一般' : '较低'
+const formatNumber = (value) => value == null || value === '' ? '-' : Number(value).toLocaleString('zh-CN')
+const formatMoney = (value) => value == null || value === '' ? '-' : `¥${(Number(value) / 100).toFixed(2)}`
+const formatPercent = (value) => value == null || value === '' ? '-' : `${Number(value).toFixed(1).replace('.0', '')}%`
 
 const getAvatarColor = (name) => {
   const palette = ['#FF6B35', '#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#64748B']
@@ -402,20 +304,7 @@ const onPageChange = (page) => {
 }
 
 // 详情弹窗
-const handleDetail = async (row) => {
-  detailVisible.value = true
-  detailLoading.value = true
-  detailData.value = {}
-  try {
-    const res = await getUser(row.id)
-    detailData.value = res.data || res || {}
-  } catch (e) {
-    ElMessage.error('加载详情失败')
-    console.warn('[Workers] 加载详情失败:', e)
-  } finally {
-    detailLoading.value = false
-  }
-}
+const handleDetail = (row) => router.push({ name: 'WorkerDetail', params: { id: row.id } })
 
 // 冻结 / 解冻
 const handleFreeze = async (row) => {
@@ -455,12 +344,33 @@ onMounted(() => {
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
+.workers-table :deep(.el-table__header),
+.workers-table :deep(.el-table__body) { min-width: 1400px; }
 
 .user-cell {
   display: flex;
   align-items: center;
   gap: 10px;
 }
+.worker-info { display:flex; flex-direction:column; min-width:0; }
+.worker-name { overflow:hidden; color:var(--text-primary); font-size:14px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+.worker-id { margin-top:2px; color:var(--text-muted); font-family:monospace; font-size:12px; }
+.skill-tags { display:flex; flex-wrap:wrap; gap:4px; }
+.worker-tag, .credit-tag { display:inline-flex; align-items:center; white-space:nowrap; }
+.worker-tag { padding:2px 7px; border-radius:4px; color:#C2410C; background:#FFF7ED; font-size:11px; }
+.worker-tag-1 { color:#2563EB; background:#EFF6FF; }
+.worker-tag-2 { color:#059669; background:#ECFDF5; }
+.worker-tag-3 { color:#DC2626; background:#FEF2F2; }
+.realname-status { display:inline-flex; align-items:center; gap:4px; font-size:12px; white-space:nowrap; }
+.realname-status.verified { color:var(--success); }
+.realname-status.unverified { color:var(--text-muted); }
+.credit-tag { padding:3px 9px; border-radius:12px; font-size:11px; font-weight:600; }
+.credit-tag.lv-excellent { color:#059669; background:#ECFDF5; }
+.credit-tag.lv-good { color:#2563EB; background:#EFF6FF; }
+.credit-tag.lv-normal { color:#D97706; background:#FFFBEB; }
+.credit-tag.lv-low { color:#DC2626; background:#FEF2F2; }
+.asset-num { font-weight:500; white-space:nowrap; }
+.asset-num.points { color:var(--primary); }
 
 /* 操作按钮强制一行排列 */
 .action-cell {
@@ -620,6 +530,7 @@ onMounted(() => {
   color: var(--text-primary, #1F2937);
   font-weight: 500;
 }
+.detail-info-value.positive { color:var(--success); }
 
 .text-muted {
   color: var(--text-muted, #9CA3AF);

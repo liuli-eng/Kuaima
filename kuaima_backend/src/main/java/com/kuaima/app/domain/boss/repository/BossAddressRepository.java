@@ -14,6 +14,8 @@ public interface BossAddressRepository extends JpaRepository<BossAddress, Long> 
 
     /** 某老板的全部地址（最新在前） */
     List<BossAddress> findByUserIdOrderByIdDesc(Long userId);
+    List<BossAddress> findByEnterpriseIdOrderByIdDesc(Long enterpriseId);
+    Optional<BossAddress> findByIdAndEnterpriseId(Long id, Long enterpriseId);
 
     /** 某老板的默认地址 */
     Optional<BossAddress> findByUserIdAndIsDefaultTrue(Long userId);
@@ -22,4 +24,8 @@ public interface BossAddressRepository extends JpaRepository<BossAddress, Long> 
     @Modifying
     @Query("update BossAddress a set a.isDefault = false where a.userId = :userId and a.isDefault = true")
     int clearDefaultByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("update BossAddress a set a.isDefault = false where a.enterpriseId = :enterpriseId and a.isDefault = true")
+    int clearDefaultByEnterpriseId(@Param("enterpriseId") Long enterpriseId);
 }

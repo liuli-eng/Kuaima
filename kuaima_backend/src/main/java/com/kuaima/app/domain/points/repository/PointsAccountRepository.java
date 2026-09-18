@@ -1,5 +1,7 @@
 package com.kuaima.app.domain.points.repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +14,8 @@ public interface PointsAccountRepository extends JpaRepository<PointsAccount, Lo
 
     /** 按用户 + 身份查积分账户。 */
     Optional<PointsAccount> findByUserIdAndRole(Long userId, String role);
+
+    List<PointsAccount> findByUserIdInAndRole(Collection<Long> userIds, String role);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select a from PointsAccount a where a.userId = :userId and a.role = :role")

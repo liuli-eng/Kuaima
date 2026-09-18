@@ -13,6 +13,8 @@ import com.kuaima.app.domain.wallet.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -93,5 +95,26 @@ class AdminRewardServiceTests {
         when(campaigns.findById(3L)).thenReturn(Optional.of(campaign));
         assertThrows(IllegalArgumentException.class, () -> service.cancel(3L));
         verify(campaigns, never()).save(any());
+    }
+
+    @Test
+    void bossRecipientsUseEnterpriseIdentityInsteadOfCurrentLoginRole() {
+        User certifiedBoss = new User(); certifiedBoss.setId(7L); certifiedBoss.setRole("USER");
+        certifiedBoss.setCertType("ENTERPRISE"); certifiedBoss.setCertStatus("已通过");
+        User uncertifiedLoginBoss = new User(); uncertifiedLoginBoss.setId(8L); uncertifiedLoginBoss.setRole("BOSS");
+        when(users.findAll()).thenReturn(List.of(certifiedBoss, uncertifiedLoginBoss));
+        AtomicReference<RewardCampaign> saved = new AtomicReference<>();
+        when(campaigns.save(any())).thenAnswer(invocation -> {
+            RewardCampaign campaign = invocation.getArgument(0); campaign.setId(10L); saved.set(campaign); return campaign;
+        });
+        when(campaigns.findById(10L)).thenAnswer(invocation -> Optional.of(saved.get()));
+        Map<String, Object> body = Map.of("name", "活动", "target", "老板", "scope", "全部",
+                "amountMode", "fixed", "sendMode", "timing", "sendAt", "2099-01-01 00:00:00",
+                "count", 10, "amount", 10);
+
+        RewardCampaign campaign = service.create(body, 1L, "管理员");
+
+        assertEquals("[7]", campaign.getUsers());
+        assertEquals(1, campaign.getPlannedCount());
     }
 }

@@ -1,6 +1,7 @@
 package com.kuaima.app.security.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -28,5 +29,15 @@ class JwtUtilWechatRegistrationTests {
 
         assertThrows(IllegalArgumentException.class,
                 () -> jwtUtil.getWechatRegistrationOpenid(accessToken));
+    }
+
+    @Test
+    void accessToken_shouldCarryAccountGroupOwnerIdOnlyForQuickLogin() {
+        String normalToken = jwtUtil.generateAccessToken("boss", "BOSS", 7L);
+        String quickLoginToken = jwtUtil.generateAccessToken("boss-31", "BOSS", 31L, 7L);
+
+        assertNull(jwtUtil.getAccountGroupOwnerId(normalToken));
+        assertEquals(7L, jwtUtil.getAccountGroupOwnerId(quickLoginToken));
+        assertEquals(31L, jwtUtil.getUserId(quickLoginToken));
     }
 }

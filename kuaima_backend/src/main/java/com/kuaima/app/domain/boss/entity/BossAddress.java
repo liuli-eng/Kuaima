@@ -17,6 +17,9 @@ import lombok.Setter;
 @Setter
 public class BossAddress extends BaseEntity {
 
+    @Column(name = "enterprise_id", comment = "所属企业")
+    private Long enterpriseId;
+
     @Column(comment = "所属老板用户 id")
     private Long userId;
 

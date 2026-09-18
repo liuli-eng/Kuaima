@@ -62,7 +62,7 @@
           <view class="unauth-icon"><image :src="userPlusOrangeIcon" mode="aspectFit" /></view>
           <text class="unauth-title">暂未授权任何员工</text>
           <text class="unauth-desc">授权员工可帮您招工、发薪、管理订单\n建议授权给您信任的合作伙伴</text>
-          <button class="btn-authorize" @click="navigateTo('sub-account')">
+          <button class="btn-authorize" @click="navigateTo('authorize')">
             <image :src="userPlusWhiteIcon" mode="aspectFit" />
             <text>去授权</text>
           </button>
@@ -339,7 +339,7 @@ export default {
         'boss-publish', 'search-worker', 'select-job', 'publish-info', 'schedule-stats', 
         'enterprise-cert', 'enterprise-cert-form', 'creditor-score', 'talent-list', 
         'expense-detail', 'payment-detail', 'recruit-manager', 'recruit-address', 
-        'sub-account', 'suspend-settle', 'switch-account', 'invite-code', 'blacklist', 
+        'sub-account', 'authorize', 'suspend-settle', 'switch-account', 'invite-code', 'blacklist',
         'all-jobs', 'boss-filter', 'settlement', 'contract', 'system-notice', 'missed-call', 
         'signup-notice', 'invite-friend',         'service-chat', 'insurance', 'realname', 
         'personal-info', 'points', 'voucher', 'reward'
@@ -367,11 +367,10 @@ export default {
       })
     },
     switchTab(tab) {
-      if (tab === 'workbench')
-        return uni.showToast({ title: '工作台页面暂未开放', icon: 'none' })
       const tabPages = {
         'home': '/pages/boss/home',
         'order': '/pages/boss/order',
+        'workbench': '/pages/boss/workbench',
         'message': '/pages/boss/message',
         'profile': '/pages/boss/profile'
       }

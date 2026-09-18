@@ -1,6 +1,8 @@
 package com.kuaima.app.domain.course.repository;
 
 import java.util.Optional;
+import java.util.Collection;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,4 +12,6 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
 
     /** 按课程查询单条试卷 */
     Optional<Exam> findByCourseId(Long courseId);
+
+    List<Exam> findByCourseIdIn(Collection<Long> courseIds);
 }

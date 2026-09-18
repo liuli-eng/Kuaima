@@ -109,8 +109,8 @@ public class AdminRewardService {
             }
         } else all = users.findAll();
         List<User> matched = all.stream().filter(user -> "全部用户".equals(target)
-                || ("老板".equals(target) && UserRole.BOSS.equals(user.getRole()))
-                || ("零工".equals(target) && UserRole.USER.equals(user.getRole()))).distinct().toList();
+                || ("老板".equals(target) && UserRole.isBossIdentity(user))
+                || ("零工".equals(target) && UserRole.isWorkerIdentity(user))).distinct().toList();
         if ("指定".equals(scope) && matched.size() != all.stream().distinct().count())
             throw new IllegalArgumentException("指定用户类型与 target 不匹配");
         return matched;
@@ -135,7 +135,7 @@ public class AdminRewardService {
             User user = users.findById(userId).orElseThrow(() -> new EntityNotFoundException("发放用户不存在: " + userId));
             walletCredit(userId, value, id, c.getRemark());
             RewardGrant grant = new RewardGrant(); grant.setCampaignId(id); grant.setUserId(userId); grant.setAmount(value);
-            grant.setUserRole(user.getRole()); grant.setStatus("SUCCESS");
+            grant.setUserRole(UserRole.isBossIdentity(user) ? UserRole.BOSS : UserRole.USER); grant.setStatus("SUCCESS");
             grant.setGrantedAt(LocalDateTime.now(ZONE)); grants.save(grant);
             if (rewardLedger != null) rewardLedger.credit(userId, value, "ADMIN_REWARD", id,
                     "平台奖励金", c.getRemark(), "ADMIN_REWARD:" + id + ":" + userId);

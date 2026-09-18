@@ -172,6 +172,11 @@ export default {
     },
     confirmRefreshCode(type) {
       const label = type === "work" ? "开工码" : "早退码";
+      const enabledKey = type === "work" ? "workCodeEnabled" : "leaveCodeEnabled";
+      if (!this.attendance[enabledKey]) {
+        uni.showToast({ title: `${label}未开启`, icon: "none" });
+        return;
+      }
       uni.showModal({ title: `刷新${label}`, content: `确定要刷新${label}吗？旧验证码将立即失效。`, success: async ({ confirm }) => {
         if (!confirm) return;
         try {

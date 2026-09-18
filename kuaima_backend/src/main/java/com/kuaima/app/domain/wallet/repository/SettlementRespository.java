@@ -2,6 +2,7 @@ package com.kuaima.app.domain.wallet.repository;
 
 import java.util.List;
 import java.util.Collection;
+import java.sql.Timestamp;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,28 @@ import org.springframework.data.repository.query.Param;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 
 public interface SettlementRespository extends JpaRepository<Settlement, Long> {
+
+    /** 后台结算管理组合筛选。 */
+    @Query("""
+            select s from Settlement s
+            where (:status is null or s.status = :status)
+              and (:startTime is null or s.timestamp >= :startTime)
+              and (:endTime is null or s.timestamp <= :endTime)
+            """)
+    Page<Settlement> search(@Param("status") String status,
+                            @Param("startTime") Timestamp startTime,
+                            @Param("endTime") Timestamp endTime,
+                            Pageable pageable);
+
+    long countByStatus(String status);
+
+    @Query("select coalesce(sum(s.wage),0) from Settlement s where s.status = :status")
+    Long sumWageByStatus(@Param("status") String status);
+
+    @Query("select coalesce(sum(s.wage),0) from Settlement s where s.status = :status and s.payTime >= :startTime and s.payTime < :endTime")
+    Long sumWageByStatusAndPayTimeBetween(@Param("status") String status,
+                                          @Param("startTime") java.time.LocalDateTime startTime,
+                                          @Param("endTime") java.time.LocalDateTime endTime);
 
     /** 某订单的结算单（最新在前） */
     List<Settlement> findByOrderIdOrderByIdDesc(Long orderId);

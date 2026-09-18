@@ -105,7 +105,6 @@
                 class="content-editor"
                 contenteditable="true"
                 @input="onEditorInput"
-                v-html="form.content"
               ></div>
               <div class="form-hint">支持多段落、列表、加粗等格式。内容会展示给所有相关用户查看。</div>
             </div>

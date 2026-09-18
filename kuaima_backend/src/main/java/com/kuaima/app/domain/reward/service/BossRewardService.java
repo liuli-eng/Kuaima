@@ -65,7 +65,7 @@ public class BossRewardService {
         String key = normalizeKey(bossId, amount, idempotencyKey);
         Optional<RewardWithdrawal> previous = withdrawals.findByIdempotencyKey(key);
         if (previous.isPresent()) return withdrawalView(requireSameRequest(previous.get(), bossId, amount));
-        users.findByIdForUpdate(bossId).filter(u -> UserRole.BOSS.equals(u.getRole()))
+        users.findByIdForUpdate(bossId).filter(UserRole::isBossIdentity)
                 .orElseThrow(() -> new EntityNotFoundException("老板账号不存在: " + bossId));
         previous = withdrawals.findByIdempotencyKey(key);
         if (previous.isPresent()) return withdrawalView(requireSameRequest(previous.get(), bossId, amount));
@@ -95,7 +95,7 @@ public class BossRewardService {
     }
 
     private void requireBossExists(Long bossId) {
-        users.findById(bossId).filter(u -> UserRole.BOSS.equals(u.getRole()))
+        users.findById(bossId).filter(UserRole::isBossIdentity)
                 .orElseThrow(() -> new EntityNotFoundException("老板账号不存在: " + bossId));
     }
     private RewardWithdrawal requireOwner(RewardWithdrawal withdrawal, Long bossId) {

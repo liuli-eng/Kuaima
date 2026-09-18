@@ -26,6 +26,11 @@ public class BossRecruitSettingsService {
                 .orElseGet(() -> defaults(userRepository == null ? null : userRepository.findById(bossId).map(u -> u.getPhone()).orElse(null)));
     }
 
+    @Transactional(readOnly = true)
+    public Settings getByEnterprise(Long enterpriseId, String fallbackPhone) {
+        return repository.findByEnterpriseId(enterpriseId).map(this::toSettings).orElseGet(() -> defaults(fallbackPhone));
+    }
+
     @Transactional
     public Settings save(Long bossId, Settings input) {
         if (input == null) throw new IllegalArgumentException("招工设置不能为空");
@@ -33,6 +38,13 @@ public class BossRecruitSettingsService {
         BossRecruitSettings entity = repository.findByBossId(bossId).orElseGet(BossRecruitSettings::new);
         entity.setBossId(bossId); copy(entity, input);
         return toSettings(repository.save(entity));
+    }
+
+    @Transactional
+    public Settings saveByEnterprise(Long enterpriseId, Long operatorId, Settings input) {
+        if (input == null) throw new IllegalArgumentException("招工设置不能为空"); validate(input);
+        BossRecruitSettings entity = repository.findByEnterpriseId(enterpriseId).orElseGet(BossRecruitSettings::new);
+        entity.setEnterpriseId(enterpriseId); entity.setBossId(operatorId); copy(entity, input); return toSettings(repository.save(entity));
     }
 
     public Settings defaults() { return defaults(null); }

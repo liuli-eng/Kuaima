@@ -23,6 +23,34 @@ public class BossRecruitAddressService {
         return repository.findByUserIdOrderByIdDesc(bossId).stream().map(this::view).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<AddressView> listByEnterprise(Long enterpriseId) {
+        return repository.findByEnterpriseIdOrderByIdDesc(enterpriseId).stream().map(this::view).toList();
+    }
+
+    @Transactional
+    public AddressView createByEnterprise(Long enterpriseId, Long operatorId, AddressRequest request) {
+        validate(request); BossAddress address = new BossAddress(); address.setEnterpriseId(enterpriseId); address.setUserId(operatorId); apply(address, request);
+        if (Boolean.TRUE.equals(address.getIsDefault())) repository.clearDefaultByEnterpriseId(enterpriseId);
+        return view(repository.save(address));
+    }
+
+    @Transactional
+    public AddressView updateByEnterprise(Long enterpriseId, Long id, AddressRequest request) {
+        validate(request); BossAddress address = repository.findByIdAndEnterpriseId(id, enterpriseId)
+                .orElseThrow(() -> new EntityNotFoundException("地址不存在: " + id)); apply(address, request);
+        if (Boolean.TRUE.equals(address.getIsDefault())) repository.clearDefaultByEnterpriseId(enterpriseId);
+        return view(repository.save(address));
+    }
+
+    @Transactional
+    public void deleteByEnterprise(Long enterpriseId, Long id) { BossAddress address = repository.findByIdAndEnterpriseId(id, enterpriseId)
+            .orElseThrow(() -> new EntityNotFoundException("地址不存在: " + id)); if (Boolean.TRUE.equals(address.getIsDefault())) throw new IllegalArgumentException("默认地址不可直接删除，请先设置其他默认地址"); repository.delete(address); }
+
+    @Transactional
+    public AddressView setDefaultByEnterprise(Long enterpriseId, Long id) { BossAddress address = repository.findByIdAndEnterpriseId(id, enterpriseId)
+            .orElseThrow(() -> new EntityNotFoundException("地址不存在: " + id)); repository.clearDefaultByEnterpriseId(enterpriseId); address.setIsDefault(true); return view(repository.save(address)); }
+
     @Transactional
     public AddressView create(Long bossId, AddressRequest request) {
         validate(request);

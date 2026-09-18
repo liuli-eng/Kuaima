@@ -26,6 +26,16 @@ public class BossCouponController {
         return Result.success(service.list(currentBossId(authentication), status));
     }
 
+    @GetMapping("/{userCouponId}/available-orders")
+    @Operation(summary = "优惠券可用待结算订单", description = "按当前老板 JWT 查询该优惠券可核销的待结算订单")
+    public Result<Map<String, Object>> availableOrders(@PathVariable Long userCouponId,
+                                                        @RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "20") int size,
+                                                        Authentication authentication) {
+        Map<String, Object> data = service.availableOrders(currentBossId(authentication), userCouponId, page, size);
+        return Result.success(data, (Integer) data.get("page"), ((Number) data.get("total")).longValue());
+    }
+
     private Long currentBossId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof LoginUser user
                 && user.id() != null && UserRole.BOSS.equals(user.role())) return user.id();

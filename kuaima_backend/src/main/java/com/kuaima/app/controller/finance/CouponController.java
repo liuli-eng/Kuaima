@@ -1,6 +1,7 @@
 package com.kuaima.app.controller.finance;
 
 import java.util.List;
+import java.util.Map;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,13 +14,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.Result;
-import com.kuaima.app.domain.coupon.entity.Coupon;
 import com.kuaima.app.domain.coupon.entity.UserCoupon;
-import com.kuaima.app.domain.coupon.repository.CouponRepository;
-import com.kuaima.app.domain.coupon.repository.UserCouponRepository;
+import com.kuaima.app.domain.coupon.service.BossCouponService;
 import com.kuaima.app.domain.coupon.service.CouponClaimService;
-
-import jakarta.persistence.EntityNotFoundException;
 
 /**
  * 优惠券。
@@ -29,25 +26,20 @@ import jakarta.persistence.EntityNotFoundException;
 @Tag(name = "优惠券", description = "用户优惠券管理")
 public class CouponController {
 
-    private final CouponRepository couponRepository;
-    private final UserCouponRepository userCouponRepository;
+    private final BossCouponService couponService;
     private final CouponClaimService claimService;
 
-    public CouponController(CouponRepository couponRepository, UserCouponRepository userCouponRepository, CouponClaimService claimService) {
-        this.couponRepository = couponRepository;
-        this.userCouponRepository = userCouponRepository;
+    public CouponController(BossCouponService couponService, CouponClaimService claimService) {
+        this.couponService = couponService;
         this.claimService = claimService;
     }
 
     /** 优惠券列表：GET /coupons?userId=1&status=UNUSED */
-    @Operation(summary = "优惠券列表", description = "按用户 id 查询优惠券；status 可选（如 UNUSED/USED），传入时按状态过滤")
+    @Operation(summary = "优惠券列表", description = "按用户 id 查询领取记录及完整券面信息；status 支持 UNUSED、USED、EXPIRED")
     @GetMapping
-    public Result<List<UserCoupon>> listCoupons(@RequestParam Long userId,
-                                                @RequestParam(required = false) String status) {
-        if (status != null && !status.isEmpty()) {
-            return Result.success(userCouponRepository.findByUserIdAndStatus(userId, status));
-        }
-        return Result.success(userCouponRepository.findByUserId(userId));
+    public Result<List<Map<String, Object>>> listCoupons(@RequestParam Long userId,
+                                                          @RequestParam(required = false) String status) {
+        return Result.success(couponService.list(userId, status));
     }
 
     /** 领取优惠券：POST /coupons/{id}/claim?userId=1 */

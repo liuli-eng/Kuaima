@@ -1,5 +1,7 @@
 package com.kuaima.app.domain.course.repository;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,4 +12,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     /** 按分类分页查询（category 为空时全量） */
     Page<Course> findByCategory(String category, Pageable pageable);
+
+    List<Course> findByStatusOrderBySortOrderAscIdAsc(String status);
 }

@@ -12,6 +12,10 @@ import org.springframework.util.StringUtils;
 import com.kuaima.app.admin.entity.Certification;
 import com.kuaima.app.admin.repository.CertificationRepository;
 import com.kuaima.app.common.ForbiddenBusinessException;
+import com.kuaima.app.domain.enterprise.entity.Enterprise;
+import com.kuaima.app.domain.enterprise.entity.EnterpriseMember;
+import com.kuaima.app.domain.enterprise.repository.EnterpriseMemberRepository;
+import com.kuaima.app.domain.enterprise.repository.EnterpriseRepository;
 import com.kuaima.app.domain.user.constant.CertificationStatus;
 import com.kuaima.app.domain.user.constant.EnterpriseCode;
 import com.kuaima.app.domain.user.entity.User;
@@ -27,11 +31,23 @@ public class CertificationService {
 
     private final UserRepository userRepository;
     private final CertificationRepository certificationRepository;
+    private final EnterpriseRepository enterpriseRepository;
+    private final EnterpriseMemberRepository enterpriseMemberRepository;
 
     public CertificationService(UserRepository userRepository,
                                 CertificationRepository certificationRepository) {
+        this(userRepository, certificationRepository, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public CertificationService(UserRepository userRepository,
+                                CertificationRepository certificationRepository,
+                                EnterpriseRepository enterpriseRepository,
+                                EnterpriseMemberRepository enterpriseMemberRepository) {
         this.userRepository = userRepository;
         this.certificationRepository = certificationRepository;
+        this.enterpriseRepository = enterpriseRepository;
+        this.enterpriseMemberRepository = enterpriseMemberRepository;
     }
 
     @Transactional
@@ -101,12 +117,41 @@ public class CertificationService {
             user.setRealnameStatus(approved ? CertificationStatus.APPROVED : CertificationStatus.REJECTED);
         } else if (ENTERPRISE.equalsIgnoreCase(type) || "企业认证".equals(type)) {
             user.setEnterpriseStatus(approved ? CertificationStatus.APPROVED : CertificationStatus.REJECTED);
-            if (approved) EnterpriseCode.ensure(user);
+            if (approved) {
+                EnterpriseCode.ensure(user);
+                ensureOwnerMembership(user);
+            }
         }
         user.setCertType(type);
         user.setCertStatus(status);
         userRepository.save(user);
         return certificationRepository.save(record);
+    }
+
+    /** 企业认证账号自动成为该企业 OWNER，老板是特殊的企业员工。 */
+    private void ensureOwnerMembership(User user) {
+        if (enterpriseRepository == null || enterpriseMemberRepository == null) return;
+        Enterprise enterprise = enterpriseRepository.findByCompanyCode(user.getCompanyCode()).orElseGet(() -> {
+            Enterprise created = new Enterprise();
+            created.setCompanyCode(user.getCompanyCode());
+            created.setCompanyName(StringUtils.hasText(user.getCompanyName())
+                    ? user.getCompanyName().trim() : "企业" + user.getId());
+            created.setLicenseNo(user.getLicenseNo());
+            created.setLegalRep(user.getLegalRep());
+            created.setIndustry(user.getIndustry());
+            created.setStatus("ACTIVE");
+            created.setCreateBy(user.getId());
+            return enterpriseRepository.save(created);
+        });
+        EnterpriseMember member = enterpriseMemberRepository
+                .findByEnterpriseIdAndUserId(enterprise.getId(), user.getId())
+                .orElseGet(EnterpriseMember::new);
+        member.setEnterpriseId(enterprise.getId());
+        member.setUserId(user.getId());
+        member.setMemberRole("OWNER");
+        member.setStatus("ACTIVE");
+        member.setCreateBy(user.getId());
+        enterpriseMemberRepository.save(member);
     }
 
     private void saveRecord(User user, String type, String applicantName, String phone) {

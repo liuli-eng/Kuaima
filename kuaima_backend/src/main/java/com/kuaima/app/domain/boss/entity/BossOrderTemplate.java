@@ -10,6 +10,7 @@ import lombok.Setter;
 
 @Entity @Table(name="boss_order_template") @Getter @Setter
 public class BossOrderTemplate extends BaseEntity {
+    @Column(name="enterprise_id") private Long enterpriseId;
     @Column(nullable=false) private Long ownerUserId;
     @Column(nullable=false, length=100) private String templateName;
     private Long sourceOrderId;

@@ -185,6 +185,15 @@ export function addBossRecruitAccount(data = {}) {
   });
 }
 
+/** 已关联老板账号快速登录，后端需校验绑定关系并签发目标账号 JWT。 */
+export function quickLoginBossRecruitAccount(accountId) {
+  return request({
+    url: `/boss/recruit-accounts/${normalizeId(accountId, "accountId")}/quick-login`,
+    method: "POST",
+    skipUserIdHeader: true,
+  });
+}
+
 export function switchBossRecruitAccount(accountId) {
   return request({
     url: "/boss/recruit-accounts/current",
@@ -920,6 +929,32 @@ export function getExamResult(userId, examId) {
 
 export function listTrainingTasks(userId) {
   return request({ url: `/training-tasks?${query({ userId })}` });
+}
+
+export function listBossSubAccounts() {
+  return request({ url: "/boss/sub-accounts", skipUserIdHeader: true });
+}
+
+export function createBossSubAccount(data = {}) {
+  return request({
+    url: "/boss/sub-accounts",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 零工课堂首页聚合内容（课程、视频、考试题目和平台规则）。 */
+export function getWorkerClassroomOverview() {
+  return request({ url: "/worker/classroom/overview", skipUserIdHeader: true });
+}
+
+export function getWorkerClassroomQuiz() {
+  return request({ url: "/worker/classroom/quiz" });
+}
+
+export function submitWorkerClassroomQuiz(data) {
+  return request({ url: "/worker/classroom/quiz/submit", method: "POST", data });
 }
 
 export function completeTrainingTask(id) {

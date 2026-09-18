@@ -59,11 +59,11 @@
             />
           </button>
         </view>
-        <SafeBottomAction class="bottom-action"
-          ><button class="role-cta" @click="confirmRole">
+        <view class="bottom-action">
+          <button class="role-cta" @click="confirmRole">
             {{ selectedRole === "worker" ? "我是零工，去找活" : "我是老板，去招工" }}
-          </button></SafeBottomAction
-        >
+          </button>
+        </view>
       </view>
       <view v-else class="login-view">
         <view class="hero"
@@ -77,9 +77,6 @@
               src="/static/icons/login/circle-info.svg"
               mode="aspectFit"
             /></view
-          ><text class="mascot">{{
-            selectedRole === "boss" ? "🐎" : "🐴"
-          }}</text
           ><text class="hero-tagline">{{
             selectedRole === "boss"
               ? "真零工·真上岗·真高效"
@@ -156,14 +153,12 @@
           ></view
         >
       </view>
-      <view class="page-indicator"></view>
     </view>
   </view>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { wechatLogin, getCurrentUser } from "@/api/auth";
 
 const pages = getCurrentPages();
@@ -457,7 +452,7 @@ async function completeLogin(result) {
   background: transparent;
 }
 .role-select-view {
-  padding: 18px 20px 24px;
+  padding: 18px 20px calc(24px + env(safe-area-inset-bottom));
   box-sizing: border-box;
   background: #fff9d7;
 }
@@ -465,23 +460,15 @@ async function completeLogin(result) {
 .welcome-subtitle { display: block; font-size: 13px; font-weight: 500; color: #8b6f00; margin-bottom: 8px; }
 .welcome-title { display: block; font-size: 25px; line-height: 1.3; font-weight: 800; color: #2d2200; }
 .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
-.section-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #8b4513;
-  margin-bottom: 8px;
-}
-.section-subtitle,
 .hero-subtitle {
   font-size: 14px;
   color: #a0522d;
-  margin-bottom: 24px;
 }
 .role-card {
   position: relative;
   width: auto;
   min-width: 0;
-  min-height: 380px;
+  min-height: 300px;
   border: 1.5px solid transparent;
   background: #f0deba;
   border-radius: 14px;
@@ -537,6 +524,7 @@ async function completeLogin(result) {
 .role-art {
   display: block;
   width: 100%;
+  max-width: 200px;
   height: auto;
   margin-top: auto;
   align-self: center;
@@ -561,8 +549,6 @@ async function completeLogin(result) {
 .bottom-action {
   margin-top: auto;
   width: 100%;
-  padding-left: 0;
-  padding-right: 0;
 }
 .role-cta,
 .phone-input-btn {
@@ -570,7 +556,7 @@ async function completeLogin(result) {
   color: #fff;
   padding: 16px 20px;
   border-radius: 50px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 16px;
   box-shadow: 0 8px 24px #ff6b3559;
   line-height: normal;
@@ -623,23 +609,15 @@ async function completeLogin(result) {
   margin-top: 16px;
   font-weight: 700;
 }
-.mascot {
-  position: absolute;
-  right: 10px;
-  top: 60px;
-  font-size: 100px;
-  opacity: 0.3;
-}
 .mobile-login-card {
-  margin-top: 32px;
+  margin: 32px 16px 0;
   background: #fff;
-  border-radius: 24px 24px 0 0;
+  border-radius: 24px;
   padding: 28px 24px 16px;
   box-sizing: border-box;
-  width: 100%;
-  height: auto !important;
-  min-height: 0 !important;
-  flex: 0 0 auto !important;
+  width: auto;
+  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.06);
@@ -655,6 +633,9 @@ async function completeLogin(result) {
   padding: 14px;
   background: linear-gradient(135deg, #2ecc71, #27ae60);
   box-shadow: 0 6px 20px rgba(46, 204, 113, 0.35);
+}
+.phone-input-btn:active {
+  transform: scale(0.98);
 }
 .divider-line {
   display: block;
@@ -687,6 +668,7 @@ async function completeLogin(result) {
   flex: none;
   font-size: 10px;
   box-sizing: border-box;
+  margin-top: 2px;
 }
 .custom-checkbox.checked {
   background: #ff6b35;
@@ -709,17 +691,6 @@ async function completeLogin(result) {
   color: #8b6a45;
   font-size: 12px;
   margin-top: 12px;
-}
-.page-indicator {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  width: 134px;
-  height: 5px;
-  border-radius: 3px;
-  background: #000;
-  transform: translateX(-50%);
-  z-index: 20;
 }
 @media (max-width: 430px) {
   .phone-frame {

@@ -26,4 +26,13 @@ public final class UserRole {
         return user != null && (CertificationStatus.APPROVED.equals(user.getEnterpriseStatus())
                 || ("ENTERPRISE".equalsIgnoreCase(user.getCertType()) && "已通过".equals(user.getCertStatus())));
     }
+
+    /** 业务身份判断：完成企业认证才是老板，否则统一视为零工；与当前登录角色无关。 */
+    public static boolean isBossIdentity(User user) {
+        return hasApprovedEnterprise(user);
+    }
+
+    public static boolean isWorkerIdentity(User user) {
+        return user != null && !isBossIdentity(user);
+    }
 }

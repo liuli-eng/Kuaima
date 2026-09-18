@@ -12,6 +12,7 @@ import lombok.Setter;
 @Table(name = "boss_recruit_settings", uniqueConstraints = @UniqueConstraint(name = "uk_boss_recruit_settings_owner", columnNames = "boss_id"))
 @Getter @Setter
 public class BossRecruitSettings extends BaseEntity {
+    @Column(name = "enterprise_id") private Long enterpriseId;
     @Column(name = "boss_id", nullable = false) private Long bossId;
     private String phoneMode;
     private String backupPhone;
