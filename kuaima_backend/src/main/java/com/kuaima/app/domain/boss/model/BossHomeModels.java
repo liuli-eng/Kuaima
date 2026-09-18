@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.boss.model;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 
 public final class BossHomeModels {
@@ -25,6 +26,6 @@ public final class BossHomeModels {
                            List<ScheduleRecord> records) {}
 
     public record BossStats(int totalOrders, long recruitingCount, long applicantCount,
-                            double settledAmount, long nearbyWorkers,
+                            BigDecimal settledAmount, long nearbyWorkers,
                             int fastestMinutes, String city) {}
 }

@@ -32,6 +32,8 @@ import com.kuaima.app.domain.wallet.entity.Wallet;
 import com.kuaima.app.domain.wallet.model.PendingSettlementModels.PendingSettlementItem;
 import com.kuaima.app.domain.wallet.model.PendingSettlementModels.PendingSettlementOrder;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
+import com.kuaima.app.admin.entity.AdminSetting;
+import com.kuaima.app.admin.repository.AdminSettingRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -49,23 +51,36 @@ public class SettlementService {
     private final WalletService walletService;
     private final MessageService messageService;
     private final UserRepository userRepository;
+    private final AdminSettingRepository adminSettingRepository;
 
     /** 平台服务费率(% of wage)，规则待定，默认 0 */
     @Value("${kuaima.settle.service-fee-rate:0}")
-    private int serviceFeeRate;
+    private BigDecimal serviceFeeRate;
 
     public SettlementService(SettlementRespository settlementRepository,
                              BossOrderRespository orderRepository,
                             BaseOrderItemRespository itemRepository,
                             WalletService walletService,
-                            MessageService messageService,
-                            UserRepository userRepository) {
+                             MessageService messageService,
+                             UserRepository userRepository) {
+        this(settlementRepository, orderRepository, itemRepository, walletService, messageService, userRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public SettlementService(SettlementRespository settlementRepository,
+                             BossOrderRespository orderRepository,
+                             BaseOrderItemRespository itemRepository,
+                             WalletService walletService,
+                             MessageService messageService,
+                             UserRepository userRepository,
+                             AdminSettingRepository adminSettingRepository) {
         this.settlementRepository = settlementRepository;
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.walletService = walletService;
         this.messageService = messageService;
         this.userRepository = userRepository;
+        this.adminSettingRepository = adminSettingRepository;
     }
 
     /**
@@ -88,13 +103,13 @@ public class SettlementService {
         }
         BossOrder order = orderRepository.findById(item.getOrderId())
                 .orElseThrow(() -> new EntityNotFoundException("订单不存在: " + item.getOrderId()));
-        if (order.getSalary() == null || order.getSalary() <= 0) {
+        if (order.getSalary() == null || order.getSalary().signum() <= 0) {
             throw new IllegalStateException("订单工资未设置，无法结算");
         }
         int days = resolveWorkDays(item, workDays);
-        long wage = order.getSalary() * (long) days * 100L;
-        long serviceFee = calculateServiceFee(wage);
-        long total = wage + serviceFee;
+        BigDecimal wage = order.getSalary().multiply(BigDecimal.valueOf(days)).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal serviceFee = calculateServiceFee(wage);
+        BigDecimal total = wage.add(serviceFee);
 
         Settlement s = new Settlement();
         s.setItemId(itemId);
@@ -140,8 +155,8 @@ public class SettlementService {
                 s.getId(), "工资结算 orderId=" + s.getOrderId() + " 天数=" + s.getWorkDays());
         // 结算到账：通知零工
         messageService.sendToUser(s.getWorkerId(), UserRole.USER, MessageType.SETTLE_PAID, "工资已到账",
-                "您的工资 " + fenToYuan(s.getWage()) + " 元已到账，可在钱包中查看或提现。",
-                BizType.SETTLE, s.getId(), java.util.Map.of("wage", fenToYuan(s.getWage()), "orderId", s.getOrderId()));
+                "您的工资 " + s.getWage().stripTrailingZeros().toPlainString() + " 元已到账，可在钱包中查看或提现。",
+                BizType.SETTLE, s.getId(), java.util.Map.of("wage", s.getWage(), "orderId", s.getOrderId()));
         return s;
     }
 
@@ -255,25 +270,26 @@ public class SettlementService {
     }
 
     private PendingSettlementItem estimateItem(BaseOrderItem item, BossOrder order, User worker) {
-        if (order.getSalary() == null || order.getSalary() <= 0) {
+        if (order.getSalary() == null || order.getSalary().signum() <= 0) {
             throw new IllegalStateException("订单工资未设置，无法计算待结算金额: " + order.getId());
         }
         int days = resolveWorkDays(item, null);
-        long wage = order.getSalary() * (long) days * 100L;
-        long total = wage + calculateServiceFee(wage);
+        BigDecimal wage = order.getSalary().multiply(BigDecimal.valueOf(days)).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = wage.add(calculateServiceFee(wage));
         return new PendingSettlementItem(item.getId(), item.getUserId(), workerName(worker), null, null,
-                fenToYuanValue(total), total, days);
+                total, null, days);
     }
 
     private PendingSettlementItem toPendingItem(Settlement settlement, User worker) {
-        long amountFen = settlement.getTotalAmount() == null ? 0L : settlement.getTotalAmount();
+        BigDecimal amount = settlement.getTotalAmount() == null ? BigDecimal.ZERO : settlement.getTotalAmount();
         return new PendingSettlementItem(settlement.getItemId(), settlement.getWorkerId(), workerName(worker),
-                settlement.getId(), settlement.getStatus(), fenToYuanValue(amountFen), amountFen,
+                settlement.getId(), settlement.getStatus(), amount, null,
                 settlement.getWorkDays());
     }
 
     private PendingSettlementOrder toPendingOrder(BossOrder order, List<PendingSettlementItem> items) {
-        long amountFen = items.stream().mapToLong(item -> item.amountFen() == null ? 0L : item.amountFen()).sum();
+        BigDecimal amount = items.stream().map(PendingSettlementItem::amount)
+                .filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
         List<String> workers = items.stream().map(PendingSettlementItem::workerName)
                 .filter(org.springframework.util.StringUtils::hasText).distinct().toList();
         boolean hasUncreated = items.stream().anyMatch(item -> item.settlementId() == null);
@@ -282,7 +298,7 @@ public class SettlementService {
         return new PendingSettlementOrder(order.getId(), order.getId(), order.getDate(),
                 org.springframework.util.StringUtils.hasText(order.getOrderTitle())
                         ? order.getOrderTitle() : order.getPostion(),
-                fenToYuanValue(amountFen), amountFen, items.size(), workers, status,
+                amount, null, items.size(), workers, status,
                 "partial".equals(status) ? "部分结算" : "待结算", items);
     }
 
@@ -293,9 +309,6 @@ public class SettlementService {
         return "零工#" + worker.getId();
     }
 
-    private BigDecimal fenToYuanValue(long fen) {
-        return BigDecimal.valueOf(fen).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-    }
 
     // ==================== 内部方法 ====================
 
@@ -312,27 +325,42 @@ public class SettlementService {
         return 1;
     }
 
-    private long calculateServiceFee(long wage) {
-        if (serviceFeeRate <= 0) {
-            return 0L;
+    private BigDecimal calculateServiceFee(BigDecimal wage) {
+        BigDecimal rate = configuredServiceFeeRate();
+        if (rate.signum() <= 0) {
+            return BigDecimal.ZERO.setScale(2);
         }
-        return BigDecimal.valueOf(wage)
-                .multiply(BigDecimal.valueOf(serviceFeeRate))
-                .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP)
-                .longValue();
+        return wage
+                .multiply(rate)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    /** 后台规则优先；未配置时兼容 kuaima.settle.service-fee-rate。 */
+    private BigDecimal configuredServiceFeeRate() {
+        BigDecimal fallback = serviceFeeRate == null ? BigDecimal.ZERO : serviceFeeRate.max(BigDecimal.ZERO);
+        if (adminSettingRepository == null) return fallback;
+        boolean enabled = adminSettingRepository.findById("rules.platformFeeEnabled")
+                .map(AdminSetting::getSettingValue)
+                .map(String::trim)
+                .map(Boolean::parseBoolean)
+                .orElse(fallback.signum() > 0);
+        if (!enabled) return BigDecimal.ZERO;
+        return adminSettingRepository.findById("rules.feeRate")
+                .map(AdminSetting::getSettingValue)
+                .map(String::trim)
+                .map(this::parseRate)
+                .orElse(fallback);
+    }
+
+    private BigDecimal parseRate(String value) {
+        BigDecimal fallback = serviceFeeRate == null ? BigDecimal.ZERO : serviceFeeRate.max(BigDecimal.ZERO);
+        try { return new BigDecimal(value).max(BigDecimal.ZERO).min(BigDecimal.valueOf(100)); }
+        catch (RuntimeException e) { return fallback; }
     }
 
     private Settlement getSettlementOrThrow(Long id) {
         return settlementRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("结算单不存在: " + id));
-    }
-
-    /** 分 -> 元（去除末尾多余的 0），用于到账文案展示 */
-    private String fenToYuan(long fen) {
-        return BigDecimal.valueOf(fen)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                .stripTrailingZeros()
-                .toPlainString();
     }
 
     private BaseOrderItem getItemOrThrow(Long id) {

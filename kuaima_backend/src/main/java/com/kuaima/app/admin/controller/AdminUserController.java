@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.HashMap;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -160,19 +161,19 @@ public class AdminUserController {
 
         Set<Long> bossIds = result.stream().map(User::getId).collect(Collectors.toSet());
         Map<Long, Long> jobsMap = new HashMap<>();
-        Map<Long, Long> walletMap = new HashMap<>();
+        Map<Long, BigDecimal> walletMap = new HashMap<>();
         Map<Long, Long> pointsMap = new HashMap<>();
-        Map<Long, Long> rewardMap = new HashMap<>();
+        Map<Long, BigDecimal> rewardMap = new HashMap<>();
         if (!bossIds.isEmpty()) {
             bossOrderRepository.countByCreateByIds(bossIds)
                     .forEach(row -> jobsMap.put((Long) row[0], (Long) row[1]));
             walletRepository.findByUserIdIn(bossIds)
-                    .forEach(wallet -> walletMap.put(wallet.getUserId(), longValue(wallet.getBalance())));
+                    .forEach(wallet -> walletMap.put(wallet.getUserId(), moneyValue(wallet.getBalance())));
             pointsAccountRepository.findByUserIdInAndRole(bossIds, UserRole.BOSS)
                     .forEach(account -> pointsMap.put(account.getUserId(),
                             account.getBalance() == null ? 0L : account.getBalance().longValue()));
             rewardAccountRepository.findByUserIdIn(bossIds)
-                    .forEach(account -> rewardMap.put(account.getUserId(), longValue(account.getBalance())));
+                    .forEach(account -> rewardMap.put(account.getUserId(), moneyValue(account.getBalance())));
         }
 
         Page<JSONObject> views = result.map(u -> {
@@ -182,8 +183,8 @@ public class AdminUserController {
             obj.put("companyName", u.getCompanyName());
             obj.put("jobsCount", jobsMap.getOrDefault(u.getId(), 0L));
             obj.put("creditScore", integerValue(u.getCreditScore()));
-            obj.put("balance", walletMap.getOrDefault(u.getId(), 0L));
-            obj.put("rewardAmount", rewardMap.getOrDefault(u.getId(), 0L));
+            obj.put("balance", walletMap.getOrDefault(u.getId(), BigDecimal.ZERO));
+            obj.put("rewardAmount", rewardMap.getOrDefault(u.getId(), BigDecimal.ZERO));
             obj.put("points", pointsMap.getOrDefault(u.getId(), 0L));
             return obj;
         });
@@ -204,17 +205,16 @@ public class AdminUserController {
             bossOrderRepository.countByCreateByIds(Set.of(id))
                     .forEach(row -> obj.put("jobsCount", (Long) row[1]));
             obj.put("balance", walletRepository.findByUserId(id)
-                    .map(wallet -> longValue(wallet.getBalance())).orElse(0L));
+                    .map(wallet -> moneyValue(wallet.getBalance())).orElse(BigDecimal.ZERO));
             obj.put("points", pointsAccountRepository.findByUserIdAndRole(id, UserRole.BOSS)
                     .map(account -> integerValue(account.getBalance())).orElse(0));
             obj.put("rewardAmount", rewardAccountRepository.findByUserId(id)
-                    .map(account -> longValue(account.getBalance())).orElse(0L));
+                    .map(account -> moneyValue(account.getBalance())).orElse(BigDecimal.ZERO));
             obj.put("pointRecords", pointRecords(id));
             obj.put("rewardRecords", rewardRecords(id));
-            Long rewardIncome = rewardFlowRepository.sumByUserIdAndType(id, "INCOME");
-            obj.put("rewardIncome", longValue(rewardIncome));
-            obj.put("rewardUsed", Math.max(0L, longValue(rewardIncome)
-                    - obj.getLongValue("rewardAmount")));
+            BigDecimal rewardIncome = rewardFlowRepository.sumByUserIdAndType(id, "INCOME");
+            obj.put("rewardIncome", moneyValue(rewardIncome));
+            obj.put("rewardUsed", moneyValue(rewardIncome).subtract(moneyValue((BigDecimal) obj.get("rewardAmount")).max(BigDecimal.ZERO)));
             obj.put("coupons", coupons(id));
         }
         // 附加完成订单数
@@ -274,10 +274,10 @@ public class AdminUserController {
         PageRequest pageable = PageRequest.of(Math.max(page, 0), safeSize(size));
         Page<RewardFlow> source = rewardFlowRepository.findByUserIdOrderByCreatedAtDescIdDesc(id, pageable);
         Page<JSONObject> records = source.map(this::workerRewardRecord);
-        long balance = rewardAccountRepository.findByUserId(id).map(a -> longValue(a.getBalance())).orElse(0L);
+        BigDecimal balance = rewardAccountRepository.findByUserId(id).map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO);
         Map<String, Object> data = new LinkedHashMap<>(); data.put("records", records.getContent()); data.put("currentBalance", balance);
-        data.put("totalEarned", longValue(rewardFlowRepository.sumByUserIdAndType(id, "INCOME")));
-        data.put("totalConsumed", longValue(rewardFlowRepository.sumByUserIdAndType(id, "EXPENSE")));
+        data.put("totalEarned", moneyValue(rewardFlowRepository.sumByUserIdAndType(id, "INCOME")));
+        data.put("totalConsumed", moneyValue(rewardFlowRepository.sumByUserIdAndType(id, "EXPENSE")));
         return Result.success(data, records.getNumber(), records.getTotalElements());
     }
 
@@ -341,6 +341,7 @@ public class AdminUserController {
     private Long longValue(Long value) {
         return value == null ? 0L : value;
     }
+    private BigDecimal moneyValue(BigDecimal value) { return value == null ? BigDecimal.ZERO : value; }
 
     private String text(String value) { return value == null ? "" : value; }
 
@@ -387,7 +388,7 @@ public class AdminUserController {
                 && i.getFinishDate().toLocalDate().getYear() == LocalDate.now().getYear()
                 && i.getFinishDate().toLocalDate().getMonthValue() == LocalDate.now().getMonthValue()).count();
         long totalIncome = walletFlowRepository == null ? 0L : longValue(walletFlowRepository.sumIncomeByUserId(userId));
-        obj.put("rewardBalance", rewardAccountRepository.findByUserId(userId).map(a -> longValue(a.getBalance())).orElse(0L));
+        obj.put("rewardBalance", rewardAccountRepository.findByUserId(userId).map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO));
         obj.put("pointsBalance", pointsAccountRepository.findByUserIdAndRole(userId, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L));
         obj.put("completedOrders", completed); obj.put("monthCompletedOrders", monthCompleted); obj.put("totalIncome", totalIncome);
         obj.put("completionRate", completion); obj.put("cancellationRate", cancellation); obj.put("noShowRate", noShow); obj.put("earlyLeaveRate", earlyRate);
@@ -406,7 +407,7 @@ public class AdminUserController {
 
     private JSONObject workerRewardRecord(RewardFlow flow) {
         JSONObject item = new JSONObject(); item.put("flowNo", flow.getSourceKey() == null ? String.valueOf(flow.getId()) : flow.getSourceKey());
-        item.put("title", text(flow.getTitle())); item.put("remark", text(flow.getRemark())); item.put("amount", longValue(flow.getAmount()));
+        item.put("title", text(flow.getTitle())); item.put("remark", text(flow.getRemark())); item.put("amount", moneyValue(flow.getAmount()));
         item.put("direction", text(flow.getType())); item.put("createdAt", flow.getCreatedAt() == null ? "" : flow.getCreatedAt()); return item;
     }
 

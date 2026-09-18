@@ -54,6 +54,7 @@
 
 <script>
 import { request } from '@/api/http'
+import { sendSmsCode } from '@/api/auth'
 
 export default {
   data() {
@@ -111,10 +112,7 @@ export default {
       }
       this.sending = true
       try {
-        await request({
-          url: `/auth/sms/send?phone=${encodeURIComponent(this.phone)}`,
-          method: 'POST'
-        })
+        await sendSmsCode(this.phone)
         this.startCountdown()
         uni.showToast({ title: `验证码已发送至 ${this.maskedPhone}`, icon: 'success' })
       } catch (err) {

@@ -15,7 +15,7 @@ export function sendSmsCode(phone) {
   }
   return request({
     url: `/auth/sms/send?phone=${encodeURIComponent(value)}`,
-    method: "POST",
+    method: "GET",
     skipUserIdHeader: true,
   });
 }

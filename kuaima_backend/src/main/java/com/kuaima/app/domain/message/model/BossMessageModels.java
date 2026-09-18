@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.message.model;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 
 /** 老板消息首页聚合数据及历史消息分页返回模型。 */
@@ -26,6 +27,6 @@ public final class BossMessageModels {
     public record MessagePreview(Long id, String title, String content, String type,
                                  Boolean readFlag, LocalDateTime createTime, Long bizId) {}
 
-    public record SettlementPreview(Long id, String status, Long wage, Long totalAmount,
+    public record SettlementPreview(Long id, String status, BigDecimal wage, BigDecimal totalAmount,
                                     LocalDateTime payTime, Long orderId, Long itemId) {}
 }

@@ -80,10 +80,12 @@
           <el-descriptions-item label="地点">{{ currentItem.location }}</el-descriptions-item>
           <el-descriptions-item label="开始时间">{{ formatTime(currentItem.startTime) }}</el-descriptions-item>
           <el-descriptions-item label="结束时间">{{ formatTime(currentItem.endTime) }}</el-descriptions-item>
-          <el-descriptions-item label="性别要求">不限</el-descriptions-item>
-          <el-descriptions-item label="经验要求">不限</el-descriptions-item>
-          <el-descriptions-item label="提交时间" :span="2">{{ currentItem.time }}</el-descriptions-item>
-          <el-descriptions-item label="招工描述" :span="2">负责产品装配、质检等工作，两班倒，包吃住</el-descriptions-item>
+          <el-descriptions-item label="性别要求">{{ genderText(currentItem.gender) }}</el-descriptions-item>
+          <el-descriptions-item label="年龄要求">{{ ageText(currentItem.experience) }}</el-descriptions-item>
+          <el-descriptions-item label="提交时间" :span="2">{{ formatTime(currentItem.time) }}</el-descriptions-item>
+          <el-descriptions-item label="审核人">{{ currentItem.auditBy || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="审核时间">{{ formatTime(currentItem.auditTime) }}</el-descriptions-item>
+          <el-descriptions-item label="招工描述" :span="2">{{ currentItem.description || '-' }}</el-descriptions-item>
         </el-descriptions>
         
         <el-divider />
@@ -92,9 +94,9 @@
           <div style="font-weight: 600; margin-bottom: 8px;">雇主信息</div>
           <el-descriptions :column="2" border>
             <el-descriptions-item label="企业名称">{{ currentItem.employer }}</el-descriptions-item>
-            <el-descriptions-item label="联系人">张经理</el-descriptions-item>
-            <el-descriptions-item label="联系电话">138****8888</el-descriptions-item>
-            <el-descriptions-item label="认证状态">已认证</el-descriptions-item>
+            <el-descriptions-item label="联系人">{{ currentItem.contact || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="联系电话">{{ currentItem.contactPhone || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="认证状态">{{ certificationText(currentItem.enterpriseStatus) }}</el-descriptions-item>
           </el-descriptions>
         </div>
 
@@ -138,7 +140,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listJobs, auditJobPass, auditJobReject } from '@/api/job'
+import { listJobs, getJob, auditJobPass, auditJobReject } from '@/api/job'
+import { getUser } from '@/api/user'
 
 const searchKeyword = ref('')
 const statusFilter = ref('待审核')
@@ -193,6 +196,24 @@ const formatTime = (t) => {
   return s.length > 16 ? s.substring(0, 16) : s
 }
 
+const genderText = (value) => ({
+  male: '男', M: '男', MAN: '男', 男: '男',
+  female: '女', F: '女', WOMAN: '女', 女: '女',
+  all: '不限', ALL: '不限', none: '不限', unlimited: '不限', 不限: '不限',
+}[value] || value || '不限')
+
+const ageText = (value) => {
+  if (!value) return '不限'
+  const text = String(value)
+  if (/\d+\s*[~至-]\s*\d+/.test(text) || /\d+岁/.test(text)) return text
+  return ({ none: '不限', all: '不限', unlimited: '不限', NO_REQUIREMENT: '不限', 不限: '不限' }[text] || text)
+}
+
+const certificationText = (value) => ({
+  APPROVED: '已认证', PENDING: '认证中', REJECTED: '认证未通过', UNVERIFIED: '未认证',
+  已通过: '已认证', 已认证: '已认证',
+}[value] || value || '-')
+
 const normalizeAudit = (item) => {
   const statusVal = item.orderStatus ?? item.status ?? '未知'
   return {
@@ -211,6 +232,13 @@ const normalizeAudit = (item) => {
     statusClass: statusClassMap[statusVal] ?? 'default',
     auditBy: item.auditBy,
     auditTime: item.auditTime,
+    createBy: item.createBy,
+    gender: item.gender,
+    experience: item.experience,
+    description: item.orderContent ?? item.description,
+    contact: item.contact,
+    contactPhone: item.contactPhone,
+    enterpriseStatus: item.enterpriseStatus,
   }
 }
 
@@ -247,17 +275,43 @@ const handleReset = () => {
   loadAuditData()
 }
 
-const handleDetail = (row) => {
-  currentItem.value = row
-  auditRemark.value = ''
-  detailVisible.value = true
+const loadDetail = async (row) => {
+  const detailRes = await getJob(row.id)
+  const detail = detailRes.data || {}
+  let employer = {}
+  if (detail.createBy) {
+    try {
+      const employerRes = await getUser(detail.createBy)
+      employer = employerRes.data || {}
+    } catch (err) {
+      console.warn('[JobAudit] 雇主信息加载失败:', err.message)
+    }
+  }
+  return {
+    ...row,
+    ...normalizeAudit({ ...row, ...detail }),
+    employer: employer.companyName || row.employer,
+    contact: employer.contact || employer.realName || employer.nickname || employer.username,
+    contactPhone: employer.contactPhone || employer.phone,
+    enterpriseStatus: employer.enterpriseStatus,
+  }
 }
 
-const handleApprove = (row) => {
+const openDetail = async (row) => {
   currentItem.value = row
   auditRemark.value = ''
   detailVisible.value = true
+  try {
+    currentItem.value = await loadDetail(row)
+  } catch (err) {
+    console.warn('[JobAudit] 详情加载失败:', err.message)
+    ElMessage.error('加载招工详情失败')
+  }
 }
+
+const handleDetail = openDetail
+
+const handleApprove = openDetail
 
 const handleReject = (row) => {
   currentItem.value = row

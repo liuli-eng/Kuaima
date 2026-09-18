@@ -9,6 +9,8 @@ import com.kuaima.app.domain.wallet.entity.*;
 import com.kuaima.app.domain.wallet.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -19,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class BossRewardService {
-    public static final long MIN_WITHDRAW_AMOUNT = 1000L;
+    public static final BigDecimal MIN_WITHDRAW_AMOUNT = new BigDecimal("10.00");
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
     private final RewardAccountRepository accounts;
     private final RewardFlowRepository flows;
@@ -39,9 +41,9 @@ public class BossRewardService {
     @Transactional(readOnly = true)
     public Map<String, Object> overview(Long bossId) {
         requireBossExists(bossId);
-        long balance = accounts.findByUserId(bossId).map(a -> value(a.getBalance())).orElse(0L);
-        long income = value(flows.sumByUserIdAndType(bossId, "INCOME"));
-        long expense = value(flows.sumByUserIdAndType(bossId, "EXPENSE"));
+        BigDecimal balance = accounts.findByUserId(bossId).map(a -> value(a.getBalance())).orElse(BigDecimal.ZERO);
+        BigDecimal income = value(flows.sumByUserIdAndType(bossId, "INCOME"));
+        BigDecimal expense = value(flows.sumByUserIdAndType(bossId, "EXPENSE"));
         return Map.of("balance", balance, "totalIncome", income, "totalExpense", expense,
                 "withdrawableAmount", balance);
     }
@@ -59,9 +61,10 @@ public class BossRewardService {
     }
 
     @Transactional
-    public Map<String, Object> withdraw(Long bossId, Long amount, String idempotencyKey) {
+    public Map<String, Object> withdraw(Long bossId, BigDecimal amount, String idempotencyKey) {
         if (amount == null) throw new IllegalArgumentException("amount 不能为空");
-        if (amount < MIN_WITHDRAW_AMOUNT) throw new IllegalArgumentException("最低提现金额为1000分");
+        amount = amount.setScale(2, RoundingMode.HALF_UP);
+        if (amount.compareTo(MIN_WITHDRAW_AMOUNT) < 0) throw new IllegalArgumentException("最低提现金额为10.00元");
         String key = normalizeKey(bossId, amount, idempotencyKey);
         Optional<RewardWithdrawal> previous = withdrawals.findByIdempotencyKey(key);
         if (previous.isPresent()) return withdrawalView(requireSameRequest(previous.get(), bossId, amount));
@@ -70,16 +73,16 @@ public class BossRewardService {
         previous = withdrawals.findByIdempotencyKey(key);
         if (previous.isPresent()) return withdrawalView(requireSameRequest(previous.get(), bossId, amount));
         RewardAccount rewardAccount = ledger.lockedAccount(bossId);
-        if (value(rewardAccount.getBalance()) < amount) throw new IllegalArgumentException("奖励金可提现余额不足");
+        if (value(rewardAccount.getBalance()).compareTo(amount) < 0) throw new IllegalArgumentException("奖励金可提现余额不足");
         Wallet wallet = wallets.findByUserIdForUpdate(bossId)
                 .orElseThrow(() -> new IllegalStateException("钱包不存在，无法提现奖励金"));
-        if (value(wallet.getBalance()) < amount) throw new IllegalArgumentException("钱包余额不足，无法提现奖励金");
+        if (value(wallet.getBalance()).compareTo(amount) < 0) throw new IllegalArgumentException("钱包余额不足，无法提现奖励金");
 
         RewardWithdrawal withdrawal = new RewardWithdrawal(); withdrawal.setUserId(bossId); withdrawal.setAmount(amount);
         withdrawal.setStatus("PENDING"); withdrawal.setIdempotencyKey(key); withdrawal.setAppliedAt(LocalDateTime.now(ZONE));
         withdrawal = withdrawals.saveAndFlush(withdrawal);
-        rewardAccount.setBalance(value(rewardAccount.getBalance()) - amount); accounts.save(rewardAccount);
-        wallet.setBalance(value(wallet.getBalance()) - amount); wallets.save(wallet);
+        rewardAccount.setBalance(value(rewardAccount.getBalance()).subtract(amount)); accounts.save(rewardAccount);
+        wallet.setBalance(value(wallet.getBalance()).subtract(amount)); wallets.save(wallet);
         ledger.saveFlow(bossId, "EXPENSE", amount, rewardAccount.getBalance(), "奖励金提现", "奖励金提现申请",
                 "WITHDRAW", withdrawal.getId(), "REWARD_WITHDRAW:" + withdrawal.getId());
         WalletFlow walletFlow = new WalletFlow(); walletFlow.setUserId(bossId); walletFlow.setDirection("outcome");
@@ -102,7 +105,7 @@ public class BossRewardService {
         if (!Objects.equals(withdrawal.getUserId(), bossId)) throw new ForbiddenBusinessException("无权访问该提现请求");
         return withdrawal;
     }
-    private RewardWithdrawal requireSameRequest(RewardWithdrawal withdrawal, Long bossId, Long amount) {
+    private RewardWithdrawal requireSameRequest(RewardWithdrawal withdrawal, Long bossId, BigDecimal amount) {
         requireOwner(withdrawal, bossId);
         if (!Objects.equals(withdrawal.getAmount(), amount))
             throw new IllegalArgumentException("同一Idempotency-Key不能用于不同提现金额");
@@ -120,7 +123,7 @@ public class BossRewardService {
         result.put("appliedAt", withdrawal.getAppliedAt()); result.put("paidAt", withdrawal.getPaidAt());
         result.put("failureReason", withdrawal.getFailureReason()); return result;
     }
-    private String normalizeKey(Long bossId, Long amount, String key) {
+    private String normalizeKey(Long bossId, BigDecimal amount, String key) {
         if (key != null && !key.isBlank()) {
             String trimmed = key.trim();
             if (trimmed.length() > 100) throw new IllegalArgumentException("Idempotency-Key 长度不能超过100");
@@ -132,5 +135,5 @@ public class BossRewardService {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8))); }
         catch (Exception e) { throw new IllegalStateException("生成幂等键失败", e); }
     }
-    private long value(Long value) { return value == null ? 0L : value; }
+    private BigDecimal value(BigDecimal value) { return value == null ? BigDecimal.ZERO : value; }
 }

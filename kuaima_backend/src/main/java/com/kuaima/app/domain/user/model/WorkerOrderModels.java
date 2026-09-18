@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.user.model;
 
 import java.util.Date;
+import java.math.BigDecimal;
 import com.kuaima.app.domain.review.model.BossReviewModels.ReviewSummary;
 
 public final class WorkerOrderModels {
@@ -16,7 +17,7 @@ public final class WorkerOrderModels {
             Date finishDate,
             String orderTitle,
             String type,
-            Integer salary,
+            BigDecimal salary,
             String address,
             Date startTime,
             Date endTime,

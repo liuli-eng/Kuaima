@@ -1,5 +1,7 @@
 package com.kuaima.app.domain.boss.model;
 
+import java.math.BigDecimal;
+
 import java.util.Date;
 
 public final class BossOrderTemplateModels {
@@ -9,7 +11,7 @@ public final class BossOrderTemplateModels {
                                String orderTitle, String orderContent, String type,
                                Long industryId, java.util.List<Long> enterpriseTypeIds, java.util.List<Long> jobIds,
                                Long jobCategoryId, String postion, String address,
-                               Integer salary, Integer duration, Integer orderNum,
+                               BigDecimal salary, Integer duration, Integer orderNum,
                                Date startTime, Date endTime, String tags,
                                String experience, String gender, String signMode,
                                Boolean phoneNotify, Boolean signNotify, Boolean startRemind, Boolean settleNotify,

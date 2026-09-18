@@ -221,6 +221,10 @@ export default {
     this.orderId = options.orderId || "";
     this.loadApplicants();
   },
+  onShow() {
+    if (this._loadedOnce) this.loadApplicants();
+    this._loadedOnce = true;
+  },
   computed: {
     filteredRecords() {
       let data =
@@ -401,11 +405,8 @@ export default {
         }
       }
 
-      if (action === "accept") record.status = "accepted";
-      else if (action === "reject") record.status = "rejected";
-      else if (action === "arrive") record.status = "arrived";
-      else if (action === "complete") record.status = "completed";
       try {
+        // 以服务端最新状态为准，避免本地状态与报名列表不一致。
         await this.loadApplicants();
       } finally {
         this.actionLoadingId = "";

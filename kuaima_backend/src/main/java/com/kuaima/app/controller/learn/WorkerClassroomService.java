@@ -14,6 +14,7 @@ import com.kuaima.app.domain.academy.entity.AcademyQuiz;
 import com.kuaima.app.domain.academy.repository.AcademyQuizRepository;
 import com.alibaba.fastjson2.JSONArray;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -29,6 +30,7 @@ public class WorkerClassroomService {
     private final RulesRepository rules;
     private final AcademyQuizRepository academyQuizzes;
 
+    @Autowired
     public WorkerClassroomService(CourseRepository courses, CourseVideoRepository videos,
                                   ExamRepository exams, ExamQuestionRepository questions,
                                   RulesRepository rules, AcademyQuizRepository academyQuizzes) {

@@ -74,7 +74,7 @@
             </button>
             <button class="detail" @click="open(order)">详情</button>
             <button
-              v-if="order.action === 'check-in'"
+              v-if="order.action === 'check-in' && order.workCodeEnabled"
               class="attendance"
               :disabled="operatingIds.includes(order.id)"
               @click="enterAttendanceCode(order, 'work')"
@@ -82,7 +82,7 @@
               输入开工码
             </button>
             <button
-              v-if="order.action === 'early-leave'"
+              v-if="order.action === 'early-leave' && order.leaveCodeEnabled"
               class="attendance"
               :disabled="operatingIds.includes(order.id)"
               @click="enterAttendanceCode(order, 'leave')"
@@ -387,12 +387,22 @@ function normalizeOrder(item) {
     statusText: orderStatus || "状态未知",
     statusGroup: getStatusGroup(orderStatus),
     action: getStatusAction(orderStatus),
+    workCodeEnabled: normalizeEnabledFlag(
+      item.workCodeEnabled ?? item.startCodeEnabled,
+    ),
+    leaveCodeEnabled: normalizeEnabledFlag(
+      item.leaveCodeEnabled ?? item.earlyCodeEnabled,
+    ),
     canCancel: ["已报名", "已录用"].includes(orderStatus),
     date: normalizeDateKey(item.workDate || item.startTime),
   };
   normalized.review = normalizeBossReview(item.bossReview || item.review);
   normalized.reviewed = Boolean(item.reviewed || normalized.review);
   return normalized;
+}
+
+function normalizeEnabledFlag(value) {
+  return value === true || value === 1 || String(value).toLowerCase() === "true";
 }
 
 function createEmptyReviewScores() {

@@ -1,5 +1,6 @@
 package com.kuaima.app.domain.payroll.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -84,11 +85,11 @@ public class PayrollService {
         if (creatorId != null) {
             order.setCreatorId(creatorId);
         }
-        order.setAmount(0L);
+        order.setAmount(BigDecimal.ZERO);
         order.setPeopleCount(0);
         PayrollOrder saved = orderRepository.save(order);
 
-        long totalAmount = 0;
+        BigDecimal totalAmount = BigDecimal.ZERO;
         if (details != null) {
             for (PayrollDetail d : details) {
                 d.setPayrollId(saved.getId());
@@ -96,11 +97,11 @@ public class PayrollService {
                     d.setStatus(PayrollConstants.DETAIL_PENDING);
                 }
                 if (d.getAmount() == null) {
-                    long amt = (d.getDailyWage() == null ? 0 : d.getDailyWage())
-                            * (d.getAttendDays() == null ? 0 : d.getAttendDays());
+                    BigDecimal amt = (d.getDailyWage() == null ? BigDecimal.ZERO : d.getDailyWage())
+                            .multiply(BigDecimal.valueOf(d.getAttendDays() == null ? 0 : d.getAttendDays()));
                     d.setAmount(amt);
                 }
-                totalAmount += d.getAmount() == null ? 0 : d.getAmount();
+                totalAmount = totalAmount.add(d.getAmount() == null ? BigDecimal.ZERO : d.getAmount());
                 detailRepository.save(d);
             }
         }
@@ -155,9 +156,9 @@ public class PayrollService {
         List<PayrollOrder> all = orderRepository.findAll();
         long projectTotal = all.stream().map(PayrollOrder::getProjectId).filter(java.util.Objects::nonNull).distinct().count();
         LocalDate now = LocalDate.now();
-        long monthAmount = all.stream()
+        BigDecimal monthAmount = all.stream()
                 .filter(o -> PayrollConstants.ORDER_APPROVED.equals(o.getStatus()) && isThisMonth(o.getSubmitTime(), now))
-                .mapToLong(o -> o.getAmount() == null ? 0 : o.getAmount()).sum();
+                .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
         long monthCount = all.stream()
                 .filter(o -> PayrollConstants.ORDER_APPROVED.equals(o.getStatus()) && isThisMonth(o.getSubmitTime(), now))
                 .count();

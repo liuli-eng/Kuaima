@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.boss.service;
 
 import java.time.Duration;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,7 @@ public class BossProfileService {
         long confirmedFinished = items.stream().filter(i -> finishTime(i) != null).count();
         long settledWithin24h = paid.stream().filter(s -> settledWithin24h(s, itemById)).count();
         int settleRate = confirmedFinished == 0 ? 0 : percent(settledWithin24h, confirmedFinished);
-        long totalPayment = paid.stream().mapToLong(s -> s.getTotalAmount() == null ? 0 : s.getTotalAmount()).sum();
+        BigDecimal totalPayment = paid.stream().map(s -> s.getTotalAmount() == null ? BigDecimal.ZERO : s.getTotalAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
         long applicants = items.stream().filter(this::isValid).count();
         long recruiting = orders.stream().filter(o -> BossStatus.ORDER_RECRUITING.equals(o.getOrderStatus())).count();
         long completedOrders = orders.stream().filter(o -> BossStatus.ORDER_COMPLETED.equals(o.getOrderStatus())).count();
@@ -77,7 +78,7 @@ public class BossProfileService {
                 && Integer.valueOf(5).equals(r.getSettlementScore())
                 && Integer.valueOf(5).equals(r.getEnvironmentScore())).count();
         int goodRate = completedItemIds.isEmpty() ? 0 : percent(fiveStarReviews, completedItemIds.size());
-        return new ProfileStats(orders.size(), recruiting, applicants, totalPayment / 100.0,
+        return new ProfileStats(orders.size(), recruiting, applicants, totalPayment,
                 Math.max(0, integrity), goodRate, arrivalRate, settleRate, totalPayment, completedOrders);
     }
 

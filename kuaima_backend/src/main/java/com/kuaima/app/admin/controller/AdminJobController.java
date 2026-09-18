@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
 
 import com.kuaima.app.admin.dto.BossOrderView;
 import com.kuaima.app.common.Result;
@@ -30,6 +31,7 @@ import com.kuaima.app.domain.jobcategory.entity.JobCategory;
 import com.kuaima.app.domain.jobcategory.repository.JobCategoryRepository;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.security.model.LoginUser;
 
 /**
  * 后台招工管理 + 招工审核
@@ -141,15 +143,29 @@ public class AdminJobController {
     /** 审核通过 */
     @Operation(summary = "审核通过", description = "「待审核 → 招工中」，并向全部员工广播 ORDER_PUBLISH 消息。仅待审核的订单可以审核通过")
     @PutMapping("/{id}/audit/pass")
-    public Result<BossOrder> pass(@PathVariable Long id) {
-        return Result.success(bossOrderService.auditPass(id));
+    public Result<BossOrder> pass(@PathVariable Long id, Authentication authentication) {
+        BossOrder order = bossOrderService.auditPass(id);
+        return Result.success(saveAuditInfo(order, authentication));
     }
 
     /** 审核拒绝 */
     @Operation(summary = "审核拒绝", description = "「待审核 → 审核拒绝」，原因追加到 orderRemark。仅待审核的订单可以审核拒绝")
     @PutMapping("/{id}/audit/reject")
-    public Result<BossOrder> reject(@PathVariable Long id, @RequestParam(required = false) String reason) {
-        return Result.success(bossOrderService.auditReject(id, reason));
+    public Result<BossOrder> reject(@PathVariable Long id, @RequestParam(required = false) String reason,
+                                    Authentication authentication) {
+        BossOrder order = bossOrderService.auditReject(id, reason);
+        return Result.success(saveAuditInfo(order, authentication));
+    }
+
+    private BossOrder saveAuditInfo(BossOrder order, Authentication authentication) {
+        String operator = "管理员";
+        if (authentication != null && authentication.getPrincipal() instanceof LoginUser user
+                && user.username() != null && !user.username().isBlank()) {
+            operator = user.username();
+        }
+        order.setAuditBy(operator);
+        order.setAuditTime(new java.util.Date());
+        return orderRepository.save(order);
     }
 
     /** 订单状态流转（admin 端也可手动推进） */

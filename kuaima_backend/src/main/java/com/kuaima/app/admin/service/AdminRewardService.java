@@ -61,13 +61,13 @@ public class AdminRewardService {
         }
         if (recipients.isEmpty()) throw new IllegalArgumentException("没有符合条件的发放用户");
 
-        long amount = 0, min = 0, max = 0;
+        BigDecimal amount = BigDecimal.ZERO, min = BigDecimal.ZERO, max = BigDecimal.ZERO;
         if ("fixed".equals(amountMode)) {
-            amount = cents(body, "amount");
-            if (amount <= 0) throw new IllegalArgumentException("amount 必须大于0");
+            amount = money(body, "amount");
+            if (amount.signum() <= 0) throw new IllegalArgumentException("amount 必须大于0");
         } else {
-            min = cents(body, "min"); max = cents(body, "max");
-            if (min <= 0 || max <= min) throw new IllegalArgumentException("random 金额区间不合法");
+            min = money(body, "min"); max = money(body, "max");
+            if (min.signum() <= 0 || max.compareTo(min) <= 0) throw new IllegalArgumentException("random 金额区间不合法");
         }
         LocalDateTime sendAt = "now".equals(sendMode) ? LocalDateTime.now(ZONE) : dateTime(body.get("sendAt"));
         if (sendAt == null) throw new IllegalArgumentException("定时发放时间不能为空");
@@ -81,7 +81,8 @@ public class AdminRewardService {
         c.setUsers(JSON.toJSONString(recipients.stream().map(User::getId).distinct().toList()));
         c.setPlannedCount(plannedCount); c.setAmountMode(amountMode);
         c.setAmount("fixed".equals(amountMode) ? amount : null); c.setMinAmount(min); c.setMaxAmount(max);
-        c.setTotalAmount("fixed".equals(amountMode) ? amount * plannedCount : (min + max) / 2 * plannedCount);
+        c.setTotalAmount("fixed".equals(amountMode) ? amount.multiply(BigDecimal.valueOf(plannedCount))
+                : min.add(max).divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(plannedCount)));
         c.setStatus("待发放"); c.setSendMode(sendMode); c.setSendAt(sendAt); c.setCreatedAt(LocalDateTime.now(ZONE));
         c.setRemark(text(body, "remark")); c.setOperatorId(operatorId); c.setOperatorName(operatorName);
         c = campaigns.save(c);
@@ -121,17 +122,17 @@ public class AdminRewardService {
         RewardCampaign c = get(id);
         if ("已撤销".equals(c.getStatus()) || "已发放".equals(c.getStatus())) return c;
         List<Long> ids = c.getUsers() == null ? List.of() : JSON.parseArray(c.getUsers(), Long.class);
-        Map<Long, Long> amounts = new LinkedHashMap<>();
+        Map<Long, BigDecimal> amounts = new LinkedHashMap<>();
         for (Long userId : ids) if (!grants.existsByCampaignIdAndUserId(id, userId))
             amounts.put(userId, "fixed".equals(c.getAmountMode()) ? c.getAmount()
-                    : ThreadLocalRandom.current().nextLong(c.getMinAmount(), c.getMaxAmount() + 1));
-        long required = amounts.values().stream().mapToLong(Long::longValue).sum();
+                    : randomMoney(c.getMinAmount(), c.getMaxAmount()));
+        BigDecimal required = amounts.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         RewardFundAccount fund = funds.findForUpdate(1L)
                 .orElseThrow(() -> new IllegalStateException("平台奖励预算账户未配置"));
-        if (fund.getBalance() == null || fund.getBalance() < required) throw new IllegalStateException("平台奖励预算不足");
-        int success = 0; long sum = 0;
-        for (Map.Entry<Long, Long> entry : amounts.entrySet()) {
-            Long userId = entry.getKey(); long value = entry.getValue();
+        if (value(fund.getBalance()).compareTo(required) < 0) throw new IllegalStateException("平台奖励预算不足");
+        int success = 0; BigDecimal sum = BigDecimal.ZERO;
+        for (Map.Entry<Long, BigDecimal> entry : amounts.entrySet()) {
+            Long userId = entry.getKey(); BigDecimal value = entry.getValue();
             User user = users.findById(userId).orElseThrow(() -> new EntityNotFoundException("发放用户不存在: " + userId));
             walletCredit(userId, value, id, c.getRemark());
             RewardGrant grant = new RewardGrant(); grant.setCampaignId(id); grant.setUserId(userId); grant.setAmount(value);
@@ -139,16 +140,16 @@ public class AdminRewardService {
             grant.setGrantedAt(LocalDateTime.now(ZONE)); grants.save(grant);
             if (rewardLedger != null) rewardLedger.credit(userId, value, "ADMIN_REWARD", id,
                     "平台奖励金", c.getRemark(), "ADMIN_REWARD:" + id + ":" + userId);
-            success++; sum += value;
+            success++; sum = sum.add(value);
         }
-        if (required > 0) {
-            fund.setBalance(fund.getBalance() - required); funds.save(fund);
+        if (required.signum() > 0) {
+            fund.setBalance(value(fund.getBalance()).subtract(required)); funds.save(fund);
             RewardFundFlow flow = new RewardFundFlow(); flow.setFundAccountId(fund.getId()); flow.setDirection("outcome");
             flow.setAmount(required); flow.setBalanceAfter(fund.getBalance()); flow.setCampaignId(id);
             flow.setRemark("奖励金发放"); flow.setCreatedAt(LocalDateTime.now(ZONE)); fundFlows.save(flow);
         }
         c.setActualCount((c.getActualCount() == null ? 0 : c.getActualCount()) + success);
-        c.setActualAmount((c.getActualAmount() == null ? 0L : c.getActualAmount()) + sum);
+        c.setActualAmount(value(c.getActualAmount()).add(sum));
         c.setFailedCount(0); c.setErrorMessage(null); c.setStatus("已发放");
         return campaigns.save(c);
     }
@@ -162,11 +163,11 @@ public class AdminRewardService {
         });
     }
 
-    private void walletCredit(Long userId, long amount, Long campaignId, String remark) {
+    private void walletCredit(Long userId, BigDecimal amount, Long campaignId, String remark) {
         Wallet wallet = wallets.findByUserIdForUpdate(userId).orElseGet(() -> {
-            Wallet created = new Wallet(); created.setUserId(userId); created.setBalance(0L); return wallets.save(created);
+            Wallet created = new Wallet(); created.setUserId(userId); created.setBalance(BigDecimal.ZERO); return wallets.save(created);
         });
-        wallet.setBalance((wallet.getBalance() == null ? 0L : wallet.getBalance()) + amount); wallets.save(wallet);
+        wallet.setBalance(value(wallet.getBalance()).add(amount)); wallets.save(wallet);
         WalletFlow flow = new WalletFlow(); flow.setUserId(userId); flow.setDirection("income"); flow.setBizType("REWARD");
         flow.setAmount(amount); flow.setBalanceAfter(wallet.getBalance()); flow.setBizId(campaignId); flow.setRemark(remark);
         walletFlows.save(flow);
@@ -189,17 +190,17 @@ public class AdminRewardService {
         long coverage = grants.countByStatus("SUCCESS"), boss = grants.countByUserRoleAndStatus("BOSS", "SUCCESS");
         long worker = grants.countByUserRoleAndStatus("USER", "SUCCESS");
         LocalDate month = LocalDate.now(ZONE).withDayOfMonth(1);
-        long monthAmount = Optional.ofNullable(grants.sumSuccessAmount(month.atStartOfDay(), month.plusMonths(1).atStartOfDay())).orElse(0L);
+        BigDecimal monthAmount = Optional.ofNullable(grants.sumSuccessAmount(month.atStartOfDay(), month.plusMonths(1).atStartOfDay())).orElse(BigDecimal.ZERO);
         long monthCoverage = grants.countSuccess(month.atStartOfDay(), month.plusMonths(1).atStartOfDay());
-        long totalAmount = campaigns.findAll().stream().mapToLong(c -> c.getActualAmount() == null ? 0 : c.getActualAmount()).sum();
+        BigDecimal totalAmount = campaigns.findAll().stream().map(c -> value(c.getActualAmount())).reduce(BigDecimal.ZERO, BigDecimal::add);
         LocalDate quarter = LocalDate.now(ZONE).withMonth(((LocalDate.now(ZONE).getMonthValue() - 1) / 3) * 3 + 1).withDayOfMonth(1);
-        long quarterAmount = Optional.ofNullable(grants.sumSuccessAmount(quarter.atStartOfDay(), quarter.plusMonths(3).atStartOfDay())).orElse(0L);
-        long previousQuarterAmount = Optional.ofNullable(grants.sumSuccessAmount(quarter.minusMonths(3).atStartOfDay(), quarter.atStartOfDay())).orElse(0L);
-        BigDecimal totalRate = previousQuarterAmount == 0 ? BigDecimal.ZERO
-                : BigDecimal.valueOf(quarterAmount - previousQuarterAmount).multiply(BigDecimal.valueOf(100))
-                        .divide(BigDecimal.valueOf(previousQuarterAmount), 1, RoundingMode.HALF_UP);
+        BigDecimal quarterAmount = Optional.ofNullable(grants.sumSuccessAmount(quarter.atStartOfDay(), quarter.plusMonths(3).atStartOfDay())).orElse(BigDecimal.ZERO);
+        BigDecimal previousQuarterAmount = Optional.ofNullable(grants.sumSuccessAmount(quarter.minusMonths(3).atStartOfDay(), quarter.atStartOfDay())).orElse(BigDecimal.ZERO);
+        BigDecimal totalRate = previousQuarterAmount.signum() == 0 ? BigDecimal.ZERO
+                : quarterAmount.subtract(previousQuarterAmount).multiply(BigDecimal.valueOf(100))
+                        .divide(previousQuarterAmount, 1, RoundingMode.HALF_UP);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("totalAmount", yuan(totalAmount)); result.put("monthAmount", yuan(monthAmount));
+        result.put("totalAmount", totalAmount); result.put("monthAmount", monthAmount);
         result.put("pendingCount", pending); result.put("distributedCount", distributed);
         result.put("canceledCount", canceled); result.put("totalCount", total); result.put("coverage", coverage);
         result.put("bossCoverage", boss); result.put("workerCoverage", worker); result.put("totalRate", totalRate);
@@ -211,14 +212,18 @@ public class AdminRewardService {
         try { return Integer.parseInt(String.valueOf(body.get(key))); }
         catch (Exception e) { throw new IllegalArgumentException(key + " 必须是整数"); }
     }
-    private long cents(Map<String, Object> body, String key) {
-        try { return new BigDecimal(String.valueOf(body.get(key))).movePointRight(2).longValueExact(); }
+    private BigDecimal money(Map<String, Object> body, String key) {
+        try { return new BigDecimal(String.valueOf(body.get(key))).setScale(2, RoundingMode.HALF_UP); }
         catch (Exception e) { throw new IllegalArgumentException(key + " 必须是金额"); }
+    }
+    private BigDecimal randomMoney(BigDecimal min, BigDecimal max) {
+        long cents = ThreadLocalRandom.current().nextLong(min.movePointRight(2).longValueExact(), max.movePointRight(2).longValueExact() + 1);
+        return BigDecimal.valueOf(cents, 2);
     }
     private LocalDateTime dateTime(Object value) {
         if (value == null) return null;
         try { return LocalDateTime.parse(String.valueOf(value).replace('T', ' '), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")); }
         catch (Exception e) { throw new IllegalArgumentException("sendAt 时间格式无效"); }
     }
-    private BigDecimal yuan(Long value) { return value == null ? null : BigDecimal.valueOf(value, 2); }
+    private BigDecimal value(BigDecimal value) { return value == null ? BigDecimal.ZERO : value; }
 }

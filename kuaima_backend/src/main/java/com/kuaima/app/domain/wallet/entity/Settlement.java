@@ -1,5 +1,6 @@
 package com.kuaima.app.domain.wallet.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.kuaima.app.domain.base.entity.BaseEntity;
@@ -12,7 +13,7 @@ import lombok.Setter;
 
 /**
  * 结算支付单：老板对一条"已完成"的报名记录发起结算，
- * 系统按 订单工资 × 工作天数 算出应付零工工资(分)，并叠加平台服务费(分)，生成待支付单。
+ * 系统按订单工资 × 工作天数算出应付零工工资（元），并叠加平台服务费（元），生成待支付单。
  * 支付成功后工资计入零工钱包；服务费归平台，仅记录在结算单上，不流转到个人钱包。
  */
 @Entity
@@ -20,6 +21,15 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Settlement extends BaseEntity {
+    public void setWage(Long value) { this.wage = value == null ? null : BigDecimal.valueOf(value); }
+    public void setWage(long value) { this.wage = BigDecimal.valueOf(value); }
+    public void setWage(BigDecimal value) { this.wage = value; }
+    public void setServiceFee(Long value) { this.serviceFee = value == null ? null : BigDecimal.valueOf(value); }
+    public void setServiceFee(long value) { this.serviceFee = BigDecimal.valueOf(value); }
+    public void setServiceFee(BigDecimal value) { this.serviceFee = value; }
+    public void setTotalAmount(Long value) { this.totalAmount = value == null ? null : BigDecimal.valueOf(value); }
+    public void setTotalAmount(long value) { this.totalAmount = BigDecimal.valueOf(value); }
+    public void setTotalAmount(BigDecimal value) { this.totalAmount = value; }
 
     @Column(comment = "报名记录 id")
     private Long itemId;
@@ -33,14 +43,14 @@ public class Settlement extends BaseEntity {
     @Column(comment = "结算工作天数")
     private Integer workDays;
 
-    @Column(comment = "应付零工工资(分)=订单工资×工作天数")
-    private Long wage;
+    @Column(precision = 18, scale = 2, comment = "应付零工工资（元）=订单工资×工作天数")
+    private BigDecimal wage;
 
-    @Column(comment = "平台服务费(分)，费率规则待定，默认 0")
-    private Long serviceFee;
+    @Column(precision = 18, scale = 2, comment = "平台服务费（元）")
+    private BigDecimal serviceFee;
 
-    @Column(comment = "老板实付总额(分)=工资+服务费")
-    private Long totalAmount;
+    @Column(precision = 18, scale = 2, comment = "老板实付总额（元）=工资+服务费")
+    private BigDecimal totalAmount;
 
     @Column(comment = "结算单状态:待支付/已支付/已取消")
     private String status;

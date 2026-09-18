@@ -126,10 +126,9 @@ public class AdminSettlementController {
         Page<JSONObject> views = result.map(s -> {
             JSONObject obj = (JSONObject) JSON.toJSON(s);
 
-            // 金额转换：分 → 元
-            obj.put("amount", s.getWage() != null ? s.getWage() / 100.0 : 0);
-            obj.put("platformFee", s.getServiceFee() != null ? s.getServiceFee() / 100.0 : 0);
-            obj.put("actualAmount", s.getTotalAmount() != null ? s.getTotalAmount() / 100.0 : 0);
+            obj.put("amount", s.getWage() != null ? s.getWage() : java.math.BigDecimal.ZERO);
+            obj.put("platformFee", s.getServiceFee() != null ? s.getServiceFee() : java.math.BigDecimal.ZERO);
+            obj.put("actualAmount", s.getTotalAmount() != null ? s.getTotalAmount() : java.math.BigDecimal.ZERO);
 
             // 状态映射
             obj.put("status", mapStatus(s.getStatus()));
@@ -224,7 +223,7 @@ public class AdminSettlementController {
 
     private BigDecimal couponAmount(Coupon coupon, BossOrder order) {
         if ("DISCOUNT".equalsIgnoreCase(coupon.getType())) {
-            BigDecimal base = BigDecimal.valueOf(order.getSalary() == null ? 0 : order.getSalary())
+            BigDecimal base = order.getSalary() == null ? BigDecimal.ZERO : order.getSalary()
                     .multiply(BigDecimal.valueOf(order.getDuration() == null ? 0 : order.getDuration()))
                     .multiply(BigDecimal.valueOf(order.getOrderNum() == null ? 0 : order.getOrderNum()));
             BigDecimal discount = coupon.getDiscount() == null ? BigDecimal.TEN : coupon.getDiscount();
@@ -261,9 +260,9 @@ public class AdminSettlementController {
         Settlement s = settlementRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("结算单不存在: " + id));
         JSONObject obj = (JSONObject) JSON.toJSON(s);
-        obj.put("amount", s.getWage() != null ? s.getWage() / 100.0 : 0);
-        obj.put("platformFee", s.getServiceFee() != null ? s.getServiceFee() / 100.0 : 0);
-        obj.put("actualAmount", s.getTotalAmount() != null ? s.getTotalAmount() / 100.0 : 0);
+        obj.put("amount", s.getWage() != null ? s.getWage() : java.math.BigDecimal.ZERO);
+        obj.put("platformFee", s.getServiceFee() != null ? s.getServiceFee() : java.math.BigDecimal.ZERO);
+        obj.put("actualAmount", s.getTotalAmount() != null ? s.getTotalAmount() : java.math.BigDecimal.ZERO);
         obj.put("status", mapStatus(s.getStatus()));
 
         // 关联订单
