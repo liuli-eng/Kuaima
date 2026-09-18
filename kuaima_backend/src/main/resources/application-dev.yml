@@ -22,8 +22,8 @@ jwt:
   expiration: 259200000
 
 wechat:
-  appid: wxe0f1ec79874ea809
-  secret: b75c807a8c5faa84552f94a9a7be6fb1
+  appid: wx4c163632a2e19ea5
+  secret: 14be11aeff46c668f888ac7bdd4a5388
 
 # 阿里云短信（密钥通过环境变量注入，请勿硬编码）
 aliyun:
