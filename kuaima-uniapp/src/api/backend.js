@@ -1073,6 +1073,12 @@ export function claimCoupon(id, userId) {
     method: "POST",
   });
 }
+
+export function listBossCouponAvailableOrders(userCouponId, params = {}) {
+  return request({
+    url: `/boss/coupons/${normalizeId(userCouponId, "userCouponId")}/available-orders?${query({ page: 0, size: 20, ...params })}`,
+  });
+}
 export function getDeposit(userId) {
   return request({ url: `/deposits/${userId}` });
 }

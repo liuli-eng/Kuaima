@@ -86,7 +86,7 @@ public class BossCouponService {
                 .orElseThrow(() -> new EntityNotFoundException("优惠券不存在: " + record.getCouponId()));
         BigDecimal threshold = coupon.getThreshold() != null ? coupon.getThreshold()
                 : Optional.ofNullable(coupon.getMinSpend()).orElse(BigDecimal.ZERO);
-        BigDecimal orderAmount = BigDecimal.valueOf(order.getSalary())
+        BigDecimal orderAmount = order.getSalary()
                 .multiply(BigDecimal.valueOf(order.getDuration()))
                 .multiply(BigDecimal.valueOf(order.getOrderNum()));
         if (orderAmount.compareTo(threshold) < 0) {
@@ -143,18 +143,16 @@ public class BossCouponService {
                     .filter(item -> isPendingItem(item, settlementByItem.getOrDefault(item.getId(), List.of())))
                     .toList();
             if (candidates.isEmpty()) continue;
-            long jobAmountFen = 0L;
-            long serviceFeeFen = 0L;
+            BigDecimal jobAmount = BigDecimal.ZERO;
+            BigDecimal serviceFee = BigDecimal.ZERO;
             for (BaseOrderItem item : candidates) {
                 Settlement pending = settlementByItem.getOrDefault(item.getId(), List.of()).stream()
                         .filter(s -> SettlementStatus.PENDING.equals(s.getStatus())).findFirst().orElse(null);
-                long wage = pending != null && pending.getWage() != null ? pending.getWage() : estimateWage(order, item);
-                long fee = pending != null && pending.getServiceFee() != null ? pending.getServiceFee() : calculateServiceFee(wage);
-                jobAmountFen += wage;
-                serviceFeeFen += fee;
+                BigDecimal wage = pending != null && pending.getWage() != null ? pending.getWage() : estimateWage(order, item);
+                BigDecimal fee = pending != null && pending.getServiceFee() != null ? pending.getServiceFee() : calculateServiceFee(wage);
+                jobAmount = jobAmount.add(wage);
+                serviceFee = serviceFee.add(fee);
             }
-            BigDecimal jobAmount = fenToYuan(jobAmountFen);
-            BigDecimal serviceFee = fenToYuan(serviceFeeFen);
             BigDecimal threshold = coupon.getThreshold() != null ? coupon.getThreshold()
                     : Optional.ofNullable(coupon.getMinSpend()).orElse(BigDecimal.ZERO);
             boolean usable = jobAmount.compareTo(threshold) >= 0;
@@ -199,23 +197,19 @@ public class BossCouponService {
                     || SettlementStatus.PENDING.equals(s.getStatus()));
     }
 
-    private long estimateWage(BossOrder order, BaseOrderItem item) {
-        if (order.getSalary() == null || order.getSalary() <= 0) return 0L;
+    private BigDecimal estimateWage(BossOrder order, BaseOrderItem item) {
+        if (order.getSalary() == null || order.getSalary().signum() <= 0) return BigDecimal.ZERO;
         int days = 1;
         if (item.getWorkDate() != null && item.getFinishDate() != null && !item.getFinishDate().before(item.getWorkDate())) {
             days = (int) (item.getFinishDate().toLocalDate().toEpochDay() - item.getWorkDate().toLocalDate().toEpochDay()) + 1;
         }
-        return order.getSalary() * (long) Math.max(1, days) * 100L;
+        return order.getSalary().multiply(BigDecimal.valueOf(Math.max(1, days))).setScale(2, RoundingMode.HALF_UP);
     }
 
-    private long calculateServiceFee(long wage) {
-        if (serviceFeeRate <= 0) return 0L;
-        return BigDecimal.valueOf(wage).multiply(BigDecimal.valueOf(serviceFeeRate))
-                .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP).longValue();
-    }
-
-    private BigDecimal fenToYuan(long fen) {
-        return BigDecimal.valueOf(fen).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    private BigDecimal calculateServiceFee(BigDecimal wage) {
+        if (serviceFeeRate <= 0) return BigDecimal.ZERO.setScale(2);
+        return wage.multiply(BigDecimal.valueOf(serviceFeeRate))
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
     private Map<String, Object> view(UserCoupon record, Coupon coupon) {

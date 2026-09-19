@@ -37,6 +37,7 @@ import com.kuaima.app.domain.browsehistory.entity.BrowseHistory;
 import com.kuaima.app.domain.browsehistory.repository.BrowseHistoryRepository;
 import com.kuaima.app.domain.jobfavorite.entity.JobFavorite;
 import com.kuaima.app.domain.jobfavorite.repository.JobFavoriteRepository;
+import com.kuaima.app.domain.enterprise.repository.EnterpriseRepository;
 
 /**
  * 零工端岗位收藏与浏览记录。
@@ -50,15 +51,26 @@ public class JobController {
     private final BrowseHistoryRepository browseHistoryRepository;
     private final BossOrderRespository orderRepository;
     private final BossOrderService bossOrderService;
+    private final EnterpriseRepository enterpriseRepository;
 
     public JobController(JobFavoriteRepository favoriteRepository,
                          BrowseHistoryRepository browseHistoryRepository,
                          BossOrderRespository orderRepository,
                          BossOrderService bossOrderService) {
+        this(favoriteRepository, browseHistoryRepository, orderRepository, bossOrderService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public JobController(JobFavoriteRepository favoriteRepository,
+                         BrowseHistoryRepository browseHistoryRepository,
+                         BossOrderRespository orderRepository,
+                         BossOrderService bossOrderService,
+                         EnterpriseRepository enterpriseRepository) {
         this.favoriteRepository = favoriteRepository;
         this.browseHistoryRepository = browseHistoryRepository;
         this.orderRepository = orderRepository;
         this.bossOrderService = bossOrderService;
+        this.enterpriseRepository = enterpriseRepository;
     }
 
     /** 零工公开岗位列表：GET /jobs。仅返回招工中的岗位，不按老板归属过滤。 */
@@ -79,6 +91,12 @@ public class JobController {
         if (!"招工中".equals(order.getOrderStatus())) {
             throw new jakarta.persistence.EntityNotFoundException("岗位不存在或已停止招工");
         }
+        if (enterpriseRepository != null && order.getEnterpriseId() != null) {
+            enterpriseRepository.findById(order.getEnterpriseId())
+                    .ifPresent(enterprise -> order.setCompanyName(
+                            enterprise.getCompanyName() == null ? "" : enterprise.getCompanyName()));
+        }
+        if (order.getCompanyName() == null) order.setCompanyName("");
         return Result.success(order);
     }
 

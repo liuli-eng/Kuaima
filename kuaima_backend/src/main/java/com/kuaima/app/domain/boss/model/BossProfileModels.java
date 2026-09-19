@@ -1,13 +1,15 @@
 package com.kuaima.app.domain.boss.model;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonAlias;
 
 public final class BossProfileModels {
     private BossProfileModels() {}
 
     public record ProfileStats(int totalOrders, long recruitingCount, long applicantCount,
-                               double settledAmount, int integrityScore, int goodRate,
-                               int arrivalRate, int settleRate, long totalPayment,
+                               BigDecimal settledAmount, int integrityScore, int goodRate,
+                               int arrivalRate, int settleRate, BigDecimal totalPayment,
                                long completedOrders) {}
 
     public record RecruitAccounts(boolean hasAuthorizedEmployee, long authorizedEmployeeCount,

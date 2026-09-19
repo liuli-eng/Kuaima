@@ -7,6 +7,7 @@ import com.kuaima.app.security.model.LoginUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
+import java.math.BigDecimal;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -34,10 +35,10 @@ public class BossRewardController {
     }
 
     @PostMapping("/withdraw")
-    @Operation(summary = "申请奖励金提现", description = "amount单位为分；建议每次请求携带唯一Idempotency-Key")
+    @Operation(summary = "申请奖励金提现", description = "amount单位为元；建议每次请求携带唯一Idempotency-Key")
     public Result<Map<String, Object>> withdraw(@RequestBody Map<String, Object> body,
             @RequestHeader(value = "Idempotency-Key", required = false) String key, Authentication authentication) {
-        return Result.success(service.withdraw(bossId(authentication), longValue(body == null ? null : body.get("amount")), key));
+        return Result.success(service.withdraw(bossId(authentication), moneyValue(body == null ? null : body.get("amount")), key));
     }
 
     @GetMapping("/withdrawals")
@@ -57,8 +58,8 @@ public class BossRewardController {
     private void validatePage(int page, int size) {
         if (page < 0 || size < 1 || size > 100) throw new IllegalArgumentException("page 必须大于等于0，size范围为1-100");
     }
-    private Long longValue(Object value) {
-        try { return value == null ? null : Long.valueOf(String.valueOf(value)); }
-        catch (Exception e) { throw new IllegalArgumentException("amount 必须是整数分"); }
+    private BigDecimal moneyValue(Object value) {
+        try { return value == null ? null : new BigDecimal(String.valueOf(value)); }
+        catch (Exception e) { throw new IllegalArgumentException("amount 必须是元金额"); }
     }
 }

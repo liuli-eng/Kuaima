@@ -1,5 +1,6 @@
 package com.kuaima.app.domain.wallet.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.kuaima.app.domain.base.entity.BaseEntity;
@@ -19,12 +20,15 @@ import lombok.Setter;
 @Getter
 @Setter
 public class WithDraw extends BaseEntity {
+    public void setAmount(Long value) { this.amount = value == null ? null : BigDecimal.valueOf(value); }
+    public void setAmount(long value) { this.amount = BigDecimal.valueOf(value); }
+    public void setAmount(BigDecimal value) { this.amount = value; }
 
     @Column(comment = "提现用户")
     private Long userId;
 
-    @Column(comment = "提现金额(分)")
-    private Long amount;
+    @Column(precision = 18, scale = 2, comment = "提现金额（元）")
+    private BigDecimal amount;
 
     @Column(comment = "提现状态:申请中/已打款/打款失败")
     private String status;

@@ -1,6 +1,7 @@
 package com.kuaima.app.admin.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,10 +21,10 @@ public class RewardFundFlow {
     private Long fundAccountId;
     @Column(nullable = false, length = 20)
     private String direction;
-    @Column(nullable = false)
-    private Long amount;
-    @Column(name = "balance_after", nullable = false)
-    private Long balanceAfter;
+    @Column(nullable = false, precision = 18, scale = 2)
+    private BigDecimal amount;
+    @Column(name = "balance_after", nullable = false, precision = 18, scale = 2)
+    private BigDecimal balanceAfter;
     @Column(name = "campaign_id", nullable = false, unique = true)
     private Long campaignId;
     @Column(length = 500)

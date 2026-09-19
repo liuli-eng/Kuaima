@@ -111,7 +111,7 @@
             <text>雇主信息</text>
           </view>
           <view class="desc-text">
-            <text>雇主名称：{{ job.employerName || job.createBy || "未发布" }}</text>
+            <text>企业名称：{{ job.employerName || "未发布" }}</text>
             <text class="desc-row">完成订单：{{ job.orderCompletedCount || job.completedCount || "--" }}单</text>
           </view>
         </view>
@@ -403,7 +403,7 @@ function normalizeJob(item) {
         : item.wageUnit,
     address: item.address || item.workAddress || item.location || "地点待定",
     duration: item.duration ?? item.workHours ?? 0,
-    employerName: item.employerName || item.companyName || item.bossName,
+    employerName: item.employerName || item.companyName || item.enterpriseName || item.bossCompanyName || item.bossName || "",
     orderCompletedCount: item.orderCompletedCount ?? item.completedOrderCount ?? item.orderDoneCount,
   };
 }
@@ -553,6 +553,12 @@ function normalizeJob(item) {
   display: flex;
   align-items: center;
   gap: 4rpx;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.link-chevron {
+  width: 20rpx;
+  height: 20rpx;
   flex-shrink: 0;
 }
 .outdated-tip-row {

@@ -1,5 +1,6 @@
 package com.kuaima.app.domain.payroll.entity;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 import com.kuaima.app.domain.base.entity.BaseEntity;
@@ -11,7 +12,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
-/** 发薪单（后台发薪管理核心实体）。金额以「分」存储。 */
+/** 发薪单（后台发薪管理核心实体）。金额以「元」存储。 */
 @Entity
 @Table(name = "payroll_order", indexes = {
         @Index(name = "idx_payroll_project", columnList = "project_id"),
@@ -21,6 +22,9 @@ import lombok.Setter;
 @Setter
 @Getter
 public class PayrollOrder extends BaseEntity {
+    public void setAmount(Long v) { this.amount = v == null ? null : BigDecimal.valueOf(v); }
+    public void setAmount(long v) { this.amount = BigDecimal.valueOf(v); }
+    public void setAmount(BigDecimal v) { this.amount = v; }
 
     @Column(comment = "发薪单号，如 TR20260910001")
     private String orderNo;
@@ -40,8 +44,8 @@ public class PayrollOrder extends BaseEntity {
     @Column(comment = "转账类型:wage工资/advance预支/other其他")
     private String type = "wage";
 
-    @Column(comment = "应发总金额（分）")
-    private Long amount = 0L;
+    @Column(precision = 18, scale = 2, comment = "应发总金额（元）")
+    private BigDecimal amount = BigDecimal.ZERO;
 
     @Column(comment = "发薪人数")
     private Integer peopleCount = 0;

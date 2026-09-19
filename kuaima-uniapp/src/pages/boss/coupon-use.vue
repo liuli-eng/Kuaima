@@ -24,7 +24,9 @@
         <text class="section-tip">服务费满 {{ minAmount }} 元可用此券</text>
       </view>
 
-      <view class="job-list">
+      <view v-if="loading" class="page-state">可用订单加载中...</view>
+      <view v-else-if="loadError" class="page-state error" @click="loadOrders">{{ loadError }}，点击重试</view>
+      <view v-else class="job-list">
         <view
           v-for="job in jobs"
           :key="job.id"
@@ -68,6 +70,8 @@
 </template>
 
 <script>
+import { listBossCouponAvailableOrders } from "@/api/backend";
+
 function safeParam(value, fallback) {
   return value === undefined || value === null || value === "" || value === "undefined"
     ? fallback
@@ -79,15 +83,12 @@ export default {
     return {
       statusBarHeight: 0,
       coupon: { amount: 20, condition: "满100元可用", name: "新人优惠券", expire: "2026-12-31" },
-      jobs: [
-        { id: 1, name: "电商分拣打包", meta: "3人 · 日结 · 松江区车墩镇", jobFee: 600, serviceFee: 120 },
-        { id: 2, name: "餐饮服务员", meta: "2人 · 日结 · 松江区泗泾镇", jobFee: 1200, serviceFee: 320 },
-        { id: 3, name: "仓库搬运装卸工", meta: "4人 · 日结 · 松江区余山镇", jobFee: 960, serviceFee: 150 },
-        { id: 4, name: "活动现场协助", meta: "2人 · 日结 · 闵行区七宝镇", jobFee: 480, serviceFee: 88 },
-      ],
+      jobs: [],
       selectedJob: null,
       couponId: "",
       userCouponId: "",
+      loading: false,
+      loadError: "",
     };
   },
   computed: {
@@ -115,11 +116,12 @@ export default {
     };
     this.couponId = safeParam(query.couponId, "");
     this.userCouponId = safeParam(query.userCouponId, "");
-    this.selectedJob = this.jobs.find((job) => this.canUse(job)) || null;
+    this.loadOrders();
   },
   methods: {
     canUse(job) {
-      return Number(job?.fee || 0) >= this.minAmount;
+      if (typeof job?.usable === "boolean") return job.usable;
+      return Number(job?.jobFee || 0) >= this.minAmount;
     },
     selectJob(job) {
       if (!this.canUse(job)) return;
@@ -127,6 +129,37 @@ export default {
     },
     goBack() {
       uni.navigateBack();
+    },
+    async loadOrders() {
+      if (!this.userCouponId) {
+        this.jobs = [];
+        this.selectedJob = null;
+        this.loadError = "缺少优惠券领取记录";
+        return;
+      }
+      this.loading = true;
+      this.loadError = "";
+      try {
+        const result = await listBossCouponAvailableOrders(this.userCouponId);
+        const data = result?.data || result || {};
+        const rows = Array.isArray(data) ? data : data.records || data.content || data.list || [];
+        this.jobs = rows.map((item) => ({
+          ...item,
+          id: item.id,
+          name: item.title || item.orderTitle || "待结算岗位",
+          meta: `${item.workerCount || 0}人 · ${item.settlementType || "日结"} · ${item.address || "地点待定"}`,
+          jobFee: Number(item.jobAmount || item.jobFee || 0),
+          serviceFee: Number(item.serviceFee || 0),
+          usable: item.usable === true,
+        }));
+        this.selectedJob = this.jobs.find((job) => this.canUse(job)) || null;
+      } catch (error) {
+        this.jobs = [];
+        this.selectedJob = null;
+        this.loadError = error?.message || "可用订单加载失败";
+      } finally {
+        this.loading = false;
+      }
     },
     useCoupon() {
       if (!this.selectedJob || !this.canUse(this.selectedJob)) return;
@@ -152,6 +185,8 @@ export default {
 .nav-back { color: #333; font-size: 22px; }
 .nav-title { color: #333; font-size: 17px; font-weight: 600; }
 .content { flex: 1; min-height: 0; padding: 16px; box-sizing: border-box; }
+.page-state { padding: 80px 0; color: #999; font-size: 14px; text-align: center; }
+.page-state.error { color: #ff6b35; }
 .coupon-card { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding: 18px; color: #fff; background: linear-gradient(135deg, #ff7a45, #ff4d2e); border-radius: 16px; box-shadow: 0 8px 20px rgba(255, 77, 46, .25); }
 .coupon-amount { font-size: 30px; font-weight: 800; }
 .currency { margin-right: 2px; font-size: 14px; }

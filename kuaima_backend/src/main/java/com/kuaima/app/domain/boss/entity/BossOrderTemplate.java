@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.boss.entity;
 
 import java.util.Date;
+import java.math.BigDecimal;
 import com.kuaima.app.domain.base.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,13 +11,16 @@ import lombok.Setter;
 
 @Entity @Table(name="boss_order_template") @Getter @Setter
 public class BossOrderTemplate extends BaseEntity {
+    public void setSalaryAmount(Integer value) { this.salaryAmount = value == null ? null : BigDecimal.valueOf(value); }
+    public void setSalaryAmount(int value) { this.salaryAmount = BigDecimal.valueOf(value); }
+    public void setSalaryAmount(BigDecimal value) { this.salaryAmount = value; }
     @Column(name="enterprise_id") private Long enterpriseId;
     @Column(nullable=false) private Long ownerUserId;
     @Column(nullable=false, length=100) private String templateName;
     private Long sourceOrderId;
     private String orderTitle;
     private String positionName;
-    private Integer salaryAmount;
+    @Column(precision=18, scale=2) private BigDecimal salaryAmount;
     private String salaryUnit;
     private Date workDate;
     private Date startTime;

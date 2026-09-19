@@ -24,7 +24,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 /**
  * 钱包账务服务：余额出入账 + 流水记录 + 提现申请/模拟打款。
- * 金额一律以分(Long)存储；真实支付/打款渠道后续接入，当前用模拟成功占位。
+ * 金额一律以元(BigDecimal，两位小数)存储；只有支付渠道边界转换为分。
  */
 @Service
 public class WalletService {
@@ -61,7 +61,7 @@ public class WalletService {
         return walletRepository.findByUserId(userId).orElseGet(() -> {
             Wallet wallet = new Wallet();
             wallet.setUserId(userId);
-            wallet.setBalance(0L);
+            wallet.setBalance(BigDecimal.ZERO);
             return walletRepository.save(wallet);
         });
     }
@@ -78,30 +78,37 @@ public class WalletService {
      * @param amount 入账金额(分)，必须大于 0
      */
     @Transactional
-    public Wallet credit(Long userId, Long amount, String bizType, Long bizId, String remark) {
-        if (amount == null || amount <= 0) {
+    public Wallet credit(Long userId, BigDecimal amount, String bizType, Long bizId, String remark) {
+        amount = normalize(amount);
+        if (amount.signum() <= 0) {
             throw new IllegalArgumentException("入账金额必须大于 0");
         }
         Wallet wallet = getOrCreateWallet(userId);
-        wallet.setBalance(wallet.getBalance() + amount);
+        wallet.setBalance(value(wallet.getBalance()).add(amount));
         walletRepository.save(wallet);
         saveFlow(userId, DIR_INCOME, bizType, amount, wallet.getBalance(), bizId, remark);
         return wallet;
+    }
+
+    /** 兼容旧调用方：传入的 Long 按元解释。 */
+    public Wallet credit(Long userId, long amount, String bizType, Long bizId, String remark) {
+        return credit(userId, BigDecimal.valueOf(amount), bizType, bizId, remark);
     }
 
     /**
      * 申请提现：校验余额后立即扣减，生成"申请中"提现单（模拟待打款）。
      */
     @Transactional
-    public WithDraw applyWithdraw(Long userId, Long amount, String account, String remark) {
-        if (amount == null || amount <= 0) {
+    public WithDraw applyWithdraw(Long userId, BigDecimal amount, String account, String remark) {
+        amount = normalize(amount);
+        if (amount.signum() <= 0) {
             throw new IllegalArgumentException("提现金额必须大于 0");
         }
         Wallet wallet = getOrCreateWallet(userId);
-        if (wallet.getBalance() < amount) {
-            throw new IllegalStateException("余额不足，当前可用余额(分): " + wallet.getBalance());
+        if (value(wallet.getBalance()).compareTo(amount) < 0) {
+            throw new IllegalStateException("余额不足，当前可用余额(元): " + wallet.getBalance());
         }
-        wallet.setBalance(wallet.getBalance() - amount);
+        wallet.setBalance(value(wallet.getBalance()).subtract(amount));
         walletRepository.save(wallet);
 
         WithDraw draw = new WithDraw();
@@ -116,6 +123,10 @@ public class WalletService {
 
         saveFlow(userId, DIR_OUTCOME, BIZ_WITHDRAW, amount, wallet.getBalance(), draw.getId(), "提现申请");
         return draw;
+    }
+
+    public WithDraw applyWithdraw(Long userId, long amount, String account, String remark) {
+        return applyWithdraw(userId, BigDecimal.valueOf(amount), account, remark);
     }
 
     /** 模拟打款成功：申请中 -> 已打款（真实渠道：微信商家转账到零工账户） */
@@ -142,13 +153,13 @@ public class WalletService {
         withdrawRepository.save(draw);
 
         Wallet wallet = getOrCreateWallet(draw.getUserId());
-        wallet.setBalance(wallet.getBalance() + draw.getAmount());
+        wallet.setBalance(value(wallet.getBalance()).add(draw.getAmount()));
         walletRepository.save(wallet);
         saveFlow(draw.getUserId(), DIR_INCOME, BIZ_WITHDRAW_REFUND, draw.getAmount(),
                 wallet.getBalance(), draw.getId(), "提现失败退回");
         // 打款失败：通知零工"已退回"
         messageService.sendToUser(draw.getUserId(), UserRole.USER, MessageType.WITHDRAW_FAIL, "提现打款失败",
-                "您申请的提现 " + fenToYuan(draw.getAmount()) + " 元打款失败"
+                "您申请的提现 " + draw.getAmount().stripTrailingZeros().toPlainString() + " 元打款失败"
                         + (reason == null || reason.isBlank() ? "" : "（" + reason + "）")
                         + "，金额已退回钱包。",
                 BizType.WITHDRAW, draw.getId());
@@ -168,7 +179,7 @@ public class WalletService {
     // ==================== 内部方法 ====================
 
     private void saveFlow(Long userId, String direction, String bizType,
-                          Long amount, Long balanceAfter, Long bizId, String remark) {
+                          BigDecimal amount, BigDecimal balanceAfter, Long bizId, String remark) {
         WalletFlow flow = new WalletFlow();
         flow.setUserId(userId);
         flow.setDirection(direction);
@@ -185,11 +196,11 @@ public class WalletService {
                 .orElseThrow(() -> new EntityNotFoundException("提现单不存在: " + id));
     }
 
-    /** 分 -> 元（去除末尾多余的 0），用于打款失败文案展示 */
-    private String fenToYuan(long fen) {
-        return BigDecimal.valueOf(fen)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                .stripTrailingZeros()
-                .toPlainString();
+    private BigDecimal value(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private BigDecimal normalize(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value.setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -23,10 +23,17 @@ import lombok.Setter;
 @Setter
 @Getter
 public class BossOrder extends BaseEntity {
+    public void setSalary(Integer salary) { this.salary = salary == null ? null : BigDecimal.valueOf(salary); }
+    public void setSalary(int salary) { this.salary = BigDecimal.valueOf(salary); }
+    public void setSalary(BigDecimal salary) { this.salary = salary; }
 
     /** 订单所属企业；createBy 继续保留为实际操作人。 */
     @Column(name = "enterprise_id")
     private Long enterpriseId;
+
+    /** 公开岗位详情展示用企业名称，不落库。 */
+    @Transient
+    private String companyName;
 
     @Column(comment = "订单标题")
     private String orderTitle;
@@ -64,8 +71,8 @@ public class BossOrder extends BaseEntity {
     @Column(comment = "结束时间")
     private Date endTime;
 
-    @Column(comment = "工资:元/天")
-    private Integer salary;
+    @Column(precision = 18, scale = 2, comment = "工资（元/天）")
+    private BigDecimal salary;
 
     @Column(comment = "月结才有试工时间")
     private String trialDuration;

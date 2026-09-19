@@ -262,15 +262,19 @@ const isEdit = computed(() => !!routeId.value)
 
 const typeCategoryMap = {
   notice: '规则公示',
+  credit: '信用分规则',
   fee: '收费规则',
   trade: '交易规则',
+  private: '飞单认定与处理规则',
   ip: '知识产权规则'
 }
 
 const typeOptions = [
   { key: 'notice', name: '规则公示' },
+  { key: 'credit', name: '信用分规则' },
   { key: 'fee', name: '收费规则' },
   { key: 'trade', name: '交易规则' },
+  { key: 'private', name: '飞单认定与处理' },
   { key: 'ip', name: '知识产权规则' }
 ]
 

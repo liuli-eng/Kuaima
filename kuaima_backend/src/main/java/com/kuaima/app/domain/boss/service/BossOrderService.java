@@ -40,6 +40,8 @@ import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 import com.kuaima.app.domain.coupon.service.BossCouponService;
+import com.kuaima.app.admin.entity.AdminSetting;
+import com.kuaima.app.admin.repository.AdminSettingRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -54,6 +56,19 @@ public class BossOrderService {
     private final CertificationService certificationService;
     private final BossRecruitSettingsRepository recruitSettingsRepository;
     private final BossCouponService bossCouponService;
+    private final AdminSettingRepository adminSettingRepository;
+
+    public BossOrderService(BossOrderRespository orderRepository,
+                            BaseOrderItemRespository itemRepository,
+                            UserRepository userRepository,
+                            MessageService messageService,
+                            SettlementRespository settlementRespository,
+                            CertificationService certificationService,
+                            BossRecruitSettingsRepository recruitSettingsRepository,
+                            BossCouponService bossCouponService) {
+        this(orderRepository, itemRepository, userRepository, messageService, settlementRespository,
+                certificationService, recruitSettingsRepository, bossCouponService, null);
+    }
 
     @org.springframework.beans.factory.annotation.Autowired
     public BossOrderService(BossOrderRespository orderRepository,
@@ -63,7 +78,8 @@ public class BossOrderService {
                             SettlementRespository settlementRespository,
                             CertificationService certificationService,
                             BossRecruitSettingsRepository recruitSettingsRepository,
-                            BossCouponService bossCouponService) {
+                            BossCouponService bossCouponService,
+                            AdminSettingRepository adminSettingRepository) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
@@ -72,6 +88,7 @@ public class BossOrderService {
         this.certificationService = certificationService;
         this.recruitSettingsRepository = recruitSettingsRepository;
         this.bossCouponService = bossCouponService;
+        this.adminSettingRepository = adminSettingRepository;
     }
 
     public BossOrderService(BossOrderRespository orderRepository,
@@ -105,7 +122,7 @@ public class BossOrderService {
         if (order.getDuration() == null || order.getDuration() <= 0) {
             throw new IllegalArgumentException("工作时长必须大于 0");
         }
-        if (order.getSalary() == null || order.getSalary() <= 0) {
+        if (order.getSalary() == null || order.getSalary().signum() <= 0) {
             throw new IllegalArgumentException("工资必须大于 0");
         }
         validateOrderCoordinates(order.getLongitude(), order.getLatitude());
@@ -200,7 +217,7 @@ public class BossOrderService {
             order.setDuration(update.getDuration());
         }
         if (update.getSalary() != null) {
-            if (update.getSalary() <= 0) {
+            if (update.getSalary() == null || update.getSalary().signum() <= 0) {
                 throw new IllegalArgumentException("工资必须大于 0");
             }
             order.setSalary(update.getSalary());
@@ -636,15 +653,16 @@ public class BossOrderService {
         long recruitingCount = orders.stream().filter(o -> BossStatus.ORDER_RECRUITING.equals(o.getOrderStatus())).count();
         long applicantCount = itemRepository.countApplicantsByBossId(userId);
         List<Long> orderIds = orders.stream().map(BossOrder::getId).toList();
-        long totalSpentCent = orderIds.isEmpty() ? 0 : settlementRespository.findByOrderIdIn(orderIds).stream()
+        BigDecimal totalSpent = orderIds.isEmpty() ? BigDecimal.ZERO : settlementRespository.findByOrderIdIn(orderIds).stream()
                 .filter(s -> SettlementStatus.PAID.equals(s.getStatus()))
-                .mapToLong(s -> s.getTotalAmount() == null ? 0 : s.getTotalAmount()).sum();
+                .map(s -> s.getTotalAmount() == null ? BigDecimal.ZERO : s.getTotalAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         String city = userRepository.findById(userId).map(User::getCity).filter(StringUtils::hasText).orElse("");
         long nearbyWorkers = StringUtils.hasText(city)
                 ? userRepository.countByRoleAndCity(UserRole.USER, city)
                 : userRepository.countByRole(UserRole.USER);
         return new com.kuaima.app.domain.boss.model.BossHomeModels.BossStats(
-                totalOrders, recruitingCount, applicantCount, totalSpentCent / 100.0,
+                totalOrders, recruitingCount, applicantCount, totalSpent,
                 nearbyWorkers, 0, city);
     }
 
@@ -716,7 +734,7 @@ public class BossOrderService {
 
     /** 订单进入待结算时，为已到岗/待结算/已完成零工生成待支付结算单。 */
     private void createPendingSettlements(BossOrder order) {
-        if (order.getSalary() == null || order.getSalary() <= 0) {
+        if (order.getSalary() == null || order.getSalary().signum() <= 0) {
             throw new IllegalStateException("订单工资未设置，无法生成结算单");
         }
         for (BaseOrderItem item : itemRepository.findByOrderId(order.getId())) {
@@ -730,18 +748,41 @@ public class BossOrderService {
                 continue;
             }
             int workDays = resolveSettlementWorkDays(item);
-            long wage = order.getSalary() * (long) workDays * 100L;
+            BigDecimal wage = order.getSalary().multiply(BigDecimal.valueOf(workDays)).setScale(2, java.math.RoundingMode.HALF_UP);
             Settlement settlement = new Settlement();
             settlement.setItemId(item.getId());
             settlement.setOrderId(order.getId());
             settlement.setWorkerId(item.getUserId());
             settlement.setWorkDays(workDays);
             settlement.setWage(wage);
-            settlement.setServiceFee(0L);
-            settlement.setTotalAmount(wage);
+            BigDecimal serviceFee = calculateServiceFee(wage);
+            settlement.setServiceFee(serviceFee);
+            settlement.setTotalAmount(wage.add(serviceFee));
             settlement.setStatus(SettlementStatus.PENDING);
             settlementRespository.save(settlement);
         }
+    }
+
+    private BigDecimal calculateServiceFee(BigDecimal wage) {
+        BigDecimal rate = configuredServiceFeeRate();
+        if (rate.signum() <= 0) return BigDecimal.ZERO.setScale(2);
+        return wage
+                .multiply(rate)
+                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal configuredServiceFeeRate() {
+        if (adminSettingRepository == null) return BigDecimal.ZERO;
+        boolean enabled = adminSettingRepository.findById("rules.platformFeeEnabled")
+                .map(AdminSetting::getSettingValue).map(String::trim).map(Boolean::parseBoolean).orElse(false);
+        if (!enabled) return BigDecimal.ZERO;
+        return adminSettingRepository.findById("rules.feeRate")
+                .map(AdminSetting::getSettingValue).map(String::trim).map(this::parseRate).orElse(BigDecimal.ZERO);
+    }
+
+    private BigDecimal parseRate(String value) {
+        try { return new BigDecimal(value).max(BigDecimal.ZERO).min(BigDecimal.valueOf(100)); }
+        catch (RuntimeException e) { return BigDecimal.ZERO; }
     }
 
     /** 招工人数变更后，根据现有录用/到岗/完成人数重新推进订单并补建结算单。 */

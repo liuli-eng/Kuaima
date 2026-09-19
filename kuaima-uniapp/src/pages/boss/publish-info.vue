@@ -784,7 +784,7 @@ export default {
       this.workTimeDraft = {
         startTime: saved.startTime || saved.start || this.workStartTime.replace("--:--", "08:00"),
         endTime: saved.endTime || saved.end || this.workEndTime.replace("--:--", "18:00"),
-        mode: saved.mode || (saved.restMinutes === 0 ? "none" : "rest"),
+        mode: normalizeWorkTimeMode(saved),
         fixed: saved.fixed !== false,
         checkin: saved.checkin ?? saved.checkinRequired ?? true,
         restSlots: restSlots.length ? restSlots : [{ start: "12:00", end: "13:00" }],
@@ -1013,6 +1013,10 @@ export default {
           const time = {
             startTime: extractTime(detail.startTime) || "08:00",
             endTime: extractTime(detail.endTime) || "18:00",
+            mode: normalizeWorkTimeMode(detail),
+            fixed: true,
+            checkin: true,
+            restSlots: normalizeRestSlots(detail),
             display: formatWorkTime(detail.startTime, detail.endTime),
             selectedDates: startDate ? [startDate] : [],
           };
@@ -1114,6 +1118,10 @@ export default {
           const time = {
             startTime: extractTime(detail.startTime) || "08:00",
             endTime: extractTime(detail.endTime) || "18:00",
+            mode: normalizeWorkTimeMode(detail),
+            fixed: true,
+            checkin: true,
+            restSlots: normalizeRestSlots(detail),
             display: formatWorkTime(detail.startTime, detail.endTime),
           };
           this.applyWorkTime(time);
@@ -1327,9 +1335,65 @@ function uniqueTags(tags) {
 function formatWorkDuration(data, start, end) {
   let minutes = timeRangeMinutes(start, end);
   if (!minutes) return "--工时";
-  const restMinutes = Number(data.restMinutes || 0);
-  if (Number.isFinite(restMinutes) && restMinutes > 0) minutes -= restMinutes;
+  const restMinutes = getRestMinutes(data);
+  minutes -= restMinutes;
   return `${Math.max(0, minutes / 60).toFixed(1)}工时`;
+}
+
+function normalizeWorkTimeMode(value = {}) {
+  const explicit = value.mode || value.restMode || value.breakMode;
+  if (explicit) {
+    const text = String(explicit).toLowerCase();
+    if (["none", "no", "false", "无", "无休息", "无休息时间"].includes(text)) return "none";
+    if (["rest", "break", "true", "有", "有休息", "有休息时间"].includes(text)) return "rest";
+  }
+  if (value.hasRest === false || value.hasBreak === false || value.rest === false || value.breakTime === false) return "none";
+  if (value.hasRest === true || value.hasBreak === true || value.rest === true || value.breakTime === true) return "rest";
+  const slots = value.restSlots || value.slots || value.restPeriods;
+  if (Array.isArray(slots) && slots.length) return "rest";
+  const restMinutes = parseDurationMinutes(value.restMinutes);
+  if (restMinutes > 0) return "rest";
+  const start = extractTime(value.startTime || value.start);
+  const end = extractTime(value.endTime || value.end);
+  const total = timeRangeMinutes(start, end);
+  const durationText = String(value.duration || "");
+  const durationMinutes = /小时|hour|h/i.test(durationText)
+    ? parseDurationMinutes(value.duration)
+    : Number(value.duration) * 60;
+  if (total > 0 && durationMinutes > 0) return durationMinutes < total ? "rest" : "none";
+  return "none";
+}
+
+function normalizeRestSlots(value = {}) {
+  const rows = value.restSlots || value.slots || value.restPeriods;
+  if (!Array.isArray(rows)) return [];
+  return rows.map((slot) => ({ start: slot.start || slot.s || "12:00", end: slot.end || slot.e || "13:00" }));
+}
+
+function getRestMinutes(data = {}) {
+  if (data.mode === "none" || data.fixed === false) return 0;
+  const slots = data.restSlots || data.slots || data.restPeriods || [];
+  if (Array.isArray(slots) && slots.length) {
+    return slots.reduce((total, slot) => {
+      const start = slot.start || slot.s;
+      const end = slot.end || slot.e;
+      return total + timeRangeMinutes(start, end);
+    }, 0);
+  }
+  const stored = parseDurationMinutes(data.restMinutes);
+  return stored >= 0 ? stored : 0;
+}
+
+function parseDurationMinutes(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const text = String(value || "").trim();
+  if (!text) return 0;
+  const hours = text.match(/([\d.]+)\s*(?:小时|h)/i);
+  if (hours) return Number(hours[1]) * 60;
+  const minutes = text.match(/([\d.]+)\s*(?:分钟|min)/i);
+  if (minutes) return Number(minutes[1]);
+  const number = Number(text);
+  return Number.isFinite(number) ? number : 0;
 }
 
 function timeToMinutes(value) {

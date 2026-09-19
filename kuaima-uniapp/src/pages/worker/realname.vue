@@ -65,6 +65,7 @@
 import { ref, computed, onBeforeUnmount } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { request } from "@/api/http";
+import { sendSmsCode } from "@/api/auth";
 
 const phone = ref(uni.getStorageSync("userPhone") || "");
 const code = ref("");
@@ -100,10 +101,7 @@ async function sendCode() {
   }
   sending.value = true;
   try {
-    await request({
-      url: `/auth/sms/send?phone=${encodeURIComponent(phone.value)}`,
-      method: "POST",
-    });
+    await sendSmsCode(phone.value);
     startCountdown();
     uni.showToast({ title: `验证码已发送至 ${maskedPhone.value}`, icon: "success" });
   } catch (err) {

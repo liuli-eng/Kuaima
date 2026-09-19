@@ -11,5 +11,5 @@ public interface RewardFlowRepository extends JpaRepository<RewardFlow, Long> {
     Page<RewardFlow> findByUserIdOrderByCreatedAtDescIdDesc(Long userId, Pageable pageable);
     Page<RewardFlow> findByUserIdAndTypeOrderByCreatedAtDescIdDesc(Long userId, String type, Pageable pageable);
     @Query("select coalesce(sum(f.amount),0) from RewardFlow f where f.userId=:userId and f.type=:type")
-    Long sumByUserIdAndType(@Param("userId") Long userId, @Param("type") String type);
+    java.math.BigDecimal sumByUserIdAndType(@Param("userId") Long userId, @Param("type") String type);
 }
