@@ -21,12 +21,12 @@
 
       <!-- 入口卡片 -->
       <view class="entry-cards">
-        <view class="entry-card members" @click="goMembers">
+        <view class="entry-card members" @click="navigateTo('members')">
           <text class="entry-name">企业成员</text>
           <text class="entry-desc">内部员工 团队协作</text>
           <text class="entry-icon">👥</text>
         </view>
-        <view class="entry-card projects" @click="goProjects">
+        <view class="entry-card projects" @click="navigateTo('projects')">
           <text class="entry-name">项目管理</text>
           <text class="entry-desc">签到考勤 入职离职</text>
           <text class="entry-icon">📊</text>
@@ -37,7 +37,7 @@
     <!-- 滚动内容区 -->
     <scroll-view scroll-y class="scroll-area">
       <!-- 智能招聘 -->
-      <view class="wb-section-title">智能招聘</view>
+      <view class="wb-section-title" style="margin-top:2px;">智能招聘</view>
       <view class="wb-grid">
         <view class="wb-grid-item" @click="navigateTo('resume')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF8C5A, #FF6B35)">
@@ -48,13 +48,22 @@
             <text class="wb-grid-desc">求职人员简历管理</text>
           </view>
         </view>
-        <view class="wb-grid-item" @click="navigateTo('jobs')">
+        <view class="wb-grid-item" @click="navigateTo('position')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)">
             <text class="grid-ico">💼</text>
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">岗位管理</text>
             <text class="wb-grid-desc">零工岗位发布、编辑</text>
+          </view>
+        </view>
+        <view class="wb-grid-item" @click="navigateTo('live-showcase')">
+          <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF7743, #FF5C33)">
+            <text class="grid-ico">📹</text>
+          </view>
+          <view class="wb-grid-info">
+            <text class="wb-grid-name">直播橱窗</text>
+            <text class="wb-grid-desc">抖音直播、带岗招聘</text>
           </view>
         </view>
         <view class="wb-grid-item" @click="navigateTo('talent-list')">
@@ -71,7 +80,7 @@
       <!-- 闪电发薪 -->
       <view class="wb-section-title">闪电发薪</view>
       <view class="wb-grid">
-        <view class="wb-grid-item" @click="navigateTo('project-salary')">
+        <view class="wb-grid-item" @click="navigateTo('payroll')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF8C5A, #FF6B35)">
             <text class="grid-ico">💸</text>
           </view>
@@ -87,6 +96,47 @@
           <view class="wb-grid-info">
             <text class="wb-grid-name">待我审批</text>
             <text class="wb-grid-desc">审核转账申请</text>
+          </view>
+        </view>
+        <view class="wb-grid-item" @click="navigateTo('transfers')">
+          <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF7743, #FF5C33)">
+            <text class="grid-ico">🔄</text>
+          </view>
+          <view class="wb-grid-info">
+            <text class="wb-grid-name">转账记录</text>
+            <text class="wb-grid-desc">转账记录及明细查询</text>
+          </view>
+        </view>
+        <view class="wb-grid-item" @click="navigateTo('balance')">
+          <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FFA94D, #FF8C42)">
+            <text class="grid-ico">👛</text>
+          </view>
+          <view class="wb-grid-info">
+            <text class="wb-grid-name">余额查询</text>
+            <text class="wb-grid-desc">商户号余额管理</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 员工管理 -->
+      <view class="wb-section-title">员工管理</view>
+      <view class="wb-grid">
+        <view class="wb-grid-item" @click="navigateTo('payroll-employees')">
+          <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF8C5A, #FF6B35)">
+            <text class="grid-ico">👥</text>
+          </view>
+          <view class="wb-grid-info">
+            <text class="wb-grid-name">员工列表</text>
+            <text class="wb-grid-desc">企业员工信息管理</text>
+          </view>
+        </view>
+        <view class="wb-grid-item" @click="navigateTo('project-detail')">
+          <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)">
+            <text class="grid-ico">⏰</text>
+          </view>
+          <view class="wb-grid-info">
+            <text class="wb-grid-name">考勤打卡</text>
+            <text class="wb-grid-desc">员工签到考勤管理</text>
           </view>
         </view>
       </view>
@@ -137,26 +187,34 @@ export default {
     };
   },
   onLoad() {
-    // 获取状态栏高度
     try {
       const sysInfo = uni.getSystemInfoSync();
       this.statusBarHeight = sysInfo.statusBarHeight || 44;
     } catch (e) {
       // ignore
     }
-    // 更新时间
     const now = new Date();
     this.currentTime = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
   },
   methods: {
-    goMembers() {
-      uni.navigateTo({ url: "/pages/boss/proj-members" });
-    },
-    goProjects() {
-      uni.navigateTo({ url: "/pages/boss/projects" });
-    },
     navigateTo(page) {
-      uni.navigateTo({ url: `/pages/boss/${page}` });
+      const pages = {
+        members: "/pages/boss/members",
+        projects: "/pages/boss/projects",
+        resume: "/pages/boss/resume",
+        position: "/pages/boss/position",
+        "live-showcase": "/pages/boss/live-showcase",
+        "talent-list": "/pages/boss/talent-list",
+        payroll: "/pages/boss/payroll",
+        approve: "/pages/boss/approve",
+        transfers: "/pages/boss/transfers",
+        balance: "/pages/boss/balance",
+        "payroll-employees": "/pages/boss/payroll-employees",
+        "project-detail": "/pages/boss/project-detail",
+      };
+      if (pages[page]) {
+        uni.navigateTo({ url: pages[page] });
+      }
     },
     switchTab(tab) {
       const pages = {
@@ -297,9 +355,14 @@ export default {
 }
 
 .scroll-area {
-  flex: 1;
+  position: absolute;
+  top: 225px;
+  left: 0;
+  right: 0;
+  bottom: 83px;
   overflow-y: auto;
   padding: 0 16px 20px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .wb-section-title {
@@ -363,7 +426,7 @@ export default {
 }
 
 .tab-bar {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
@@ -385,6 +448,10 @@ export default {
   cursor: pointer;
 }
 
+.tab-item.active .tab-label {
+  color: #FF6B35;
+}
+
 .tab-icon-wrap {
   width: 26px;
   height: 26px;
@@ -395,27 +462,19 @@ export default {
   margin-bottom: 3px;
 }
 
-.tab-icon-wrap.active {
-  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  color: white;
-  margin-bottom: 2px;
-  box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
-}
-
-.tab-ico {
-  font-size: 16px;
-}
-
 .tab-label {
   font-size: 10px;
   color: #999;
   font-weight: 500;
 }
 
-.tab-label.active {
-  color: #ff6b35;
+.tab-item.active .tab-icon-wrap {
+  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  color: white;
+  margin-bottom: 2px;
+  box-shadow: 0 4px 10px rgba(255, 107, 53, 0.3);
 }
 </style>

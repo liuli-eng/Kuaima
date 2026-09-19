@@ -50,6 +50,7 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/service/faqs").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/public/**").permitAll()
                 // 放行 Swagger / OpenAPI 文档相关路径
                 .requestMatchers(
                         "/v3/api-docs/**",

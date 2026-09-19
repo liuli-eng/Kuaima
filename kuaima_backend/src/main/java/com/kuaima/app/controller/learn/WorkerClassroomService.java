@@ -14,10 +14,10 @@ import com.kuaima.app.domain.academy.entity.AcademyQuiz;
 import com.kuaima.app.domain.academy.repository.AcademyQuizRepository;
 import com.alibaba.fastjson2.JSONArray;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-/** 零工课堂首页聚合，统一读取后台已发布的课程、题目和规则。 */
 @Service
 public class WorkerClassroomService {
     public static final int DEFAULT_PASS_SCORE = 60;
@@ -29,6 +29,7 @@ public class WorkerClassroomService {
     private final RulesRepository rules;
     private final AcademyQuizRepository academyQuizzes;
 
+    @Autowired
     public WorkerClassroomService(CourseRepository courses, CourseVideoRepository videos,
                                   ExamRepository exams, ExamQuestionRepository questions,
                                   RulesRepository rules, AcademyQuizRepository academyQuizzes) {

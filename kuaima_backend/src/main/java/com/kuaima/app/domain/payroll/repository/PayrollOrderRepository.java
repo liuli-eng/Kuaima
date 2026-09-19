@@ -12,4 +12,8 @@ public interface PayrollOrderRepository extends JpaRepository<PayrollOrder, Long
     List<PayrollOrder> findByStatus(String status);
 
     List<PayrollOrder> findByProjectId(Long projectId);
+
+    List<PayrollOrder> findByCreatorIdOrderByIdDesc(Long creatorId);
+
+    List<PayrollOrder> findByCreatorIdAndStatusOrderByIdDesc(Long creatorId, String status);
 }

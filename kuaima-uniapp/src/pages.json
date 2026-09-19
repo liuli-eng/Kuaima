@@ -162,6 +162,7 @@
     { "path": "pages/worker/coupon", "style": { "navigationStyle": "custom" } },
     { "path": "pages/worker/checkin", "style": { "navigationStyle": "custom" } },
     { "path": "pages/worker/invite", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/worker/enterprise-apply", "style": { "navigationStyle": "custom" } },
     {
       "path": "pages/worker/appeal-submit",
       "style": { "navigationStyle": "custom" }
@@ -323,10 +324,8 @@
       "path": "pages/boss/history-message",
       "style": { "navigationStyle": "custom" }
     },
-    {
-      "path": "pages/boss/missed-call",
-      "style": { "navigationStyle": "custom" }
-    },
+    { "path": "pages/boss/invite-qrcode", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/missed-call", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/order", "style": { "navigationStyle": "custom" } },
     {
       "path": "pages/boss/publish-template",
@@ -450,7 +449,32 @@
     { "path": "pages/boss/proj-onboard", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/proj-onsite", "style": { "navigationStyle": "custom" } },
     { "path": "pages/boss/proj-onsite-add", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/proj-settings", "style": { "navigationStyle": "custom" } }
+    { "path": "pages/boss/proj-settings", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/members", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/member-apply-list", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/member-detail", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/member-exit", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/member-invite", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/resume", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/resume-list", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/resume-detail", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/resume-import", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/position", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/position-stats", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/position-detail", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/position-form", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/live-showcase", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/hire-worker", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/payroll", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/payroll-employees", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/payroll-employee-detail", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/approve", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/approve-records", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/transfers", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/transfer-export", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/transfer-detail", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/transfer-summary", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/boss/balance", "style": { "navigationStyle": "custom" } }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

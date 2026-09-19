@@ -10,4 +10,6 @@ public interface EnterpriseMemberRepository extends JpaRepository<EnterpriseMemb
     List<EnterpriseMember> findByUserIdAndStatus(Long userId, String status);
     Optional<EnterpriseMember> findFirstByUserIdAndStatusOrderByIdAsc(Long userId, String status);
     boolean existsByEnterpriseIdAndUserIdAndStatus(Long enterpriseId, Long userId, String status);
+    List<EnterpriseMember> findByEnterpriseIdAndStatus(Long enterpriseId, String status);
+    long countByEnterpriseIdAndStatus(Long enterpriseId, String status);
 }

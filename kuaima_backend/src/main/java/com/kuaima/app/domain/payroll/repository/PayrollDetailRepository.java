@@ -11,4 +11,8 @@ public interface PayrollDetailRepository extends JpaRepository<PayrollDetail, Lo
         JpaSpecificationExecutor<PayrollDetail> {
 
     List<PayrollDetail> findByPayrollId(Long payrollId);
+
+    List<PayrollDetail> findByPayrollIdIn(List<Long> payrollIds);
+
+    List<PayrollDetail> findByPhoneOrderByIdDesc(String phone);
 }

@@ -42,4 +42,13 @@ public class PayrollDetail extends BaseEntity {
 
     @Column(comment = "状态:pending待转移/success转账成功/failed转账失败")
     private String status = "pending";
+
+    @Column(comment = "转账单号，如 TR20260910001")
+    private String orderNo;
+
+    @Column(comment = "支付账户，如 招商银行 · ****6688")
+    private String account;
+
+    @Column(comment = "支付时间")
+    private java.util.Date payTime;
 }

@@ -716,6 +716,215 @@ export function inviteTalent(data) {
   return request({ url: "/talent/invite", method: "POST", data });
 }
 
+// -------------------- 转账记录模块 --------------------
+
+/** 转账记录列表与统计：{ keyword, type, projectId, startDate, endDate, creator } */
+export function listTransferRecords(params = {}) {
+  return request({
+    url: `/boss/transfers?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 转账明细列表：{ type, startDate, endDate } */
+export function listTransferDetails(params = {}) {
+  return request({
+    url: `/boss/transfers/details?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 转账明细汇总：{ startDate, endDate } */
+export function getTransferSummary(params = {}) {
+  return request({
+    url: `/boss/transfers/summary?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 导出转账记录（按筛选条件） */
+export function exportTransferRecords(data = {}) {
+  return request({
+    url: "/boss/transfers/export",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 导出转账明细 */
+export function exportTransferDetails(data = {}) {
+  return request({
+    url: "/boss/transfers/details/export",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 导出转账汇总报告 */
+export function exportTransferSummary(data = {}) {
+  return request({
+    url: "/boss/transfers/summary/export",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+// -------------------- 余额查询模块 --------------------
+
+/** 老板商户账户余额查询，身份由当前 JWT 判断 */
+export function getBossBalance() {
+  return request({ url: "/boss/balance", skipUserIdHeader: true });
+}
+
+// -------------------- 人才库（候选人模块） --------------------
+
+/** 人才库列表：type=skilled熟练工/new新零工，favoriteOnly=true 我收藏的 */
+export function listTalentPool(params = {}) {
+  return request({
+    url: `/boss/talent-pool?${query({ page: 0, size: 20, ...params })}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 人才详情（含雇主评价与雇佣记录） */
+export function getTalentPoolDetail(id) {
+  return request({ url: `/boss/talent-pool/${id}`, skipUserIdHeader: true });
+}
+
+/** 添加零工到人才库 */
+export function addTalentToPool(data = {}) {
+  return request({ url: "/boss/talent-pool", method: "POST", data, skipUserIdHeader: true });
+}
+
+/** 收藏/取消收藏人才 */
+export function toggleTalentPoolFavorite(id, favorite) {
+  return request({
+    url: `/boss/talent-pool/${id}/favorite`,
+    method: "PUT",
+    data: favorite === undefined ? {} : { favorite: Boolean(favorite) },
+    skipUserIdHeader: true,
+  });
+}
+
+/** 雇佣零工：{ jobId, jobName, workDate, note } */
+export function hireTalentWorker(id, data = {}) {
+  return request({
+    url: `/boss/talent-pool/${id}/hire`,
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 删除人才库条目 */
+export function removeTalentFromPool(id) {
+  return request({
+    url: `/boss/talent-pool/${id}`,
+    method: "DELETE",
+    skipUserIdHeader: true,
+  });
+}
+
+// -------------------- 批量发薪模块 --------------------
+
+/** 我的发薪单列表 */
+export function listBossPayrollOrders(params = {}) {
+  return request({
+    url: `/boss/payroll/orders?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 创建发薪单：{ title, projectId, projectName, type } */
+export function createBossPayrollOrder(data = {}) {
+  return request({
+    url: "/boss/payroll/orders",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 已审批的发薪记录 */
+export function listApprovedPayrollOrders(params = {}) {
+  return request({
+    url: `/boss/payroll/orders/approved?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 待我审批的发薪单列表 */
+export function listPendingPayrollOrders(params = {}) {
+  return request({
+    url: `/boss/payroll/orders/pending?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 已驳回的发薪记录 */
+export function listRejectedPayrollOrders(params = {}) {
+  return request({
+    url: `/boss/payroll/orders/rejected?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 已审批记录（包含已通过和已驳回） */
+export function listReviewedPayrollOrders(params = {}) {
+  return request({
+    url: `/boss/payroll/orders/reviewed?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 审批通过发薪单 */
+export function approvePayrollOrder(orderId) {
+  return request({
+    url: `/boss/payroll/orders/${normalizeId(orderId, "orderId")}/approve`,
+    method: "PUT",
+    skipUserIdHeader: true,
+  });
+}
+
+/** 驳回发薪单 */
+export function rejectPayrollOrder(orderId, reason) {
+  return request({
+    url: `/boss/payroll/orders/${normalizeId(orderId, "orderId")}/reject`,
+    method: "PUT",
+    data: { reason: reason || "" },
+    skipUserIdHeader: true,
+  });
+}
+
+/** 发薪员工列表与统计 */
+export function listPayrollEmployees(params = {}) {
+  return request({
+    url: `/boss/payroll/employees?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 发薪员工详情（含最近发薪记录） */
+export function getPayrollEmployeeDetail(id) {
+  return request({
+    url: `/boss/payroll/employees/${id}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 添加发薪员工 */
+export function addPayrollEmployee(data = {}) {
+  return request({
+    url: "/boss/payroll/employees",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
 export function listTalentBlacklist(bossId) {
   return request({ url: `/talent/blacklist?${query({ bossId })}` });
 }

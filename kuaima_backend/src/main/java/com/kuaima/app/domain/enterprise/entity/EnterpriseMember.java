@@ -26,4 +26,8 @@ public class EnterpriseMember extends BaseEntity {
     private String status = "ACTIVE";
     @Column(columnDefinition = "TEXT")
     private String permissions;
+    @Column(length = 50)
+    private String title;
+    @Column(name = "invited_by")
+    private Long invitedBy;
 }

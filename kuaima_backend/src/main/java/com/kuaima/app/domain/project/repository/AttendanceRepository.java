@@ -14,4 +14,6 @@ public interface AttendanceRepository extends JpaRepository<AttendanceRecord, Lo
     List<AttendanceRecord> findByProjectIdAndAttendDate(Long projectId, LocalDate attendDate);
 
     List<AttendanceRecord> findByProjectIdAndAttendDateBetween(Long projectId, LocalDate start, LocalDate end);
+
+    List<AttendanceRecord> findTop10ByNameOrderByAttendDateDesc(String name);
 }

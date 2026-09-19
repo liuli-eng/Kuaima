@@ -6,15 +6,15 @@
         <text>←</text>
       </view>
       <text class="nav-title">人才库</text>
-      <view class="nav-right">
-        <text>+</text>
+      <view class="nav-right" @click="openAddSheet">
+        <text>＋</text>
       </view>
     </view>
 
     <!-- 搜索框 -->
     <view class="search-bar">
       <view class="search-input">
-        <text style="color:#999;margin-right:8px;">🔍</text>
+        <text class="search-ico">🔍</text>
         <input
           v-model="searchText"
           type="text"
@@ -28,10 +28,10 @@
 
     <!-- 筛选标签 -->
     <view class="filter-tabs">
-      <text 
-        class="filter-tab" 
+      <text
+        class="filter-tab"
         :class="{ active: currentTab === tab.value }"
-        v-for="tab in tabs" 
+        v-for="tab in tabs"
         :key="tab.value"
         @click="switchFilter(tab)"
       >{{ tab.label }}</text>
@@ -46,16 +46,18 @@
       @scrolltolower="loadMore"
     >
       <view v-if="loading && !workers.length" class="page-state">人才加载中...</view>
-      <view v-else-if="!workers.length" class="page-state">暂无人才信息</view>
+      <view v-else-if="!workers.length" class="empty-state">
+        <text class="empty-ico">📭</text>
+        <text class="empty-text">暂无数据</text>
+      </view>
       <view class="worker-card" v-for="worker in workers" :key="worker.id">
-        <image v-if="worker.avatar" class="worker-avatar avatar-image" :src="worker.avatar" mode="aspectFill" />
-        <view v-else class="worker-avatar" :style="{ background: worker.avatarBg }">
+        <view class="worker-avatar" :style="{ background: worker.avatarBg }">
           {{ worker.initial }}
         </view>
         <view class="worker-info">
           <view class="worker-name">
             {{ worker.name }}
-            <text class="worker-tag">{{ worker.tag }}</text>
+            <text class="worker-tag" :class="{ blue: worker.type === 'new' }">{{ worker.type === 'skilled' ? '熟练工' : '新零工' }}</text>
           </view>
           <text class="worker-meta">{{ worker.meta }}</text>
           <view class="worker-skills">
@@ -63,21 +65,41 @@
           </view>
         </view>
         <view class="worker-action">
-          <button class="btn-sm btn-outline" :disabled="worker.operating" @click="collect(worker)">{{ worker.isFavorite ? "已收藏" : "收藏" }}</button>
-          <button class="btn-sm btn-primary" :disabled="worker.inviting" @click="hire(worker)">{{ worker.inviting ? "邀请中" : "雇佣" }}</button>
+          <button class="btn-sm btn-outline" :disabled="worker.operating" @click="collect(worker)">{{ worker.isFavorite ? '已收藏' : '收藏' }}</button>
+          <button class="btn-sm btn-primary" @click="goHire(worker)">雇佣</button>
         </view>
       </view>
       <view v-if="loadingMore" class="list-state">加载中...</view>
       <view v-else-if="workers.length && !hasMore" class="list-state">没有更多了</view>
     </scroll-view>
+
+    <!-- 添加零工到人才库 浮层 -->
+    <view v-if="showAddSheet" class="add-mask" @click="closeAddSheet" />
+    <view class="add-sheet" :class="{ show: showAddSheet }">
+      <view class="add-head">
+        添加零工到人才库
+        <text class="add-close" @click="closeAddSheet">✕</text>
+      </view>
+      <view class="add-label">自动加入</view>
+      <text class="add-text">订单结算后，未差评或未拉黑的零工都将自动加入人才库。</text>
+      <view class="add-label">订单加入</view>
+      <text class="add-text">您可在「订单-更多」，手动将零工加入人才库。</text>
+      <view class="add-label">面对面邀请加入</view>
+      <view class="add-qr">
+        <text class="add-qr-t">零工扫码加入人才库</text>
+        <view class="add-qr-btn" @click="showQrCode">
+          <text class="qr-ico">▦</text>出示二维码
+        </view>
+      </view>
+      <button class="add-btn" @click="closeAddSheet">确定</button>
+    </view>
   </view>
 </template>
 
 <script>
 import {
-  inviteBossTalent,
-  listBossTalents,
-  toggleBossTalentFavorite,
+  listTalentPool,
+  toggleTalentPoolFavorite,
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
 
@@ -100,15 +122,14 @@ export default {
   data() {
     return {
       statusBarHeight: 0,
-      orderId: null,
       searchText: "",
       searchTimer: null,
       currentTab: "all",
       tabs: [
         { label: "全部", value: "all" },
-        { label: "熟练工", value: "skilled", level: "熟练工" },
-        { label: "新零工", value: "new", level: "新零工" },
-        { label: "我收藏的", value: "favorite", favoriteOnly: true },
+        { label: "熟练工", value: "skilled" },
+        { label: "新零工", value: "new" },
+        { label: "我收藏的", value: "favorite" },
       ],
       workers: [],
       page: 0,
@@ -119,15 +140,14 @@ export default {
       loadingMore: false,
       refreshing: false,
       authRedirecting: false,
+      showAddSheet: false,
     };
   },
-  onLoad(options = {}) {
+  onLoad() {
     const info = typeof uni.getWindowInfo === "function"
       ? uni.getWindowInfo()
       : uni.getSystemInfoSync();
     this.statusBarHeight = Number(info.statusBarHeight || 0);
-    const orderId = Number(options.orderId);
-    this.orderId = Number.isSafeInteger(orderId) && orderId > 0 ? orderId : null;
     this.loadWorkers(true);
   },
   onUnload() {
@@ -135,44 +155,55 @@ export default {
   },
   methods: {
     goBack() {
-      uni.navigateBack()
+      uni.navigateBack({
+        fail: () => uni.reLaunch({ url: "/pages/boss/workbench" }),
+      });
     },
     getFilterParams() {
-      const tab = this.tabs.find((item) => item.value === this.currentTab) || {};
       return {
         keyword: this.searchText.trim() || undefined,
-        level: tab.level,
-        favoriteOnly: tab.favoriteOnly || undefined,
+        type: this.currentTab === "all" || this.currentTab === "favorite"
+          ? undefined
+          : this.currentTab,
+        favoriteOnly: this.currentTab === "favorite" ? true : undefined,
       };
     },
     normalizeWorker(item, index) {
-      const name = item.nickname || item.name || item.realName || `零工${item.id || ""}`;
-      const tags = Array.isArray(item.tags)
-        ? item.tags
-        : String(item.tags || "").split(/[,，]/).filter(Boolean);
-      const rating = item.rating ?? item.goodRate;
+      const name = item.name || `零工${item.id || ""}`;
+      const skills = Array.isArray(item.skills)
+        ? item.skills
+        : String(item.skills || "").split(/[,，]/).filter(Boolean);
+      const rate = item.goodRate;
       const meta = [
         item.experience,
-        item.category || item.jobCategory,
-        rating !== undefined && rating !== null && rating !== "" ? `好评率${rating}${String(rating).includes("%") ? "" : "%"}` : "",
+        item.category,
+        !rate || rate === "无" ? "首次接单" : `好评率${rate}`,
       ].filter(Boolean).join(" · ");
       const colors = [
         "linear-gradient(135deg, #FF6B35, #FF8C5A)",
         "linear-gradient(135deg, #52C41A, #73D13D)",
         "linear-gradient(135deg, #1890FF, #40A9FF)",
+        "linear-gradient(135deg, #FA8C16, #FFC53D)",
+        "linear-gradient(135deg, #EB2F96, #F759AB)",
+        "linear-gradient(135deg, #722ED1, #9254DE)",
       ];
+      let avatarBg = colors[index % colors.length];
+      if (item.avatarColor) {
+        const parts = item.avatarColor.split(",").map((s) => s.trim());
+        if (parts.length >= 2) {
+          avatarBg = `linear-gradient(135deg, ${parts[0]}, ${parts[1]})`;
+        }
+      }
       return {
         ...item,
-        id: item.workerId || item.userId || item.id,
         name,
         initial: name.slice(0, 1),
-        tag: item.level || "零工",
+        type: item.type || "new",
         meta: meta || "暂无工作信息",
-        skills: tags,
-        avatarBg: colors[index % colors.length],
-        isFavorite: item.isFavorite === true || item.favorite === true,
+        skills,
+        avatarBg,
+        isFavorite: item.favorite === true,
         operating: false,
-        inviting: false,
       };
     },
     async loadWorkers(reset = false) {
@@ -181,7 +212,7 @@ export default {
       if (reset) this.loading = true;
       else this.loadingMore = true;
       try {
-        const payload = await listBossTalents({
+        const payload = await listTalentPool({
           page: targetPage,
           size: this.size,
           ...this.getFilterParams(),
@@ -227,8 +258,8 @@ export default {
       worker.operating = true;
       const target = !worker.isFavorite;
       try {
-        const result = await toggleBossTalentFavorite(worker.id, target);
-        worker.isFavorite = result?.favorite ?? result?.isFavorite ?? target;
+        const result = await toggleTalentPoolFavorite(worker.id, target);
+        worker.isFavorite = result?.favorite ?? target;
         uni.showToast({ title: worker.isFavorite ? "收藏成功" : "已取消收藏", icon: "success" });
         if (this.currentTab === "favorite" && !worker.isFavorite) {
           this.workers = this.workers.filter((item) => item.id !== worker.id);
@@ -239,17 +270,19 @@ export default {
         worker.operating = false;
       }
     },
-    async hire(worker) {
-      if (!worker?.id || worker.inviting) return;
-      worker.inviting = true;
-      try {
-        await inviteBossTalent(worker.id, this.orderId ? { orderId: this.orderId } : {});
-        uni.showToast({ title: "邀请已发送", icon: "success" });
-      } catch (error) {
-        this.handleRequestError(error, "邀请发送失败");
-      } finally {
-        worker.inviting = false;
-      }
+    goHire(worker) {
+      uni.navigateTo({
+        url: `/pages/boss/hire-worker?id=${worker.id}`,
+      });
+    },
+    openAddSheet() {
+      this.showAddSheet = true;
+    },
+    closeAddSheet() {
+      this.showAddSheet = false;
+    },
+    showQrCode() {
+      uni.showToast({ title: "原型演示：向零工出示二维码", icon: "none" });
     },
     handleRequestError(error, fallback) {
       const status = Number(error?.code || error?.statusCode);
@@ -283,24 +316,6 @@ export default {
   overflow: hidden;
 }
 
-.status-bar {
-  height: 47px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  background: #fff;
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .nav-bar {
   height: 50px;
   display: flex;
@@ -316,6 +331,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 18px;
+  color: #333;
 }
 
 .nav-title {
@@ -325,8 +342,12 @@ export default {
 }
 
 .nav-right {
+  width: 32px;
+  height: 32px;
   display: flex;
-  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
   color: #333;
 }
 
@@ -341,6 +362,12 @@ export default {
   background: #f5f5f5;
   border-radius: 20px;
   padding: 8px 14px;
+}
+
+.search-ico {
+  font-size: 13px;
+  color: #999;
+  margin-right: 8px;
 }
 
 .search-input input {
@@ -367,8 +394,8 @@ export default {
 }
 
 .filter-tab.active {
-  background: #FFF3ED;
-  color: #FF6B35;
+  background: #fff3ed;
+  color: #ff6b35;
 }
 
 .scroll-area {
@@ -382,6 +409,22 @@ export default {
   color: #999;
   font-size: 14px;
   text-align: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 40px;
+}
+
+.empty-ico {
+  font-size: 60px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.empty-text {
+  font-size: 13px;
+  color: #999;
 }
 
 .worker-card {
@@ -405,12 +448,9 @@ export default {
   flex-shrink: 0;
 }
 
-.avatar-image {
-  display: block;
-}
-
 .worker-info {
   flex: 1;
+  min-width: 0;
 }
 
 .worker-name {
@@ -426,8 +466,13 @@ export default {
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #FFF3ED;
-  color: #FF6B35;
+  background: #fff3ed;
+  color: #ff6b35;
+}
+
+.worker-tag.blue {
+  background: #e6f7ff;
+  color: #1890ff;
 }
 
 .worker-meta {
@@ -465,16 +510,123 @@ export default {
   font-size: 12px;
   font-weight: 500;
   border: none;
+  line-height: 1.4;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: #fff;
 }
 
 .btn-outline {
   background: #fff;
-  color: #FF6B35;
-  border: 1px solid #FF6B35;
+  color: #ff6b35;
+  border: 1px solid #ff6b35;
+}
+
+/* 添加零工到人才库 浮层 */
+.add-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 90;
+}
+
+.add-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 18px 16px 20px;
+  z-index: 91;
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+}
+
+.add-sheet.show {
+  transform: translateY(0);
+}
+
+.add-head {
+  position: relative;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.add-close {
+  position: absolute;
+  right: 0;
+  top: -3px;
+  font-size: 16px;
+  color: #333;
+}
+
+.add-label {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e88a00;
+  padding: 4px 24px 4px 10px;
+  margin: 16px 0 8px;
+  background: linear-gradient(90deg, #ffedd1 0%, rgba(255, 244, 224, 0.45) 70%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 4px;
+}
+
+.add-text {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+  display: block;
+}
+
+.add-qr {
+  background: #f5f6f8;
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.add-qr-t {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.add-qr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 28px;
+  border: 1px solid #409eff;
+  color: #409eff;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #fff;
+}
+
+.qr-ico {
+  font-size: 16px;
+}
+
+.add-btn {
+  width: 100%;
+  margin-top: 22px;
+  background: #fdcd01;
+  border: none;
+  border-radius: 24px;
+  padding: 13px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #222;
 }
 </style>

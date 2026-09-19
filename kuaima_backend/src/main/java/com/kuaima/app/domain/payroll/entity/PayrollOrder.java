@@ -63,4 +63,13 @@ public class PayrollOrder extends BaseEntity {
 
     @Column(comment = "审核时间")
     private Date reviewTime;
+
+    @Column(comment = "驳回原因", length = 500)
+    private String rejectReason;
+
+    @Column(comment = "支付账户，如 招商银行 · ****6688")
+    private String payAccount;
+
+    @Column(comment = "支付日期（批量转账完成时间）")
+    private Date payTime;
 }
