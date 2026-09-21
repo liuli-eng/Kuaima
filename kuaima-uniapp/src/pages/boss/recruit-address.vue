@@ -625,6 +625,9 @@ export default {
 
 .scroll-area {
   flex: 1;
+  height: 0;
+  min-height: 0;
+  width: 100%;
   overflow-y: auto;
 }
 
@@ -789,6 +792,8 @@ export default {
 .sheet-body {
   flex: 1;
   min-height: 0;
+  height: 0;
+  width: 100%;
   /* 让表单占用操作栏上方的剩余空间，避免固定最大高度把内容顶到按钮下面 */
   max-height: none;
   padding: 4px 16px 14px;

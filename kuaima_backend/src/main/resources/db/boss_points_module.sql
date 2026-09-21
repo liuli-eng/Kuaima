@@ -1,11 +1,5 @@
-CREATE TABLE IF NOT EXISTS points_package (
- id BIGINT NOT NULL AUTO_INCREMENT, points INT NOT NULL, price INT NOT NULL,
- tag VARCHAR(100), hot BIT(1) DEFAULT 0, enabled BIT(1) DEFAULT 1, PRIMARY KEY(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-INSERT INTO points_package(id,points,price,tag,hot,enabled) VALUES
- (1,1000,1000,'适用所有订单',0,1),(2,5000,4500,'省5元 更划算',1,1),
- (3,10000,8000,'省20元',0,1),(4,20000,15000,'省50元',0,1)
-ON DUPLICATE KEY UPDATE points=VALUES(points),price=VALUES(price),tag=VALUES(tag),hot=VALUES(hot),enabled=VALUES(enabled);
+-- 积分套餐统一使用 admin_point_purchase_settings.sql 中的 point_package 表，
+-- price 单位为人民币元。旧 points_package 表不再创建或读取。
 CREATE TABLE IF NOT EXISTS points_gift (
  id BIGINT NOT NULL AUTO_INCREMENT,idempotency_key VARCHAR(128) NOT NULL,boss_id BIGINT NOT NULL,
  worker_id BIGINT NOT NULL,points INT NOT NULL,create_time DATETIME NOT NULL,PRIMARY KEY(id),

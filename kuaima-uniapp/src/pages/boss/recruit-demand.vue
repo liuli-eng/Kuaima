@@ -233,6 +233,7 @@ import {
   redirectByPublishEligibility,
 } from "@/api/publish-eligibility";
 import { handleTokenInvalid } from "@/api/auth";
+import { normalizeBossAddressSelection, validateBossWorkLocation } from "@/utils/boss-address";
 
 function mergeTemplateSource(detail = {}, source = {}) {
   const merged = { ...source, ...detail };
@@ -720,6 +721,12 @@ export default {
             ? workTime.selectedDates[0]
             : formatLocalDate(new Date());
         const workLocation = uni.getStorageSync("workLocationSelection") || {};
+        const location = normalizeBossAddressSelection(workLocation);
+        const locationValidation = validateBossWorkLocation(location);
+        if (!locationValidation.valid) {
+          uni.showToast({ title: locationValidation.message, icon: "none" });
+          return;
+        }
         const taskContent = uni.getStorageSync("taskContent") || {};
         const genderAge = uni.getStorageSync("genderAgeSelection") || {};
         const durationMatch = String(workTime.duration || "").match(/[\d.]+/);
@@ -743,7 +750,10 @@ export default {
           postion: this.jobName,
           orderNum: Number(this.count),
           duration,
-          address: workLocation.address || workLocation.display || "",
+          addressId: location.addressId || undefined,
+          address: location.address,
+          longitude: location.longitude,
+          latitude: location.latitude,
           tags: payTags,
           startTime: `${dateText} ${workTime.startTime || "08:00"}:00`,
           endTime: `${dateText} ${workTime.endTime || "18:00"}:00`,

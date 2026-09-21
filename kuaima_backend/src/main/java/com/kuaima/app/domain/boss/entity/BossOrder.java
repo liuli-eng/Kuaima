@@ -125,4 +125,8 @@ public class BossOrder extends BaseEntity {
     @Transient
     private Long userCouponId;
 
+    /** 创建/编辑岗位时引用的企业常用地址 ID，不落库。 */
+    @Transient
+    private Long addressId;
+
 }

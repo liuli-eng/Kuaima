@@ -7,12 +7,13 @@ import com.kuaima.app.domain.boss.constant.BossStatus;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.points.entity.PointsAccount;
 import com.kuaima.app.domain.points.repository.PointsAccountRepository;
+import com.kuaima.app.domain.reward.entity.RewardAccount;
+import com.kuaima.app.domain.reward.repository.RewardAccountRepository;
 import com.kuaima.app.domain.starlevel.entity.UserStarLevel;
 import com.kuaima.app.domain.starlevel.repository.UserStarLevelRepository;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
-import com.kuaima.app.domain.wallet.repository.WalletFlowRespository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -24,9 +25,9 @@ class WorkerProfileOverviewServiceTests {
         SettlementRespository settlements = mock(SettlementRespository.class);
         PointsAccountRepository points = mock(PointsAccountRepository.class);
         UserStarLevelRepository levels = mock(UserStarLevelRepository.class);
-        WalletFlowRespository walletFlows = mock(WalletFlowRespository.class);
+        RewardAccountRepository rewardAccounts = mock(RewardAccountRepository.class);
         WorkerProfileOverviewService service = new WorkerProfileOverviewService(
-                users, items, settlements, points, levels, walletFlows);
+                users, items, settlements, points, levels, rewardAccounts);
         User user = new User(); user.setId(30L); user.setCreditScore(88);
         PointsAccount account = new PointsAccount(); account.setBalance(500);
         UserStarLevel level = new UserStarLevel(); level.setLevel(3);
@@ -43,7 +44,9 @@ class WorkerProfileOverviewServiceTests {
         when(points.findByUserIdAndRole(30L, com.kuaima.app.domain.user.constant.UserRole.USER))
                 .thenReturn(Optional.of(account));
         when(levels.findByUserId(30L)).thenReturn(Optional.of(level));
-        when(walletFlows.sumIncomeByUserIdAndBizType(30L, "REWARD")).thenReturn(5000L);
+        RewardAccount rewardAccount = new RewardAccount();
+        rewardAccount.setBalance(new java.math.BigDecimal("50.00"));
+        when(rewardAccounts.findByUserId(30L)).thenReturn(Optional.of(rewardAccount));
 
         var result = service.overview(30L);
 
@@ -61,9 +64,9 @@ class WorkerProfileOverviewServiceTests {
         SettlementRespository settlements = mock(SettlementRespository.class);
         PointsAccountRepository points = mock(PointsAccountRepository.class);
         UserStarLevelRepository levels = mock(UserStarLevelRepository.class);
-        WalletFlowRespository walletFlows = mock(WalletFlowRespository.class);
+        RewardAccountRepository rewardAccounts = mock(RewardAccountRepository.class);
         WorkerProfileOverviewService service = new WorkerProfileOverviewService(
-                users, items, settlements, points, levels, walletFlows);
+                users, items, settlements, points, levels, rewardAccounts);
         User user = new User(); user.setId(30L);
         when(users.findById(30L)).thenReturn(Optional.of(user));
 

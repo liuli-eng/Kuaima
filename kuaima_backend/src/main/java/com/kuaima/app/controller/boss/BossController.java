@@ -113,7 +113,7 @@ public class BossController {
     // ==================== 招工订单 ====================
 
     /** 发布订单 */
-    @Operation(summary = "发布招工订单", description = "创建 BossOrder，初始状态自动为「待审核」，admin 审核通过后变为「招工中」并广播新岗位消息。必填：orderTitle、type、postion、orderNum、duration、salary")
+    @Operation(summary = "发布招工订单", description = "创建 BossOrder，初始状态自动为「待审核」。工作地址必须提供 longitude 和 latitude；也可传当前企业常用地址 addressId，由后端复制地址和坐标。")
     @PostMapping("/order")
     public Result<BossOrder> createOrder(@RequestBody BossOrder order, Authentication authentication) {
         EnterpriseContextService.Context context = requireEnterprise(authentication, "ORDER_CREATE");
@@ -133,7 +133,9 @@ public class BossController {
     @PutMapping("/order/{id}")
     public Result<BossOrder> updateOrder(@PathVariable Long id, @RequestBody BossOrder order,
                                          Authentication authentication) {
+        EnterpriseContextService.Context context = requireEnterprise(authentication, "ORDER_CREATE");
         requireOwnedOrder(id, authentication);
+        order.setEnterpriseId(context.enterprise().getId());
         return Result.success(bossOrderService.updateOrder(id, order));
     }
 
@@ -277,21 +279,33 @@ public class BossController {
     /** 保存草稿 */
     @Operation(summary = "保存订单草稿", description = "创建 BossOrder，orderStatus 置为「草稿」")
     @PostMapping("/order/draft")
-    public Result<BossOrder> saveDraft(@RequestBody BossOrder order) {
+    public Result<BossOrder> saveDraft(@RequestBody BossOrder order, Authentication authentication) {
+        EnterpriseContextService.Context context = requireEnterprise(authentication, "ORDER_CREATE");
+        order.setCreateBy(context.user().getId());
+        order.setEnterpriseId(context.enterprise().getId());
         return Result.success(bossOrderService.saveDraft(order));
     }
 
     /** 草稿列表：/boss/orders/drafts?userId=1 */
     @Operation(summary = "草稿订单列表", description = "返回当前用户的草稿订单列表")
     @GetMapping("/orders/drafts")
-    public Result<List<BossOrder>> listDrafts(@RequestParam Long userId) {
-        return Result.success(bossOrderService.listDrafts(userId));
+    public Result<List<BossOrder>> listDrafts(@RequestParam(required = false) Long userId,
+                                               Authentication authentication) {
+        Long currentBossId = requireCurrentBossId(authentication);
+        if (userId != null && !currentBossId.equals(userId)) {
+            throw new ForbiddenBusinessException("只能查询当前老板账号草稿");
+        }
+        return Result.success(bossOrderService.listDrafts(currentBossId));
     }
 
     /** 更新草稿 */
     @Operation(summary = "更新订单草稿", description = "按 id 更新草稿订单字段")
     @PutMapping("/order/{id}/draft")
-    public Result<BossOrder> updateDraft(@PathVariable Long id, @RequestBody BossOrder order) {
+    public Result<BossOrder> updateDraft(@PathVariable Long id, @RequestBody BossOrder order,
+                                         Authentication authentication) {
+        EnterpriseContextService.Context context = requireEnterprise(authentication, "ORDER_CREATE");
+        requireOwnedOrder(id, authentication);
+        order.setEnterpriseId(context.enterprise().getId());
         return Result.success(bossOrderService.updateDraft(id, order));
     }
 

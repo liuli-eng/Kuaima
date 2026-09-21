@@ -28,5 +28,8 @@ public class RewardFlow {
     @Column(name = "biz_type", length = 50) private String bizType;
     @Column(name = "biz_id") private Long bizId;
     @Column(name = "source_key", nullable = false, length = 128) private String sourceKey;
+    @Column(name = "idempotency_key", length = 128) private String idempotencyKey;
+    @Column(length = 20) private String status;
+    @Column(length = 500) private String description;
     @Column(name = "created_at", nullable = false) private LocalDateTime createdAt;
 }

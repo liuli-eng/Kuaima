@@ -354,11 +354,24 @@ async function loadJobs() {
   loading.value = true;
   error.value = false;
   try {
-    const result = await listPublicJobs({
+    const params = {
       page: 0,
       size: 20,
       type: activeTab.value === "DAY" ? "daily" : activeTab.value === "PRESS" ? "heldBack" : "month",
-    });
+    };
+    const distanceText = String(filterForm.distance || "不限");
+    if (distanceText !== "不限") {
+      const distanceKm = Number(distanceText.match(/[\d.]+/)?.[0]);
+      const currentLocation = await requestCurrentLocation();
+      if (currentLocation && Number.isFinite(distanceKm) && distanceKm > 0) {
+        params.longitude = currentLocation.longitude;
+        params.latitude = currentLocation.latitude;
+        params.distanceKm = distanceKm;
+      } else if (!currentLocation) {
+        uni.showToast({ title: "请授权定位后才能按距离筛选", icon: "none" });
+      }
+    }
+    const result = await listPublicJobs(params);
     const records = result?.records || result;
     if (Array.isArray(records) && records.length > 0) {
       const apiJobs = records.map((item) => {
@@ -425,6 +438,7 @@ function chooseLocation() {
       title: result ? "当前位置已更新" : "暂时无法获取当前位置",
       icon: result ? "success" : "none",
     });
+    if (result && filterForm.distance !== "不限") loadJobs();
   });
 }
 
@@ -434,9 +448,10 @@ function showFilter() {
 function resetFilter() {
   Object.assign(filterForm, filterDefaults);
 }
-function confirmFilter() {
+async function confirmFilter() {
   uni.setStorageSync("workerJobFilter", { ...filterForm });
   filterVisible.value = false;
+  await loadJobs();
 }
 
 function search() {

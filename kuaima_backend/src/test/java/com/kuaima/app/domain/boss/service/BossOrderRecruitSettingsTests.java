@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Date;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -130,6 +131,8 @@ class BossOrderRecruitSettingsTests {
         order.setOrderNum(1);
         order.setDuration(1);
         order.setSalary(100);
+        order.setLongitude(new BigDecimal("121.4737010"));
+        order.setLatitude(new BigDecimal("31.2304160"));
         order.setStartTime(new Date());
         return order;
     }

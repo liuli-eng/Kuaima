@@ -391,9 +391,10 @@
 </template>
 
 <script>
-import { getBossOrderTemplate, getOrder } from "@/api/backend";
+import { getBossOrderTemplate, getOrder, listBossRecruitAddresses } from "@/api/backend";
 import { checkBossPublishEligibility } from "@/api/publish-eligibility";
 import { handleTokenInvalid } from "@/api/auth";
+import { normalizeBossAddressSelection, readAddressCoordinates } from "@/utils/boss-address";
 
 function buildDateOptions() {
   const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -435,6 +436,9 @@ function mergeTemplateSource(detail = {}, source = {}) {
     "jobIds",
     "jobCategoryId",
     "address",
+    "addressId",
+    "longitude",
+    "latitude",
     "signMode",
     "phoneNotify",
     "signNotify",
@@ -545,6 +549,9 @@ export default {
       workLocationValue: "",
       workLocationName: "",
       workLocationAddress: "",
+      workLocationAddressId: null,
+      workLocationLongitude: null,
+      workLocationLatitude: null,
       workTimeValue: "",
       workTimeData: {},
       jobName: "",
@@ -713,6 +720,7 @@ export default {
     if (this.templateId) await this.loadTemplate(this.templateId);
     if (this.orderId) await this.loadOrder(this.orderId);
     if (this.sourceOrderId) await this.loadOrder(this.sourceOrderId);
+    this.loadCommonAddresses();
     this._eligibilityInitialized = true;
     this.ensurePublishEligibility();
   },
@@ -746,6 +754,20 @@ export default {
     }
   },
   methods: {
+    async loadCommonAddresses() {
+      try {
+        const result = await listBossRecruitAddresses();
+        const rows = Array.isArray(result)
+          ? result
+          : result?.records || result?.content || [];
+        uni.setStorageSync(
+          "bossRecruitAddressOptions",
+          rows.map(normalizeBossAddressSelection),
+        );
+      } catch (error) {
+        uni.showToast({ title: error?.message || "常用地址加载失败", icon: "none" });
+      }
+    },
     openTaskSheet() {
       const saved = uni.getStorageSync("taskContent") || {};
       this.taskDraft = {
@@ -1003,8 +1025,11 @@ export default {
         }
         if (detail.address) {
           this.applyWorkLocation({
+            addressId: detail.addressId,
             name: detail.addressName || detail.locationName || "工作地点",
             address: detail.address,
+            longitude: detail.longitude ?? detail.lng,
+            latitude: detail.latitude ?? detail.lat,
             display: detail.address,
           });
         }
@@ -1095,8 +1120,11 @@ export default {
         this.applyTaskContent(taskContent);
         if (detail.address) {
           this.applyWorkLocation({
+            addressId: detail.addressId,
             name: detail.addressName || detail.locationName || "工作地点",
             address: detail.address,
+            longitude: detail.longitude ?? detail.lng,
+            latitude: detail.latitude ?? detail.lat,
             display: detail.address,
           });
         }
@@ -1109,8 +1137,11 @@ export default {
           uni.setStorageSync("taskContent", taskContent);
         }
         if (detail.address) {
-          uni.setStorageSync("workLocationSelection", {
+        uni.setStorageSync("workLocationSelection", {
+            addressId: detail.addressId,
             address: detail.address,
+            longitude: detail.longitude ?? detail.lng,
+            latitude: detail.latitude ?? detail.lat,
             display: detail.address,
           });
         }
@@ -1201,12 +1232,22 @@ export default {
       });
     },
     applyWorkLocation(data = {}) {
-      const name = String(data.name || data.locationName || "").trim();
-      const address = String(data.address || data.detail || "").trim();
+      const normalized = normalizeBossAddressSelection(data);
+      const name = String(normalized.name || data.locationName || "").trim();
+      const address = String(normalized.address || data.detail || "").trim();
       const display = String(data.display || [name, address].filter(Boolean).join(" ")).trim();
       if (display) this.workLocationValue = display;
       this.workLocationName = name || this.workLocationName;
       this.workLocationAddress = address || display || this.workLocationAddress;
+      this.workLocationAddressId = normalized.addressId;
+      this.workLocationLongitude = normalized.longitude;
+      this.workLocationLatitude = normalized.latitude;
+      uni.setStorageSync("workLocationSelection", {
+        ...normalized,
+        name,
+        address,
+        display,
+      });
     },
     applyWorkTime(data = {}) {
       this.workTimeData = { ...this.workTimeData, ...data };

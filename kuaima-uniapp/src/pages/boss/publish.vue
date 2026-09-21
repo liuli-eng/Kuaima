@@ -16,7 +16,7 @@
         <text style="color: #333">←</text>
       </view>
       <text class="nav-title">发布岗位</text>
-      <text class="nav-right">草稿箱</text>
+      <text class="nav-right" @click="navigateTo('order-drafts')">草稿箱</text>
     </view>
 
     <scroll-view scroll-y class="scroll-area">
@@ -95,8 +95,17 @@
             class="location-detail"
             placeholder="请输入详细地址"
             v-model="address"
+            @input="handleAddressInput"
           />
         </view>
+        <picker
+          v-if="addressOptions.length"
+          mode="selector"
+          :range="addressOptions"
+          @change="selectCommonAddress"
+        >
+          <view class="common-address-picker">选择常用地址</view>
+        </picker>
       </view>
 
       <!-- 工作时间 -->
@@ -223,7 +232,14 @@
 </template>
 
 <script>
-import { createOrder } from "@/api/backend";
+import {
+  createOrder,
+  getOrder,
+  listBossRecruitAddresses,
+  saveOrderDraft,
+  updateOrderDraft,
+} from "@/api/backend";
+import { normalizeBossAddressSelection, validateBossWorkLocation } from "@/utils/boss-address";
 
 export default {
   data() {
@@ -244,7 +260,11 @@ export default {
       settleTypes: ["日结", "月结", "压薪日结"],
       settleTypeActive: 0,
       peopleCount: 5,
-      address: "朝阳区亦庄经济开发区",
+      address: "",
+      addressId: null,
+      longitude: null,
+      latitude: null,
+      commonAddresses: [],
       workDates: ["今天", "明天", "本周", "指定日期"],
       workDateActive: 0,
       startTime: "08:00",
@@ -265,9 +285,58 @@ export default {
       contactName: "张经理",
       contactPhone: "138****8888",
       publishing: false,
+      savingDraft: false,
+      draftId: null,
     };
   },
+  computed: {
+    addressOptions() {
+      return this.commonAddresses.map((item) => item.display || item.address || item.name || "常用地址");
+    },
+  },
+  async onLoad(options = {}) {
+    this.draftId = options.draftId || null;
+    try {
+      const result = await listBossRecruitAddresses();
+      const rows = Array.isArray(result) ? result : result?.records || result?.content || [];
+      this.commonAddresses = rows.map(normalizeBossAddressSelection);
+    } catch (error) {
+      uni.showToast({ title: error?.message || "常用地址加载失败", icon: "none" });
+    }
+    if (this.draftId) {
+      try {
+        const cached = uni.getStorageSync("editingOrderDraft");
+        const detail =
+          cached && String(cached.id) === String(this.draftId)
+            ? cached
+            : await getOrder(this.draftId);
+        this.jobTitle = detail?.orderTitle || detail?.postion || "";
+        this.addressId = detail?.addressId || null;
+        this.address = detail?.address || "";
+        this.longitude = detail?.longitude ?? detail?.lng ?? null;
+        this.latitude = detail?.latitude ?? detail?.lat ?? null;
+        this.peopleCount = Number(detail?.orderNum || 1);
+        this.salary = Number(detail?.salary || 0);
+        this.jobDesc = detail?.orderContent || "";
+      } catch (error) {
+        uni.showToast({ title: error?.message || "草稿加载失败", icon: "none" });
+      }
+    }
+  },
   methods: {
+    selectCommonAddress(event) {
+      const selected = this.commonAddresses[Number(event.detail.value)];
+      if (!selected) return;
+      this.addressId = selected.addressId;
+      this.address = selected.address;
+      this.longitude = selected.longitude;
+      this.latitude = selected.latitude;
+    },
+    handleAddressInput() {
+      this.addressId = null;
+      this.longitude = null;
+      this.latitude = null;
+    },
     navigateTo(pageName) {
       // 原型使用 boss-home/boss-order 等别名，实际 uni-app 页面目录为 boss/home、boss/order。
       const routeMap = {
@@ -306,8 +375,45 @@ export default {
         this.benefitActive.push(index);
       }
     },
-    saveDraft() {
-      uni.showToast({ title: "草稿已保存！", icon: "success" });
+    async saveDraft() {
+      if (this.savingDraft) return;
+      const location = normalizeBossAddressSelection({
+        addressId: this.addressId,
+        address: this.address,
+        longitude: this.longitude,
+        latitude: this.latitude,
+      });
+      const validation = validateBossWorkLocation(location, { allowEmpty: true });
+      if (!validation.valid) {
+        uni.showToast({ title: validation.message, icon: "none" });
+        return;
+      }
+      this.savingDraft = true;
+      try {
+        const payload = {
+          orderTitle: this.jobTitle,
+          postion: this.jobTitle,
+          orderNum: Number(this.peopleCount),
+          addressId: location.addressId || undefined,
+          ...(location.address
+            ? {
+                address: location.address,
+                longitude: location.longitude,
+                latitude: location.latitude,
+              }
+            : {}),
+          type: ["daily", "month", "heldBack"][this.settleTypeActive] || "daily",
+          salary: Number(this.salary),
+          orderContent: this.jobDesc || this.otherReq,
+        };
+        if (this.draftId) await updateOrderDraft(this.draftId, payload);
+        else await saveOrderDraft(payload);
+        uni.showToast({ title: "草稿已保存！", icon: "success" });
+      } catch (error) {
+        uni.showToast({ title: error?.message || "草稿保存失败", icon: "none" });
+      } finally {
+        this.savingDraft = false;
+      }
     },
     async publishJob() {
       if (this.publishing) return;
@@ -321,6 +427,18 @@ export default {
             const dateText = new Date().toISOString().slice(0, 10);
             const start = `${dateText} ${this.startTime}:00`;
             const end = `${dateText} ${this.endTime}:00`;
+            const location = normalizeBossAddressSelection({
+              addressId: this.addressId,
+              address: this.address,
+              longitude: this.longitude,
+              latitude: this.latitude,
+            });
+            const validation = validateBossWorkLocation(location);
+            if (!validation.valid) {
+              uni.showToast({ title: validation.message, icon: "none" });
+              this.publishing = false;
+              return;
+            }
             try {
               await createOrder({
                 orderTitle: this.jobTitle,
@@ -328,7 +446,10 @@ export default {
                 postion: this.jobTitle,
                 orderNum: Number(this.peopleCount),
                 duration: 1,
-                address: this.address,
+                addressId: location.addressId || undefined,
+                address: location.address,
+                longitude: location.longitude,
+                latitude: location.latitude,
                 tags: this.jobRequirements
                   .filter((_, i) => this.reqActive.includes(i))
                   .join(","),
@@ -523,6 +644,16 @@ export default {
   font-size: 14px;
   border: none;
   outline: none;
+}
+
+.common-address-picker {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff3ed;
+  color: #ff6b35;
+  font-size: 13px;
+  text-align: center;
 }
 
 .time-range {

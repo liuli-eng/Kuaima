@@ -1,6 +1,7 @@
 package com.kuaima.app.config;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
@@ -97,7 +98,7 @@ public class PointPurchaseSettingsInitializer implements CommandLineRunner {
         p.setName(name);
         p.setSub(sub);
         p.setPoints(points);
-        p.setPrice(price);
+        p.setPrice(BigDecimal.valueOf(price));
         p.setOriginalPrice(originalPrice);
         p.setSave(save);
         p.setRec(rec);

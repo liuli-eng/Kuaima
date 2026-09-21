@@ -171,6 +171,7 @@ import {
   updateBossRecruitAddress,
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
+import { normalizeBossAddressSelection, readAddressCoordinates } from "@/utils/boss-address";
 export default {
   data() {
     return {
@@ -213,10 +214,9 @@ export default {
         const rows = Array.isArray(result) ? result : result?.records || result?.content || [];
         this.addresses = rows.map((item) => ({
           ...item,
-          address: item.detail || item.address || "",
+          address: [item.city, item.district, item.detail || item.address].filter(Boolean).join("") || item.address || "",
           tags: Array.isArray(item.tags) ? item.tags : [],
-          latitude: Number(item.latitude ?? item.lat) || null,
-          longitude: Number(item.longitude ?? item.lng) || null,
+          ...readAddressCoordinates(item),
         }));
         const index = this.addresses.findIndex((item) => item.isDefault);
         this.selectedIndex = index >= 0 ? index : 0;
@@ -308,11 +308,9 @@ export default {
     saveLocation() {
       const addr = this.selectedAddress;
       const data = {
-        name: addr.name,
-        address: addr.address,
+        ...normalizeBossAddressSelection(addr),
         tag: addr.tag,
         distance: this.distance,
-        display: `${addr.name} ${addr.address}`,
       };
       uni.setStorageSync("workLocationSelection", data);
       uni.$emit("workLocationSelected", data);

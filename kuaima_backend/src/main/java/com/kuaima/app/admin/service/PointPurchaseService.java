@@ -50,7 +50,7 @@ public class PointPurchaseService {
     @Transactional
     public OrderResponse create(CreateRequest req, Long operatorId, String operatorName) {
         if (req == null || req.bossId() == null) throw new IllegalArgumentException("bossId 不能为空");
-        if (req.points() == null || req.points() < 100 || req.points() % 100 != 0) throw new IllegalArgumentException("积分必须不少于100且为100的整数倍");
+        if (req.points() == null || req.points() < 1) throw new IllegalArgumentException("积分必须是正整数，最少1积分");
         if (!List.of("微信支付", "支付宝", "对公转账").contains(req.payMethod())) throw new IllegalArgumentException("payMethod 只能是微信支付、支付宝或对公转账");
         if (!List.of("paid", "pending").contains(req.deal())) throw new IllegalArgumentException("deal 只能是 paid 或 pending");
         User boss = userRepo.findById(req.bossId()).orElseThrow(() -> new EntityNotFoundException("老板不存在: " + req.bossId()));

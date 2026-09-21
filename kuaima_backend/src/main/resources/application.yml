@@ -38,3 +38,6 @@ jobs:
     monthly-cron: "0 0 3 1 * ?"
     # 规则生效前的历史订单不追溯计算；发布到新环境时按实际上线时间调整。
     effective-from: "2026-09-19T00:00:00"
+  reward-withdraw:
+    sync-initial-delay: 60000
+    sync-fixed-delay: 60000

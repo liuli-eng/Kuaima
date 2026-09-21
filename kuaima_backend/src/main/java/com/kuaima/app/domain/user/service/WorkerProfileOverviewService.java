@@ -3,13 +3,13 @@ package com.kuaima.app.domain.user.service;
 import com.kuaima.app.domain.boss.constant.BossStatus;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.points.repository.PointsAccountRepository;
+import com.kuaima.app.domain.reward.repository.RewardAccountRepository;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.starlevel.repository.UserStarLevelRepository;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.model.WorkerProfileOverview;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
-import com.kuaima.app.domain.wallet.repository.WalletFlowRespository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.Date;
 import org.springframework.stereotype.Service;
@@ -22,13 +22,13 @@ public class WorkerProfileOverviewService {
     private final SettlementRespository settlements;
     private final PointsAccountRepository points;
     private final UserStarLevelRepository starLevels;
-    private final WalletFlowRespository walletFlows;
+    private final RewardAccountRepository rewardAccounts;
 
     public WorkerProfileOverviewService(UserRepository users, BaseOrderItemRespository items,
             SettlementRespository settlements, PointsAccountRepository points,
-            UserStarLevelRepository starLevels, WalletFlowRespository walletFlows) {
+            UserStarLevelRepository starLevels, RewardAccountRepository rewardAccounts) {
         this.users = users; this.items = items; this.settlements = settlements;
-        this.points = points; this.starLevels = starLevels; this.walletFlows = walletFlows;
+        this.points = points; this.starLevels = starLevels; this.rewardAccounts = rewardAccounts;
     }
 
     @Transactional(readOnly = true)
@@ -50,7 +50,9 @@ public class WorkerProfileOverviewService {
                 .map(v -> value(v.getBalance(), 0))
                 .orElse(0);
         long totalIncome = nullableLong(settlements.sumPaidWageByWorkerId(userId));
-        long rewardAmount = nullableLong(walletFlows.sumIncomeByUserIdAndBizType(userId, "REWARD"));
+        long rewardAmount = rewardAccounts.findByUserId(userId)
+                .map(account -> account.getBalance().movePointRight(2).longValueExact())
+                .orElse(0L);
         return new WorkerProfileOverview(level, creditScore,
                 rate(completedOrders, applicationTotal), rate(cancellations, applicationTotal),
                 rate(noShows, hiredTotal), rate(earlyLeaveWorkDays, totalWorkDays),

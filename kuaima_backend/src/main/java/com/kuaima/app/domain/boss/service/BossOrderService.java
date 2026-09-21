@@ -23,10 +23,12 @@ import com.kuaima.app.domain.boss.constant.BossStatus;
 import com.kuaima.app.domain.boss.constant.BossType;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
+import com.kuaima.app.domain.boss.entity.BossAddress;
 import com.kuaima.app.domain.boss.model.BossOrderQuery;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderSpecifications;
+import com.kuaima.app.domain.boss.repository.BossAddressRepository;
 import com.kuaima.app.domain.boss.repository.BossRecruitSettingsRepository;
 import com.kuaima.app.domain.boss.entity.BossRecruitSettings;
 import com.kuaima.app.domain.message.constant.BizType;
@@ -59,6 +61,7 @@ public class BossOrderService {
     private final BossCouponService bossCouponService;
     private CreditScoreService creditScoreService;
     private final AdminSettingRepository adminSettingRepository;
+    private final BossAddressRepository bossAddressRepository;
 
     public BossOrderService(BossOrderRespository orderRepository,
                             BaseOrderItemRespository itemRepository,
@@ -72,7 +75,6 @@ public class BossOrderService {
                 certificationService, recruitSettingsRepository, bossCouponService, null);
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
     public BossOrderService(BossOrderRespository orderRepository,
                             BaseOrderItemRespository itemRepository,
                             UserRepository userRepository,
@@ -82,6 +84,21 @@ public class BossOrderService {
                             BossRecruitSettingsRepository recruitSettingsRepository,
                             BossCouponService bossCouponService,
                             AdminSettingRepository adminSettingRepository) {
+        this(orderRepository, itemRepository, userRepository, messageService, settlementRespository,
+                certificationService, recruitSettingsRepository, bossCouponService, adminSettingRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BossOrderService(BossOrderRespository orderRepository,
+                            BaseOrderItemRespository itemRepository,
+                            UserRepository userRepository,
+                            MessageService messageService,
+                            SettlementRespository settlementRespository,
+                            CertificationService certificationService,
+                            BossRecruitSettingsRepository recruitSettingsRepository,
+                            BossCouponService bossCouponService,
+                            AdminSettingRepository adminSettingRepository,
+                            BossAddressRepository bossAddressRepository) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
@@ -91,6 +108,7 @@ public class BossOrderService {
         this.recruitSettingsRepository = recruitSettingsRepository;
         this.bossCouponService = bossCouponService;
         this.adminSettingRepository = adminSettingRepository;
+        this.bossAddressRepository = bossAddressRepository;
     }
 
     public BossOrderService(BossOrderRespository orderRepository,
@@ -132,7 +150,10 @@ public class BossOrderService {
         if (order.getSalary() == null || order.getSalary().signum() <= 0) {
             throw new IllegalArgumentException("工资必须大于 0");
         }
-        validateOrderCoordinates(order.getLongitude(), order.getLatitude());
+        if (order.getAddressId() != null) {
+            applySavedAddress(order, order.getAddressId());
+        }
+        validateOrderCoordinatesRequired(order.getLongitude(), order.getLatitude());
         checkTimeRange(order.getStartTime(), order.getEndTime());
         applyRecruitSettings(order, order);
         // 试工时间仅月结类型有效
@@ -177,6 +198,9 @@ public class BossOrderService {
     @Transactional
     public BossOrder updateOrder(Long id, BossOrder update) {
         BossOrder order = getOrderOrThrow(id);
+        if (order.getEnterpriseId() == null && update.getEnterpriseId() != null) {
+            order.setEnterpriseId(update.getEnterpriseId());
+        }
         if (!BossStatus.ORDER_RECRUITING.equals(order.getOrderStatus())
                 && !BossStatus.ORDER_PENDING_AUDIT.equals(order.getOrderStatus())) {
             throw new IllegalStateException("仅待审核或招工中的订单可以修改");
@@ -203,7 +227,13 @@ public class BossOrderService {
         if (StringUtils.hasText(update.getOrderRemark())) {
             order.setOrderRemark(update.getOrderRemark());
         }
-        if (StringUtils.hasText(update.getAddress())) {
+        boolean locationChanged = update.getAddressId() != null || StringUtils.hasText(update.getAddress());
+        if (update.getAddressId() != null) {
+            applySavedAddress(order, update.getAddressId());
+        } else if (StringUtils.hasText(update.getAddress())) {
+            if (update.getLongitude() == null || update.getLatitude() == null) {
+                throw new IllegalArgumentException("修改工作地址时必须同时提供经度和纬度");
+            }
             order.setAddress(update.getAddress());
         }
         if (StringUtils.hasText(update.getTags())) {
@@ -239,7 +269,11 @@ public class BossOrderService {
         if (BossType.MONTH.equals(order.getType()) && StringUtils.hasText(update.getTrialDuration())) {
             order.setTrialDuration(update.getTrialDuration());
         }
-        validateOrderCoordinates(order.getLongitude(), order.getLatitude());
+        if (locationChanged) {
+            validateOrderCoordinatesRequired(order.getLongitude(), order.getLatitude());
+        } else {
+            validateOrderCoordinates(order.getLongitude(), order.getLatitude());
+        }
         checkTimeRange(order.getStartTime(), order.getEndTime());
         BossOrder saved = orderRepository.save(order);
         if (update.getOrderNum() != null) {
@@ -632,7 +666,14 @@ public class BossOrderService {
     /** 保存草稿：不校验必填字段，状态固定为"草稿" */
     @Transactional
     public BossOrder saveDraft(BossOrder order) {
-        validateOrderCoordinates(order.getLongitude(), order.getLatitude());
+        if (order.getAddressId() != null) {
+            applySavedAddress(order, order.getAddressId());
+        }
+        if (StringUtils.hasText(order.getAddress())) {
+            validateOrderCoordinatesRequired(order.getLongitude(), order.getLatitude());
+        } else {
+            validateOrderCoordinates(order.getLongitude(), order.getLatitude());
+        }
         order.setOrderStatus(BossStatus.ORDER_DRAFT);
         return orderRepository.save(order);
     }
@@ -646,6 +687,9 @@ public class BossOrderService {
     @Transactional
     public BossOrder updateDraft(Long id, BossOrder update) {
         BossOrder order = getOrderOrThrow(id);
+        if (order.getEnterpriseId() == null && update.getEnterpriseId() != null) {
+            order.setEnterpriseId(update.getEnterpriseId());
+        }
         if (!BossStatus.ORDER_DRAFT.equals(order.getOrderStatus())) {
             throw new IllegalStateException("仅草稿状态的订单可以更新");
         }
@@ -657,14 +701,26 @@ public class BossOrderService {
         if (update.getSalary() != null) order.setSalary(update.getSalary());
         if (StringUtils.hasText(update.getOrderContent())) order.setOrderContent(update.getOrderContent());
         if (StringUtils.hasText(update.getOrderRemark())) order.setOrderRemark(update.getOrderRemark());
-        if (StringUtils.hasText(update.getAddress())) order.setAddress(update.getAddress());
+        boolean locationChanged = update.getAddressId() != null || StringUtils.hasText(update.getAddress());
+        if (update.getAddressId() != null) {
+            applySavedAddress(order, update.getAddressId());
+        } else if (StringUtils.hasText(update.getAddress())) {
+            if (update.getLongitude() == null || update.getLatitude() == null) {
+                throw new IllegalArgumentException("修改工作地址时必须同时提供经度和纬度");
+            }
+            order.setAddress(update.getAddress());
+        }
         if (StringUtils.hasText(update.getTags())) order.setTags(update.getTags());
         applyFilterFields(order, update);
         applyRecruitSettings(order, update);
         if (update.getStartTime() != null) order.setStartTime(update.getStartTime());
         if (update.getEndTime() != null) order.setEndTime(update.getEndTime());
         if (StringUtils.hasText(update.getTrialDuration())) order.setTrialDuration(update.getTrialDuration());
-        validateOrderCoordinates(order.getLongitude(), order.getLatitude());
+        if (locationChanged) {
+            validateOrderCoordinatesRequired(order.getLongitude(), order.getLatitude());
+        } else {
+            validateOrderCoordinates(order.getLongitude(), order.getLatitude());
+        }
         return orderRepository.save(order);
     }
 
@@ -891,11 +947,14 @@ public class BossOrderService {
         if (source.getJobCategoryId() != null) {
             target.setJobCategoryId(source.getJobCategoryId());
         }
-        if (source.getLongitude() != null) {
-            target.setLongitude(source.getLongitude());
-        }
-        if (source.getLatitude() != null) {
-            target.setLatitude(source.getLatitude());
+        // addressId 指向后端校验过的常用地址，请求体坐标不得覆盖该可信坐标。
+        if (source.getAddressId() == null) {
+            if (source.getLongitude() != null) {
+                target.setLongitude(source.getLongitude());
+            }
+            if (source.getLatitude() != null) {
+                target.setLatitude(source.getLatitude());
+            }
         }
         if (StringUtils.hasText(source.getExperience())) {
             target.setExperience(source.getExperience().trim());
@@ -970,6 +1029,37 @@ public class BossOrderService {
                 || latitude.compareTo(BigDecimal.valueOf(90)) > 0)) {
             throw new IllegalArgumentException("纬度必须在 -90 到 90 之间");
         }
+    }
+
+    private void validateOrderCoordinatesRequired(BigDecimal longitude, BigDecimal latitude) {
+        validateOrderCoordinates(longitude, latitude);
+        if (longitude == null || latitude == null) {
+            throw new IllegalArgumentException("工作地址必须提供经度和纬度，请重新选择地址");
+        }
+    }
+
+    /** 使用当前企业的常用地址，后端同时复制文字地址和坐标，避免地址与坐标不一致。 */
+    private void applySavedAddress(BossOrder order, Long addressId) {
+        if (bossAddressRepository == null) {
+            throw new IllegalStateException("常用地址服务未配置");
+        }
+        if (order.getEnterpriseId() == null) {
+            throw new IllegalArgumentException("企业信息不能为空");
+        }
+        BossAddress address = bossAddressRepository.findByIdAndEnterpriseId(addressId, order.getEnterpriseId())
+                .orElseThrow(() -> new ForbiddenBusinessException("地址不存在或不属于当前企业"));
+        if (address.getLat() == null || address.getLng() == null) {
+            throw new IllegalArgumentException("所选地址缺少经纬度，请重新选择地址");
+        }
+        order.setAddress(formatAddress(address));
+        order.setLatitude(BigDecimal.valueOf(address.getLat()));
+        order.setLongitude(BigDecimal.valueOf(address.getLng()));
+    }
+
+    private String formatAddress(BossAddress address) {
+        return java.util.stream.Stream.of(address.getCity(), address.getDistrict(), address.getDetail())
+                .filter(StringUtils::hasText)
+                .collect(Collectors.joining(""));
     }
 
     /** 校验列表筛选参数，避免生成无意义或不安全的距离/范围条件。 */

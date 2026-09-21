@@ -543,15 +543,25 @@ export function workerEarlyLeave(orderId, code) {
 }
 
 export function saveOrderDraft(data) {
-  return request({ url: "/boss/order/draft", method: "POST", data });
+  return request({
+    url: "/boss/order/draft",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
 }
 
-export function listOrderDrafts(userId) {
-  return request({ url: `/boss/orders/drafts?${query({ userId })}` });
+export function listOrderDrafts() {
+  return request({ url: "/boss/orders/drafts", skipUserIdHeader: true });
 }
 
 export function updateOrderDraft(id, data) {
-  return request({ url: `/boss/order/${id}/draft`, method: "PUT", data });
+  return request({
+    url: `/boss/order/${id}/draft`,
+    method: "PUT",
+    data,
+    skipUserIdHeader: true,
+  });
 }
 
 export function listJobCategories() {
@@ -794,7 +804,7 @@ export function getBossBalance() {
   return request({ url: "/boss/balance", skipUserIdHeader: true });
 }
 
-/** 老板端创建商户余额充值订单（微信/支付宝） */
+/** 老板端创建商户余额充值订单。 */
 export function createBossRechargeOrder({ amount, payMethod }) {
   return request({
     url: "/boss/balance/recharge/create",
@@ -804,14 +814,14 @@ export function createBossRechargeOrder({ amount, payMethod }) {
   });
 }
 
-/** 老板端主动查询充值订单支付结果 */
+/** 老板端主动查询充值订单支付结果。 */
 export function queryBossRechargeOrder(orderNo) {
-  return request({ url: `/boss/balance/recharge/query?orderNo=${orderNo}`, skipUserIdHeader: true });
+  return request({ url: `/boss/balance/recharge/query?orderNo=${encodeURIComponent(orderNo)}`, skipUserIdHeader: true });
 }
 
-/** 老板端充值订单列表（可选 status 过滤） */
+/** 老板端充值订单列表。 */
 export function listBossRechargeOrders(status) {
-  const qs = status ? `?status=${status}` : "";
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
   return request({ url: `/boss/balance/recharge/orders${qs}`, skipUserIdHeader: true });
 }
 
@@ -1063,6 +1073,17 @@ export function getBossPointsOverview() {
   return request({ url: "/boss/points", skipUserIdHeader: true });
 }
 
+/** 老板端创建积分购买订单，并获取微信 JSAPI 支付参数。 */
+export function createBossPointsPurchase(data = {}, idempotencyKey = "") {
+  return request({
+    url: "/boss/points/purchase",
+    method: "POST",
+    data,
+    header: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    skipUserIdHeader: true,
+  });
+}
+
 /** 老板端赠送积分给零工，身份由当前 JWT 判断。 */
 export function giftBossPoints(data = {}, idempotencyKey = "") {
   return request({
@@ -1091,6 +1112,42 @@ export function listPointFlows(userId, params = {}) {
 export function listRewards() {
   return request({ url: "/rewards" });
 }
+
+/** 零工端奖励金账户概览，身份由当前 JWT 判断。 */
+export function getWorkerRewardOverview() {
+  return request({
+    url: "/worker/rewards/overview",
+    skipUserIdHeader: true,
+  });
+}
+
+/** 零工端奖励金明细，支持类型筛选和数据库分页。 */
+export function getWorkerRewardRecords(params = {}) {
+  return request({
+    url: `/worker/rewards/records?${query({ page: 0, size: 20, type: "ALL", ...params })}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 零工端奖励金获取及提现规则。 */
+export function getWorkerRewardRules() {
+  return request({
+    url: "/worker/rewards/rules",
+    skipUserIdHeader: true,
+  });
+}
+
+/** 零工端申请奖励金提现。 */
+export function withdrawWorkerReward(data = {}, idempotencyKey = "") {
+  return request({
+    url: "/worker/rewards/withdraw",
+    method: "POST",
+    data,
+    header: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    skipUserIdHeader: true,
+  });
+}
+
 export function listRewardExchanges(userId) {
   return request({ url: `/rewards/exchanges?${query({ userId })}` });
 }

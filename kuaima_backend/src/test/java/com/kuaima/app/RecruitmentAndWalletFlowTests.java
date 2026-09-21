@@ -80,6 +80,8 @@ class RecruitmentAndWalletFlowTests {
         order.setOrderNum(5);
         order.setDuration(8);
         order.setSalary(300);
+        order.setLongitude(new BigDecimal("121.4737010"));
+        order.setLatitude(new BigDecimal("31.2304160"));
         order.setSignMode("manual");
         order.setStartTime(new Date());
         order.setEndTime(new Date(System.currentTimeMillis() + 86_400_000L));

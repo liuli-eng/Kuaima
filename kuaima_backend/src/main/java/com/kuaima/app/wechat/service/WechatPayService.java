@@ -46,7 +46,9 @@ public class WechatPayService {
     public JSONObject prepay(String description, String outTradeNo, BigDecimal amount, String openid) {
         requireEnabled();
         if (!StringUtils.hasText(openid)) throw new IllegalArgumentException("用户未绑定微信 openid");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("支付金额无效");
         int fen = amount.movePointRight(2).intValueExact();
+        if (fen < 1) throw new IllegalArgumentException("微信支付金额不能低于0.01元");
         JSONObject body = new JSONObject(); body.put("appid", wechat.getAppid()); body.put("mchid", properties.getMchid());
         body.put("description", description); body.put("out_trade_no", outTradeNo); body.put("notify_url", properties.getNotifyUrl());
         body.put("amount", Map.of("total", fen, "currency", "CNY")); body.put("payer", Map.of("openid", openid));
@@ -61,6 +63,47 @@ public class WechatPayService {
             return jsapiParams(prepayId);
         } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IllegalStateException("微信支付下单请求被中断", e);
         } catch (IOException e) { throw new IllegalStateException("微信支付下单请求失败", e); }
+    }
+
+    /** 发起已签名的微信支付 v3 JSON POST 请求；错误信息不携带密钥和完整响应。 */
+    public JSONObject signedPost(String path, JSONObject body, String wechatpaySerial) {
+        requireEnabled();
+        if (!StringUtils.hasText(wechatpaySerial)) throw new IllegalArgumentException("微信支付平台公钥序列号未配置");
+        String payload = body.toJSONString();
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.mch.weixin.qq.com" + path))
+                    .header("Content-Type", "application/json").header("Accept", "application/json")
+                    .header("Wechatpay-Serial", wechatpaySerial)
+                    .header("Authorization", authorization("POST", path, payload))
+                    .POST(HttpRequest.BodyPublishers.ofString(payload)).build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) throw new IllegalStateException("微信支付接口请求失败: HTTP " + response.statusCode());
+            return JSON.parseObject(response.body());
+        } catch (IOException e) {
+            throw new IllegalStateException("微信支付接口请求失败", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("微信支付接口请求被中断", e);
+        }
+    }
+
+    /** 发起已签名的微信支付 v3 JSON GET 请求；错误信息不携带密钥和完整响应。 */
+    public JSONObject signedGet(String path) {
+        requireEnabled();
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.mch.weixin.qq.com" + path))
+                    .header("Accept", "application/json")
+                    .header("Authorization", authorization("GET", path, ""))
+                    .GET().build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) throw new IllegalStateException("微信支付接口查询失败: HTTP " + response.statusCode());
+            return JSON.parseObject(response.body());
+        } catch (IOException e) {
+            throw new IllegalStateException("微信支付接口查询失败", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("微信支付接口查询被中断", e);
+        }
     }
 
     public JSONObject decryptNotify(String timestamp, String nonce, String signature, String serial, String body) {

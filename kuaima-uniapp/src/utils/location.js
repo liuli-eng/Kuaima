@@ -5,6 +5,8 @@ function normalizeLocation(location) {
   const latitude = Number(location?.latitude);
   const longitude = Number(location?.longitude);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) return null;
+  if (longitude === 0 && latitude === 0) return null;
   return { latitude, longitude, updatedAt: Date.now() };
 }
 

@@ -66,6 +66,12 @@
           }
         },
         {
+          "path": "reward",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
           "path": "user-info",
           "style": {
             "navigationStyle": "custom"
@@ -181,6 +187,12 @@
         },
         {
           "path": "credit",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "score-detail",
           "style": {
             "navigationStyle": "custom"
           }
@@ -642,6 +654,12 @@
         },
         {
           "path": "order-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "order-drafts",
           "style": {
             "navigationStyle": "custom"
           }

@@ -42,10 +42,10 @@
       <!-- 选择积分包 -->
       <text class="section-title">选择积分包</text>
       <view class="package-grid">
-        <view 
-          class="package-item" 
+        <view
+          class="package-item"
           :class="{ hot: pkg.hot }"
-          v-for="(pkg, index) in packages" 
+          v-for="(pkg, index) in packages"
           :key="index"
           @click="buy(pkg)"
         >
@@ -117,6 +117,7 @@
 
 <script>
 import {
+  createBossPointsPurchase,
   getBossPointsOverview,
   giftBossPoints,
   listBossTalents,
@@ -193,13 +194,85 @@ export default {
     buy(pkg) {
       uni.showModal({
         title: '购买确认',
-        content: `购买 ${pkg.points} 积分\n金额：¥${pkg.price}`,
-        success: (res) => {
-          if (res.confirm) uni.showToast({ title: '积分购买接口暂未接入', icon: 'none' })
+        content: `购买 ${pkg.points} 积分\n金额：¥${Number(pkg.price || 0).toFixed(2)}`,
+        success: async ({ confirm }) => {
+          if (!confirm) return;
+
+          // #ifdef MP-WEIXIN
+          await this.purchaseWithWechat(pkg);
+          // #endif
+
+          // #ifndef MP-WEIXIN
+          uni.showToast({ title: '请在微信小程序内完成支付', icon: 'none' });
+          // #endif
         }
       })
     }
-    ,openGiftSheet() {
+    ,
+    async purchaseWithWechat(pkg) {
+      if (this.submitting) return;
+
+      const packageId = pkg?.id ?? pkg?.packageId;
+      if (!packageId) {
+        uni.showToast({ title: '积分套餐信息无效', icon: 'none' });
+        return;
+      }
+
+      this.submitting = true;
+      try {
+        uni.showLoading({ title: '正在创建支付...', mask: true });
+        const order = await createBossPointsPurchase(
+          {
+            packageId: Number(packageId),
+            payChannel: 'WECHAT',
+          },
+          `boss-points-purchase-${packageId}-${Date.now()}`,
+        );
+        uni.hideLoading();
+
+        const payParams = order?.payParams || {};
+        if (!payParams.package || !payParams.paySign || !payParams.nonceStr || !payParams.timeStamp) {
+          throw new Error('微信支付参数无效');
+        }
+
+        await new Promise((resolve, reject) => {
+          uni.requestPayment({
+            provider: 'wxpay',
+            timeStamp: String(payParams.timeStamp),
+            nonceStr: String(payParams.nonceStr),
+            package: String(payParams.package),
+            signType: String(payParams.signType || 'RSA'),
+            paySign: String(payParams.paySign),
+            success: resolve,
+            fail: reject,
+          });
+        });
+
+        uni.showToast({ title: '支付成功', icon: 'success' });
+        await this.refreshPointsAfterPayment(Number(pkg.points || 0));
+      } catch (error) {
+        uni.hideLoading();
+        const message = String(error?.errMsg || error?.message || error?.msg || '');
+        uni.showToast({
+          title: /cancel/i.test(message) ? '支付已取消' : (message || '微信支付失败'),
+          icon: 'none',
+        });
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async refreshPointsAfterPayment(purchasedPoints) {
+      const expectedPoints = this.points + purchasedPoints;
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, attempt ? 500 : 200));
+        try {
+          const result = await getBossPointsOverview();
+          this.points = Number(result?.balance ?? result?.points ?? 0);
+          if (this.points >= expectedPoints) return;
+        } catch (_) {}
+      }
+    },
+    openGiftSheet() {
       this.giftVisible = true;
       this.workerKeyword = '';
       this.selectedWorkerId = '';
@@ -217,7 +290,7 @@ export default {
         this.packages = Array.isArray(result?.packages)
           ? result.packages.map((item) => ({
               ...item,
-              price: Number(item.price || 0) / 100,
+              price: Number(item.price || 0),
             }))
           : [];
       } catch (error) {

@@ -35,7 +35,7 @@
             }}</text></view
           >
           <view class="credit-score" @click.stop="go('/pages/worker/credit')"
-            ><text>诚信分</text
+            ><text>星级分</text
             ><text class="credit-value">{{ display(stats.creditScore) }}</text
             ><image :src="chevronGreenIcon" mode="aspectFit"
           /></view>
@@ -70,7 +70,7 @@
             ><text class="asset-value">{{ display(assets.points) }}</text></view
           ><image :src="chevronGrayIcon" mode="aspectFit"
         /></view>
-        <view class="asset-item" @click="openUnavailable('奖励金')"
+        <view class="asset-item" @click="go('/pages/worker/reward')"
           ><view
             ><text class="asset-label">奖励金(元)</text
             ><text class="asset-value">{{
@@ -292,9 +292,6 @@ function moneyOrDash(value, withUnit = true) {
 }
 function go(url) {
   uni.navigateTo({ url });
-}
-function openUnavailable(name) {
-  uni.showToast({ title: `${name}页面待接口完善后开放`, icon: "none" });
 }
 </script>
 
