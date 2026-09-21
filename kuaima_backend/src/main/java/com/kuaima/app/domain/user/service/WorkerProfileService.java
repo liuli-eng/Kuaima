@@ -132,6 +132,7 @@ public class WorkerProfileService {
         return new WorkerOrder(item.getId(), item.getOrderId(), mapDisplayStatus(item.getStatus()), item.getTrialRequested(),
                 item.getApplyDate(), item.getHireDate(), item.getWorkDate(), item.getFinishDate(),
                 order.getOrderTitle(), order.getType(), order.getSalary(), order.getAddress(),
+                order.getLongitude(), order.getLatitude(),
                 order.getStartTime(), order.getEndTime(), boss == null ? null : boss.getCompanyName(),
                 order.getPostion(), order.getOrderStatus(), order.getDuration(), order.getTags(), review != null,
                 review == null ? null : new ReviewSummary(review.getAttitudeScore(), review.getSettlementScore(),

@@ -2,7 +2,7 @@
   <div>
     <div class="page-header">
       <h1 class="page-title">规则管理</h1>
-      <p class="page-desc">平台规则公示、信用分、收费、交易、飞单管理规则</p>
+      <p class="page-desc">平台规则、信用分管理规则</p>
     </div>
 
     <!-- 分类标签栏 -->
@@ -40,7 +40,7 @@
             clearable
           />
         </div>
-        <button class="btn btn-primary btn-sm" @click="() => {}">
+        <button class="btn btn-primary btn-sm" @click="loadData">
           <i class="fas fa-search"></i> 查询
         </button>
         <button class="btn btn-outline btn-sm" @click="resetFilters">
@@ -82,6 +82,12 @@
           <template #default="{ row }">
             <span :class="['status-badge', statusClass(row.status)]">{{ statusLabel(row.status) }}</span>
           </template>
+        </el-table-column>
+        <el-table-column label="创建人" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.creator || row.createdBy || '管理员' }}</template>
+        </el-table-column>
+        <el-table-column label="创建时间" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.createTime || row.createdAt || '--' }}</template>
         </el-table-column>
         <el-table-column prop="updateTime" label="更新时间" show-overflow-tooltip />
         <el-table-column label="操作" width="280" fixed="right">
@@ -153,8 +159,9 @@ import { listRules, updateRules, deleteRules } from '@/api/content'
 
 const router = useRouter()
 const rules = ref([])
+const allRules = ref([])
 const total = ref(0)
-const currentTab = ref('notice')
+const currentTab = ref('platform')
 const statusFilter = ref('')
 const keyword = ref('')
 const currentPage = ref(1)
@@ -164,33 +171,22 @@ const viewVisible = ref(false)
 const currentViewRule = ref(null)
 
 const tabs = computed(() => {
-  const map = {
-    notice: '规则公示',
-    credit: '信用分规则',
-    fee: '收费规则',
-    trade: '交易规则',
-    private: '飞单认定与处理',
-    ip: '知识产权规则'
-  }
+  const map = { platform: '平台规则', credit: '信用分规则' }
   return Object.keys(map).map(key => ({
     key,
     label: map[key],
-    count: rules.value.filter(r => r.type === key || r.category === map[key] || (key === 'private' && r.category === '飞单认定与处理规则')).length,
+    count: allRules.value.filter(r => key === 'credit' ? (r.type === 'credit' || r.category === '信用分规则') : (r.type !== 'credit' && r.category !== '信用分规则')).length,
     icon: tabMeta[key].icon,
     gradient: tabMeta[key].gradient
   }))
 })
 
 const tabMeta = {
-  notice: { icon: 'fa-bullhorn', gradient: 'linear-gradient(135deg,#3B82F6,#2563EB)' },
+  platform: { icon: 'fa-cube', gradient: 'linear-gradient(135deg,#3B82F6,#2563EB)' },
   credit: { icon: 'fa-star', gradient: 'linear-gradient(135deg,#10B981,#059669)' },
-  fee: { icon: 'fa-coins', gradient: 'linear-gradient(135deg,#F59E0B,#D97706)' },
-  trade: { icon: 'fa-exchange-alt', gradient: 'linear-gradient(135deg,#8B5CF6,#6D28D9)' },
-  private: { icon: 'fa-ban', gradient: 'linear-gradient(135deg,#EF4444,#DC2626)' },
-  ip: { icon: 'fa-shield-alt', gradient: 'linear-gradient(135deg,#06B6D4,#0891B2)' }
 }
 
-const currentTabMeta = computed(() => tabMeta[currentTab.value] || tabMeta.notice)
+const currentTabMeta = computed(() => tabMeta[currentTab.value] || tabMeta.platform)
 
 // 切换分类、筛选条件或搜索关键字时，自动回到第一页并重新加载
 watch([currentTab, statusFilter, keyword], () => {
@@ -279,14 +275,7 @@ const handleDelete = async (rule) => {
 }
 
 // 分类映射
-const CATEGORY_MAP = {
-  notice: '规则公示',
-  credit: '信用分规则',
-  fee: '收费规则',
-  trade: '交易规则',
-  private: '飞单认定与处理规则',
-  ip: '知识产权规则'
-}
+const CATEGORY_MAP = { platform: '平台规则', credit: '信用分规则' }
 
 const loadData = async () => {
   try {
@@ -294,12 +283,15 @@ const loadData = async () => {
     const res = await listRules({ page: 0, size: 200 })
     const d = res.data
     const list = Array.isArray(d) ? d : (Array.isArray(res) ? res : [])
+    allRules.value = list
     const filtered = list.filter(r => {
       // 按当前选中的 tab 分类过滤
       const targetCategory = CATEGORY_MAP[currentTab.value]
-      return r.type === currentTab.value || r.category === targetCategory
-    })
-    rules.value = filtered
+      if (currentTab.value === 'credit') return r.type === 'credit' || r.category === targetCategory
+      return r.type !== 'credit' && r.category !== '信用分规则'
+    }).filter(r => !statusFilter.value || r.status === statusFilter.value)
+      .filter(r => !keyword.value || String(r.title || '').toLowerCase().includes(keyword.value.toLowerCase()) || String(r.code || r.id).toLowerCase().includes(keyword.value.toLowerCase()))
+    rules.value = filtered.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value)
     total.value = filtered.length
   } catch (e) {
     console.warn('[Rules] 加载失败:', e)

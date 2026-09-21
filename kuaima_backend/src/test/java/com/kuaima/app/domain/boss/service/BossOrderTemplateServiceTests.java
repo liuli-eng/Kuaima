@@ -55,7 +55,7 @@ class BossOrderTemplateServiceTests {
         assertEquals("电子厂普工", result.orderTitle());
         assertEquals("daily", result.type());
         assertEquals("普工", result.postion());
-        assertEquals(220, result.salary());
+        assertEquals(new java.math.BigDecimal("220"), result.salary());
         assertEquals(10, result.duration());
         assertEquals(20, result.orderNum());
         assertEquals("包吃住", result.tags());

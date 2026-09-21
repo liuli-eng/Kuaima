@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS `points_withdrawal` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `withdraw_no` VARCHAR(64) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `role` VARCHAR(20) NOT NULL DEFAULT 'USER',
+  `points` INT NOT NULL,
+  `amount` DECIMAL(18,2) NOT NULL,
+  `fee` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+  `channel` VARCHAR(20) NOT NULL,
+  `channel_account` VARCHAR(128) DEFAULT NULL,
+  `status` VARCHAR(20) NOT NULL,
+  `idempotency_key` VARCHAR(128) NOT NULL,
+  `applied_at` DATETIME NOT NULL,
+  `processing_at` DATETIME DEFAULT NULL,
+  `paid_at` DATETIME DEFAULT NULL,
+  `reviewed_by` BIGINT DEFAULT NULL,
+  `reviewed_at` DATETIME DEFAULT NULL,
+  `failure_reason` VARCHAR(500) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `create_by` BIGINT DEFAULT NULL,
+  `date` DATE DEFAULT NULL,
+  `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_points_withdrawal_no` (`withdraw_no`),
+  UNIQUE KEY `uk_points_withdrawal_idempotency` (`idempotency_key`),
+  KEY `idx_points_withdrawal_user_time` (`user_id`, `role`, `applied_at`),
+  KEY `idx_points_withdrawal_status_time` (`status`, `applied_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='零工积分提现申请';
+
+-- 业务规则：零工 USER 身份积分支持按 100 积分=1 元提现；老板 BOSS 身份积分仍不可提现。

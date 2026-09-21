@@ -3,11 +3,12 @@ spring:
     name: kuaima
   profiles:
     # 切换环境：dev | test
-    active: test
+    active: dev
   servlet:
     multipart:
-      max-file-size: 2MB
-      max-request-size: 2MB
+      # 学堂视频最大 200MB；请求上限略高以容纳 multipart 边界和表单字段。
+      max-file-size: 200MB
+      max-request-size: 210MB
 
 
 kuaima:
@@ -15,5 +16,25 @@ kuaima:
     # 平台服务费率(% of 工资)，规则待定，默认 0 即暂不收取
     service-fee-rate: 0
 
+wechat:
+  appid: ${WECHAT_APPID:}
+  secret: ${WECHAT_APP_SECRET:}
+  mock-enabled: false
+  pay:
+    enabled: ${WECHAT_PAY_ENABLED:false}
+    mchid: ${WECHAT_PAY_MCHID:}
+    api-v3-key: ${WECHAT_PAY_API_V3_KEY:}
+    cert-serial-no: ${WECHAT_PAY_CERT_SERIAL_NO:}
+    private-key-path: ${WECHAT_PAY_PRIVATE_KEY_PATH:}
+    platform-public-key-path: ${WECHAT_PAY_PLATFORM_PUBLIC_KEY_PATH:}
+    platform-public-key-id: ${WECHAT_PAY_PLATFORM_PUBLIC_KEY_ID:}
+    notify-url: ${WECHAT_PAY_NOTIFY_URL:https://ke.taifang.xyz/api/pay/wechat/notify}
 
-
+jobs:
+  message:
+    cron: "0 * * * * ?"
+  credit:
+    daily-cron: "0 0 2 * * ?"
+    monthly-cron: "0 0 3 1 * ?"
+    # 规则生效前的历史订单不追溯计算；发布到新环境时按实际上线时间调整。
+    effective-from: "2026-09-19T00:00:00"

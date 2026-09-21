@@ -14,31 +14,56 @@
 npm install
 ```
 
-启动 H5 开发服务器：
+启动 H5 本地环境：
 
 ```bash
-npm run dev:h5
+npm run dev:h5:local
 ```
 
 浏览器打开 <http://localhost:5173/>。如果 5173 端口已被占用，Vite 会自动切换到其他端口，并在终端打印实际地址。按 `Ctrl+C` 可停止开发服务器。
 
-启动微信小程序开发模式：
+启动微信小程序本地环境：
 
 ```bash
-npm run dev:mp-weixin
+npm run dev:mp-weixin:local
 ```
 
 命令执行后，将 `dist/dev/mp-weixin` 导入微信开发者工具进行预览和调试。
 
-真机预览时，`localhost` 指向手机本身，必须把接口地址改为运行后端电脑的局域网 IP：
+真机预览时，复制本地覆盖文件：
 
 ```bash
-VITE_MP_API_BASE_URL=http://192.168.2.88:8080 npm run dev:mp-weixin
+cp .env.development.local.example .env.development.local
 ```
 
-其中 `192.168.2.88` 替换为本机实际局域网 IP。修改地址后需要重新编译，并重新导入/预览 `dist/dev/mp-weixin`。
+把 `.env.development.local` 中的 `192.168.2.88` 替换为运行后端电脑的局域网 IP，然后重新执行 `npm run dev:mp-weixin:local`。
 
-后端接口默认通过 `/api` 代理到 `http://localhost:8080`，如后端地址不同，请修改 `vite.config.js` 中的 `server.proxy['/api'].target`。
+环境配置统一放在：
+
+- `.env.development`：本地环境
+- `.env.test`：测试环境
+- `.env.production`：生产环境
+- `.env.development.local`：个人本地覆盖，不提交 Git
+
+切换环境不再修改源码，直接使用对应命令：
+
+```bash
+# H5
+npm run dev:h5:local
+npm run dev:h5:test
+npm run build:h5:prod
+
+# 微信小程序
+npm run dev:mp-weixin:local
+npm run dev:mp-weixin:test
+npm run build:mp-weixin:prod
+```
+
+各环境主要变量：
+
+- `VITE_PROXY_TARGET`：H5 开发代理目标
+- `VITE_MP_API_BASE_URL`：微信小程序接口根地址
+- `VITE_USE_MOCK`：是否启用前端 Mock
 
 常用命令：
 

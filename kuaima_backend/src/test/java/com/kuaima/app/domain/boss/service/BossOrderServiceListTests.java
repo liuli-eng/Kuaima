@@ -196,7 +196,7 @@ class BossOrderServiceListTests {
 
         BaseOrderItem finished = service.finishItem(36L);
 
-        assertEquals(BossStatus.ITEM_FINISHED, finished.getStatus());
+        assertEquals(BossStatus.ITEM_PENDING_SETTLE, finished.getStatus());
         ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
         verify(settlementRepository).save(captor.capture());
         Settlement settlement = captor.getValue();
@@ -204,7 +204,7 @@ class BossOrderServiceListTests {
         assertEquals(26L, settlement.getOrderId());
         assertEquals(46L, settlement.getWorkerId());
         assertEquals(1, settlement.getWorkDays());
-        assertEquals(20_000L, settlement.getTotalAmount());
+        assertEquals(new java.math.BigDecimal("200.00"), settlement.getTotalAmount());
         assertEquals(SettlementStatus.PENDING, settlement.getStatus());
     }
 

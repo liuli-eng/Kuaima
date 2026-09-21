@@ -3,12 +3,12 @@ package com.kuaima.app.admin.scheduler;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.kuaima.app.admin.entity.MessageTemplate;
 import com.kuaima.app.admin.repository.MessageTemplateRepository;
@@ -17,6 +17,7 @@ import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.service.SmsService;
+import com.kuaima.app.admin.service.ScheduledJobRunner;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,15 +36,24 @@ public class ScheduledMessageTask {
     private final MessageService messageService;
     private final UserRepository userRepository;
     private final SmsService smsService;
+    private final ScheduledJobRunner jobs;
 
     private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    @Scheduled(cron = "0 0 * * * ?")
-    @Transactional
+    @Scheduled(cron = "${jobs.message.cron:0 * * * * ?}", zone = "Asia/Shanghai")
     public void executeScheduledSend() {
-        String now = LocalTime.now().format(HH_MM);
-        String today = LocalDate.now().format(DATE_FMT);
+        executeScheduledSend("AUTO");
+    }
+
+    public void executeScheduledSend(String triggerType) {
+        jobs.run("scheduled-message", LocalDate.now(ZoneId.of("Asia/Shanghai")).format(DATE_FMT), triggerType,
+                this::executeInternal);
+    }
+
+    private void executeInternal() {
+        String now = LocalTime.now(ZoneId.of("Asia/Shanghai")).format(HH_MM);
+        String today = LocalDate.now(ZoneId.of("Asia/Shanghai")).format(DATE_FMT);
 
         List<MessageTemplate> templates = templateRepo.findByStatusAndSendWay("enabled", "定时");
         for (MessageTemplate tpl : templates) {

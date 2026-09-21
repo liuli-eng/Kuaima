@@ -30,6 +30,7 @@ import com.kuaima.app.domain.user.entity.CreditFlow;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.CreditFlowRepository;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.service.CertificationService;
 import com.kuaima.app.security.model.LoginUser;
 import com.kuaima.app.common.ForbiddenBusinessException;
@@ -147,10 +148,24 @@ public class UserController {
     @GetMapping("/{id}/credit")
     public Result<Map<String, Object>> getCredit(@PathVariable Long id) {
         User user = getUserOrThrow(id);
-        List<CreditFlow> recentFlows = creditFlowRepository.findTop10ByUserIdOrderByTimestampDesc(id);
+        boolean boss = UserRole.isBossIdentity(user);
+        String scoreType = boss ? "BOSS_CREDIT" : "WORKER_STAR";
+        List<CreditFlow> recentFlows = creditFlowRepository.findByUserIdAndScoreTypeOrderByTimestampDesc(id, scoreType)
+                .stream().limit(10).toList();
         Map<String, Object> data = new HashMap<>();
-        data.put("creditScore", user.getCreditScore());
+        int score = boss ? (user.getCreditScore() == null ? 0 : user.getCreditScore())
+                : (user.getStarScore() == null ? 0 : user.getStarScore());
+        data.put("score", score);
+        data.put("creditScore", boss ? score : user.getCreditScore());
+        data.put("starScore", boss ? user.getStarScore() : score);
+        data.put("scoreType", scoreType);
         data.put("recentFlows", recentFlows);
+        data.put("details", recentFlows.stream().map(flow -> Map.of(
+                "id", flow.getId(),
+                "title", flow.getReason() == null ? "信用分变动" : flow.getReason(),
+                "time", flow.getTimestamp(),
+                "value", flow.getDelta()
+        )).toList());
         return Result.success(data);
     }
 

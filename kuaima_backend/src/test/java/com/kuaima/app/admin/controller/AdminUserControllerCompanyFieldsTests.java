@@ -62,9 +62,9 @@ class AdminUserControllerCompanyFieldsTests {
         assertNull(row.get("companyCode"));
         assertNull(row.get("companyName"));
         assertEquals(88, row.get("creditScore"));
-        assertEquals(123456L, row.get("balance"));
-        assertEquals(1680L, row.get("points"));
-        assertEquals(7890L, row.get("rewardAmount"));
+        assertEquals(new java.math.BigDecimal("123456"), row.get("balance"));
+        assertEquals(new java.math.BigDecimal("1680"), row.get("points"));
+        assertEquals(new java.math.BigDecimal("7890"), row.get("rewardAmount"));
     }
 
     @Test

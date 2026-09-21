@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/kuaima?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowMultiQueries=true
     username: root
-    password: root
+    password: 11112222
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -16,8 +16,8 @@ jwt:
   expiration: 259200000
 
 wechat:
-  appid: wx812d0d7606ee4e59
-  secret: 491f43667ca52af08f3fdbfcbb9ecdf2
+  appid: ${WECHAT_APPID:}
+  secret: ${WECHAT_APP_SECRET:}
 
 # 阿里云短信（测试环境使用 mock 模式）
 aliyun:

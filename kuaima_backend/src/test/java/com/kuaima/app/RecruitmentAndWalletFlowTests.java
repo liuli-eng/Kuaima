@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Date;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -111,15 +112,15 @@ class RecruitmentAndWalletFlowTests {
         BaseOrderItem onWork = bossOrderService.confirmWork(hired.getId());
         assertEquals(BossStatus.ITEM_ON_WORK, onWork.getStatus());
         BaseOrderItem finished = bossOrderService.finishItem(onWork.getId());
-        assertEquals(BossStatus.ITEM_FINISHED, finished.getStatus());
+        assertEquals(BossStatus.ITEM_PENDING_SETTLE, finished.getStatus());
 
         // 4. 老板发起结算（workDays 缺省，按到岗~完成自动推导 = 1 天）
         Settlement settlement = settlementService.createSettlement(finished.getId(), null);
         assertEquals(SettlementStatus.PENDING, settlement.getStatus());
         assertEquals(1, settlement.getWorkDays());
-        assertEquals(WAGE_CENT, settlement.getWage());
-        assertEquals(0L, settlement.getServiceFee());
-        assertEquals(WAGE_CENT, settlement.getTotalAmount());
+        assertEquals(new BigDecimal("300.00"), settlement.getWage());
+        assertEquals(new BigDecimal("0.00"), settlement.getServiceFee());
+        assertEquals(new BigDecimal("300.00"), settlement.getTotalAmount());
 
         // 5. 模拟支付 -> 工资入零工钱包 + 到账消息
         Settlement paid = settlementService.mockPay(settlement.getId());
@@ -129,21 +130,21 @@ class RecruitmentAndWalletFlowTests {
         assertTrue(hasMessage(worker.getId(), MessageType.SETTLE_PAID));
 
         Wallet wallet = walletService.getOrCreateWallet(worker.getId());
-        assertEquals(WAGE_CENT, wallet.getBalance());
+        assertEquals(new BigDecimal("300.00"), wallet.getBalance());
 
         // 6. 钱包流水：一条工资入账
         List<WalletFlow> flows = walletService.listFlows(worker.getId());
         assertEquals(1, flows.size());
         assertEquals(WalletService.DIR_INCOME, flows.get(0).getDirection());
         assertEquals(WalletService.BIZ_WAGE, flows.get(0).getBizType());
-        assertEquals(WAGE_CENT, flows.get(0).getAmount());
-        assertEquals(WAGE_CENT, flows.get(0).getBalanceAfter());
+        assertEquals(new BigDecimal("300.00"), flows.get(0).getAmount());
+        assertEquals(new BigDecimal("300.00"), flows.get(0).getBalanceAfter());
 
         // 7. 零工提现 200 元(20000分)，余额冻结扣除
         WithDraw draw = walletService.applyWithdraw(worker.getId(), 20_000L, "mock-openid", "");
         assertEquals(WithDrawStatus.PENDING, draw.getStatus());
         assertEquals(20_000L, draw.getAmount());
-        assertEquals(WAGE_CENT - 20_000L, walletService.getWallet(worker.getId()).getBalance());
+        assertEquals(new BigDecimal("100.00"), walletService.getWallet(worker.getId()).getBalance());
 
         // 8. 模拟打款成功
         WithDraw paidDraw = walletService.mockPayout(draw.getId());
@@ -166,16 +167,16 @@ class RecruitmentAndWalletFlowTests {
 
         // 预置 50 元工资入账
         walletService.credit(worker.getId(), 5_000L, WalletService.BIZ_WAGE, null, "预置工资");
-        assertEquals(5_000L, walletService.getWallet(worker.getId()).getBalance());
+        assertEquals(new BigDecimal("50.00"), walletService.getWallet(worker.getId()).getBalance());
 
         // 全额申请提现 -> 余额为 0
         WithDraw draw = walletService.applyWithdraw(worker.getId(), 5_000L, "mock-openid", "");
-        assertEquals(0L, walletService.getWallet(worker.getId()).getBalance());
+        assertEquals(new BigDecimal("0.00"), walletService.getWallet(worker.getId()).getBalance());
 
         // 模拟打款失败 -> 自动退回余额 + 退回流水 + 失败消息
         WithDraw failed = walletService.mockPayoutFail(draw.getId(), "模拟渠道失败");
         assertEquals(WithDrawStatus.FAILED, failed.getStatus());
-        assertEquals(5_000L, walletService.getWallet(worker.getId()).getBalance());
+        assertEquals(new BigDecimal("50.00"), walletService.getWallet(worker.getId()).getBalance());
         assertTrue(hasMessage(worker.getId(), MessageType.WITHDRAW_FAIL));
 
         List<WalletFlow> flows = walletService.listFlows(worker.getId());

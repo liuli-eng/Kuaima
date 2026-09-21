@@ -36,6 +36,7 @@ import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.user.service.CertificationService;
+import com.kuaima.app.domain.user.service.CreditScoreService;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
@@ -56,6 +57,7 @@ public class BossOrderService {
     private final CertificationService certificationService;
     private final BossRecruitSettingsRepository recruitSettingsRepository;
     private final BossCouponService bossCouponService;
+    private CreditScoreService creditScoreService;
     private final AdminSettingRepository adminSettingRepository;
 
     public BossOrderService(BossOrderRespository orderRepository,
@@ -98,6 +100,11 @@ public class BossOrderService {
                             SettlementRespository settlementRespository) {
         this(orderRepository, itemRepository, userRepository, messageService,
                 settlementRespository, null, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCreditScoreService(CreditScoreService creditScoreService) {
+        this.creditScoreService = creditScoreService;
     }
 
     // ==================== 订单管理 ====================
@@ -337,6 +344,19 @@ public class BossOrderService {
 
         order.setOrderStatus(targetStatus);
 
+        // 老板主动取消招工：按距离开工时间扣除老板信用分，且每个订单只执行一次。
+        if (BossStatus.ORDER_CANCELED.equals(targetStatus) && creditScoreService != null
+                && order.getCreateBy() != null && order.getStartTime() != null) {
+            long hours = java.time.Duration.between(java.time.LocalDateTime.now(),
+                    order.getStartTime().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()).toHours();
+            int delta = hours <= 1 ? -10 : hours <= 4 ? -5 : hours <= 16 ? -2 : 0;
+            if (delta != 0) {
+                creditScoreService.adjust(order.getCreateBy(), CreditScoreService.BOSS_CREDIT, delta,
+                        "BOSS_CANCEL_ORDER", "ORDER", "BOSS_CANCEL_ORDER:" + order.getId(),
+                        "老板主动取消招工");
+            }
+        }
+
         // 取消招工：把该订单下所有未完成的报名记录置为"取消招工"，并收集受影响用户以便通知
         List<Long> canceledUserIds = new ArrayList<>();
         if (BossStatus.ORDER_CANCELED.equals(targetStatus)) {
@@ -551,6 +571,10 @@ public class BossOrderService {
         item.setFinishDate(Date.valueOf(LocalDate.now()));
         item.setFinishAt(LocalDateTime.now());
         itemRepository.save(item);
+        if (creditScoreService != null && item.getUserId() != null) {
+            creditScoreService.adjust(item.getUserId(), CreditScoreService.WORKER_STAR, -10,
+                    "WORKER_EARLY_LEAVE", "EARLY_LEAVE", "WORKER_EARLY_LEAVE:" + item.getId(), "早退");
+        }
         BossOrder order = getOrderOrThrow(item.getOrderId());
         order.setOrderStatus(BossStatus.ORDER_PENDING_SETTLE);
         BossOrder saved = orderRepository.save(order);

@@ -164,6 +164,7 @@ import JobCard from "@/components/JobCard.vue";
 import WorkerTabBar from "@/components/WorkerTabBar.vue";
 import { request, USE_MOCK } from "@/api/http";
 import { applyPublicJob, getCertificationStatus, listPublicJobs } from "@/api/backend";
+import { requestCurrentLocation } from "@/utils/location";
 
 const tabs = [
   { key: "DAY", label: "每天日结" },
@@ -419,7 +420,12 @@ function normalizeJob(item) {
 }
 
 function chooseLocation() {
-  uni.showToast({ title: "定位功能开发中", icon: "none" });
+  requestCurrentLocation({ force: true }).then((result) => {
+    uni.showToast({
+      title: result ? "当前位置已更新" : "暂时无法获取当前位置",
+      icon: result ? "success" : "none",
+    });
+  });
 }
 
 function showFilter() {
@@ -502,6 +508,7 @@ onMounted(() => {
       }
     }
   } catch (_) {}
+  requestCurrentLocation();
   loadJobs();
 });
 </script>

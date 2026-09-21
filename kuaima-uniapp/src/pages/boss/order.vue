@@ -161,6 +161,10 @@
                   >详情</text
                 >
               </template>
+              <template v-else-if="job.status === 'completed'">
+                <text class="job-btn btn-primary" @click="openReview(job)">评价</text>
+                <text class="job-btn btn-link" @click="navigateTo('order-detail', { id: job.id })">详情</text>
+              </template>
               <template v-else>
                 <text
                   class="job-btn btn-link"
@@ -307,6 +311,22 @@
         </view>
       </view>
     </view>
+
+    <view class="modal-mask" v-if="showReviewModal" @click="closeReview">
+      <view class="review-modal" @click.stop>
+        <view class="review-head"><text class="review-title">评价零工</text><text class="review-close" @click="closeReview">×</text></view>
+        <text class="review-order">订单：{{ reviewTarget?.title || '' }} · 请评价此次合作的零工</text>
+        <view class="review-block">
+          <text class="review-label">综合评分</text>
+          <view class="stars"><text v-for="value in 5" :key="value" :class="['star', { active: reviewForm.overallScore >= value }]" @click="setReviewScore('overallScore', value)">★</text><text class="star-label">{{ reviewScoreLabel }}</text></view>
+        </view>
+        <view v-for="item in reviewDimensions" :key="item.key" class="dimension-row">
+          <text>{{ item.label }}</text><view class="small-stars"><text v-for="value in 5" :key="value" :class="['small-star', { active: reviewForm[item.key] >= value }]" @click="setReviewScore(item.key, value)">★</text></view>
+        </view>
+        <view class="review-block"><text class="review-label">评价内容</text><textarea v-model="reviewForm.content" maxlength="200" class="review-textarea" placeholder="说说这次合作的感受吧～" /><text class="review-count">{{ reviewForm.content.length }}/200</text></view>
+        <view class="modal-actions"><text class="modal-btn modal-btn-cancel" @click="closeReview">取消</text><text class="modal-btn modal-btn-confirm" @click="submitReview">{{ reviewSubmitting ? '提交中…' : '提交评价' }}</text></view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -321,6 +341,7 @@ import {
   refreshBossLeaveCode,
   refreshBossWorkCode,
   switchBossRecruitAccount,
+  saveBossWorkerReview,
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
 
@@ -528,6 +549,15 @@ export default {
       switchingAccount: false,
       showCancelModal: false,
       showConfirmModal: false,
+      showReviewModal: false,
+      reviewSubmitting: false,
+      reviewTarget: null,
+      reviewForm: { overallScore: 0, attitudeScore: 0, efficiencyScore: 0, skillScore: 0, content: "" },
+      reviewDimensions: [
+        { key: "attitudeScore", label: "工作态度" },
+        { key: "efficiencyScore", label: "工作效率" },
+        { key: "skillScore", label: "专业技能" },
+      ],
       cancelTargetId: null,
       cancelTargetTitle: "",
       confirmTargetId: null,
@@ -547,6 +577,11 @@ export default {
       orderFilter: null,
     };
   },
+  computed: {
+    reviewScoreLabel() {
+      return ["请选择评分", "很差", "较差", "一般", "满意", "非常满意"][this.reviewForm.overallScore] || "请选择评分";
+    },
+  },
   onShow() {
     this.loadOrderFilter();
     this.loadCertificationStatus();
@@ -561,6 +596,34 @@ export default {
     uni.$off("recruitSettingsSaved", this.loadAttendanceCodes);
   },
   methods: {
+    openReview(job) {
+      this.reviewTarget = job;
+      this.reviewForm = { overallScore: 0, attitudeScore: 0, efficiencyScore: 0, skillScore: 0, content: "" };
+      this.showReviewModal = true;
+    },
+    closeReview() {
+      if (!this.reviewSubmitting) this.showReviewModal = false;
+    },
+    setReviewScore(key, value) {
+      this.reviewForm[key] = value;
+    },
+    async submitReview() {
+      if (this.reviewSubmitting || !this.reviewTarget) return;
+      const required = ["overallScore", "attitudeScore", "efficiencyScore", "skillScore"];
+      if (required.some((key) => !this.reviewForm[key])) {
+        return uni.showToast({ title: "请完成全部评分", icon: "none" });
+      }
+      this.reviewSubmitting = true;
+      try {
+        await saveBossWorkerReview(this.reviewTarget.id, { ...this.reviewForm, content: this.reviewForm.content.trim() });
+        this.showReviewModal = false;
+        uni.showToast({ title: "评价提交成功", icon: "success" });
+      } catch (error) {
+        this.handleRequestError(error, "评价提交失败");
+      } finally {
+        this.reviewSubmitting = false;
+      }
+    },
     handleRequestError(error, fallback) {
       if (Number(error?.code || error?.statusCode) === 401) {
         if (!this.authRedirecting) {
@@ -1483,4 +1546,5 @@ export default {
   background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: #fff;
 }
+.review-modal{width:330px;max-width:calc(100% - 40px);background:#fff;border-radius:16px;padding:22px 20px;box-sizing:border-box}.review-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.review-title{font-size:16px;font-weight:700;color:#333}.review-close{font-size:24px;color:#999;padding:0 4px}.review-order{display:block;font-size:13px;color:#666;margin-bottom:14px;line-height:1.5}.review-block{position:relative;margin-bottom:14px}.review-label{display:block;font-size:13px;color:#333;font-weight:500;margin-bottom:7px}.stars{display:flex;align-items:center;gap:5px}.star{font-size:27px;color:#e0e0e0}.star.active,.small-star.active{color:#ffa14e}.star-label{margin-left:8px;font-size:13px;color:#999}.dimension-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:13px;color:#666}.small-stars{display:flex;gap:3px}.small-star{font-size:18px;color:#e0e0e0}.review-textarea{width:100%;height:80px;border:1px solid #e5e5e5;border-radius:10px;padding:10px;font-size:13px;box-sizing:border-box}.review-count{position:absolute;right:8px;bottom:6px;font-size:10px;color:#aaa}
 </style>

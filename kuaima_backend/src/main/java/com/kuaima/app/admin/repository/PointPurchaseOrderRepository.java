@@ -8,6 +8,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 
 import com.kuaima.app.admin.entity.PointPurchaseOrder;
@@ -15,6 +17,11 @@ import com.kuaima.app.admin.entity.PointPurchaseOrder;
 public interface PointPurchaseOrderRepository extends JpaRepository<PointPurchaseOrder, Long> {
     Optional<PointPurchaseOrder> findByIdempotencyKey(String key);
     Optional<PointPurchaseOrder> findByOrderNoAndBossId(String orderNo, Long bossId);
+    Optional<PointPurchaseOrder> findByOrderNo(String orderNo);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from PointPurchaseOrder o where o.orderNo = :orderNo")
+    Optional<PointPurchaseOrder> findByOrderNoForUpdate(@Param("orderNo") String orderNo);
 
     @Query("""
         select o from PointPurchaseOrder o where

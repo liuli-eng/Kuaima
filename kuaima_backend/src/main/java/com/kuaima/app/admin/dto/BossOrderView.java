@@ -17,6 +17,8 @@ public record BossOrderView(
         Integer duration,
         BigDecimal salary,
         String address,
+        BigDecimal longitude,
+        BigDecimal latitude,
         String tags,
         String trialDuration,
         java.sql.Timestamp timestamp,

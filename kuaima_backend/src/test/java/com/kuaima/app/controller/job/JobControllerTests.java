@@ -48,6 +48,8 @@ class JobControllerTests {
         order.setId(9L);
         order.setOrderStatus("招工中");
         order.setEnterpriseId(3L);
+        order.setLongitude(new java.math.BigDecimal("121.473701"));
+        order.setLatitude(new java.math.BigDecimal("31.230416"));
         Enterprise enterprise = new Enterprise();
         enterprise.setId(3L);
         enterprise.setCompanyName("快马科技");
@@ -57,5 +59,7 @@ class JobControllerTests {
         var result = controller.getPublicJob(9L);
 
         assertEquals("快马科技", result.getData().getCompanyName());
+        assertEquals(new java.math.BigDecimal("121.473701"), result.getData().getLongitude());
+        assertEquals(new java.math.BigDecimal("31.230416"), result.getData().getLatitude());
     }
 }

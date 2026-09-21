@@ -27,6 +27,10 @@ public class Rules {
     @Column(length = 30)
     private String category;
 
+    /** 一级分组：platform / credit。 */
+    @Column(name = "rule_type", length = 20)
+    private String type;
+
     @Column(length = 30)
     private String version = "v1.0";
 
@@ -41,6 +45,9 @@ public class Rules {
 
     @Column
     private LocalDateTime createTime;
+
+    @Column(length = 50)
+    private String creator;
 
     @Column
     private LocalDateTime updateTime;

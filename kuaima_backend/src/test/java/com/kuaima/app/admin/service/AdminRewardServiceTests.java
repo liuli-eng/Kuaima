@@ -11,6 +11,7 @@ import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.admin.entity.RewardFundAccount;
 import com.kuaima.app.domain.wallet.repository.*;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
 import java.util.List;
@@ -63,7 +64,7 @@ class AdminRewardServiceTests {
         RewardCampaign campaign = new RewardCampaign();
         campaign.setId(2L); campaign.setStatus("待发放"); campaign.setUsers("[7]");
         campaign.setAmountMode("fixed"); campaign.setAmount(1000L);
-        RewardFundAccount account = new RewardFundAccount(); account.setBalance(999L);
+        RewardFundAccount account = new RewardFundAccount(); account.setBalance(new BigDecimal("9.99"));
         when(campaigns.findById(2L)).thenReturn(Optional.of(campaign));
         when(grants.existsByCampaignIdAndUserId(2L, 7L)).thenReturn(false);
         when(funds.findForUpdate(1L)).thenReturn(Optional.of(account));
