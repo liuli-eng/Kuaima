@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <!-- 导航栏 -->
-    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
@@ -270,15 +270,18 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .nav-bar {
-  height: 50px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 16px 8px;
   background: #fff;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .nav-back {
@@ -309,7 +312,10 @@ export default {
 
 .content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .profile-card {
@@ -320,6 +326,8 @@ export default {
   display: flex;
   gap: 14px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 
 .avatar-lg {
@@ -347,6 +355,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .tag-green {
@@ -389,11 +398,14 @@ export default {
   border-radius: 14px;
   padding: 16px 0;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 
 .stat-item {
   text-align: center;
   flex: 1;
+  min-width: 0;
 }
 
 .stat-num {
@@ -420,6 +432,8 @@ export default {
   border-radius: 14px;
   padding: 16px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 
 .section-title {
@@ -457,6 +471,7 @@ export default {
 .info-value {
   flex: 1;
   color: #333;
+  word-break: break-all;
 }
 
 .skill-tags {
@@ -520,6 +535,9 @@ export default {
   padding: 12px 16px 22px;
   display: flex;
   gap: 10px;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .btn-outline-msg {
@@ -566,6 +584,7 @@ export default {
   padding: 20px;
   padding-bottom: 40px;
   animation: slideUp 0.25s;
+  box-sizing: border-box;
 }
 
 @keyframes slideUp {

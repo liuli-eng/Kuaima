@@ -90,6 +90,8 @@ export default {
         this.inviteCode = data?.inviteCode || "";
         this.inviteLink = data?.link || "";
         this.enterpriseName = data?.enterpriseName || "我的企业";
+        // 后端返回的是 data:image/png;base64,xxx 格式
+        this.qrImage = data?.qrImage || "";
       } catch (error) {
         uni.showToast({ title: "获取邀请码失败", icon: "none" });
       } finally {

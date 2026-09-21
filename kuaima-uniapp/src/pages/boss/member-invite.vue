@@ -169,8 +169,8 @@ export default {
       this.qrModalShow = true;
       try {
         this.qrInfo = (await getInviteQr()) || {};
-        const content = encodeURIComponent(this.qrInfo.link || "https://kuaima.com/invite");
-        this.qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${content}`;
+        // 后端直接返回 data:image/png;base64,xxx 格式，无需再走外部 QR Server
+        this.qrImageUrl = this.qrInfo.qrImage || "";
       } catch (e) {
         uni.showToast({ title: e.message || "获取邀请码失败", icon: "none" });
       }

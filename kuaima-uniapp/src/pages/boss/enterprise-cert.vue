@@ -183,10 +183,12 @@ export default {
 <style lang="scss" scoped>
 .page {
   height: 100vh;
+  width: 100%;
   background: #fff;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 }
 .nav-bar {
   box-sizing: border-box;
@@ -196,6 +198,7 @@ export default {
   background: #fff;
   flex-shrink: 0;
   position: relative;
+  width: 100%;
 }
 .nav-back,
 .nav-placeholder {
@@ -224,10 +227,14 @@ export default {
 .scroll-area {
   flex: 1;
   min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .hero-section {
   padding: 60rpx 40rpx 40rpx;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 .hero-icon {
   width: 128rpx;
@@ -262,12 +269,16 @@ export default {
 }
 .cert-options {
   padding: 0 32rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 .cert-card {
   padding: 32rpx;
   border: 2rpx solid #f0f0f0;
   border-radius: 24rpx;
   background: #fff;
+  width: 100%;
+  box-sizing: border-box;
 }
 .cert-header {
   display: flex;
@@ -312,11 +323,15 @@ export default {
   text-align: center;
   font-size: 26rpx;
   color: #ff6b35;
+  width: 100%;
+  box-sizing: border-box;
 }
 .benefits-section {
   margin-top: 40rpx;
   padding: 40rpx 32rpx;
   background: #fafafa;
+  width: 100%;
+  box-sizing: border-box;
 }
 .benefits-title {
   display: block;

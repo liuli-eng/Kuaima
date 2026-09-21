@@ -150,15 +150,27 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%;
   background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
-.body { flex: 1; overflow-y: auto; padding: 12px 16px 0; }
+.body {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  padding: 12px 16px 0;
+  box-sizing: border-box;
+}
 .card {
   background: #fff;
   border-radius: 16px;
   padding: 14px 16px;
   margin-bottom: 12px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .detail-name { font-size: 17px; font-weight: 700; color: #333; margin-bottom: 10px; }
 .detail-row { display: flex; font-size: 13px; margin-top: 7px; }

@@ -234,15 +234,20 @@ export default {
 <style lang="scss" scoped>
 .container {
   height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
   background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .top-header {
   background: linear-gradient(180deg, #ffd96f 0%, #ffe7a3 70%, #f7f7f7 100%);
   padding: 0 16px 20px;
   flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .status-bar {
@@ -308,6 +313,8 @@ export default {
 .entry-cards {
   display: flex;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .entry-card {
@@ -318,6 +325,9 @@ export default {
   overflow: hidden;
   min-height: 92px;
   cursor: pointer;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .entry-card:active {
@@ -355,13 +365,12 @@ export default {
 }
 
 .scroll-area {
-  position: absolute;
-  top: 225px;
-  left: 0;
-  right: 0;
-  bottom: 83px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0 16px 20px;
+  width: 100%;
+  box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -375,8 +384,10 @@ export default {
 
 .wb-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .wb-grid-item {
@@ -388,6 +399,8 @@ export default {
   gap: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   cursor: pointer;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .wb-grid-item:active {
@@ -411,6 +424,9 @@ export default {
 .wb-grid-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .wb-grid-name {
@@ -426,10 +442,7 @@ export default {
 }
 
 .tab-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  flex-shrink: 0;
   height: 83px;
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
@@ -437,6 +450,8 @@ export default {
   display: flex;
   padding-bottom: 20px;
   z-index: 50;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tab-item {

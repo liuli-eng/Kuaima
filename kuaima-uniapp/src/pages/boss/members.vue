@@ -30,11 +30,6 @@
           <view class="wb-row-main"><text class="wb-row-title">邀请新成员</text></view>
           <text class="wb-row-arrow">›</text>
         </view>
-        <view class="wb-row" @click="navigateTo('invite-qrcode')">
-          <view class="wb-row-icon" style="background: linear-gradient(135deg, #A78BFA, #7C3AED)"><text class="row-ico">📱</text></view>
-          <view class="wb-row-main"><text class="wb-row-title">邀请二维码</text></view>
-          <text class="wb-row-arrow">›</text>
-        </view>
         <view class="wb-row" @click="navigateTo('member-exit')">
           <view class="wb-row-icon" style="background: linear-gradient(135deg, #FF7743, #FF5C33)"><text class="row-ico">🚪</text></view>
           <view class="wb-row-main"><text class="wb-row-title">退出当前企业</text></view>

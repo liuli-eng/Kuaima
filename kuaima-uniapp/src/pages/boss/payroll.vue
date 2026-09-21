@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <!-- 导航栏 -->
-    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
@@ -233,15 +233,20 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%;
   background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .nav-bar {
-  height: 50px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 16px 8px;
   background: #fff;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .nav-back, .nav-right {
   width: 32px; height: 32px;
@@ -250,7 +255,13 @@ export default {
 }
 .nav-dots { font-size: 18px; }
 .nav-title { font-size: 17px; font-weight: 600; color: #333; }
-.body { flex: 1; padding: 12px 16px 0; }
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 16px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
 
 .pay-hero {
   background: #fff;
@@ -258,6 +269,8 @@ export default {
   padding: 20px 16px;
   text-align: center;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 .pay-hero-title { font-size: 17px; font-weight: 700; color: #333; }
 .pay-steps {
@@ -276,26 +289,30 @@ export default {
   background: #fff; border-radius: 16px; margin-top: 12px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 .submitted-text { font-size: 14px; color: #333; font-weight: 500; }
 .row-arrow { color: #C8C8C8; font-size: 18px; }
 
-.order-section { margin-top: 12px; }
+.order-section { margin-top: 12px; width: calc(100% - 32px); }
 .section-title { font-size: 13px; color: #999; margin: 0 0 8px 2px; }
 .order-card {
   background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  box-sizing: border-box;
 }
 .order-head {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
 }
-.order-title { font-size: 14px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; }
+.order-title { font-size: 14px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.order-title text:first-child { flex-shrink: 0; }
 .order-tag {
-  font-size: 11px; padding: 2px 7px; border-radius: 6px; background: #fff3ed; color: #ff6b35;
+  font-size: 11px; padding: 2px 7px; border-radius: 6px; background: #fff3ed; color: #ff6b35; flex-shrink: 0;
 }
 .order-tag.advance { background: #fff8e6; color: #d48806; }
 .order-tag.other { background: #e6f7ff; color: #1890ff; }
-.order-status { font-size: 12px; font-weight: 500; }
+.order-status { font-size: 12px; font-weight: 500; flex-shrink: 0; }
 .order-status.pending { color: #d48806; }
 .order-status.approved { color: #10b981; }
 .order-status.rejected { color: #dc2626; }
@@ -304,7 +321,7 @@ export default {
 .order-line .lab { color: #B0B0B0; }
 .amount { color: #FF6B35; font-weight: 600; }
 
-.empty-state { text-align: center; padding: 60px 0; }
+.empty-state { text-align: center; padding: 60px 0; width: calc(100% - 32px); }
 .empty-ico { font-size: 40px; display: block; margin-bottom: 10px; }
 .empty-text { font-size: 13px; color: #999; }
 .bottom-space { height: 20px; }
@@ -312,6 +329,9 @@ export default {
 .module-tabs {
   display: flex; gap: 12px; padding: 10px 16px; padding-bottom: calc(10px + env(safe-area-inset-bottom));
   background: #fff; border-top: 0.5px solid #eee;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .module-tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -323,7 +343,7 @@ export default {
 
 /* 弹窗 */
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 0 20px; }
-.modal-box { width: 100%; max-width: 360px; background: #fff; border-radius: 18px; overflow: hidden; animation: modalIn 0.25s ease-out; }
+.modal-box { width: 100%; max-width: 360px; background: #fff; border-radius: 18px; overflow: hidden; animation: modalIn 0.25s ease-out; box-sizing: border-box; }
 @keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal-header { display: flex; align-items: center; justify-content: center; padding: 16px; border-bottom: 0.5px solid #f0f0f0; position: relative; }
 .modal-title { font-size: 16px; font-weight: 600; color: #333; }
@@ -333,14 +353,11 @@ export default {
 .form-item:last-child { margin-bottom: 0; }
 .form-label { display: block; font-size: 14px; color: #333; font-weight: 500; margin-bottom: 10px; }
 .form-input {
-  width: 100%; padding: 13px 16px; border: 1.5px solid #e8e8e8; border-radius: 14px;
+  width: 100%; height: 48px; padding: 0 16px; border: 1.5px solid #e8e8e8; border-radius: 14px;
   font-size: 15px; background: #fff; box-sizing: border-box; color: #333;
-  transition: border-color 0.2s, box-shadow 0.2s; overflow: visible;
 }
-.form-input:focus { border-color: #FF6B35; box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12); outline: none; }
-.form-input::placeholder { color: #c0c0c0; overflow: visible; text-overflow: clip; }
-.picker-text { line-height: 1.4; }
-.type-chips { display: flex; gap: 10px; }
+.picker-text { height: 48px; display: flex; align-items: center; }
+.type-chips { display: flex; gap: 10px; flex-wrap: wrap; }
 .type-chip {
   padding: 7px 18px; border-radius: 18px; font-size: 13px; color: #666;
   border: 1px solid #E5E5E5;

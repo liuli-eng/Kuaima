@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <!-- 导航栏 -->
-    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
@@ -199,15 +199,20 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%;
   background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .nav-bar {
-  height: 50px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 16px 8px;
   background: #fff;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .nav-back, .nav-right { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; }
 .nav-dots { font-size: 18px; }
@@ -220,11 +225,19 @@ export default {
   border-radius: 8px; padding: 1px 6px; font-weight: 500;
 }
 
-.body { flex: 1; padding: 12px 16px 0; }
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 16px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
 
 .search-bar {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin-bottom: 12px;
   background: #fff; border-radius: 22px;
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 .search-ico { font-size: 13px; color: #bbb; }
 .search-input { flex: 1; font-size: 13px; color: #333; }
@@ -238,6 +251,8 @@ export default {
   background: #fff; border-radius: 16px; margin-bottom: 12px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 .approved-text { font-size: 14px; color: #333; font-weight: 500; }
 .row-arrow { color: #C8C8C8; font-size: 18px; }
@@ -245,13 +260,16 @@ export default {
 .record-card {
   background: #fff; border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 .record-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.record-title { font-size: 14px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; }
-.record-tag { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: #fff3ed; color: #ff6b35; font-weight: 500; }
+.record-title { font-size: 14px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.record-title text:first-child { flex-shrink: 0; }
+.record-tag { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: #fff3ed; color: #ff6b35; font-weight: 500; flex-shrink: 0; }
 .record-tag.advance { background: #fff8e6; color: #d48806; }
 .record-tag.other { background: #e6f7ff; color: #1890ff; }
-.record-status { font-size: 12px; font-weight: 500; }
+.record-status { font-size: 12px; font-weight: 500; flex-shrink: 0; }
 .record-status.pending { color: #FF6B35; }
 .record-status.approved { color: #10B981; }
 .record-status.rejected { color: #EF4444; }
@@ -274,7 +292,7 @@ export default {
 
 /* 弹窗 */
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; }
-.modal-box { width: 85%; background: #fff; border-radius: 18px; overflow: hidden; animation: modalIn 0.25s ease-out; }
+.modal-box { width: 85%; max-width: 360px; background: #fff; border-radius: 18px; overflow: hidden; animation: modalIn 0.25s ease-out; box-sizing: border-box; }
 @keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal-header { display: flex; align-items: center; justify-content: center; padding: 16px; border-bottom: 0.5px solid #f0f0f0; position: relative; }
 .modal-title { font-size: 16px; font-weight: 600; color: #333; }

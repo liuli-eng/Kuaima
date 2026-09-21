@@ -779,6 +779,27 @@ export function getBossBalance() {
   return request({ url: "/boss/balance", skipUserIdHeader: true });
 }
 
+/** 老板端创建商户余额充值订单（微信/支付宝） */
+export function createBossRechargeOrder({ amount, payMethod }) {
+  return request({
+    url: "/boss/balance/recharge/create",
+    method: "POST",
+    skipUserIdHeader: true,
+    data: { amount, payMethod },
+  });
+}
+
+/** 老板端主动查询充值订单支付结果 */
+export function queryBossRechargeOrder(orderNo) {
+  return request({ url: `/boss/balance/recharge/query?orderNo=${orderNo}`, skipUserIdHeader: true });
+}
+
+/** 老板端充值订单列表（可选 status 过滤） */
+export function listBossRechargeOrders(status) {
+  const qs = status ? `?status=${status}` : "";
+  return request({ url: `/boss/balance/recharge/orders${qs}`, skipUserIdHeader: true });
+}
+
 // -------------------- 人才库（候选人模块） --------------------
 
 /** 人才库列表：type=skilled熟练工/new新零工，favoriteOnly=true 我收藏的 */

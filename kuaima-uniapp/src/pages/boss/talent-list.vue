@@ -314,15 +314,18 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .nav-bar {
-  height: 50px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 16px 8px;
   background: #fff;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .nav-back {
@@ -354,6 +357,9 @@ export default {
 .search-bar {
   padding: 10px 16px;
   background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .search-input {
@@ -383,6 +389,9 @@ export default {
   gap: 8px;
   padding: 0 16px 12px;
   background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .filter-tab {
@@ -391,6 +400,7 @@ export default {
   color: #666;
   background: #f5f5f5;
   border-radius: 16px;
+  flex-shrink: 0;
 }
 
 .filter-tab.active {
@@ -400,7 +410,10 @@ export default {
 
 .scroll-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .page-state,
@@ -434,6 +447,9 @@ export default {
   padding: 14px;
   display: flex;
   gap: 12px;
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  cursor: pointer;
 }
 
 .worker-avatar {
@@ -460,6 +476,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .worker-tag {
@@ -468,6 +485,7 @@ export default {
   border-radius: 4px;
   background: #fff3ed;
   color: #ff6b35;
+  flex-shrink: 0;
 }
 
 .worker-tag.blue {
@@ -502,6 +520,7 @@ export default {
   flex-direction: column;
   gap: 6px;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .btn-sm {
@@ -543,6 +562,7 @@ export default {
   z-index: 91;
   transform: translateY(100%);
   transition: transform 0.25s ease;
+  box-sizing: border-box;
 }
 
 .add-sheet.show {

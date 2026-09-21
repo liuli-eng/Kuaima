@@ -1,5 +1,6 @@
 package com.kuaima.app.controller.payroll;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -73,7 +74,9 @@ public class BossTransferController {
 
         long count = orders.size();
         long people = orders.stream().mapToLong(o -> o.getPeopleCount() == null ? 0 : o.getPeopleCount()).sum();
-        long amount = orders.stream().mapToLong(o -> o.getAmount() == null ? 0 : o.getAmount()).sum();
+        BigDecimal amount = orders.stream()
+                .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("records", orders);
@@ -127,11 +130,11 @@ public class BossTransferController {
         Long bossId = requireBossId(authentication);
         List<PayrollOrder> orders = filterOrders(bossId, null, null, null, null, startDate, endDate);
 
-        long totalAmount = 0;
+        BigDecimal totalAmount = BigDecimal.ZERO;
         long peopleSum = 0;
         Map<Long, List<PayrollOrder>> byProject = new LinkedHashMap<>();
         for (PayrollOrder order : orders) {
-            totalAmount += order.getAmount() == null ? 0 : order.getAmount();
+            totalAmount = totalAmount.add(order.getAmount() == null ? BigDecimal.ZERO : order.getAmount());
             peopleSum += order.getPeopleCount() == null ? 0 : order.getPeopleCount();
             byProject.computeIfAbsent(order.getProjectId(), k -> new ArrayList<>()).add(order);
         }
@@ -145,7 +148,7 @@ public class BossTransferController {
         overview.put("successCount", allDetails.stream().filter(d -> PayrollConstants.DETAIL_SUCCESS.equals(d.getStatus())).count());
         overview.put("failedCount", allDetails.stream().filter(d -> PayrollConstants.DETAIL_FAILED.equals(d.getStatus())).count());
         overview.put("peopleCount", peopleSum);
-        overview.put("avgPerPeople", peopleSum == 0 ? 0 : totalAmount / peopleSum);
+        overview.put("avgPerPeople", peopleSum == 0 ? 0 : totalAmount.divide(BigDecimal.valueOf(peopleSum), 2, BigDecimal.ROUND_HALF_UP).longValue());
         overview.put("projectCount", byProject.size());
         overview.put("activeProjects", byProject.keySet().stream()
                 .map(projectRepository::findById)
@@ -155,7 +158,9 @@ public class BossTransferController {
         List<Map<String, Object>> projects = new ArrayList<>();
         for (Map.Entry<Long, List<PayrollOrder>> entry : byProject.entrySet()) {
             List<PayrollOrder> projectOrders = entry.getValue();
-            long projectAmount = projectOrders.stream().mapToLong(o -> o.getAmount() == null ? 0 : o.getAmount()).sum();
+            BigDecimal projectAmount = projectOrders.stream()
+                    .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             long projectPeople = projectOrders.stream().mapToLong(o -> o.getPeopleCount() == null ? 0 : o.getPeopleCount()).sum();
             List<Long> ids = projectOrders.stream().map(PayrollOrder::getId).toList();
             List<PayrollDetail> projectDetails = detailRepository.findByPayrollIdIn(ids);
@@ -173,10 +178,10 @@ public class BossTransferController {
             item.put("orderCount", projectOrders.size());
             item.put("peopleCount", projectPeople);
             item.put("successRate", successRate);
-            item.put("percent", totalAmount == 0 ? 0 : (int) (projectAmount * 100 / totalAmount));
+            item.put("percent", totalAmount.compareTo(BigDecimal.ZERO) == 0 ? 0 : projectAmount.multiply(BigDecimal.valueOf(100)).divide(totalAmount, 0, BigDecimal.ROUND_HALF_UP).intValue());
             projects.add(item);
         }
-        projects.sort((a, b) -> Long.compare((long) b.get("totalAmount"), (long) a.get("totalAmount")));
+        projects.sort((a, b) -> ((BigDecimal) b.get("totalAmount")).compareTo((BigDecimal) a.get("totalAmount")));
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("overview", overview);
@@ -213,7 +218,6 @@ public class BossTransferController {
 
     // ==================== 私有方法 ====================
 
-    /** 按当前老板 + 筛选条件过滤已审批通过的发薪单（即转账记录）。 */
     private List<PayrollOrder> filterOrders(Long bossId, String keyword, String type, Long projectId,
                                             String creator, LocalDate startDate, LocalDate endDate) {
         List<PayrollOrder> orders = orderRepository.findByCreatorIdAndStatusOrderByIdDesc(

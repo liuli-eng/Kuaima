@@ -51,6 +51,8 @@ public class SecurityConfig {
                 .requestMatchers("/service/faqs").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/public/**").permitAll()
+                // 支付回调：微信/支付宝异步通知，无 JWT
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/boss/balance/recharge/callback").permitAll()
                 // 放行 Swagger / OpenAPI 文档相关路径
                 .requestMatchers(
                         "/v3/api-docs/**",

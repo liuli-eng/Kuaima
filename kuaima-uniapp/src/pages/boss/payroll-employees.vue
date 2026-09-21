@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <!-- 导航栏 -->
-    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
@@ -172,34 +172,49 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%;
   background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .nav-bar {
-  height: 50px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 16px 8px;
   background: #fff;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .nav-back, .nav-right { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; }
 .nav-dots { font-size: 18px; }
 .nav-title { font-size: 17px; font-weight: 600; color: #333; }
-.body { flex: 1; padding: 12px 16px 0; }
+
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 16px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
 
 .search-bar {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px;
   background: #fff; border-radius: 22px;
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 .search-ico { font-size: 13px; color: #bbb; }
 .search-input { flex: 1; font-size: 13px; color: #333; }
 
 .section-title { font-size: 12px; color: #999; margin: 14px 0 8px 2px; }
 
-.stat-cards-row { display: flex; gap: 10px; margin-bottom: 4px; }
+.stat-cards-row { display: flex; gap: 10px; margin-bottom: 4px; width: calc(100% - 32px); }
 .stat-card {
   flex: 1; background: #fff; border-radius: 14px; padding: 13px 0;
   text-align: center; box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  box-sizing: border-box;
 }
 .stat-num { font-size: 20px; font-weight: 700; color: #FF6B35; }
 .stat-label { font-size: 11px; color: #999; margin-top: 3px; }
@@ -213,6 +228,8 @@ export default {
   background: #fff; border-radius: 14px; padding: 13px 14px; margin-bottom: 10px;
   display: flex; align-items: center; gap: 12px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  width: calc(100% - 32px);
+  box-sizing: border-box;
 }
 .emp-avatar {
   width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
@@ -225,18 +242,21 @@ export default {
 .emp-time { font-size: 11px; color: #B0B0B0; margin-top: 4px; }
 
 .emp-status {
-  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; flex-shrink: 0;
 }
 .emp-status.active { background: #E8F7EF; color: #16A34A; }
 .emp-status.temp { background: #FFF1DB; color: #B45309; }
 .emp-status.left { background: #F5F5F5; color: #8C8C8C; }
 
-.row-arrow { color: #C8C8C8; font-size: 18px; }
+.row-arrow { color: #C8C8C8; font-size: 18px; flex-shrink: 0; }
 .bottom-space { height: 20px; }
 
 .module-tabs {
   display: flex; gap: 12px; padding: 10px 16px; padding-bottom: calc(10px + env(safe-area-inset-bottom));
   background: #fff; border-top: 0.5px solid #eee;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .module-tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;

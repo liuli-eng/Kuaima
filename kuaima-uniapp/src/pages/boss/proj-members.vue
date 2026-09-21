@@ -194,8 +194,22 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.container { display: flex; flex-direction: column; height: 100vh; background: #f3f4f6; }
-.body { flex: 1; overflow-y: auto; padding: 12px 16px 0; }
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+.body {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  padding: 12px 16px 0;
+  box-sizing: border-box;
+}
 .cap-btn {
   width: 30px;
   height: 30px;
@@ -215,6 +229,8 @@ export default {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .pm-icon {
   width: 44px;
@@ -237,6 +253,8 @@ export default {
   padding: 12px 0;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   margin-bottom: 14px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .pm-stat { flex: 1; text-align: center; position: relative; }
 .pm-stat:not(:last-child)::after {
@@ -269,6 +287,9 @@ export default {
   display: flex;
   gap: 12px;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .pm-avatar {
   width: 48px;

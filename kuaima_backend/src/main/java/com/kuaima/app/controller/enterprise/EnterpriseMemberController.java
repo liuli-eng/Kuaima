@@ -1,5 +1,8 @@
 package com.kuaima.app.controller.enterprise;
 
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +18,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 import com.kuaima.app.common.BusinessHttpException;
 import com.kuaima.app.common.Result;
@@ -179,15 +190,36 @@ public class EnterpriseMemberController {
     }
 
     @GetMapping("/invite-qr")
-    @Operation(summary = "获取邀请二维码信息（邀请码 + 链接 + 企业名称）")
+    @Operation(summary = "获取邀请二维码信息（邀请码 + 链接 + 企业名称 + base64二维码图）")
     public Result<Map<String, Object>> inviteQr(Authentication auth) {
         var ctx = context.require(auth, "MEMBER_WRITE");
         var invite = service.createInvite(ctx.enterprise(), ctx.user().getId(),
                 ctx.user().getPhone() != null ? ctx.user().getPhone() : "00000000000", "STAFF");
-        return Result.success(Map.of(
-                "inviteCode", invite.getInviteCode(),
-                "link", "https://kuaima.com/invite?code=" + invite.getInviteCode(),
-                "enterpriseName", ctx.enterprise().getCompanyName()));
+        String link = "https://kuaima.com/invite?code=" + invite.getInviteCode();
+        String qrImage = generateQrBase64(link, 300);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("inviteCode", invite.getInviteCode());
+        data.put("link", link);
+        data.put("enterpriseName", ctx.enterprise().getCompanyName());
+        data.put("qrImage", qrImage);
+        return Result.success(data);
+    }
+
+    /** 生成指定内容的 PNG 二维码，返回 data:image/png;base64,xxx 格式字符串。 */
+    private String generateQrBase64(String content, int size) {
+        try {
+            Map<EncodeHintType, Object> hints = new LinkedHashMap<>();
+            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+            hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
+            hints.put(EncodeHintType.MARGIN, 1);
+            BitMatrix matrix = new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(out.toByteArray());
+        } catch (WriterException | java.io.IOException e) {
+            return "";
+        }
     }
 
     @GetMapping("/exit-info")

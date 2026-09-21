@@ -219,12 +219,17 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%;
   background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .body {
   flex: 1;
   overflow-y: auto;
+  width: 100%;
   padding: 12px 16px 0;
+  box-sizing: border-box;
 }
 .search-bar {
   display: flex;
@@ -235,6 +240,8 @@ export default {
   height: 40px;
   margin-bottom: 12px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
 }
 .search-icon { font-size: 14px; color: #bbb; margin-right: 8px; }
 .search-input { flex: 1; font-size: 13px; color: #333; }
@@ -245,6 +252,8 @@ export default {
   padding: 4px;
   margin-bottom: 12px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
 }
 .proj-tab {
   flex: 1;
@@ -275,7 +284,11 @@ export default {
   padding: 14px 16px;
   margin-bottom: 10px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
+.proj-list { width: 100%; box-sizing: border-box; }
 .proj-name {
   font-size: 15px;
   font-weight: 600;

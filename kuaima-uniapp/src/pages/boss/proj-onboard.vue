@@ -164,8 +164,22 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.container { display: flex; flex-direction: column; height: 100vh; background: #f3f4f6; }
-.body { flex: 1; overflow-y: auto; padding: 12px 16px 0; }
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+.body {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  padding: 12px 16px 0;
+  box-sizing: border-box;
+}
 .stats {
   display: flex;
   background: #fff;
@@ -173,13 +187,24 @@ export default {
   padding: 14px 0;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
   margin-bottom: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .stat { flex: 1; text-align: center; }
 .stat-value { font-size: 20px; font-weight: 700; color: #333; display: block; }
 .stat-value.orange { color: #ff6b35; }
 .stat-value.reject { color: #888; }
 .stat-label { font-size: 11px; color: #999; margin-top: 3px; display: block; }
-.tab-bar { display: flex; background: #fff; padding: 4px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04); }
+.tab-bar {
+  display: flex;
+  background: #fff;
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
+}
 .tab-item {
   flex: 1;
   text-align: center;
@@ -195,7 +220,16 @@ export default {
 .tab-item.active { background: linear-gradient(135deg, #fff0e8, #ffe0d0); color: #ff6b35; font-weight: 600; }
 .tab-badge { background: #ffe0d0; color: #ff6b35; font-size: 10px; padding: 1px 6px; border-radius: 8px; }
 .tab-item.active .tab-badge { background: #fff; color: #ff6b35; }
-.apply-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04); }
+.apply-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
 .apply-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
 .apply-avatar {
   width: 44px;
@@ -210,9 +244,9 @@ export default {
   font-weight: 600;
 }
 .apply-info { flex: 1; min-width: 0; }
-.apply-name { font-size: 15px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; }
+.apply-name { font-size: 15px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .apply-sub { font-size: 12px; color: #999; margin-top: 3px; }
-.apply-meta { display: flex; gap: 12px; font-size: 11px; color: #999; padding-top: 10px; border-top: 0.5px solid #f5f5f5; }
+.apply-meta { display: flex; gap: 12px; font-size: 11px; color: #999; padding-top: 10px; border-top: 0.5px solid #f5f5f5; width: 100%; box-sizing: border-box; }
 .apply-actions { display: flex; gap: 8px; margin-top: 10px; }
 .apply-btn { flex: 1; padding: 8px 0; border-radius: 18px; font-size: 12px; border: none; font-weight: 500; }
 .apply-btn.primary { background: linear-gradient(135deg, #ff6b35, #ff8c5a); color: #fff; }

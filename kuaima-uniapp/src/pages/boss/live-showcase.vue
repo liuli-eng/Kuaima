@@ -208,7 +208,10 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%;
   background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .nav-bar {
   height: 50px;
@@ -217,16 +220,26 @@ export default {
   justify-content: space-between;
   padding: 0 16px;
   background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 .nav-back, .nav-right { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; }
 .nav-dots { font-size: 18px; }
 .nav-title { font-size: 17px; font-weight: 600; color: #333; }
 
-.body { flex: 1; padding: 12px 16px 0; }
+.body {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  padding: 12px 16px 0;
+  box-sizing: border-box;
+}
 
 .search-bar {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin-bottom: 12px;
   background: #fff; border-radius: 22px;
+  width: 100%; box-sizing: border-box;
 }
 .search-ico { font-size: 13px; color: #bbb; }
 .search-input { flex: 1; font-size: 13px; color: #333; }
@@ -234,6 +247,7 @@ export default {
 .live-notice {
   display: flex; gap: 9px; background: #FFF8EC; border: 1px solid #FFE9BD;
   border-radius: 12px; padding: 11px 13px; margin-bottom: 12px;
+  width: 100%; box-sizing: border-box;
 }
 .notice-ico { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
 .notice-text { font-size: 11.5px; color: #9A7B3F; line-height: 1.65; }
@@ -245,11 +259,12 @@ export default {
 .live-card {
   background: #fff; border-radius: 16px; margin-bottom: 12px; overflow: hidden;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  width: 100%; box-sizing: border-box;
 }
-.live-body { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.live-body { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; }
 .live-info-row { display: flex; align-items: center; font-size: 13px; }
 .li-label { color: #999; width: 68px; flex-shrink: 0; }
-.li-value { color: #333; flex: 1; }
+.li-value { color: #333; flex: 1; min-width: 0; }
 .li-value.bold { font-weight: 600; color: #1a1a1a; font-size: 14px; }
 .tiktok-ico { margin-right: 4px; }
 
@@ -259,6 +274,7 @@ export default {
   display: flex; padding: 12px 16px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
   background: #fff; border-top: 0.5px solid #eee;
+  width: 100%; box-sizing: border-box;
 }
 .footer-btn {
   flex: 1; text-align: center; padding: 12px 0; border-radius: 24px;
@@ -267,33 +283,70 @@ export default {
 .footer-btn.primary { background: linear-gradient(135deg, #FF6B35, #FF8C5A); color: #fff; }
 
 /* 弹窗 */
-.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 0 20px; }
-.modal-box { width: 100%; max-width: 360px; background: #fff; border-radius: 18px; overflow: hidden; animation: modalIn 0.25s ease-out; }
+.modal-mask {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+.modal-box {
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 360px;
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  animation: modalIn 0.25s ease-out;
+  z-index: 110;
+}
 @keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-.modal-header { display: flex; align-items: center; justify-content: center; padding: 16px; border-bottom: 0.5px solid #f0f0f0; position: relative; }
+.modal-header {
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px; border-bottom: 0.5px solid #f0f0f0; position: relative;
+  width: 100%; box-sizing: border-box;
+}
 .modal-title { font-size: 16px; font-weight: 600; color: #333; }
-.modal-close { position: absolute; right: 16px; font-size: 16px; color: #999; }
-.modal-body { padding: 20px 14px; }
+.modal-close { position: absolute; right: 16px; font-size: 16px; color: #999; padding: 8px; }
+.modal-body { padding: 20px 14px; width: 100%; box-sizing: border-box; }
 .form-item { margin-bottom: 18px; }
 .form-item:last-child { margin-bottom: 0; }
 .form-label { display: block; font-size: 14px; color: #333; font-weight: 500; margin-bottom: 10px; }
 .form-input {
-  width: 100%; padding: 13px 16px; border: 1.5px solid #e8e8e8; border-radius: 14px;
-  font-size: 15px; background: #fff; box-sizing: border-box; color: #333;
-  transition: border-color 0.2s, box-shadow 0.2s; overflow: visible;
+  width: 100%;
+  height: 46px;
+  padding: 0 16px;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 14px;
+  font-size: 15px;
+  background: #fff;
+  box-sizing: border-box;
+  color: #333;
+  line-height: 46px;
 }
-.form-input:focus { border-color: #FF6B35; box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12); outline: none; }
-.form-input::placeholder { color: #c0c0c0; overflow: visible; text-overflow: clip; }
 .select-row {
-  width: 100%; padding: 13px 16px; border: 1.5px solid #e8e8e8; border-radius: 14px;
-  font-size: 15px; background: #fff; color: #B8B8B8; overflow: visible;
-  display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  height: 46px;
+  padding: 0 16px;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 14px;
+  font-size: 15px;
+  background: #fff;
+  color: #B8B8B8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
 }
-.select-row text { overflow: visible; text-overflow: clip; }
 .select-row.picked { color: #333; }
 .select-arrow { color: #C8C8C8; font-size: 14px; }
-.modal-footer { display: flex; gap: 12px; padding: 16px; border-top: 0.5px solid #f0f0f0; }
+.modal-footer {
+  display: flex; gap: 12px; padding: 16px; border-top: 0.5px solid #f0f0f0;
+  width: 100%; box-sizing: border-box;
+}
 .modal-btn { flex: 1; text-align: center; padding: 11px 0; border-radius: 22px; font-size: 14px; font-weight: 600; }
 .modal-btn.outline { background: #fff; color: #333; border: 1px solid #e0e0e0; }
 .modal-btn.primary { background: linear-gradient(135deg, #ff6b35, #ff8c5a); color: #fff; }
@@ -301,18 +354,21 @@ export default {
 /* 账号选择抽屉 */
 .sheet-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 105; display: flex; align-items: flex-end; }
 .acc-sheet {
-  left: 0; right: 0; bottom: 0; width: 100%; background: #fff;
+  width: 100%; background: #fff;
   border-radius: 18px 18px 0 0; padding: 10px 0 24px; z-index: 110;
-  animation: slideUp 0.25s ease-out; padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  animation: slideUp 0.25s ease-out;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .sheet-title {
   text-align: center; font-size: 15px; font-weight: 600; color: #333;
   padding: 8px 0 12px; position: relative;
 }
-.sheet-close { position: absolute; right: 16px; top: 9px; color: #999; font-size: 15px; }
+.sheet-close { position: absolute; right: 16px; top: 9px; color: #999; font-size: 15px; padding: 8px; }
 .acc-item {
   display: flex; align-items: center; gap: 11px; padding: 12px 18px;
+  width: 100%; box-sizing: border-box;
 }
 .acc-item:active { background: #F7F7F7; }
 .acc-avatar {
@@ -322,7 +378,7 @@ export default {
 }
 .acc-avatar.add { background: #F0F0F0; color: #999; }
 .acc-info { flex: 1; min-width: 0; }
-.acc-name-line { display: flex; align-items: center; gap: 6px; }
+.acc-name-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .acc-name { font-size: 14px; font-weight: 500; color: #333; }
 .acc-name.add-name { color: #FF6B35; }
 .acc-id { font-size: 12px; color: #999; margin-top: 2px; display: block; }

@@ -12,8 +12,18 @@
     <scroll-view scroll-y class="body">
       <view v-if="loading" class="page-state">加载中...</view>
       <template v-else>
+        <!-- 无邀请码时：先输入邀请码 -->
+        <view v-if="!submitted && !inviteCode" class="code-card">
+          <text class="code-title">请输入邀请码</text>
+          <text class="code-desc">向邀请您的企业索取6位邀请码</text>
+          <view class="code-input-row">
+            <input class="code-input" v-model="manualCode" placeholder="邀请码" maxlength="20" />
+            <view class="code-btn" @click="onEnterCode">查询</view>
+          </view>
+        </view>
+
         <!-- 头部提示 -->
-        <view class="header-card" v-if="!submitted">
+        <view class="header-card" v-if="!submitted && inviteCode">
           <text class="header-ico">🏢</text>
           <text class="header-text">您正在加入</text>
           <text class="header-name">{{ enterpriseName }}</text>
@@ -29,7 +39,7 @@
         </view>
 
         <!-- 申请表单 -->
-        <view v-if="!submitted" class="form-card">
+        <view v-if="!submitted && inviteCode" class="form-card">
           <view class="form-title">填写申请信息</view>
           <view class="form-item">
             <text class="form-label">姓名 <text class="required">*</text></text>
@@ -51,7 +61,7 @@
           </view>
         </view>
 
-        <view v-if="!submitted" class="submit-btn" :class="{ disabled: submitting }" @click="submitApply">
+        <view v-if="!submitted && inviteCode" class="submit-btn" :class="{ disabled: submitting }" @click="submitApply">
           {{ submitting ? "提交中..." : "提交申请" }}
         </view>
       </template>
@@ -72,6 +82,7 @@ export default {
       submitted: false,
       successMsg: "",
       inviteCode: "",
+      manualCode: "",
       enterpriseName: "",
       form: { name: "", phone: "", note: "" },
     };
@@ -106,6 +117,15 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    onEnterCode() {
+      const v = (this.manualCode || "").trim();
+      if (!v) {
+        uni.showToast({ title: "请输入邀请码", icon: "none" });
+        return;
+      }
+      this.inviteCode = v;
+      this.loadInviteInfo();
     },
     async submitApply() {
       if (this.submitting) return;
@@ -207,4 +227,22 @@ export default {
 }
 
 .bottom-space { height: 20px; }
+
+/* 邀请码输入卡片 */
+.code-card {
+  background: #fff; border-radius: 16px; padding: 28px 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04); margin-bottom: 16px; text-align: center;
+}
+.code-title { font-size: 17px; font-weight: 700; color: #333; display: block; }
+.code-desc { font-size: 12px; color: #999; display: block; margin-top: 6px; }
+.code-input-row { display: flex; gap: 10px; margin-top: 18px; }
+.code-input {
+  flex: 1; padding: 12px 14px; border: 1.5px solid #ebebeb; border-radius: 12px;
+  font-size: 15px; background: #fafafa; color: #333; text-align: center; letter-spacing: 2px;
+}
+.code-btn {
+  background: linear-gradient(135deg, #FF6B35, #FF8C5A); color: #fff;
+  font-size: 14px; font-weight: 600; padding: 0 22px; border-radius: 12px;
+  display: flex; align-items: center;
+}
 </style>
