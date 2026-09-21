@@ -3,18 +3,8 @@ export const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 
 // H5 开发环境通过 Vite 代理访问 /api；微信开发者工具不支持该相对代理地址。
 // #ifdef MP-WEIXIN
-// 真机预览时请通过 VITE_MP_API_BASE_URL 指向电脑局域网 IP 或 HTTPS 测试域名。
-BASE_URL = import.meta.env.VITE_MP_API_BASE_URL || "https://ke.taifang.xyz/api";
-
-// 微信开发者工具中优先请求本地后端（test profile + mock 模式），
-// 无需真机即可完整调试微信登录流程；真机预览仍走上面的线上地址。
-// 注意：本地后端未配置 context-path，路径不带 /api 前缀。
-try {
-  const sys = uni.getSystemInfoSync();
-  if (sys && sys.platform === "devtools") {
-    BASE_URL = "http://127.0.0.1:8080";
-  }
-} catch (_) {}
+// 地址由 .env.development/.env.test/.env.production 统一控制。
+BASE_URL = import.meta.env.VITE_MP_API_BASE_URL || "http://127.0.0.1:8080";
 // #endif
 
 function formatError(error, fallback = "请求失败") {

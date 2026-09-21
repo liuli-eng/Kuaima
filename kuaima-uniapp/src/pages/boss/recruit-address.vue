@@ -107,6 +107,24 @@
           />
         </view>
         <view class="form-item">
+          <text class="form-label"><text class="required">*</text> 所在城市</text>
+          <input
+            v-model="addressDraft.city"
+            class="form-input"
+            maxlength="30"
+            placeholder="请输入所在城市，如：深圳市"
+          />
+        </view>
+        <view class="form-item">
+          <text class="form-label"><text class="required">*</text> 所在区县</text>
+          <input
+            v-model="addressDraft.district"
+            class="form-input"
+            maxlength="30"
+            placeholder="请输入所在区县，如：龙华区"
+          />
+        </view>
+        <view class="form-item">
           <text class="form-label">地点标签（可多选）</text>
           <view class="tag-chips">
             <text
@@ -161,29 +179,29 @@ import {
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
 
-const MOCK_LOCATION = {
-  name: "公司仓库",
-  contactName: "张三",
-  contactPhone: "13800000000",
-  city: "上海市",
-  district: "浦东新区",
-  detail: "张江高科技园区科苑路88号",
-  latitude: 31.2304,
-  longitude: 121.4737,
-  isDefault: false,
-};
-
-function fillMockLocationParams(draft = {}) {
+function normalizeLocationParams(draft = {}) {
   const latitude = Number(draft.latitude);
   const longitude = Number(draft.longitude);
   const hasLatitude = draft.latitude !== null && draft.latitude !== "" && Number.isFinite(latitude);
   const hasLongitude = draft.longitude !== null && draft.longitude !== "" && Number.isFinite(longitude);
   return {
     ...draft,
-    city: draft.city || MOCK_LOCATION.city,
-    district: draft.district || MOCK_LOCATION.district,
-    latitude: hasLatitude ? latitude : MOCK_LOCATION.latitude,
-    longitude: hasLongitude ? longitude : MOCK_LOCATION.longitude,
+    city: draft.city || "",
+    district: draft.district || "",
+    latitude: hasLatitude ? latitude : null,
+    longitude: hasLongitude ? longitude : null,
+  };
+}
+
+function extractRegion(address = "") {
+  const text = String(address || "").replace(/\s+/g, "");
+  if (!text) return { city: "", district: "" };
+  const municipality = text.match(/^(北京市|上海市|天津市|重庆市)/)?.[1] || "";
+  const cityMatch = text.match(/(?:省|自治区|特别行政区)?([^省市州地区盟县区]+?(?:市|自治州|地区|盟))/);
+  const districtMatch = text.match(/([^市州地区盟]+?(?:区|县|旗))/);
+  return {
+    city: municipality || cityMatch?.[1] || "",
+    district: districtMatch?.[1] || "",
   };
 }
 
@@ -203,10 +221,10 @@ export default {
         contactName: "",
         contactPhone: "",
         tags: [],
-        city: MOCK_LOCATION.city,
-        district: MOCK_LOCATION.district,
-        latitude: MOCK_LOCATION.latitude,
-        longitude: MOCK_LOCATION.longitude,
+        city: "",
+        district: "",
+        latitude: null,
+        longitude: null,
         isDefault: false,
       },
       tagPresets: [
@@ -241,10 +259,10 @@ export default {
         contactName: "",
         contactPhone: "",
         tags: [],
-        city: MOCK_LOCATION.city,
-        district: MOCK_LOCATION.district,
-        latitude: MOCK_LOCATION.latitude,
-        longitude: MOCK_LOCATION.longitude,
+        city: "",
+        district: "",
+        latitude: null,
+        longitude: null,
         isDefault: false,
       };
       this.sheetVisible = true;
@@ -270,11 +288,118 @@ export default {
       this.sheetVisible = true;
     },
     chooseAddressLocation() {
-      this.addressDraft = {
-        ...this.addressDraft,
-        ...MOCK_LOCATION,
+      // #ifdef MP-WEIXIN
+      this.ensureLocationPermission();
+      return;
+      // #endif
+
+      // #ifndef MP-WEIXIN
+      uni.showToast({ title: "请在下方手动填写地址", icon: "none" });
+      // #endif
+    },
+    ensureLocationPermission() {
+      // #ifdef MP-WEIXIN
+      const continueAuthorize = () => {
+        uni.getSetting({
+          success: ({ authSetting = {} }) => {
+            if (authSetting["scope.userLocation"] === false) {
+              this.showLocationSettingModal();
+              return;
+            }
+            this.openLocationPicker();
+          },
+          fail: () => this.openLocationPicker(),
+        });
       };
-      uni.showToast({ title: "已选择公司仓库", icon: "none" });
+
+      if (typeof wx !== "undefined" && typeof wx.getPrivacySetting === "function") {
+        wx.getPrivacySetting({
+          success: ({ needAuthorization }) => {
+            if (!needAuthorization) {
+              continueAuthorize();
+              return;
+            }
+            if (typeof wx.requirePrivacyAuthorize !== "function") {
+              this.showPrivacyGuide();
+              return;
+            }
+            wx.requirePrivacyAuthorize({
+              success: continueAuthorize,
+              fail: (error) => this.handleLocationError(error),
+            });
+          },
+          fail: continueAuthorize,
+        });
+        return;
+      }
+
+      continueAuthorize();
+      // #endif
+    },
+    openLocationPicker() {
+      // #ifdef MP-WEIXIN
+      const options = {
+        success: ({ name, address, latitude, longitude }) => {
+          const region = extractRegion(address);
+          this.addressDraft = {
+            ...this.addressDraft,
+            name: this.addressDraft.name || name || "",
+            detail: address || name || this.addressDraft.detail,
+            city: region.city || this.addressDraft.city,
+            district: region.district || this.addressDraft.district,
+            latitude: Number(latitude),
+            longitude: Number(longitude),
+          };
+        },
+        fail: (error) => this.handleLocationError(error),
+      };
+      const location = normalizeLocationParams(this.addressDraft);
+      if (location.latitude !== null && location.longitude !== null) {
+        options.latitude = location.latitude;
+        options.longitude = location.longitude;
+      }
+      uni.chooseLocation(options);
+      // #endif
+    },
+    handleLocationError(error) {
+      const message = String(error?.errMsg || error?.message || "地图选点失败");
+      const normalized = message.toLowerCase();
+      if (normalized.includes("cancel")) return;
+      if (
+        normalized.includes("auth deny") ||
+        normalized.includes("authorize") ||
+        normalized.includes("permission denied") ||
+        normalized.includes("system permission")
+      ) {
+        this.showLocationSettingModal();
+        return;
+      }
+      if (normalized.includes("privacy")) {
+        this.showPrivacyGuide();
+        return;
+      }
+      uni.showModal({
+        title: "地图选点失败",
+        content: message.replace(/^chooseLocation:fail\s*/i, "") || "请稍后重试",
+        showCancel: false,
+      });
+    },
+    showLocationSettingModal() {
+      uni.showModal({
+        title: "需要位置权限",
+        content: "请在设置中允许使用位置信息，然后重新选择招工地址。",
+        confirmText: "去设置",
+        success: ({ confirm }) => {
+          if (confirm) uni.openSetting();
+        },
+      });
+    },
+    showPrivacyGuide() {
+      uni.showModal({
+        title: "需要隐私授权",
+        content: "请先同意小程序隐私保护指引，并确认微信公众平台已声明地图选点用途。",
+        showCancel: false,
+      });
     },
     toggleAddressTag(tag) {
       const tags = new Set(this.addressDraft.tags);
@@ -288,12 +413,17 @@ export default {
     },
     async saveAddress() {
       if (this.savingAddress) return;
+      const location = normalizeLocationParams(this.addressDraft);
       const data = {
-        ...fillMockLocationParams(this.addressDraft),
         name: this.addressDraft.name.trim(),
-        detail: this.addressDraft.detail.trim(),
         contactName: this.addressDraft.contactName.trim(),
         contactPhone: this.addressDraft.contactPhone.trim(),
+        city: this.addressDraft.city.trim(),
+        district: this.addressDraft.district.trim(),
+        detail: this.addressDraft.detail.trim(),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        isDefault: Boolean(this.addressDraft.isDefault),
       };
       if (!data.name) {
         uni.showToast({ title: "请输入地点名称", icon: "none" });
@@ -303,6 +433,20 @@ export default {
         uni.showToast({ title: "请输入详细地址", icon: "none" });
         return;
       }
+      if (!data.city) {
+        uni.showToast({ title: "请输入所在城市", icon: "none" });
+        return;
+      }
+      if (!data.district) {
+        uni.showToast({ title: "请输入所在区县", icon: "none" });
+        return;
+      }
+      // #ifdef MP-WEIXIN
+      if (!Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) {
+        uni.showToast({ title: "请先在地图选择地点", icon: "none" });
+        return;
+      }
+      // #endif
       if (!data.contactName) {
         uni.showToast({ title: "请输入联系人姓名", icon: "none" });
         return;
@@ -645,7 +789,8 @@ export default {
 .sheet-body {
   flex: 1;
   min-height: 0;
-  max-height: calc(100vh - 190px);
+  /* 让表单占用操作栏上方的剩余空间，避免固定最大高度把内容顶到按钮下面 */
+  max-height: none;
   padding: 4px 16px 14px;
   box-sizing: border-box;
 }
@@ -747,6 +892,11 @@ export default {
   padding-top: 14px;
 }
 
+/* 给最后一个联系电话输入框和底部操作栏留出明确间距，避免滚动区内容贴住按钮 */
+.sheet-body > .form-item:last-child {
+  padding-bottom: 14px;
+}
+
 .form-label {
   display: block;
   margin-bottom: 8px;
@@ -793,6 +943,7 @@ export default {
 }
 
 .sheet-footer {
+  flex-shrink: 0;
   display: flex;
   gap: 12px;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));

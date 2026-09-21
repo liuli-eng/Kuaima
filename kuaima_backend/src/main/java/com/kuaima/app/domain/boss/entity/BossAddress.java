@@ -47,6 +47,13 @@ public class BossAddress extends BaseEntity {
     @Column(comment = "经度")
     private Double lng;
 
+    /** 地址接口统一返回字段；保留 lat/lng 兼容已有调用方。 */
+    @com.fasterxml.jackson.annotation.JsonProperty("latitude")
+    public Double getLatitude() { return lat; }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("longitude")
+    public Double getLongitude() { return lng; }
+
     @Column(comment = "是否默认地址")
     private Boolean isDefault;
 }

@@ -161,6 +161,8 @@ public class BossOrderTemplateService {
         template.setStartTime(order.getStartTime());
         template.setEndTime(order.getEndTime());
         template.setAddress(order.getAddress());
+        template.setLongitude(order.getLongitude());
+        template.setLatitude(order.getLatitude());
         template.setRecruitCount(order.getOrderNum());
         template.setGenderRequirement(order.getGender());
         template.setExperienceRequirement(order.getExperience());
@@ -176,6 +178,8 @@ public class BossOrderTemplateService {
                 ids(source != null ? source.getEnterpriseTypeIds() : template.getEnterpriseTypeIds()), ids(source != null ? source.getJobIds() : template.getJobIds()),
                 source != null ? source.getJobCategoryId() : template.getJobCategoryId(), source != null ? source.getPostion() : template.getPositionName(),
                 source != null ? source.getAddress() : template.getAddress(),
+                source != null ? source.getLongitude() : template.getLongitude(),
+                source != null ? source.getLatitude() : template.getLatitude(),
                 source != null ? source.getSalary() : template.getSalaryAmount(),
                 source != null ? source.getDuration() : template.getDuration(),
                 source != null ? source.getOrderNum() : template.getRecruitCount(),

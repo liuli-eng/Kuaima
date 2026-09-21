@@ -69,6 +69,10 @@ public class User extends BaseEntity {
     @Column
     private Integer creditScore;
 
+    /** 零工星级分，独立于老板信用分；初始为0。 */
+    @Column
+    private Integer starScore = 0;
+
     /** 认证类型: REALNAME(零工实名) / ENTERPRISE(企业认证) */
     @Column(length = 30)
     private String certType;

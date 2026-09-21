@@ -162,6 +162,8 @@ public class BossCouponService {
             view.put("workerCount", candidates.size());
             view.put("settlementType", order.getType());
             view.put("address", order.getAddress());
+            view.put("longitude", order.getLongitude());
+            view.put("latitude", order.getLatitude());
             view.put("jobAmount", jobAmount);
             view.put("serviceFee", serviceFee);
             view.put("usable", usable);
@@ -181,20 +183,24 @@ public class BossCouponService {
     }
 
     private boolean isSettlementOrder(BossOrder order) {
-        return !BossStatus.ORDER_DRAFT.equals(order.getOrderStatus())
-                && !BossStatus.ORDER_PENDING_AUDIT.equals(order.getOrderStatus())
-                && !BossStatus.ORDER_AUDIT_REJECT.equals(order.getOrderStatus())
-                && !BossStatus.ORDER_CANCELED.equals(order.getOrderStatus());
+        // 该接口只返回当前处于待结算阶段的订单，避免把招工中/招工结束订单误展示为可核销订单。
+        return BossStatus.ORDER_PENDING_SETTLE.equals(order.getOrderStatus());
     }
 
     private boolean isPendingItem(BaseOrderItem item, List<Settlement> itemSettlements) {
-        if (!BossStatus.ITEM_PENDING_SETTLE.equals(item.getStatus())
-                && !BossStatus.ITEM_FINISHED.equals(item.getStatus())) return false;
+        if (BossStatus.ITEM_CANCELED.equals(item.getStatus())
+                || BossStatus.ITEM_CANCEL_BY_BOSS.equals(item.getStatus())
+                || BossStatus.ITEM_REJECTED.equals(item.getStatus())) return false;
         boolean paid = itemSettlements.stream().anyMatch(s -> SettlementStatus.PAID.equals(s.getStatus()));
         if (paid) return false;
-        return itemSettlements.stream().anyMatch(s -> SettlementStatus.PENDING.equals(s.getStatus()))
-                || itemSettlements.stream().noneMatch(s -> SettlementStatus.PAID.equals(s.getStatus())
-                    || SettlementStatus.PENDING.equals(s.getStatus()));
+        // 订单进入待结算时，后端会先生成“待支付”结算单，但报名记录仍可能是“已到岗”。
+        // 不能只依赖报名状态，否则正常流程下该接口会始终返回空列表。
+        boolean hasPendingSettlement = itemSettlements.stream()
+                .anyMatch(s -> SettlementStatus.PENDING.equals(s.getStatus()));
+        return hasPendingSettlement
+                || BossStatus.ITEM_ON_WORK.equals(item.getStatus())
+                || BossStatus.ITEM_PENDING_SETTLE.equals(item.getStatus())
+                || BossStatus.ITEM_FINISHED.equals(item.getStatus());
     }
 
     private BigDecimal estimateWage(BossOrder order, BaseOrderItem item) {

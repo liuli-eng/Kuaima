@@ -43,7 +43,7 @@ class BossProfileServiceTests {
         assertEquals(0, result.goodRate());
         assertEquals(0, result.arrivalRate());
         assertEquals(0, result.settleRate());
-        assertEquals(0, result.totalPayment());
+        assertEquals(java.math.BigDecimal.ZERO, result.totalPayment());
     }
 
     @Test
@@ -81,7 +81,7 @@ class BossProfileServiceTests {
         assertEquals(100, result.goodRate());
         assertEquals(50, result.arrivalRate());
         assertEquals(100, result.settleRate());
-        assertEquals(30_000L, result.totalPayment());
+        assertEquals(new java.math.BigDecimal("30000"), result.totalPayment());
         assertEquals(300.0, result.settledAmount());
         assertEquals(1, result.completedOrders());
     }

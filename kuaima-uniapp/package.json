@@ -5,9 +5,17 @@
   "type": "module",
   "scripts": {
     "dev:h5": "uni",
+    "dev:h5:local": "uni --mode development",
+    "dev:h5:test": "uni --mode test",
     "build:h5": "uni build",
+    "build:h5:test": "uni build --mode test",
+    "build:h5:prod": "uni build --mode production",
     "dev:mp-weixin": "uni -p mp-weixin",
+    "dev:mp-weixin:local": "uni -p mp-weixin --mode development",
+    "dev:mp-weixin:test": "uni -p mp-weixin --mode test",
     "build:mp-weixin": "uni build -p mp-weixin",
+    "build:mp-weixin:test": "uni build -p mp-weixin --mode test",
+    "build:mp-weixin:prod": "uni build -p mp-weixin --mode production",
     "dev": "npm run dev:h5",
     "build": "npm run build:h5",
     "preview": "vite preview --outDir dist/build/h5"

@@ -1,7 +1,7 @@
 package com.kuaima.app.controller.payroll;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
@@ -74,9 +74,7 @@ public class BossTransferController {
 
         long count = orders.size();
         long people = orders.stream().mapToLong(o -> o.getPeopleCount() == null ? 0 : o.getPeopleCount()).sum();
-        BigDecimal amount = orders.stream()
-                .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal amount = orders.stream().map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("records", orders);
@@ -148,7 +146,7 @@ public class BossTransferController {
         overview.put("successCount", allDetails.stream().filter(d -> PayrollConstants.DETAIL_SUCCESS.equals(d.getStatus())).count());
         overview.put("failedCount", allDetails.stream().filter(d -> PayrollConstants.DETAIL_FAILED.equals(d.getStatus())).count());
         overview.put("peopleCount", peopleSum);
-        overview.put("avgPerPeople", peopleSum == 0 ? 0 : totalAmount.divide(BigDecimal.valueOf(peopleSum), 2, BigDecimal.ROUND_HALF_UP).longValue());
+        overview.put("avgPerPeople", peopleSum == 0 ? BigDecimal.ZERO : totalAmount.divide(BigDecimal.valueOf(peopleSum), 2, java.math.RoundingMode.HALF_UP));
         overview.put("projectCount", byProject.size());
         overview.put("activeProjects", byProject.keySet().stream()
                 .map(projectRepository::findById)
@@ -158,9 +156,7 @@ public class BossTransferController {
         List<Map<String, Object>> projects = new ArrayList<>();
         for (Map.Entry<Long, List<PayrollOrder>> entry : byProject.entrySet()) {
             List<PayrollOrder> projectOrders = entry.getValue();
-            BigDecimal projectAmount = projectOrders.stream()
-                    .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount())
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal projectAmount = projectOrders.stream().map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
             long projectPeople = projectOrders.stream().mapToLong(o -> o.getPeopleCount() == null ? 0 : o.getPeopleCount()).sum();
             List<Long> ids = projectOrders.stream().map(PayrollOrder::getId).toList();
             List<PayrollDetail> projectDetails = detailRepository.findByPayrollIdIn(ids);
@@ -178,7 +174,7 @@ public class BossTransferController {
             item.put("orderCount", projectOrders.size());
             item.put("peopleCount", projectPeople);
             item.put("successRate", successRate);
-            item.put("percent", totalAmount.compareTo(BigDecimal.ZERO) == 0 ? 0 : projectAmount.multiply(BigDecimal.valueOf(100)).divide(totalAmount, 0, BigDecimal.ROUND_HALF_UP).intValue());
+            item.put("percent", totalAmount.signum() == 0 ? 0 : projectAmount.multiply(BigDecimal.valueOf(100)).divide(totalAmount, 0, java.math.RoundingMode.HALF_UP).intValue());
             projects.add(item);
         }
         projects.sort((a, b) -> ((BigDecimal) b.get("totalAmount")).compareTo((BigDecimal) a.get("totalAmount")));
@@ -218,6 +214,7 @@ public class BossTransferController {
 
     // ==================== 私有方法 ====================
 
+    /** 按当前老板 + 筛选条件过滤已审批通过的发薪单（即转账记录）。 */
     private List<PayrollOrder> filterOrders(Long bossId, String keyword, String type, Long projectId,
                                             String creator, LocalDate startDate, LocalDate endDate) {
         List<PayrollOrder> orders = orderRepository.findByCreatorIdAndStatusOrderByIdDesc(

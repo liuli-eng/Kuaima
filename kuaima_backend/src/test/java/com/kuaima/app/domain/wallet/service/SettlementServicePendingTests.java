@@ -171,8 +171,8 @@ class SettlementServicePendingTests {
         Settlement s = service.createSettlement(110L, null);
 
         assertEquals(SettlementStatus.PENDING, s.getStatus());
-        assertEquals(30000L, s.getWage());
-        assertEquals(30000L, s.getTotalAmount());
+        assertEquals(new java.math.BigDecimal("300.00"), s.getWage());
+        assertEquals(new java.math.BigDecimal("300.00"), s.getTotalAmount());
         assertEquals(BossStatus.ITEM_FINISHED, pendingSettle.getStatus());
         verify(itemRepository).save(pendingSettle);
     }
@@ -221,7 +221,7 @@ class SettlementServicePendingTests {
         settlement.setItemId(itemId);
         settlement.setOrderId(orderId);
         settlement.setWorkerId(workerId);
-        settlement.setTotalAmount(amount);
+        settlement.setTotalAmount(java.math.BigDecimal.valueOf(amount, 2));
         settlement.setStatus(status);
         settlement.setWorkDays(workDays);
         return settlement;

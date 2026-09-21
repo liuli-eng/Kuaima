@@ -10,10 +10,19 @@
         "title" : "快马日结"
     },
     "mp-weixin" : {
-        "appid" : "wx812d0d7606ee4e59",
+        "appid" : "wx4c163632a2e19ea5",
         "setting" : {
             "urlCheck" : false
         },
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "用于计算您与工作地点的距离及选择招工地址"
+            }
+        },
+        "requiredPrivateInfos" : [
+            "chooseLocation",
+            "getLocation"
+        ],
         "usingComponents" : true
     }
 }

@@ -117,6 +117,8 @@ public class AdminJobController {
                 order.getDuration(),
                 order.getSalary(),
                 order.getAddress(),
+                order.getLongitude(),
+                order.getLatitude(),
                 order.getTags(),
                 order.getTrialDuration(),
                 order.getTimestamp(),

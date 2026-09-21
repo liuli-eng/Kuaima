@@ -1,485 +1,1060 @@
 {
   "pages": [
-    { "path": "pages/login/login", "style": { "navigationStyle": "custom" } },
     {
-      "path": "pages/worker/home",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/job-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/realname",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/orders", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/order-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/profile",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/points",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/user-info",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/messages",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/wallet", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/income", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/settlements",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/settlement-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/withdraw",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/withdraw-record",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/search", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/filter", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/intent", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/intent-personal",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/intent-job",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/intent-preference",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/rule", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/rule-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/user-agreement",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/privacy",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/copyright",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/credit", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/star-level",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/service",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/service-chat",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/badge", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/banner", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/deposit",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/download",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/follow-qrcode",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/join-group",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/notification",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/notification-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/simulate-order",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/switch-identity",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/classroom",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/classroom-rule",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/course-rule-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/course-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/exam", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/quiz", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/exam-result",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/settings",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/follow", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/record", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/coupon", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/checkin", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/invite", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/worker/enterprise-apply", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/appeal-submit",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/worker/report", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/worker/favorites",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/insurance",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/notification-settings",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/monthly-order",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/monthly-salary",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/monthly-salary-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/press-order",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/press-salary",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/task-training",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/course-video",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/course-order",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/faq-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/history-message",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/appeals",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/insurance-records",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/insurance-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/withdraw-accounts",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/blacklist",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/account-cancel",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/worker/invite-poster",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/home",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/add-address",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/boss/all-jobs", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/boss/applicant-info",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/backup-phone",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/blacklist",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/boss-employer",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/boss-filter",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/boss/contract", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/boss/creditor-score",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/download-app",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/enterprise-cert",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/enterprise-cert-form",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/expense-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/gender-age",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/insurance",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/invite-code",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/invite-friend",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/invite-worker",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/boss/location", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/message", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/boss/history-message",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/boss/invite-qrcode", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/missed-call", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/order", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/boss/publish-template",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/order-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/payment-detail",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/personal-info",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/boss/points", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/points-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/profile", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/publish", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/boss/publish-info",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/publish-success",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/boss/realname", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/boss/recruit-address",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/recruit-demand",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/recruit-manager",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/recruit-settings",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/recruit-set",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/boss/reward", "style": { "navigationStyle": "custom" } },
-    {
-      "path": "pages/boss/schedule-stats",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/search-worker",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/select-job",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/select-work-time",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/service-chat",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/settle-confirm",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/settlement",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/signup-notice",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/sub-account",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/authorize",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/suspend-settle",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/switch-account",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/system-notice",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/talent-list",
-      "style": { "navigationStyle": "custom" }
-    },
-    {
-      "path": "pages/boss/task-content",
-      "style": { "navigationStyle": "custom" }
-    },
-    { "path": "pages/boss/voucher", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/coupon-use", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/projects", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/project-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/sign-code", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/workbench", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/proj-members", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/proj-attendance", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/proj-checkin", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/proj-onboard", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/proj-onsite", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/proj-onsite-add", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/proj-settings", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/members", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/member-apply-list", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/member-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/member-exit", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/member-invite", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/resume", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/resume-list", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/resume-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/resume-import", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/position", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/position-stats", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/position-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/position-form", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/live-showcase", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/hire-worker", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/payroll", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/payroll-employees", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/payroll-employee-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/approve", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/approve-records", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/transfers", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/transfer-export", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/transfer-detail", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/transfer-summary", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/boss/balance", "style": { "navigationStyle": "custom" } }
+      "path": "pages/login/login",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "快马日结",
     "navigationBarBackgroundColor": "#FFFFFF",
     "backgroundColor": "#F3F4F6"
-  }
+  },
+  "subPackages": [
+    {
+      "root": "pages/worker",
+      "pages": [
+        {
+          "path": "home",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "job-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "realname",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "orders",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "order-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "profile",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "points",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "points-withdraw",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "user-info",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "messages",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "wallet",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "income",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "settlements",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "settlement-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "withdraw",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "withdraw-record",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "search",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "filter",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "intent",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "intent-personal",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "intent-job",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "intent-preference",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "rule",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "rule-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "user-agreement",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "privacy",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "copyright",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "credit",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "star-level",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "service",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "service-chat",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "badge",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "banner",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "deposit",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "download",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "follow-qrcode",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "join-group",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "notification",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "notification-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "simulate-order",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "switch-identity",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "classroom",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "classroom-rule",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "course-rule-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "course-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "exam",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "quiz",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "exam-result",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "settings",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "follow",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "record",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "coupon",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "checkin",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "invite",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "enterprise-apply",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "appeal-submit",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "report",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "favorites",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "insurance",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "notification-settings",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "monthly-order",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "monthly-salary",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "monthly-salary-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "press-order",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "press-salary",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "task-training",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "course-video",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "course-order",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "faq-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "history-message",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "appeals",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "insurance-records",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "insurance-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "withdraw-accounts",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "blacklist",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "account-cancel",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "invite-poster",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
+    },
+    {
+      "root": "pages/boss",
+      "pages": [
+        {
+          "path": "home",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "add-address",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "all-jobs",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "applicant-info",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "backup-phone",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "blacklist",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "boss-employer",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "boss-filter",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "contract",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "creditor-score",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "download-app",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "enterprise-cert",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "enterprise-cert-form",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "expense-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "gender-age",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "insurance",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "invite-code",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "invite-friend",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "invite-worker",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "location",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "message",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "history-message",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "invite-qrcode",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "missed-call",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "order",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "publish-template",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "order-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "payment-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "personal-info",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "points",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "points-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "profile",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "publish",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "publish-info",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "publish-success",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "realname",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "recruit-address",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "recruit-demand",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "recruit-manager",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "recruit-settings",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "recruit-set",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "reward",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "schedule-stats",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "search-worker",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "select-job",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "select-work-time",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "service-chat",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "settle-confirm",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "settlement",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "signup-notice",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "sub-account",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "authorize",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "suspend-settle",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "switch-account",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "system-notice",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "talent-list",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "task-content",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "voucher",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "coupon-use",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "projects",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "project-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "sign-code",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "workbench",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "proj-members",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "proj-attendance",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "proj-checkin",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "proj-onboard",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "proj-onsite",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "proj-onsite-add",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "proj-settings",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "members",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "member-apply-list",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "member-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "member-exit",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "member-invite",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "resume",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "resume-list",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "resume-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "resume-import",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "position",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "position-stats",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "position-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "position-form",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "live-showcase",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "hire-worker",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "payroll",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "payroll-employees",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "payroll-employee-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "approve",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "approve-records",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "transfers",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "transfer-export",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "transfer-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "transfer-summary",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "balance",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        }
+      ]
+    }
+  ]
 }

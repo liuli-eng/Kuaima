@@ -19,6 +19,8 @@ public final class WorkerOrderModels {
             String type,
             BigDecimal salary,
             String address,
+            BigDecimal longitude,
+            BigDecimal latitude,
             Date startTime,
             Date endTime,
             String companyName,

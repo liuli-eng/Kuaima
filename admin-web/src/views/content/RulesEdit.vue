@@ -1,5 +1,29 @@
 <template>
   <div>
+    <template v-if="isCredit">
+      <div class="credit-edit-header">
+        <div><h2>{{ isEdit ? '编辑信用分规则' : '新建信用分规则' }}</h2><span>信用分规则</span></div>
+        <div class="edit-header-actions">
+          <button class="btn btn-outline" @click="goBack">返回列表</button>
+          <button class="btn btn-outline" @click="saveDraft">保存草稿</button>
+          <button class="btn btn-primary" @click="saveAndPublish">保存发布</button>
+        </div>
+      </div>
+      <div class="credit-meta-card">
+        <div class="credit-section-title"><i class="fas fa-file-lines"></i> 规则基础信息</div>
+        <div class="credit-meta-grid">
+          <label>规则名称<span>*</span><el-input v-model="form.title" placeholder="请输入规则名称" /></label>
+          <label>分类<span>*</span><el-select v-model="creditCategory"><el-option label="信用分规则" value="信用分规则" /><el-option label="订单规则" value="订单规则" /><el-option label="结算规则" value="结算规则" /><el-option label="评价规则" value="评价规则" /></el-select></label>
+          <label>版本<span>*</span><el-input v-model="form.version" /></label>
+          <label>状态<span>*</span><el-select v-model="form.status"><el-option label="草稿" value="draft" /><el-option label="立即发布" value="published" /></el-select></label>
+        </div>
+      </div>
+      <div class="credit-split">
+        <CreditRulePanel title="加分项规则" :rows="creditAdds" type="add" @add="addCreditRow('add')" @remove="removeCreditRow('add', $event)" />
+        <CreditRulePanel title="减分项规则" :rows="creditSubs" type="sub" @add="addCreditRow('sub')" @remove="removeCreditRow('sub', $event)" />
+      </div>
+    </template>
+    <template v-else>
     <!-- 顶部编辑头部 -->
     <div class="edit-header">
       <div class="edit-header-left">
@@ -244,6 +268,7 @@
         <button class="btn btn-outline" @click="previewVisible = false">关闭</button>
       </template>
     </el-dialog>
+    </template>
   </div>
 </template>
 
@@ -252,16 +277,18 @@ import { reactive, computed, ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listRules, createRules, updateRules } from '@/api/content'
+import CreditRulePanel from './CreditRulePanel.vue'
 
 const router = useRouter()
 const route = useRoute()
 
 const routeId = computed(() => route.params.id)
-const routeTab = computed(() => route.params.tab || 'notice')
+const routeTab = computed(() => route.params.tab || 'platform')
 const isEdit = computed(() => !!routeId.value)
+const isCredit = computed(() => routeTab.value === 'credit' || currentType.value === 'credit')
 
 const typeCategoryMap = {
-  notice: '规则公示',
+  platform: '平台规则',
   credit: '信用分规则',
   fee: '收费规则',
   trade: '交易规则',
@@ -270,8 +297,7 @@ const typeCategoryMap = {
 }
 
 const typeOptions = [
-  { key: 'notice', name: '规则公示' },
-  { key: 'credit', name: '信用分规则' },
+  { key: 'platform', name: '平台规则' },
   { key: 'fee', name: '收费规则' },
   { key: 'trade', name: '交易规则' },
   { key: 'private', name: '飞单认定与处理' },
@@ -286,10 +312,29 @@ const tips = [
   '版本号规则：首次发布为v1.0，后续递增'
 ]
 
-const initialType = typeCategoryMap[routeTab.value] ? routeTab.value : 'notice'
+const initialType = routeTab.value === 'credit' ? 'credit' : 'platform'
 const currentType = ref(initialType)
 const previewVisible = ref(false)
 const history = ref([])
+const creditCategory = ref('信用分规则')
+const creditAdds = ref([
+  { name: '完成订单', desc: '结算成功后给老板加分', trigger: '结算成功时触发', score: 3, times: '一个订单一次', updateTime: '实时' },
+  { name: '及时结算', desc: '完工后1小时内结算', trigger: '结算成功时触发', score: 2, times: '一个订单一次', updateTime: '实时' }
+])
+const creditSubs = ref([
+  { name: '零工差评', desc: '零工评价平均2星及以下', trigger: '评价提交时触发', score: -10, times: '一个订单一次', updateTime: '实时' },
+  { name: '超时结算', desc: '完工后超过24小时仍未结算', trigger: '定时任务检查', score: -5, times: '一个订单一次', updateTime: '每天凌晨' }
+])
+
+const addCreditRow = (type) => {
+  const rows = type === 'add' ? creditAdds.value : creditSubs.value
+  rows.push({ name: '新规则', desc: '', trigger: '', score: type === 'add' ? 1 : -1, times: '一个订单一次', updateTime: '实时' })
+}
+const removeCreditRow = (type, index) => {
+  const rows = type === 'add' ? creditAdds.value : creditSubs.value
+  if (rows.length <= 1) return ElMessage.warning('至少保留一条规则')
+  rows.splice(index, 1)
+}
 const editorRef = ref(null)
 
 // 富文本编辑器命令
@@ -360,7 +405,7 @@ const validateForm = () => {
     ElMessage.warning('请输入规则名称')
     return false
   }
-  if (!form.content.trim()) {
+  if (!isCredit.value && !form.content.trim()) {
     ElMessage.warning('请输入规则内容')
     return false
   }
@@ -371,7 +416,9 @@ const buildPayload = (overrideStatus) => {
   const now = new Date().toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-')
   return {
     ...form,
-    type: currentType.value,
+    type: isCredit.value ? 'credit' : 'platform',
+    category: isCredit.value ? creditCategory.value : form.category,
+    content: isCredit.value ? JSON.stringify({ addRules: creditAdds.value, subRules: creditSubs.value }) : form.content,
     status: overrideStatus || form.status,
     statusClass: overrideStatus === 'published' ? 'success' : overrideStatus === 'archived' ? 'default' : 'warning',
     updateTime: now,
@@ -440,6 +487,14 @@ const loadExisting = async () => {
         createTime: found.createTime || '',
         updateTime: found.updateTime || ''
       })
+      if (found.type === 'credit' || found.category === '信用分规则') {
+        creditCategory.value = found.category || '信用分规则'
+        try {
+          const structured = JSON.parse(found.content || '{}')
+          if (Array.isArray(structured.addRules)) creditAdds.value = structured.addRules
+          if (Array.isArray(structured.subRules)) creditSubs.value = structured.subRules
+        } catch (_) { /* 兼容历史纯文本内容 */ }
+      }
       if (found.type && typeCategoryMap[found.type]) {
         currentType.value = found.type
       } else if (found.category) {
@@ -748,4 +803,5 @@ onMounted(loadExisting)
   overflow-y: auto;
   white-space: pre-wrap;
 }
+.credit-edit-header{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.04)}.credit-edit-header h2{margin:0 0 4px;font-size:18px}.credit-edit-header span{font-size:13px;color:#999}.credit-meta-card{margin-top:16px;background:#fff;border:1px solid #eee;border-radius:12px;padding:20px 24px}.credit-section-title{font-size:15px;font-weight:700;margin-bottom:18px}.credit-section-title i{color:#ff6b35;margin-right:7px}.credit-meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 24px}.credit-meta-grid label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#666}.credit-meta-grid label>span{color:#ff5c33;margin-left:2px}.credit-split{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px;padding-bottom:80px}@media(max-width:1100px){.credit-meta-grid{grid-template-columns:repeat(2,1fr)}.credit-split{grid-template-columns:1fr}}@media(max-width:640px){.credit-meta-grid{grid-template-columns:1fr}.credit-edit-header{align-items:flex-start;gap:12px;flex-direction:column}}
 </style>

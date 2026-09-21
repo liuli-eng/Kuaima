@@ -72,9 +72,9 @@ class BossOrderEarlyLeaveTests {
 
         service.finishByEarlyLeave(71L);
 
-        verify(settlements).save(argThat(s -> Long.valueOf(20_000L).equals(s.getWage())
-                && Long.valueOf(1_000L).equals(s.getServiceFee())
-                && Long.valueOf(21_000L).equals(s.getTotalAmount())));
+        verify(settlements).save(argThat(s -> new java.math.BigDecimal("200").equals(s.getWage())
+                && new java.math.BigDecimal("10.00").equals(s.getServiceFee())
+                && new java.math.BigDecimal("210.00").equals(s.getTotalAmount())));
     }
 
     private AdminSetting setting(String value) {

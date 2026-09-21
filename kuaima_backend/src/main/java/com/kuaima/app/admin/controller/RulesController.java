@@ -18,10 +18,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
 
 import com.kuaima.app.admin.entity.Rules;
 import com.kuaima.app.admin.repository.RulesRepository;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.security.model.LoginUser;
 
 /** 规则管理 CRUD */
 @RestController
@@ -51,9 +53,13 @@ public class RulesController {
 
     @Operation(summary = "新增规则", description = "创建 Rules，category 可选 通知公告/信用评定/收费标准/交易规则/隐私协议，version 默认 v1.0")
     @PostMapping
-    public Result<Rules> create(@RequestBody Rules rules) {
+    public Result<Rules> create(@RequestBody Rules rules, Authentication authentication) {
         rules.setCreateTime(LocalDateTime.now());
         rules.setUpdateTime(LocalDateTime.now());
+        if (authentication != null && authentication.getPrincipal() instanceof LoginUser user) {
+            rules.setCreator(user.username());
+        }
+        if (rules.getCreator() == null || rules.getCreator().isBlank()) rules.setCreator("管理员");
         return Result.success(repo.save(rules));
     }
 
@@ -63,6 +69,7 @@ public class RulesController {
         Rules existing = repo.findById(id).orElseThrow();
         if (rules.getTitle() != null) existing.setTitle(rules.getTitle());
         if (rules.getCategory() != null) existing.setCategory(rules.getCategory());
+        if (rules.getType() != null) existing.setType(rules.getType());
         if (rules.getVersion() != null) existing.setVersion(rules.getVersion());
         if (rules.getStatus() != null) existing.setStatus(rules.getStatus());
         if (rules.getEffectiveTime() != null) existing.setEffectiveTime(rules.getEffectiveTime());

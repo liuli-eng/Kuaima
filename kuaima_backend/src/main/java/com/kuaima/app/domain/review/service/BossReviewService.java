@@ -12,6 +12,7 @@ import com.kuaima.app.domain.review.entity.BossReview;
 import com.kuaima.app.domain.review.model.BossReviewModels.*;
 import com.kuaima.app.domain.review.repository.BossReviewRepository;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.user.service.CreditScoreService;
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
@@ -20,10 +21,16 @@ public class BossReviewService {
     private final BaseOrderItemRespository items;
     private final BossOrderRespository orders;
     private final UserRepository users;
+    private CreditScoreService creditScoreService;
 
     public BossReviewService(BossReviewRepository reviews, BaseOrderItemRespository items,
                              BossOrderRespository orders, UserRepository users) {
         this.reviews = reviews; this.items = items; this.orders = orders; this.users = users;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCreditScoreService(CreditScoreService creditScoreService) {
+        this.creditScoreService = creditScoreService;
     }
 
     @Transactional
@@ -43,6 +50,7 @@ public class BossReviewService {
             throw new EntityNotFoundException("订单所属老板不存在");
         }
         BossReview review = reviews.findByItemId(itemId).orElseGet(BossReview::new);
+        int previousDelta = review.getId() == null ? 0 : reviewDelta(review);
         if (review.getId() != null && (!workerId.equals(review.getWorkerId())
                 || !item.getOrderId().equals(review.getOrderId())
                 || !order.getCreateBy().equals(review.getBossId()))) {
@@ -52,7 +60,20 @@ public class BossReviewService {
         review.setBossId(order.getCreateBy()); review.setAttitudeScore(request.attitudeScore());
         review.setSettlementScore(request.settlementScore()); review.setEnvironmentScore(request.environmentScore());
         review.setContent(content);
-        return view(reviews.save(review));
+        BossReview saved = reviews.save(review);
+        if (creditScoreService != null) {
+            int average = (saved.getAttitudeScore() + saved.getSettlementScore() + saved.getEnvironmentScore()) / 3;
+            int delta = reviewDelta(saved) - previousDelta;
+            creditScoreService.adjust(saved.getBossId(), CreditScoreService.BOSS_CREDIT, delta,
+                    "BOSS_REVIEW_SCORE", "REVIEW", "BOSS_REVIEW_SCORE:" + saved.getId() + ":" + saved.getAttitudeScore() + ":" + saved.getSettlementScore() + ":" + saved.getEnvironmentScore(), "零工评价信用分调整");
+        }
+        return view(saved);
+    }
+
+    private int reviewDelta(BossReview review) {
+        if (review.getAttitudeScore() == null || review.getSettlementScore() == null || review.getEnvironmentScore() == null) return 0;
+        int average = (review.getAttitudeScore() + review.getSettlementScore() + review.getEnvironmentScore()) / 3;
+        return average == 5 ? 5 : average <= 2 ? -10 : 0;
     }
 
     @Transactional(readOnly = true)

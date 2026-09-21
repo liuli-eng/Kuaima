@@ -2,7 +2,14 @@
   <view class="page">
     <AppNavBar title="切换身份" :show-back="true" />
     <view class="content">
-      <view class="avatar-section"><view class="avatar">👨</view></view>
+      <view class="avatar-section">
+        <view class="avatar">
+          <image
+            :src="current === 'boss' ? defaultBossAvatar : defaultWorkerAvatar"
+            mode="aspectFill"
+          />
+        </view>
+      </view>
       <text class="identity"
         >你当前身份是{{ current === "worker" ? "零工" : "老板" }}</text
       >
@@ -22,6 +29,8 @@ import { onLoad } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { wechatLogin } from "@/api/auth";
 import { USE_MOCK } from "@/api/http";
+import defaultBossAvatar from "/static/avatars/default-boss-avatar.png";
+import defaultWorkerAvatar from "/static/avatars/default-worker-avatar.png";
 
 function normalizeCurrentRole(value) {
   const role = String(value || "").trim().toUpperCase();
@@ -137,8 +146,14 @@ function cancel() {
   justify-content: center;
   overflow: hidden;
   border-radius: 50%;
-  background: #ffe4b5;
-  font-size: 120rpx;
+  background: linear-gradient(135deg, #ffb347, #ff6b35);
+  border: 6rpx solid rgba(255, 255, 255, 0.5);
+}
+.avatar image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
 }
 .identity {
   display: block;

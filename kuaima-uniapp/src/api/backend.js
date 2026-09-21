@@ -293,6 +293,21 @@ export function saveWorkerBossReview(itemId, data) {
   });
 }
 
+/** 老板评价已完成订单内的零工；同一报名条目只生成一次评价。 */
+export function saveBossWorkerReview(orderId, data) {
+  return request({
+    url: `/boss/orders/${normalizeId(orderId, "orderId")}/worker-review`,
+    method: "PUT",
+    data,
+  });
+}
+
+export function getBossWorkerReviews(orderId) {
+  return request({
+    url: `/boss/orders/${normalizeId(orderId, "orderId")}/worker-review`,
+  });
+}
+
 export function listOrderItems(orderId) {
   return request({
     url: `/boss/order/${orderId}/items`,

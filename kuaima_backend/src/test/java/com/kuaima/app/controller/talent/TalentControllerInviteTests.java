@@ -43,7 +43,8 @@ class TalentControllerInviteTests {
 
         assertEquals(true, result.getData().get("invited"));
         verify(messageService).sendToUser(2L, UserRole.USER, "BOSS_INVITE", "招聘邀请",
-                "测试企业 邀请您加入他们的岗位，快去看看吧！", BizType.ORDER, 36L);
+                "测试企业 邀请您加入他们的岗位，快去看看吧！", BizType.ORDER, 36L,
+                java.util.Map.of("orderId", 36L, "bossName", "测试企业"));
     }
 
     @Test
@@ -59,7 +60,8 @@ class TalentControllerInviteTests {
         controller.inviteWorker(body, bossAuthentication(1L));
 
         verify(messageService).sendToUser(2L, UserRole.USER, "BOSS_INVITE", "招聘邀请",
-                "老板 邀请您加入他们的岗位，快去看看吧！", BizType.ORDER, 36L);
+                "老板 邀请您加入他们的岗位，快去看看吧！", BizType.ORDER, 36L,
+                java.util.Map.of("orderId", 36L, "bossName", "老板"));
     }
 
     @Test

@@ -21,4 +21,14 @@ public class CreditFlow extends BaseEntity {
     private String reason;
     @Column(length = 50)
     private String bizType; // ORDER_COMPLETE, LATE, CANCEL, etc.
+    @Column(length = 40)
+    private String scoreType; // BOSS_CREDIT / WORKER_STAR
+    @Column(length = 80, unique = true)
+    private String idempotencyKey;
+    @Column
+    private Integer beforeScore;
+    @Column
+    private Integer afterScore;
+    @Column(length = 80)
+    private String ruleCode;
 }

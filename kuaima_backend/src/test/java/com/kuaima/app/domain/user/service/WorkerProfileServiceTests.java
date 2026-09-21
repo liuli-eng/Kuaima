@@ -150,6 +150,8 @@ class WorkerProfileServiceTests {
         order1.setType("daily");
         order1.setSalary(300);
         order1.setAddress("上海A");
+        order1.setLongitude(new java.math.BigDecimal("121.47"));
+        order1.setLatitude(new java.math.BigDecimal("31.23"));
         order1.setOrderStatus(BossStatus.ORDER_RECRUITING);
         order1.setCreateBy(2L);
         BossOrder order2 = new BossOrder();
@@ -196,5 +198,7 @@ class WorkerProfileServiceTests {
         assertEquals(false, list.get(0).reviewed());
         assertEquals(true, list.get(2).reviewed());
         assertEquals(5, list.get(2).bossReview().attitudeScore());
+        assertEquals(new java.math.BigDecimal("121.47"), list.get(0).longitude());
+        assertEquals(new java.math.BigDecimal("31.23"), list.get(0).latitude());
     }
 }

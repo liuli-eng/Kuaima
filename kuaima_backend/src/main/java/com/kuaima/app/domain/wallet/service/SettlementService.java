@@ -26,6 +26,7 @@ import com.kuaima.app.domain.message.service.MessageService;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.user.service.CreditScoreService;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.entity.Wallet;
@@ -52,6 +53,7 @@ public class SettlementService {
     private final MessageService messageService;
     private final UserRepository userRepository;
     private final AdminSettingRepository adminSettingRepository;
+    private final CreditScoreService creditScoreService;
 
     /** 平台服务费率(% of wage)，规则待定，默认 0 */
     @Value("${kuaima.settle.service-fee-rate:0}")
@@ -63,7 +65,18 @@ public class SettlementService {
                             WalletService walletService,
                              MessageService messageService,
                              UserRepository userRepository) {
-        this(settlementRepository, orderRepository, itemRepository, walletService, messageService, userRepository, null);
+        this(settlementRepository, orderRepository, itemRepository, walletService, messageService, userRepository, null, null);
+    }
+
+    public SettlementService(SettlementRespository settlementRepository,
+                             BossOrderRespository orderRepository,
+                             BaseOrderItemRespository itemRepository,
+                             WalletService walletService,
+                             MessageService messageService,
+                             UserRepository userRepository,
+                             AdminSettingRepository adminSettingRepository) {
+        this(settlementRepository, orderRepository, itemRepository, walletService, messageService, userRepository,
+                adminSettingRepository, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -73,7 +86,8 @@ public class SettlementService {
                              WalletService walletService,
                              MessageService messageService,
                              UserRepository userRepository,
-                             AdminSettingRepository adminSettingRepository) {
+                             AdminSettingRepository adminSettingRepository,
+                             CreditScoreService creditScoreService) {
         this.settlementRepository = settlementRepository;
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
@@ -81,6 +95,7 @@ public class SettlementService {
         this.messageService = messageService;
         this.userRepository = userRepository;
         this.adminSettingRepository = adminSettingRepository;
+        this.creditScoreService = creditScoreService;
     }
 
     /**
@@ -149,6 +164,7 @@ public class SettlementService {
         settlementRepository.save(s);
 
         synchronizePaidItemAndOrder(s);
+        applyBossCredit(s);
 
         // 工资入零工钱包
         walletService.credit(s.getWorkerId(), s.getWage(), WalletService.BIZ_WAGE,
@@ -158,6 +174,49 @@ public class SettlementService {
                 "您的工资 " + s.getWage().stripTrailingZeros().toPlainString() + " 元已到账，可在钱包中查看或提现。",
                 BizType.SETTLE, s.getId(), java.util.Map.of("wage", s.getWage(), "orderId", s.getOrderId()));
         return s;
+    }
+
+    private void applyBossCredit(Settlement settlement) {
+        if (creditScoreService == null || settlement == null || settlement.getOrderId() == null) return;
+        BossOrder order = orderRepository.findById(settlement.getOrderId()).orElse(null);
+        if (order == null || order.getCreateBy() == null) return;
+        if (settlement.getWage() != null && settlement.getWage().compareTo(new BigDecimal("20")) > 0) {
+            creditScoreService.adjust(order.getCreateBy(), CreditScoreService.BOSS_CREDIT, 3,
+                    "BOSS_ORDER_SETTLED", "SETTLEMENT", "BOSS_ORDER_SETTLED:" + settlement.getId(),
+                    "订单结算成功且金额大于20元");
+            if (bossCompletionRateAtLeast90(order.getCreateBy(), settlement.getPayTime())) {
+                creditScoreService.adjust(order.getCreateBy(), CreditScoreService.BOSS_CREDIT, 3,
+                        "BOSS_COMPLETION_RATE_90D", "SETTLEMENT",
+                        "BOSS_COMPLETION_RATE_90D:" + settlement.getId(), "近90天完单率达到90%，完成订单额外加分");
+            }
+        }
+        BaseOrderItem item = itemRepository.findById(settlement.getItemId()).orElse(null);
+        if (item != null && item.getFinishAt() != null && settlement.getPayTime() != null
+                && !settlement.getPayTime().isBefore(item.getFinishAt())
+                && !settlement.getPayTime().isAfter(item.getFinishAt().plusHours(1))) {
+            creditScoreService.adjust(order.getCreateBy(), CreditScoreService.BOSS_CREDIT, 2,
+                    "BOSS_SETTLE_WITHIN_1H", "SETTLEMENT", "BOSS_SETTLE_WITHIN_1H:" + settlement.getId(),
+                    "完工后1小时内完成结算");
+        }
+    }
+
+    private boolean bossCompletionRateAtLeast90(Long bossId, LocalDateTime now) {
+        if (bossId == null || now == null) return false;
+        LocalDateTime start = now.minusDays(90);
+        int total = 0;
+        int completed = 0;
+        for (BaseOrderItem item : itemRepository.findByBossIdJoinOrder(bossId)) {
+            if (item.getHireDate() == null) continue;
+            LocalDateTime occurred = item.getFinishAt() != null
+                    ? item.getFinishAt() : item.getHireDate().toLocalDate().atStartOfDay();
+            if (occurred.isBefore(start) || occurred.isAfter(now)) continue;
+            total++;
+            if (BossStatus.ITEM_FINISHED.equals(item.getStatus())
+                    || settlementRepository.existsByItemIdAndStatusIn(item.getId(), List.of(SettlementStatus.PAID))) {
+                completed++;
+            }
+        }
+        return total > 0 && completed * 100 >= total * 90;
     }
 
     private void synchronizePaidItemAndOrder(Settlement settlement) {
@@ -277,13 +336,13 @@ public class SettlementService {
         BigDecimal wage = order.getSalary().multiply(BigDecimal.valueOf(days)).setScale(2, RoundingMode.HALF_UP);
         BigDecimal total = wage.add(calculateServiceFee(wage));
         return new PendingSettlementItem(item.getId(), item.getUserId(), workerName(worker), null, null,
-                total, null, days);
+                total, toFen(total), days);
     }
 
     private PendingSettlementItem toPendingItem(Settlement settlement, User worker) {
         BigDecimal amount = settlement.getTotalAmount() == null ? BigDecimal.ZERO : settlement.getTotalAmount();
         return new PendingSettlementItem(settlement.getItemId(), settlement.getWorkerId(), workerName(worker),
-                settlement.getId(), settlement.getStatus(), amount, null,
+                settlement.getId(), settlement.getStatus(), amount, toFen(amount),
                 settlement.getWorkDays());
     }
 
@@ -298,8 +357,12 @@ public class SettlementService {
         return new PendingSettlementOrder(order.getId(), order.getId(), order.getDate(),
                 org.springframework.util.StringUtils.hasText(order.getOrderTitle())
                         ? order.getOrderTitle() : order.getPostion(),
-                amount, null, items.size(), workers, status,
+                amount, toFen(amount), items.size(), workers, status,
                 "partial".equals(status) ? "部分结算" : "待结算", items);
+    }
+
+    private Long toFen(BigDecimal amount) {
+        return amount == null ? null : amount.movePointRight(2).longValueExact();
     }
 
     private String workerName(User worker) {

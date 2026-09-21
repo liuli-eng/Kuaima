@@ -151,7 +151,7 @@ export default {
       return Number(value || 0).toLocaleString("zh-CN");
     },
     openWithdraw() {
-      uni.showToast({ title: "积分提现接口暂未开放", icon: "none" });
+      uni.navigateTo({ url: "/pages/worker/points-withdraw" });
     },
     async loadPoints() {
       const userId = uni.getStorageSync("userId");

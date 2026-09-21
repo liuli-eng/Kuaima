@@ -26,6 +26,8 @@ public class BossOrderTemplate extends BaseEntity {
     private Date startTime;
     private Date endTime;
     private String address;
+    @Column(precision=10, scale=7) private BigDecimal longitude;
+    @Column(precision=10, scale=7) private BigDecimal latitude;
     private Integer recruitCount;
     private Integer duration;
     private String genderRequirement;

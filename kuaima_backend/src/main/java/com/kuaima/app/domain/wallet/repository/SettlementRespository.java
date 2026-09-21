@@ -3,6 +3,7 @@ package com.kuaima.app.domain.wallet.repository;
 import java.util.List;
 import java.util.Collection;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Pageable;
@@ -63,4 +64,12 @@ public interface SettlementRespository extends JpaRepository<Settlement, Long> {
     /** 老板名下最新结算记录（通过订单归属隔离）。 */
     @Query("select s from Settlement s join BossOrder o on s.orderId = o.id where o.createBy = :bossId order by s.id desc")
     Page<Settlement> findByBossId(@Param("bossId") Long bossId, Pageable pageable);
+
+    @Query("""
+            select s from Settlement s join BaseOrderItem i on s.itemId = i.id
+            where s.status = '待支付' and i.finishAt is not null
+              and i.finishAt >= :effectiveFrom and i.finishAt <= :cutoff
+            """)
+    List<Settlement> findPendingFinishedBetween(@Param("effectiveFrom") LocalDateTime effectiveFrom,
+                                                @Param("cutoff") LocalDateTime cutoff);
 }

@@ -58,7 +58,7 @@
             <view class="info-content">
               <view class="info-label">任务地点</view>
               <view class="info-value">{{ job.address || "地点待定" }}</view>
-              <view class="distance-text">距当前位置直线{{ distanceKm }}公里</view>
+              <view class="distance-text">距当前位置直线{{ distanceText }}</view>
             </view>
             <view class="info-link" @click="viewRoute">
               <text>查看路线</text>
@@ -153,6 +153,7 @@ import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/safe-bottom-action.vue";
+import { getCachedLocation, requestCurrentLocation } from "@/utils/location";
 import {
   checkFavoriteJob,
   favoriteJob,
@@ -189,10 +190,44 @@ const loadError = ref(false);
 const appliedCount = ref(0);
 const isRealname = ref(uni.getStorageSync("workerRealname") === true);
 const job = ref({});
+const currentLocation = ref(null);
 const distanceKm = computed(() => {
-  const n = Number(job.value.distanceKm ?? job.value.distance ?? 0);
-  return n > 0 ? n.toFixed(1) : "0";
+  const jobLatitude = toCoordinate(
+    job.value.latitude ?? job.value.lat ?? job.value.workLatitude ?? job.value.locationLatitude,
+  );
+  const jobLongitude = toCoordinate(
+    job.value.longitude ?? job.value.lng ?? job.value.workLongitude ?? job.value.locationLongitude,
+  );
+  const userLatitude = toCoordinate(currentLocation.value?.latitude);
+  const userLongitude = toCoordinate(currentLocation.value?.longitude);
+  if ([jobLatitude, jobLongitude, userLatitude, userLongitude].every((value) => value !== null)) {
+    return calculateDistanceKm(userLatitude, userLongitude, jobLatitude, jobLongitude);
+  }
+
+  const serverDistanceValue = job.value.distanceKm ?? job.value.distance;
+  const serverDistance = Number(serverDistanceValue);
+  if (
+    serverDistanceValue !== undefined &&
+    serverDistanceValue !== null &&
+    serverDistanceValue !== "" &&
+    Number.isFinite(serverDistance) &&
+    serverDistance >= 0
+  ) {
+    return serverDistance;
+  }
+  return null;
 });
+const hasJobCoordinates = computed(() =>
+  toCoordinate(job.value.latitude ?? job.value.lat ?? job.value.workLatitude ?? job.value.locationLatitude) !== null &&
+  toCoordinate(job.value.longitude ?? job.value.lng ?? job.value.workLongitude ?? job.value.locationLongitude) !== null,
+);
+const distanceText = computed(() =>
+  distanceKm.value !== null
+    ? `${distanceKm.value.toFixed(1)}公里`
+    : hasJobCoordinates.value
+      ? "定位权限未获取"
+      : "工作地点暂无坐标",
+);
 const isTimeOutdated = computed(() => {
   if (!job.value.endTime) return false;
   const t = new Date(String(job.value.endTime).replace("Z","")).getTime();
@@ -269,6 +304,10 @@ onLoad(async (options = {}) => {
   }
   job.value = { id };
   await loadDetail();
+  currentLocation.value = getCachedLocation();
+  if (!currentLocation.value) {
+    currentLocation.value = await requestCurrentLocation();
+  }
   const userId = uni.getStorageSync("userId") || "2001";
   try {
     const result = await checkFavoriteJob(userId, id);
@@ -292,6 +331,23 @@ async function loadDetail() {
   } finally {
     loading.value = false;
   }
+}
+function calculateDistanceKm(latitude1, longitude1, latitude2, longitude2) {
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const deltaLatitude = toRadians(latitude2 - latitude1);
+  const deltaLongitude = toRadians(longitude2 - longitude1);
+  const a =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(toRadians(latitude1)) *
+      Math.cos(toRadians(latitude2)) *
+      Math.sin(deltaLongitude / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+function toCoordinate(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) ? coordinate : null;
 }
 function parseDate(value) {
   if (!value) return null;
@@ -402,6 +458,8 @@ function normalizeJob(item) {
         ? `元/${pieceUnitMatch?.[1] || "件"}`
         : item.wageUnit,
     address: item.address || item.workAddress || item.location || "地点待定",
+    latitude: item.latitude ?? item.lat ?? item.workLatitude ?? item.locationLatitude,
+    longitude: item.longitude ?? item.lng ?? item.workLongitude ?? item.locationLongitude,
     duration: item.duration ?? item.workHours ?? 0,
     employerName: item.employerName || item.companyName || item.enterpriseName || item.bossCompanyName || item.bossName || "",
     orderCompletedCount: item.orderCompletedCount ?? item.completedOrderCount ?? item.orderDoneCount,

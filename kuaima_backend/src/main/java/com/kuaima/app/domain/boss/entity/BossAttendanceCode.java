@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity @Table(name = "boss_attendance_code", uniqueConstraints = @UniqueConstraint(name = "uk_boss_attendance_code_day", columnNames = {"enterprise_id", "code_date"}))
+@Entity @Table(name = "boss_attendance_code", uniqueConstraints = @UniqueConstraint(name = "uk_boss_attendance_enterprise_day", columnNames = {"enterprise_id", "code_date"}))
 @Getter @Setter
 public class BossAttendanceCode extends BaseEntity {
     @Column(name = "enterprise_id") private Long enterpriseId;

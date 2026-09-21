@@ -131,7 +131,7 @@ class BossCouponServiceTests {
         order.setType("daily"); order.setAddress("上海市松江区");
         BaseOrderItem first = item(101L, 31L); BaseOrderItem second = item(102L, 31L);
         Settlement pending = new Settlement(); pending.setItemId(101L); pending.setStatus("待支付");
-        pending.setWage(15000L); pending.setServiceFee(1500L);
+        pending.setWage(new BigDecimal("150.00")); pending.setServiceFee(new BigDecimal("15.00"));
         when(userCoupons.findById(11L)).thenReturn(Optional.of(record));
         when(coupons.findById(21L)).thenReturn(Optional.of(coupon));
         when(orders.findByCreateByOrderByIdDesc(7L)).thenReturn(List.of(order));
