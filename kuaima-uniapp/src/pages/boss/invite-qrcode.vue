@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <!-- 导航栏 -->
-    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
+    <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
         <text>←</text>
       </view>
@@ -54,6 +54,12 @@
       </template>
       <view class="bottom-space" />
     </scroll-view>
+
+    <!-- 底部操作栏 -->
+    <view class="footer">
+      <view class="footer-btn outline" @click="saveQr">💾 保存图片</view>
+      <view class="footer-btn primary" @click="shareQr">📤 分享邀请链接</view>
+    </view>
   </view>
 </template>
 
@@ -109,6 +115,42 @@ export default {
         success: () => uni.showToast({ title: "链接已复制", icon: "success" }),
       });
     },
+    saveQr() {
+      if (!this.qrImage) return;
+      if (this.qrImage.startsWith("data:image")) {
+        const base64 = this.qrImage.split(",")[1];
+        const fs = uni.getFileSystemManager();
+        const tempPath = `${wx?.env?.USER_DATA_PATH || "/usrdata"}/qr_invite_${Date.now()}.png`;
+        try {
+          fs.writeFileSync(tempPath, base64, "base64");
+          uni.saveImageToPhotosAlbum({
+            filePath: tempPath,
+            success: () => uni.showToast({ title: "已保存到相册", icon: "success" }),
+            fail: () => uni.showToast({ title: "保存失败，请检查相册权限", icon: "none" }),
+          });
+        } catch (e) {
+          uni.showToast({ title: "保存失败", icon: "none" });
+        }
+      } else {
+        uni.downloadFile({
+          url: this.qrImage,
+          success: (res) => {
+            uni.saveImageToPhotosAlbum({
+              filePath: res.tempFilePath,
+              success: () => uni.showToast({ title: "已保存到相册", icon: "success" }),
+              fail: () => uni.showToast({ title: "保存失败", icon: "none" }),
+            });
+          },
+          fail: () => uni.showToast({ title: "下载失败", icon: "none" }),
+        });
+      }
+    },
+    shareQr() {
+      uni.setClipboardData({
+        data: this.inviteLink || "https://kuaima.com/invite",
+        success: () => uni.showToast({ title: "邀请链接已复制", icon: "none" }),
+      });
+    },
   },
 };
 </script>
@@ -118,21 +160,26 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%;
   background: #f3f4f6;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .nav-bar {
-  height: 50px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 16px 8px;
   background: #fff;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .nav-back, .nav-right { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; }
 .nav-dots { font-size: 18px; }
 .nav-title { font-size: 17px; font-weight: 600; color: #333; }
 
-.body { flex: 1; padding: 16px; }
+.body { flex: 1; min-height: 0; padding: 16px; width: 100%; box-sizing: border-box; }
 .page-state { padding: 32px 0; color: #999; font-size: 14px; text-align: center; }
 
 .qr-card {
@@ -178,4 +225,33 @@ export default {
 .tips-item { font-size: 12px; color: #888; line-height: 22px; }
 
 .bottom-space { height: 20px; }
+
+/* 底部操作栏 */
+.footer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 0.5px solid #eee;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.footer-btn {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  border-radius: 23px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.footer-btn.outline {
+  background: #f5f5f5;
+  color: #666;
+}
+.footer-btn.primary {
+  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  color: #fff;
+}
 </style>

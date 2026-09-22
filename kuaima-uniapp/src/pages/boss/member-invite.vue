@@ -180,17 +180,45 @@ export default {
     },
     saveQr() {
       if (!this.qrImageUrl) return;
-      uni.downloadFile({
-        url: this.qrImageUrl,
-        success: (res) => {
+      // base64 data URL → 写入临时文件再保存相册
+      if (this.qrImageUrl.startsWith("data:image")) {
+        const base64 = this.qrImageUrl.split(",")[1];
+        const fs = uni.getFileSystemManager();
+        const tempPath = `${wx.env.USER_DATA_PATH || "/usrdata"}/qr_invite_${Date.now()}.png`;
+        try {
+          fs.writeFileSync(tempPath, base64, "base64");
           uni.saveImageToPhotosAlbum({
-            filePath: res.tempFilePath,
-            success: () => uni.showToast({ title: "二维码已保存到相册", icon: "none" }),
-            fail: () => uni.showToast({ title: "保存失败，请检查相册权限", icon: "none" }),
+            filePath: tempPath,
+            success: () => uni.showToast({ title: "二维码已保存到相册", icon: "success" }),
+            fail: (err) => {
+              if (err?.errMsg?.includes("auth deny")) {
+                uni.showModal({
+                  title: "需要相册权限",
+                  content: "请在微信设置中开启相册权限后重试",
+                  confirmText: "去设置",
+                  success: (r) => { if (r.confirm) uni.openSetting?.(); },
+                });
+              } else {
+                uni.showToast({ title: "保存失败", icon: "none" });
+              }
+            },
           });
-        },
-        fail: () => uni.showToast({ title: "下载失败", icon: "none" }),
-      });
+        } catch (e) {
+          uni.showToast({ title: "保存失败", icon: "none" });
+        }
+      } else {
+        uni.downloadFile({
+          url: this.qrImageUrl,
+          success: (res) => {
+            uni.saveImageToPhotosAlbum({
+              filePath: res.tempFilePath,
+              success: () => uni.showToast({ title: "二维码已保存到相册", icon: "success" }),
+              fail: () => uni.showToast({ title: "保存失败", icon: "none" }),
+            });
+          },
+          fail: () => uni.showToast({ title: "下载失败", icon: "none" }),
+        });
+      }
     },
     shareQr() {
       uni.setClipboardData({
