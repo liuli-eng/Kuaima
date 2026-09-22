@@ -100,7 +100,7 @@
         </scroll-view>
         <text class="sheet-label">赠送数量</text>
         <view class="points-input-wrap">
-          <input v-model="giftPoints" type="number" placeholder="最低100积分" />
+          <input v-model="giftPoints" type="number" step="1" min="1" placeholder="请输入赠送积分" />
           <text>积分</text>
         </view>
         <view class="quick-chips">
@@ -312,7 +312,7 @@ export default {
       if (this.submitting) return;
       const amount = Number(this.giftPoints);
       if (!this.selectedWorkerId) return uni.showToast({ title: '请先选择赠送的零工', icon: 'none' });
-      if (!amount || amount < 100 || amount % 100 !== 0) return uni.showToast({ title: '赠送数量需为100的整数倍', icon: 'none' });
+      if (!Number.isInteger(amount) || amount < 1) return uni.showToast({ title: '赠送数量需为大于等于1的整数', icon: 'none' });
       if (amount > this.points) return uni.showToast({ title: '可用积分不足', icon: 'none' });
       this.submitting = true;
       try {

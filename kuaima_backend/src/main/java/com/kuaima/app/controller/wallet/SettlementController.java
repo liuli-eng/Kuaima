@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.wallet.entity.Settlement;
@@ -33,6 +34,9 @@ public class SettlementController {
 
     private final SettlementService settlementService;
 
+    @Value("${kuaima.settle.mock-pay-enabled:false}")
+    private boolean mockPayEnabled;
+
     public SettlementController(SettlementService settlementService) {
         this.settlementService = settlementService;
     }
@@ -48,11 +52,12 @@ public class SettlementController {
         return Result.success(settlementService.createSettlement(itemId, workDays));
     }
 
-    /** 模拟支付：POST /settle/{id}/pay，成功后工资入零工钱包 */
-    @Operation(summary = "模拟支付结算单", description = "将「待支付」结算单置为「已支付」(生成模拟支付流水号、记录支付时间)，并把工资入零工钱包记一笔 income/WAGE 流水；服务费归平台。仅待支付的结算单可以支付")
+    /** 仅供明确开启的本地/测试环境模拟支付；生产默认关闭。 */
+    @Operation(summary = "模拟支付结算单（测试环境）", description = "仅 kuaima.settle.mock-pay-enabled=true 时可用；生产环境应使用 /boss/settlements/payments/wechat")
     @PostMapping("/{id}/pay")
-    public Result<Settlement> mockPay(@PathVariable Long id) {
-        return Result.success(settlementService.mockPay(id));
+    public Result<Settlement> mockPay(@PathVariable Long id, Authentication authentication) {
+        if (!mockPayEnabled) throw new ForbiddenBusinessException("模拟支付已关闭，请使用微信支付");
+        return Result.success(settlementService.mockPayForBoss(id, requireBossId(authentication)));
     }
 
     /** 某订单的结算单列表：GET /settle/order/{orderId} */
@@ -83,6 +88,12 @@ public class SettlementController {
             return;
         }
         throw new ForbiddenBusinessException("只能查询当前登录零工的结算记录");
+    }
+
+    private Long requireBossId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof LoginUser loginUser
+                && UserRole.BOSS.equals(loginUser.role()) && loginUser.id() != null) return loginUser.id();
+        throw new ForbiddenBusinessException("仅老板身份可以支付结算单");
     }
 
     /** 结算单详情：GET /settle/{id}/detail */

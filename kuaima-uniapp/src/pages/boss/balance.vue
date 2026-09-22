@@ -68,28 +68,20 @@
             <input
               type="digit"
               class="rb-input"
-              placeholder="自定义金额（最低100）"
+              placeholder="自定义金额（最低0.01）"
               v-model="customAmount"
               @input="onCustomInput"
             />
           </view>
 
-          <view class="rb-section-title">选择支付方式</view>
-          <view class="rb-pay-item" :class="{ active: payMethod === 'wechat' }" @click="payMethod = 'wechat'">
+          <view class="rb-section-title">支付方式</view>
+          <view class="rb-pay-item active">
             <view class="rb-pay-icon wechat"><text>💬</text></view>
             <view class="rb-pay-info">
               <text class="rb-pay-name">微信支付</text>
               <text class="rb-pay-desc">推荐 · 实时到账</text>
             </view>
-            <view class="rb-pay-radio"><view v-if="payMethod === 'wechat'" class="rb-pay-radio-dot" /></view>
-          </view>
-          <view class="rb-pay-item" :class="{ active: payMethod === 'alipay' }" @click="payMethod = 'alipay'">
-            <view class="rb-pay-icon alipay"><text>支</text></view>
-            <view class="rb-pay-info">
-              <text class="rb-pay-name">支付宝</text>
-              <text class="rb-pay-desc">实时到账</text>
-            </view>
-            <view class="rb-pay-radio"><view v-if="payMethod === 'alipay'" class="rb-pay-radio-dot" /></view>
+            <view class="rb-pay-radio"><view class="rb-pay-radio-dot" /></view>
           </view>
         </scroll-view>
         <view class="rb-footer">
@@ -106,8 +98,8 @@
 <script>
 import {
   getBossBalance,
-  createBossRechargeOrder,
-  queryBossRechargeOrder,
+  createBossWalletWechatRecharge,
+  getBossWalletRechargeResult,
 } from "@/api/backend";
 
 function parsePayload(data) {
@@ -131,9 +123,9 @@ export default {
       rechargeVisible: false,
       amount: 1000,
       customAmount: "",
-      payMethod: "wechat",
       rechargeLoading: false,
       pollingTimer: null,
+      rechargeIdempotencyKey: "",
     };
   },
   computed: {
@@ -151,7 +143,7 @@ export default {
     this.loadBalance();
   },
   onUnload() {
-    if (this.pollingTimer) clearInterval(this.pollingTimer);
+    if (this.pollingTimer) clearTimeout(this.pollingTimer);
   },
   methods: {
     goBack() {
@@ -188,19 +180,25 @@ export default {
     // ---------- 充值弹窗 ----------
     openRecharge() {
       this.rechargeVisible = true;
+      this.rechargeIdempotencyKey = "";
     },
     closeRecharge() {
       this.rechargeVisible = false;
       if (this.pollingTimer) {
-        clearInterval(this.pollingTimer);
+        clearTimeout(this.pollingTimer);
         this.pollingTimer = null;
       }
     },
     pickAmount(v) {
       this.amount = v;
       this.customAmount = "";
+      this.rechargeIdempotencyKey = "";
     },
-    onCustomInput() {
+    onCustomInput(event) {
+      const value = String(event?.detail?.value || "").replace(/[^\d.]/g, "");
+      const dot = value.indexOf(".");
+      this.customAmount = dot < 0 ? value : `${value.slice(0, dot)}.${value.slice(dot + 1).replace(/\./g, "").slice(0, 2)}`;
+      this.rechargeIdempotencyKey = "";
       const n = Number(this.customAmount);
       if (!Number.isNaN(n) && n > 0) {
         // 清除选中的快捷金额
@@ -209,50 +207,75 @@ export default {
     },
     async confirmRecharge() {
       const amt = this.displayAmount;
-      if (!amt || amt < 100) {
-        uni.showToast({ title: "最低充值金额为 ¥100", icon: "none" });
+      if (!/^(?:\d+)(?:\.\d{1,2})?$/.test(String(amt)) || Number(amt) < 0.01) {
+        uni.showToast({ title: "最低充值金额为 ¥0.01，最多两位小数", icon: "none" });
         return;
       }
+      if (this.rechargeLoading) return;
+      // #ifndef MP-WEIXIN
+      uni.showToast({ title: "请在微信小程序内完成支付", icon: "none" });
+      return;
+      // #endif
+      if (!this.rechargeIdempotencyKey) this.rechargeIdempotencyKey = `boss-wallet-recharge-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       this.rechargeLoading = true;
       try {
-        const res = await createBossRechargeOrder({ amount: amt, payMethod: this.payMethod });
+        const res = await createBossWalletWechatRecharge({ amount: Number(Number(amt).toFixed(2)) }, this.rechargeIdempotencyKey);
         const body = parsePayload(res);
         const orderNo = body.orderNo;
-        uni.showToast({ title: `已下单：${orderNo}`, icon: "none", duration: 2500 });
-        // 原型：直接"支付完成"（轮询 query 接口会自动模拟回调入账）
+        const payParams = body.payParams || {};
+        if (!orderNo || !payParams.package || !payParams.paySign || !payParams.nonceStr || !payParams.timeStamp) throw new Error("微信支付参数无效");
+        // #ifdef MP-WEIXIN
+        await new Promise((resolve, reject) => uni.requestPayment({
+          provider: "wxpay",
+          timeStamp: String(payParams.timeStamp),
+          nonceStr: String(payParams.nonceStr),
+          package: String(payParams.package),
+          signType: String(payParams.signType || "RSA"),
+          paySign: String(payParams.paySign),
+          success: resolve,
+          fail: reject,
+        }));
         this.startPayPolling(orderNo);
+        // #endif
       } catch (e) {
-        uni.showToast({ title: e?.message || "下单失败", icon: "none" });
+        const message = String(e?.errMsg || e?.message || "微信支付失败");
+        uni.showToast({ title: /cancel/i.test(message) ? "支付已取消" : message, icon: "none" });
       } finally {
         this.rechargeLoading = false;
       }
     },
     startPayPolling(orderNo) {
-      // 模拟：延迟 1.5s 后查询支付结果，后端 query 接口会自动将 pending 置为 paid 并入账
       let ticks = 0;
-      this.pollingTimer = setInterval(async () => {
+      const poll = async () => {
         ticks++;
         try {
-          const res = await queryBossRechargeOrder(orderNo);
+          const res = await getBossWalletRechargeResult(orderNo);
           const body = parsePayload(res);
-          if ("paid" === body.status || "manual_confirmed" === body.status) {
-            clearInterval(this.pollingTimer);
+          if (body.status === "paid") {
+            clearTimeout(this.pollingTimer);
             this.pollingTimer = null;
-            uni.showToast({ title: `充值成功 ¥${body.amount}`, icon: "success" });
+            this.rechargeIdempotencyKey = "";
+            uni.showToast({ title: "充值成功", icon: "success" });
             this.closeRecharge();
             this.loadBalance();
-          } else if (ticks >= 20) {
-            // 最多轮询 20 次（10s）
-            clearInterval(this.pollingTimer);
+            return;
+          } else if (ticks >= 15) {
+            clearTimeout(this.pollingTimer);
             this.pollingTimer = null;
-            uni.showToast({ title: "支付结果待确认，稍后到账", icon: "none" });
-            this.closeRecharge();
-            this.loadBalance();
+            uni.showToast({ title: "支付结果确认中，请稍后在充值记录中查看", icon: "none" });
+            return;
           }
         } catch (e) {
-          // 轮询失败不中断
+          if (ticks >= 15) {
+            clearTimeout(this.pollingTimer);
+            this.pollingTimer = null;
+            uni.showToast({ title: "支付结果确认中，请稍后在充值记录中查看", icon: "none" });
+            return;
+          }
         }
-      }, 500);
+        this.pollingTimer = setTimeout(poll, 2000);
+      };
+      poll();
     },
   },
 };

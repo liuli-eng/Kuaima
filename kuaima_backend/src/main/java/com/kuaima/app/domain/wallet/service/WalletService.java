@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ public class WalletService {
     public static final String BIZ_WITHDRAW_REFUND = "WITHDRAW_REFUND";
     /** 提现渠道占位：真实接入后替换为微信商家转账 */
     public static final String CHANNEL_MOCK = "mock";
+    public static final String CHANNEL_WECHAT = "WECHAT";
 
     private final WalletRespository walletRepository;
     private final WalletFlowRespository flowRepository;
@@ -129,6 +132,60 @@ public class WalletService {
         return applyWithdraw(userId, BigDecimal.valueOf(amount), account, remark);
     }
 
+    public Optional<WithDraw> findByIdempotencyKey(String key) {
+        return withdrawRepository.findByIdempotencyKey(key);
+    }
+
+    /** 微信提现扣款事务：锁钱包、扣余额、建提现单和流水必须同时完成。 */
+    @Transactional
+    public WithDraw submitWechatWithdraw(Long userId, BigDecimal amount, String openid, String key) {
+        Optional<WithDraw> old = withdrawRepository.findByIdempotencyKey(key);
+        if (old.isPresent()) return old.get();
+        amount = normalize(amount);
+        Wallet wallet = walletRepository.findByUserIdForUpdate(userId).orElseGet(() -> {
+            Wallet created = new Wallet(); created.setUserId(userId); created.setBalance(BigDecimal.ZERO);
+            return walletRepository.saveAndFlush(created);
+        });
+        if (value(wallet.getBalance()).compareTo(amount) < 0) throw new IllegalArgumentException("钱包可提现余额不足");
+        wallet.setBalance(value(wallet.getBalance()).subtract(amount)); walletRepository.saveAndFlush(wallet);
+        String suffix = System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        WithDraw draw = new WithDraw(); draw.setUserId(userId); draw.setAmount(amount);
+        draw.setStatus(WithDrawStatus.PENDING); draw.setChannel(CHANNEL_WECHAT); draw.setAccount(openid);
+        draw.setIdempotencyKey(key); draw.setMerchantBatchNo("WWB" + suffix); draw.setMerchantDetailNo("WWD" + suffix);
+        draw.setApplyTime(LocalDateTime.now()); draw = withdrawRepository.saveAndFlush(draw);
+        saveFlow(userId, DIR_OUTCOME, BIZ_WITHDRAW, amount, wallet.getBalance(), draw.getId(), "提现至微信零钱");
+        return draw;
+    }
+
+    @Transactional
+    public WithDraw acceptWechatWithdraw(Long id, String transferNo, String response) {
+        WithDraw draw = lockedWithdraw(id); draw.setWechatTransferNo(transferNo); draw.setTransferResponse(response);
+        return withdrawRepository.save(draw);
+    }
+
+    @Transactional
+    public WithDraw succeedWechatWithdraw(Long id, String transferNo, String response) {
+        WithDraw draw = lockedWithdraw(id);
+        if (WithDrawStatus.SUCCESS.equals(draw.getStatus())) return draw;
+        if (!WithDrawStatus.PENDING.equals(draw.getStatus())) throw new IllegalStateException("提现单状态不能标记成功");
+        draw.setStatus(WithDrawStatus.SUCCESS); draw.setWechatTransferNo(transferNo); draw.setTransferResponse(response);
+        draw.setPayTime(LocalDateTime.now()); return withdrawRepository.save(draw);
+    }
+
+    @Transactional
+    public WithDraw failWechatWithdraw(Long id, String reason, String transferNo, String response) {
+        WithDraw draw = lockedWithdraw(id);
+        if (WithDrawStatus.FAILED.equals(draw.getStatus())) return draw;
+        if (!WithDrawStatus.PENDING.equals(draw.getStatus())) throw new IllegalStateException("提现单状态不能标记失败");
+        Wallet wallet = walletRepository.findByUserIdForUpdate(draw.getUserId())
+                .orElseThrow(() -> new IllegalStateException("钱包不存在"));
+        wallet.setBalance(value(wallet.getBalance()).add(draw.getAmount())); walletRepository.saveAndFlush(wallet);
+        draw.setStatus(WithDrawStatus.FAILED); draw.setRemark(reason); draw.setWechatTransferNo(transferNo);
+        draw.setTransferResponse(response); withdrawRepository.saveAndFlush(draw);
+        saveFlow(draw.getUserId(), DIR_INCOME, BIZ_WITHDRAW_REFUND, draw.getAmount(), wallet.getBalance(), draw.getId(), "微信提现失败退回");
+        return draw;
+    }
+
     /** 模拟打款成功：申请中 -> 已打款（真实渠道：微信商家转账到零工账户） */
     @Transactional
     public WithDraw mockPayout(Long withdrawId) {
@@ -193,6 +250,11 @@ public class WalletService {
 
     private WithDraw getWithdrawOrThrow(Long id) {
         return withdrawRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("提现单不存在: " + id));
+    }
+
+    private WithDraw lockedWithdraw(Long id) {
+        return withdrawRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new EntityNotFoundException("提现单不存在: " + id));
     }
 

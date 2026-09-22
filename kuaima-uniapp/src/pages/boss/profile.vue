@@ -58,14 +58,28 @@
       </view>
 
       <view class="account-card card-shadow">
-        <view class="unauth-card">
-          <view class="unauth-icon"><image :src="userPlusOrangeIcon" mode="aspectFit" /></view>
-          <text class="unauth-title">暂未授权任何员工</text>
-          <text class="unauth-desc">授权员工可帮您招工、发薪、管理订单\n建议授权给您信任的合作伙伴</text>
-          <button class="btn-authorize" @click="navigateTo('authorize')">
-            <image :src="userPlusWhiteIcon" mode="aspectFit" />
+        <view class="auth-row">
+          <view class="auth-info">
+            <text class="auth-name">暂未授权</text>
+            <text class="auth-tag">未授权员工</text>
+          </view>
+          <view class="auth-unbind" @click="navigateTo('authorize')">
             <text>去授权</text>
-          </button>
+            <image :src="chevronRightOrangeIcon" mode="aspectFit" />
+          </view>
+        </view>
+        <view class="balance-row">
+          <view class="balance-info">
+            <text class="balance-desc">余额可支付零工报酬与购买积分</text>
+            <view class="balance-val-row">
+              <text class="balance-symbol">¥</text>
+              <text class="balance-num">{{ stats.balance }}</text>
+            </view>
+          </view>
+          <view class="balance-actions">
+            <button class="btn-outline" @click="navigateTo('balance')">账户明细</button>
+            <button class="btn-primary-sm" @click="navigateTo('balance')">立即充值</button>
+          </view>
         </view>
       </view>
       <view class="asset-card card-shadow"><view v-for="asset in assets" :key="asset.label" class="asset-item" @click="navigateTo(asset.page)"><text class="asset-val">{{ asset.value }}</text><text>{{ asset.label }}</text><image :src="chevronRightIcon" mode="aspectFit" /></view></view>
@@ -218,8 +232,7 @@ import commentDotsGrayIcon from '/static/icons/boss-tabbar/comment-dots-gray.svg
 import faceSmileWhiteIcon from '/static/icons/boss-tabbar/face-smile-white.svg'
 import shieldIcon from '/static/icons/boss-profile/shield-check.svg'
 import calendarIcon from '/static/icons/boss-profile/calendar-check-solid-gray.svg'
-import userPlusOrangeIcon from '/static/icons/boss-profile/user-plus-orange.svg'
-import userPlusWhiteIcon from '/static/icons/boss-profile/user-plus-white.svg'
+import chevronRightOrangeIcon from '/static/icons/worker-credit/chevron-right-orange.svg'
 import usersDarkIcon from '/static/icons/boss-profile/users-dark.svg'
 import banIcon from '/static/icons/boss-profile/ban-dark.svg'
 import fileInvoiceDollarIcon from '/static/icons/boss-profile/file-invoice-dollar-dark.svg'
@@ -247,8 +260,6 @@ export default {
       shieldIcon,
       usersIcon: usersDarkIcon,
       calendarIcon,
-      userPlusOrangeIcon,
-      userPlusWhiteIcon,
       banIcon,
       fileInvoiceDollarIcon,
       userShieldIcon,
@@ -341,7 +352,7 @@ export default {
         'expense-detail', 'payment-detail', 'recruit-manager', 'recruit-address', 
         'sub-account', 'authorize', 'suspend-settle', 'switch-account', 'invite-code', 'blacklist',
         'all-jobs', 'boss-filter', 'settlement', 'contract', 'system-notice', 'missed-call', 
-        'signup-notice', 'invite-friend',         'service-chat', 'insurance', 'realname', 
+        'signup-notice', 'invite-friend', 'service-chat', 'insurance', 'realname', 'balance',
         'personal-info', 'points', 'voucher', 'reward'
       ]
       const sharedPageMap = {
@@ -532,14 +543,6 @@ export default {
 .employer-top .stat-val { color:#fff; font-size:18px; }
 .employer-top .employer-footer { color:#fff; }
 .account-card,.asset-card { margin: 0 16px 12px; background: #fff; border-radius: 14px; padding: 0; overflow:hidden; }
-.unauth-card { padding: 20px 18px; text-align: center; }
-.unauth-icon { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; background: linear-gradient(135deg,#fff3e6,#ffe8cc); display:flex; align-items:center; justify-content:center; }
-.unauth-icon image { width: 24px; height: 24px; }
-.unauth-title { display:block; margin-bottom:6px; color:#333; font-size:15px; font-weight:600; }
-.unauth-desc { display:block; margin-bottom:16px; color:#999; font-size:12px; line-height:1.6; white-space:pre-line; }
-.btn-authorize { width:100%; height:44px; margin:0; padding:0; border:0; border-radius:22px; background:linear-gradient(135deg,#ff8c5a,#ff6b35); color:#fff; font-size:14px; font-weight:600; line-height:44px; box-shadow:0 4px 14px rgba(255,107,53,.3); display:flex; align-items:center; justify-content:center; gap:6px; }
-.btn-authorize::after { border:0; }
-.btn-authorize image { width:16px; height:16px; }
 .employer-title-row,.auth-row,.balance-row { display:flex; align-items:center; justify-content:space-between; }
 .employer-badge { display:flex; align-items:center; gap:6px; color:#8B4513; font-weight:600; }
 .employer-badge image,.employer-score image,.asset-item image { width:16px; height:16px; }
@@ -552,15 +555,23 @@ export default {
 .footer-item { display:flex; align-items:center; }
 .footer-value { color:#FFD96F; font-weight:700; }
 .employer-footer .sep { opacity:.4; }
-.auth-row { border-bottom:1px solid #F0E6D2; padding:12px 16px; color:#333; font-size:13px; background:#FFF8E7; }
-.auth-row em { margin-left:8px; padding:3px 7px; background:#fff2e8; color:#FF6B35; font-size:10px; font-style:normal; border-radius:4px; }
-.auth-unbind { color:#999; }
-.balance-row { padding:14px 16px; }
+.auth-row { justify-content:space-between; border-bottom:1px solid #F0E6D2; padding:12px 16px; background:#FFF8E7; }
+.auth-info { display:flex; align-items:center; gap:8px; }
+.auth-name { color:#333; font-size:14px; font-weight:600; }
+.auth-tag { padding:2px 8px; color:#B91C1C; font-size:11px; font-weight:600; background:#FECACA; border-radius:4px; }
+.auth-unbind { display:flex; align-items:center; gap:2px; color:#FF6B35; font-size:12px; font-weight:500; }
+.auth-unbind image { width:10px; height:16px; }
+.balance-row { justify-content:space-between; align-items:stretch; gap:12px; padding:14px 16px; }
+.balance-info { flex:1; display:flex; flex-direction:column; justify-content:center; min-width:0; }
 .balance-desc { display:block; color:#999; font-size:11px; }
-.balance-val { display:block; color:#333; font-size:28px; font-weight:700; margin-top:4px; }
-.balance-actions { display:flex; gap:8px; }
-.balance-actions button { margin:0; padding:0 10px; height:30px; line-height:28px; border:1px solid #FF6B35; color:#FF6B35; background:#fff; border-radius:15px; font-size:11px; }
-.balance-actions button:last-child { color:#fff; background:#FF6B35; }
+.balance-val-row { display:flex; align-items:baseline; margin-top:4px; }
+.balance-symbol { color:#333; font-size:18px; font-weight:700; margin-right:2px; }
+.balance-num { color:#333; font-size:32px; font-weight:800; line-height:1; }
+.balance-actions { display:flex; flex-direction:column; gap:8px; justify-content:center; flex-shrink:0; }
+.btn-outline,.btn-primary-sm { display:flex; align-items:center; justify-content:center; height:32px; margin:0; padding:0 14px; border-radius:16px; font-size:12px; line-height:32px; }
+.btn-outline { color:#666; background:#fff; border:1px solid #E0E0E0; }
+.btn-primary-sm { color:#fff; background:linear-gradient(135deg,#FFD700,#FFA500); border:0; font-weight:600; }
+.btn-outline::after,.btn-primary-sm::after { border:0; }
 .asset-card { display:flex; padding:0; }
 .asset-item { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; color:#999; font-size:11px; padding:16px 0; border-right:1px solid #f0f0f0; }
 .asset-item:last-child { border-right:0; }

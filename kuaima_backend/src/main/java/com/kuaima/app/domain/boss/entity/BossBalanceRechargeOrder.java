@@ -26,6 +26,9 @@ public class BossBalanceRechargeOrder extends BaseEntity {
     @Column(nullable = false, length = 40, unique = true)
     private String orderNo;
 
+    @Column(length = 128, unique = true)
+    private String idempotencyKey;
+
     @Column(nullable = false)
     private Long bossId;
 
@@ -59,6 +62,9 @@ public class BossBalanceRechargeOrder extends BaseEntity {
 
     @Column(length = 500)
     private String payUrl;
+
+    @Column(length = 4000)
+    private String payParams;
 
     @Column(length = 500)
     private String remark;

@@ -920,7 +920,7 @@ export default {
       this.navigateTo("publish-template", getTemplateRouteParams(job));
     },
     repeatOrder(job) {
-      this.navigateTo("publish-info", { sourceOrderId: job.id });
+      this.navigateTo("select-job");
     },
     switchTab(tab) {
       const tabPages = {

@@ -1,6 +1,7 @@
 package com.kuaima.app.controller.auth;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -152,6 +153,17 @@ public class AuthController {
                 return Result.error(400, "手机号授权失败");
             }
 
+            User authorizedEmployee = findUnboundAuthorizedEmployee(phone, role);
+            if (authorizedEmployee != null) {
+                // 老板先创建授权员工，员工之后首次用自己微信手机号登录时绑定既有子账号。
+                authorizedEmployee.setOpenid(info.openid());
+                if (!StringUtils.hasText(authorizedEmployee.getAvatar()) && StringUtils.hasText(info.avatar())) {
+                    authorizedEmployee.setAvatar(info.avatar());
+                }
+                user = userRepository.save(authorizedEmployee);
+                return Result.success(buildTokenResponse(user, role));
+            }
+
             User newUser = new User();
             newUser.setUsername(phone);
             newUser.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
@@ -174,6 +186,19 @@ public class AuthController {
 
         // role 只表示本次登录端，不再覆盖用户的历史业务身份字段。
         return Result.success(buildTokenResponse(user, role));
+    }
+
+    /**
+     * 手机号授权登录时优先匹配老板端授权员工子账号。
+     * 仅允许绑定未绑定过微信且状态正常的子账号，避免复用他人微信或已冻结账号。
+     */
+    private User findUnboundAuthorizedEmployee(String phone, String sessionRole) {
+        if (!UserRole.BOSS.equals(sessionRole)) return null;
+        List<User> candidates = userRepository.findUnboundActiveSubAccountsByPhone(phone);
+        if (candidates.size() > 1) {
+            throw new IllegalStateException("该手机号关联多个老板授权账号，请联系老板确认后重新授权");
+        }
+        return candidates.isEmpty() ? null : candidates.get(0);
     }
 
     /** 为未提供昵称的新用户生成按身份递增的默认昵称。 */

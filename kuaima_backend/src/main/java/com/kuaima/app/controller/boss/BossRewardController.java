@@ -2,6 +2,7 @@ package com.kuaima.app.controller.boss;
 
 import com.kuaima.app.common.*;
 import com.kuaima.app.domain.reward.service.BossRewardService;
+import com.kuaima.app.domain.reward.service.WorkerRewardWithdrawalFailedException;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.security.model.LoginUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,7 +39,13 @@ public class BossRewardController {
     @Operation(summary = "申请奖励金提现", description = "amount单位为元；建议每次请求携带唯一Idempotency-Key")
     public Result<Map<String, Object>> withdraw(@RequestBody Map<String, Object> body,
             @RequestHeader(value = "Idempotency-Key", required = false) String key, Authentication authentication) {
-        return Result.success(service.withdraw(bossId(authentication), moneyValue(body == null ? null : body.get("amount")), key));
+        try {
+            Result<Map<String, Object>> result = Result.success(service.withdraw(bossId(authentication), moneyValue(body == null ? null : body.get("amount")), key));
+            result.setMessage("提现申请已提交");
+            return result;
+        } catch (WorkerRewardWithdrawalFailedException e) {
+            return Result.error(502, e.getMessage());
+        }
     }
 
     @GetMapping("/withdrawals")

@@ -16,7 +16,8 @@ import lombok.Setter;
  * 申请时先扣减钱包余额，打款成功即完成；打款失败则余额退回钱包。
  */
 @Entity
-@Table(name = "with_draw")
+@Table(name = "with_draw", uniqueConstraints = @jakarta.persistence.UniqueConstraint(
+        name = "uk_wallet_withdraw_idempotency", columnNames = "idempotency_key"))
 @Getter
 @Setter
 public class WithDraw extends BaseEntity {
@@ -47,4 +48,19 @@ public class WithDraw extends BaseEntity {
 
     @Column(comment = "失败原因/备注")
     private String remark;
+
+    @Column(name = "idempotency_key", length = 128)
+    private String idempotencyKey;
+
+    @Column(name = "merchant_batch_no", length = 64)
+    private String merchantBatchNo;
+
+    @Column(name = "merchant_detail_no", length = 64)
+    private String merchantDetailNo;
+
+    @Column(name = "wechat_transfer_no", length = 64)
+    private String wechatTransferNo;
+
+    @Column(name = "transfer_response", columnDefinition = "TEXT")
+    private String transferResponse;
 }

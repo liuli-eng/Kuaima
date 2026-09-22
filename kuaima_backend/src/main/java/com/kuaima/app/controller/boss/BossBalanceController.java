@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,6 +31,7 @@ import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.security.model.LoginUser;
+import com.kuaima.app.domain.wallet.service.BossBalancePaymentService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,6 +50,7 @@ public class BossBalanceController {
     private final BossMerchantAccountRepository accountRepository;
     private final BossBalanceRechargeOrderRepository rechargeOrderRepository;
     private final UserRepository userRepository;
+    private final BossBalancePaymentService paymentService;
 
     private static final BigDecimal MIN_RECHARGE_AMOUNT = new BigDecimal("100.00");
     private static final List<String> ALLOWED_PAY_METHODS = List.of("wechat", "alipay");
@@ -105,6 +108,10 @@ public class BossBalanceController {
         Long bossId = requireBossId(authentication);
         BossBalanceRechargeOrder order = rechargeOrderRepository.findByOrderNo(orderNo)
                 .orElseThrow(() -> new ForbiddenBusinessException("订单不存在"));
+
+        if ("wechat".equalsIgnoreCase(order.getPayMethod())) {
+            throw new ForbiddenBusinessException("微信支付订单必须等待微信官方回调确认");
+        }
         if (!order.getBossId().equals(bossId)) {
             throw new ForbiddenBusinessException("无权访问该订单");
         }
@@ -117,8 +124,12 @@ public class BossBalanceController {
     @PostMapping("/recharge/create")
     @Transactional
     public Result<Map<String, Object>> createRechargeOrder(Authentication authentication,
-                                                           @RequestBody Map<String, Object> body) {
+                                                           @RequestBody Map<String, Object> body,
+                                                           @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         Long bossId = requireBossId(authentication);
+        if ("wechat".equalsIgnoreCase(String.valueOf(body.getOrDefault("payMethod", "wechat")))) {
+            return Result.success(paymentService.create(bossId, parseAmount(body.get("amount")), idempotencyKey));
+        }
         User boss = userRepository.findById(bossId).orElse(null);
 
         BigDecimal amount = parseAmount(body.get("amount"));
@@ -204,14 +215,6 @@ public class BossBalanceController {
                 .orElseThrow(() -> new ForbiddenBusinessException("订单不存在"));
         if (!order.getBossId().equals(bossId)) {
             throw new ForbiddenBusinessException("无权访问该订单");
-        }
-        // 未完成支付时，主动模拟一次回调（原型阶段）
-        if ("pending".equals(order.getStatus())) {
-            Map<String, Object> cbBody = new LinkedHashMap<>();
-            cbBody.put("orderNo", orderNo);
-            cbBody.put("status", "paid");
-            cbBody.put("transactionId", "MOCK-" + orderNo);
-            return payCallback(cbBody);
         }
         return Result.success(orderToMap(order));
     }

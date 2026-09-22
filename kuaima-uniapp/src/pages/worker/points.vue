@@ -16,26 +16,9 @@
         <text class="balance-sub">约可提现 ¥{{ cashValue }} · 100积分=1元</text>
         <view class="balance-tip">
           <image src="/static/icons/boss-points/circle-info-orange.svg" mode="aspectFit" />
-          <text>积分可提现到微信/支付宝，也可兑换好礼</text>
+          <text>积分可提现到微信/支付宝</text>
         </view>
         <button class="withdraw-btn" @click="openWithdraw">积分提现</button>
-      </view>
-
-      <view class="section-card">
-        <view class="section-title">
-          <text class="section-star">★</text>
-          <text>如何获得积分</text>
-        </view>
-        <view v-for="item in earnWays" :key="item.name" class="earn-item">
-          <view class="earn-icon" :style="{ background: item.bg }">
-            <image :src="item.icon" mode="aspectFit" />
-          </view>
-          <view class="earn-info">
-            <text class="earn-name">{{ item.name }}</text>
-            <text class="earn-desc">{{ item.desc }}</text>
-          </view>
-          <text class="earn-value">{{ item.value }}</text>
-        </view>
       </view>
 
       <view class="detail-tabs">
@@ -118,11 +101,6 @@ export default {
         { label: "全部", value: "all" },
         { label: "收入", value: "income" },
         { label: "支出", value: "expense" },
-      ],
-      earnWays: [
-        { name: "完成日结订单", desc: "订单确认完成且无差评", value: "+50/单", icon: flowIcons.order, bg: "#FFF3ED" },
-        { name: "每日签到", desc: "连续签到奖励更多", value: "+5/天", icon: flowIcons.sign, bg: "#EFF6FF" },
-        { name: "邀请好友", desc: "好友完成首单后发放", value: "+200/人", icon: flowIcons.invite, bg: "#ECFDF5" },
       ],
     };
   },

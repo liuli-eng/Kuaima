@@ -10,6 +10,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,11 +35,14 @@ import com.kuaima.app.domain.user.service.CreditScoreService;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.entity.Wallet;
+import com.kuaima.app.domain.wallet.entity.SettlementPaymentOrder;
 import com.kuaima.app.domain.wallet.model.PendingSettlementModels.PendingSettlementItem;
 import com.kuaima.app.domain.wallet.model.PendingSettlementModels.PendingSettlementOrder;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
+import com.kuaima.app.domain.wallet.repository.SettlementPaymentOrderRepository;
 import com.kuaima.app.admin.entity.AdminSetting;
 import com.kuaima.app.admin.repository.AdminSettingRepository;
+import com.kuaima.app.wechat.service.WechatPayService;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -46,6 +54,9 @@ import jakarta.persistence.EntityNotFoundException;
 @Service
 public class SettlementService {
 
+    public static final String PAYMENT_PENDING = "PENDING";
+    public static final String PAYMENT_PAID = "PAID";
+
     private final SettlementRespository settlementRepository;
     private final BossOrderRespository orderRepository;
     private final BaseOrderItemRespository itemRepository;
@@ -54,6 +65,8 @@ public class SettlementService {
     private final UserRepository userRepository;
     private final AdminSettingRepository adminSettingRepository;
     private final CreditScoreService creditScoreService;
+    private final SettlementPaymentOrderRepository paymentOrders;
+    private final WechatPayService wechatPay;
 
     /** 平台服务费率(% of wage)，规则待定，默认 0 */
     @Value("${kuaima.settle.service-fee-rate:0}")
@@ -76,7 +89,19 @@ public class SettlementService {
                              UserRepository userRepository,
                              AdminSettingRepository adminSettingRepository) {
         this(settlementRepository, orderRepository, itemRepository, walletService, messageService, userRepository,
-                adminSettingRepository, null);
+                adminSettingRepository, null, null, null);
+    }
+
+    public SettlementService(SettlementRespository settlementRepository,
+                             BossOrderRespository orderRepository,
+                             BaseOrderItemRespository itemRepository,
+                             WalletService walletService,
+                             MessageService messageService,
+                             UserRepository userRepository,
+                             AdminSettingRepository adminSettingRepository,
+                             CreditScoreService creditScoreService) {
+        this(settlementRepository, orderRepository, itemRepository, walletService, messageService, userRepository,
+                adminSettingRepository, creditScoreService, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -87,7 +112,9 @@ public class SettlementService {
                              MessageService messageService,
                              UserRepository userRepository,
                              AdminSettingRepository adminSettingRepository,
-                             CreditScoreService creditScoreService) {
+                             CreditScoreService creditScoreService,
+                             SettlementPaymentOrderRepository paymentOrders,
+                             WechatPayService wechatPay) {
         this.settlementRepository = settlementRepository;
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
@@ -96,6 +123,8 @@ public class SettlementService {
         this.userRepository = userRepository;
         this.adminSettingRepository = adminSettingRepository;
         this.creditScoreService = creditScoreService;
+        this.paymentOrders = paymentOrders;
+        this.wechatPay = wechatPay;
     }
 
     /**
@@ -158,22 +187,143 @@ public class SettlementService {
         if (!SettlementStatus.PENDING.equals(s.getStatus())) {
             throw new IllegalStateException("仅待支付的结算单可以支付");
         }
-        s.setStatus(SettlementStatus.PAID);
-        s.setPayNo("MOCK" + System.currentTimeMillis());
-        s.setPayTime(LocalDateTime.now());
-        settlementRepository.save(s);
+        return completePaidSettlement(s, "MOCK" + System.currentTimeMillis(), null);
+    }
 
-        synchronizePaidItemAndOrder(s);
-        applyBossCredit(s);
+    @Transactional
+    public Settlement mockPayForBoss(Long settlementId, Long bossId) {
+        Settlement settlement = getSettlementOrThrow(settlementId);
+        BossOrder order = orderRepository.findById(settlement.getOrderId())
+                .orElseThrow(() -> new EntityNotFoundException("订单不存在: " + settlement.getOrderId()));
+        if (!bossId.equals(order.getCreateBy())) throw new com.kuaima.app.common.ForbiddenBusinessException("无权支付该结算单");
+        return mockPay(settlementId);
+    }
 
-        // 工资入零工钱包
-        walletService.credit(s.getWorkerId(), s.getWage(), WalletService.BIZ_WAGE,
-                s.getId(), "工资结算 orderId=" + s.getOrderId() + " 天数=" + s.getWorkDays());
-        // 结算到账：通知零工
-        messageService.sendToUser(s.getWorkerId(), UserRole.USER, MessageType.SETTLE_PAID, "工资已到账",
-                "您的工资 " + s.getWage().stripTrailingZeros().toPlainString() + " 元已到账，可在钱包中查看或提现。",
-                BizType.SETTLE, s.getId(), java.util.Map.of("wage", s.getWage(), "orderId", s.getOrderId()));
-        return s;
+    /** 创建微信 JSAPI 结算支付单；一笔微信支付可覆盖多条零工结算记录。 */
+    @Transactional
+    public com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayView createWechatPayment(
+            Long bossId, List<Long> settlementIds, String idempotencyKey) {
+        if (paymentOrders == null || wechatPay == null) throw new IllegalStateException("微信结算支付服务未配置");
+        if (bossId == null) throw new IllegalArgumentException("老板用户ID不能为空");
+        if (!org.springframework.util.StringUtils.hasText(idempotencyKey)) {
+            throw new IllegalArgumentException("Idempotency-Key 不能为空");
+        }
+        String key = idempotencyKey.trim();
+        SettlementPaymentOrder old = paymentOrders.findByIdempotencyKey(key).orElse(null);
+        if (old != null) {
+            if (!bossId.equals(old.getBossId())) throw new com.kuaima.app.common.ForbiddenBusinessException("幂等键已被其他用户使用");
+            return paymentView(old);
+        }
+        List<Long> ids = settlementIds == null ? List.of() : settlementIds.stream()
+                .filter(Objects::nonNull).distinct().sorted().toList();
+        if (ids.isEmpty()) throw new IllegalArgumentException("settlementIds 不能为空");
+        if (ids.size() > 100) throw new IllegalArgumentException("单次最多支付100笔结算单");
+
+        List<Settlement> settlements = new ArrayList<>();
+        BigDecimal amount = BigDecimal.ZERO.setScale(2);
+        for (Long id : ids) {
+            Settlement settlement = settlementRepository.findByIdForUpdate(id)
+                    .orElseThrow(() -> new EntityNotFoundException("结算单不存在: " + id));
+            BossOrder order = orderRepository.findById(settlement.getOrderId())
+                    .orElseThrow(() -> new EntityNotFoundException("订单不存在: " + settlement.getOrderId()));
+            if (!bossId.equals(order.getCreateBy())) throw new com.kuaima.app.common.ForbiddenBusinessException("无权支付该结算单");
+            if (!SettlementStatus.PENDING.equals(settlement.getStatus())) throw new IllegalStateException("仅待支付的结算单可以发起微信支付");
+            if (settlement.getTotalAmount() == null || settlement.getTotalAmount().signum() <= 0) {
+                throw new IllegalStateException("结算金额无效: " + id);
+            }
+            settlements.add(settlement);
+            amount = amount.add(settlement.getTotalAmount());
+        }
+        User payer = userRepository.findById(bossId)
+                .orElseThrow(() -> new EntityNotFoundException("老板用户不存在: " + bossId));
+        if (!org.springframework.util.StringUtils.hasText(payer.getOpenid())) throw new IllegalArgumentException("当前老板未绑定微信 openid");
+
+        SettlementPaymentOrder payment = new SettlementPaymentOrder();
+        payment.setPaymentNo("SP" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                + UUID.randomUUID().toString().substring(0, 6).toUpperCase());
+        payment.setIdempotencyKey(key);
+        payment.setBossId(bossId);
+        payment.setSettlementIds(ids.stream().map(String::valueOf).collect(Collectors.joining(",")));
+        payment.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+        payment.setStatus(PAYMENT_PENDING);
+        payment.setCreatedAt(LocalDateTime.now());
+        payment = paymentOrders.save(payment);
+
+        JSONObject payParams = wechatPay.prepay("快马日结订单结算", payment.getPaymentNo(), payment.getAmount(), payer.getOpenid());
+        payment.setPayParams(payParams.toJSONString());
+        payment = paymentOrders.save(payment);
+        return paymentView(payment);
+    }
+
+    @Transactional(readOnly = true)
+    public com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayView getWechatPayment(Long bossId, String paymentNo) {
+        if (paymentOrders == null) throw new IllegalStateException("微信结算支付服务未配置");
+        SettlementPaymentOrder payment = paymentOrders.findByPaymentNoAndBossId(paymentNo, bossId)
+                .orElseThrow(() -> new EntityNotFoundException("结算支付单不存在"));
+        return paymentView(payment);
+    }
+
+    @Transactional(readOnly = true)
+    public SettlementPaymentOrder findWechatPayment(String paymentNo) {
+        if (paymentOrders == null) throw new IllegalStateException("微信结算支付服务未配置");
+        return paymentOrders.findByPaymentNo(paymentNo).orElseThrow(() -> new EntityNotFoundException("结算支付单不存在"));
+    }
+
+    /** 微信回调确认支付；支付单行锁保证重复通知不会重复给零工钱包入账。 */
+    @Transactional
+    public SettlementPaymentOrder markWechatPaymentPaid(String paymentNo, String transactionId) {
+        SettlementPaymentOrder payment = paymentOrders.findByPaymentNoForUpdate(paymentNo)
+                .orElseThrow(() -> new EntityNotFoundException("结算支付单不存在"));
+        if (PAYMENT_PAID.equals(payment.getStatus())) return payment;
+        if (!PAYMENT_PENDING.equals(payment.getStatus())) throw new IllegalStateException("当前结算支付单状态不能确认支付");
+        for (Long settlementId : parseSettlementIds(payment.getSettlementIds())) {
+            Settlement settlement = settlementRepository.findByIdForUpdate(settlementId)
+                    .orElseThrow(() -> new EntityNotFoundException("结算单不存在: " + settlementId));
+            if (!SettlementStatus.PAID.equals(settlement.getStatus())) {
+                if (!SettlementStatus.PENDING.equals(settlement.getStatus())) throw new IllegalStateException("结算单状态已变化: " + settlementId);
+                completePaidSettlement(settlement, transactionId, transactionId);
+            }
+        }
+        payment.setStatus(PAYMENT_PAID);
+        payment.setWechatTransactionId(transactionId);
+        payment.setPaidAt(LocalDateTime.now());
+        return paymentOrders.save(payment);
+    }
+
+    public int expectedWechatPaymentFen(SettlementPaymentOrder payment) {
+        return payment.getAmount().movePointRight(2).intValueExact();
+    }
+
+    private Settlement completePaidSettlement(Settlement settlement, String payNo, String wechatTransactionId) {
+        settlement.setStatus(SettlementStatus.PAID);
+        settlement.setPayNo(payNo);
+        settlement.setWechatTransactionId(wechatTransactionId);
+        settlement.setPayTime(LocalDateTime.now());
+        settlementRepository.save(settlement);
+        synchronizePaidItemAndOrder(settlement);
+        applyBossCredit(settlement);
+        walletService.credit(settlement.getWorkerId(), settlement.getWage(), WalletService.BIZ_WAGE,
+                settlement.getId(), "工资结算 orderId=" + settlement.getOrderId() + " 天数=" + settlement.getWorkDays());
+        messageService.sendToUser(settlement.getWorkerId(), UserRole.USER, MessageType.SETTLE_PAID, "工资已到账",
+                "您的工资 " + settlement.getWage().stripTrailingZeros().toPlainString() + " 元已到账，可在钱包中查看或提现。",
+                BizType.SETTLE, settlement.getId(), Map.of("wage", settlement.getWage(), "orderId", settlement.getOrderId()));
+        return settlement;
+    }
+
+    private com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayView paymentView(SettlementPaymentOrder payment) {
+        Map<String, Object> params = Map.of();
+        if (org.springframework.util.StringUtils.hasText(payment.getPayParams())) {
+            params = new LinkedHashMap<>(JSON.parseObject(payment.getPayParams()));
+        }
+        return new com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayView(
+                payment.getPaymentNo(), parseSettlementIds(payment.getSettlementIds()), payment.getAmount(),
+                payment.getStatus(), params, payment.getCreatedAt(), payment.getPaidAt());
+    }
+
+    private List<Long> parseSettlementIds(String value) {
+        if (!org.springframework.util.StringUtils.hasText(value)) return List.of();
+        return java.util.Arrays.stream(value.split(",")).map(String::trim).filter(s -> !s.isEmpty())
+                .map(Long::valueOf).toList();
     }
 
     private void applyBossCredit(Settlement settlement) {

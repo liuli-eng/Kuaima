@@ -26,6 +26,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 按手机号查询（可能多个用户共用同一手机号） */
     List<User> findByPhone(String phone);
 
+    /** 查询尚未绑定微信、可登录老板端的授权员工子账号。 */
+    @Query("""
+            select u from User u
+            where u.phone = :phone
+              and u.parentUserId is not null
+              and coalesce(u.status, '') = '正常'
+              and u.openid is null
+            """)
+    List<User> findUnboundActiveSubAccountsByPhone(@Param("phone") String phone);
+
     /** 按角色查询（角色: BOSS/USER） */
     List<User> findByRole(String role);
 

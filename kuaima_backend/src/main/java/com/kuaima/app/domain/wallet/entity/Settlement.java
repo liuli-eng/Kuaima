@@ -55,8 +55,11 @@ public class Settlement extends BaseEntity {
     @Column(comment = "结算单状态:待支付/已支付/已取消")
     private String status;
 
-    @Column(comment = "支付流水号(模拟)")
+    @Column(comment = "支付流水号（微信交易号或模拟流水号）")
     private String payNo;
+
+    @Column(name = "wechat_transaction_id", length = 64, comment = "微信支付交易号")
+    private String wechatTransactionId;
 
     @Column(comment = "支付时间")
     private LocalDateTime payTime;

@@ -4,12 +4,18 @@ import java.util.List;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.wallet.model.PendingSettlementModels.PendingSettlementOrder;
+import com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayRequest;
+import com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayView;
 import com.kuaima.app.domain.wallet.service.SettlementService;
 import com.kuaima.app.security.model.LoginUser;
 
@@ -32,6 +38,23 @@ public class BossSettlementController {
     @GetMapping("/pending")
     public Result<List<PendingSettlementOrder>> listPending(Authentication authentication) {
         return Result.success(settlementService.listPendingByBoss(requireBossId(authentication)));
+    }
+
+    @Operation(summary = "创建订单结算微信支付", description = "校验结算单归属当前老板并创建微信 JSAPI 预支付单；金额由后端按结算单汇总，不信任前端金额")
+    @PostMapping("/payments/wechat")
+    public Result<WechatPayView> createWechatPayment(
+            @RequestBody WechatPayRequest body,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            Authentication authentication) {
+        return Result.success(settlementService.createWechatPayment(requireBossId(authentication),
+                body == null ? null : body.settlementIds(), idempotencyKey));
+    }
+
+    @Operation(summary = "查询订单结算微信支付状态")
+    @GetMapping("/payments/{paymentNo}")
+    public Result<WechatPayView> getWechatPayment(@PathVariable String paymentNo,
+                                                   Authentication authentication) {
+        return Result.success(settlementService.getWechatPayment(requireBossId(authentication), paymentNo));
     }
 
     private Long requireBossId(Authentication authentication) {

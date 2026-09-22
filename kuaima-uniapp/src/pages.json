@@ -66,6 +66,12 @@
           }
         },
         {
+          "path": "points-withdraw-records",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
           "path": "reward",
           "style": {
             "navigationStyle": "custom"
@@ -557,6 +563,12 @@
           }
         },
         {
+          "path": "score-detail",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
           "path": "download-app",
           "style": {
             "navigationStyle": "custom"
@@ -750,6 +762,12 @@
         },
         {
           "path": "reward",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "reward-recharge",
           "style": {
             "navigationStyle": "custom"
           }

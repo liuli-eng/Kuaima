@@ -27,6 +27,8 @@ public class WorkerRewardSettingsInitializer implements CommandLineRunner {
         setting("reward.withdraw.enabled", "true", "奖励金提现开关");
         setting("reward.withdraw.disabledReason", "", "奖励金提现关闭原因");
         setting("reward.withdraw.channel", "WECHAT", "奖励金提现渠道");
+        setting("reward.recharge.quickAmounts", "0.01:0,1000:30,2000:80,5000:260,10000:600,20000:1400",
+                "奖励金充值快捷金额与赠送金额，格式为本金:赠送金");
         rule("INVITE_FIRST_ORDER", "邀请好友接单", "好友注册并完成首单后发放", 800L,
                 "NAVIGATE", "/pages/worker/invite", 10);
         rule("INCOME_SHARE", "晒收入分享", "分享收入海报可获得奖励", 200L,

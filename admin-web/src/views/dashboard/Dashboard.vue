@@ -380,7 +380,7 @@ const initDonutChart = () => {
             shadowColor: 'rgba(0,0,0,0.2)'
           }
         },
-        data: jobTypeData
+        data: jobTypeData.value
       }
     ]
   }

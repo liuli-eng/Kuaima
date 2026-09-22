@@ -379,6 +379,18 @@ export function applyWithdraw({ userId, amount, account, remark }) {
   });
 }
 
+/** 零工钱包微信提现，金额单位为元，身份由当前 JWT 判断。 */
+export function withdrawWorkerWallet(data = {}, idempotencyKey = "") {
+  return request({
+    url: "/worker/wallet/withdraw",
+    method: "POST",
+    data: { amount: data.amount },
+    header: { "Idempotency-Key": idempotencyKey },
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
 export function listSettlements(userId) {
   return request({ url: `/settle/worker/${encodeURIComponent(userId)}` });
 }
@@ -819,6 +831,27 @@ export function queryBossRechargeOrder(orderNo) {
   return request({ url: `/boss/balance/recharge/query?orderNo=${encodeURIComponent(orderNo)}`, skipUserIdHeader: true });
 }
 
+/** 老板钱包微信充值，金额单位为元。 */
+export function createBossWalletWechatRecharge(data = {}, idempotencyKey = "") {
+  return request({
+    url: "/boss/balance/recharge/create",
+    method: "POST",
+    data: { amount: data.amount, payMethod: "wechat" },
+    header: { "Idempotency-Key": idempotencyKey },
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
+/** 查询老板钱包微信充值结果。 */
+export function getBossWalletRechargeResult(orderNo) {
+  return request({
+    url: `/boss/balance/recharge/query?orderNo=${encodeURIComponent(orderNo)}`,
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
 /** 老板端充值订单列表。 */
 export function listBossRechargeOrders(status) {
   const qs = status ? `?status=${encodeURIComponent(status)}` : "";
@@ -1109,8 +1142,108 @@ export function listPointFlows(userId, params = {}) {
     url: `/points/${userId}/flows?${query({ page: 0, size: 20, ...params })}`,
   });
 }
+
+/** 零工端积分提现配置，身份由当前 JWT 判断。 */
+export function getWorkerPointsWithdrawConfig() {
+  return request({
+    url: "/worker/points/withdraw-config",
+    skipUserIdHeader: true,
+  });
+}
+
+/** 零工端提交积分提现申请。 */
+export function createWorkerPointsWithdrawal(data = {}, idempotencyKey = "") {
+  return request({
+    url: "/worker/points/withdrawals",
+    method: "POST",
+    data,
+    header: { "Idempotency-Key": idempotencyKey },
+    skipUserIdHeader: true,
+  });
+}
+
+/** 零工端积分提现记录，支持状态筛选和分页。 */
+export function listWorkerPointsWithdrawals(params = {}) {
+  return request({
+    url: `/worker/points/withdrawals?${query({ page: 0, size: 20, status: "ALL", ...params })}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 零工端单笔积分提现详情。 */
+export function getWorkerPointsWithdrawalDetail(id) {
+  return request({
+    url: `/worker/points/withdrawals/${normalizeId(id, "id")}`,
+    skipUserIdHeader: true,
+  });
+}
+
 export function listRewards() {
   return request({ url: "/rewards" });
+}
+
+/** 老板端奖励金账户概览。 */
+export function getBossRewardOverview() {
+  return request({ url: "/boss/rewards/overview", skipUserIdHeader: true });
+}
+
+/** 老板端奖励金收支明细。 */
+export function listBossRewardRecords(params = {}) {
+  return request({
+    url: `/boss/rewards/records?${query({ page: 0, size: 20, type: "ALL", ...params })}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 创建老板奖励金微信充值订单，金额单位为元。 */
+export function createBossRewardRecharge(amount, idempotencyKey = "", payMethod = "WECHAT") {
+  return request({
+    url: "/boss/rewards/recharge",
+    method: "POST",
+    data: { amount, payMethod },
+    header: { "Idempotency-Key": idempotencyKey },
+    skipUserIdHeader: true,
+  });
+}
+
+/** 老板奖励金充值页配置。 */
+export function getBossRewardRechargeConfig() {
+  return request({ url: "/boss/rewards/recharge/config", skipUserIdHeader: true });
+}
+
+/** 老板奖励金充值记录。 */
+export function listBossRewardRechargeRecords(params = {}) {
+  return request({
+    url: `/boss/rewards/recharge-records?${query({ page: 0, size: 20, status: "ALL", ...params })}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 查询老板奖励金充值订单。 */
+export function getBossRewardRecharge(orderNo) {
+  return request({
+    url: `/boss/rewards/recharge/${encodeURIComponent(orderNo)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 老板端奖励金提现，金额单位为元。 */
+export function createBossRewardWithdrawal(amount, idempotencyKey = "") {
+  return request({
+    url: "/boss/rewards/withdraw",
+    method: "POST",
+    data: { amount },
+    header: { "Idempotency-Key": idempotencyKey },
+    skipUserIdHeader: true,
+  });
+}
+
+/** 老板端奖励金提现记录。 */
+export function listBossRewardWithdrawals(params = {}) {
+  return request({
+    url: `/boss/rewards/withdrawals?${query({ page: 0, size: 20, ...params })}`,
+    skipUserIdHeader: true,
+  });
 }
 
 /** 零工端奖励金账户概览，身份由当前 JWT 判断。 */
@@ -1142,9 +1275,13 @@ export function withdrawWorkerReward(data = {}, idempotencyKey = "") {
   return request({
     url: "/worker/rewards/withdraw",
     method: "POST",
-    data,
-    header: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    data: {
+      amount: data.amount,
+      channel: data.channel || "WECHAT",
+    },
+    header: { "Idempotency-Key": idempotencyKey },
     skipUserIdHeader: true,
+    skipMock: true,
   });
 }
 

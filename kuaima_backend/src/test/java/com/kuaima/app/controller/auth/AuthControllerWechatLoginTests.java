@@ -2,6 +2,7 @@ package com.kuaima.app.controller.auth;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -186,6 +187,54 @@ class AuthControllerWechatLoginTests {
     }
 
     @Test
+    void authorizedEmployee_shouldBindWechatAndLoginBossAccountByOwnPhone() {
+        User employee = new User();
+        employee.setId(20L);
+        employee.setUsername("sub_20");
+        employee.setRole(UserRole.BOSS);
+        employee.setPhone("13900000000");
+        employee.setNickname("王娜");
+        employee.setParentUserId(10L);
+        employee.setSubRole("OPERATOR");
+        employee.setStatus("正常");
+        when(userRepository.findByOpenid("openid-1")).thenReturn(Optional.empty());
+        when(wechatService.getPhoneNumber("phone-code")).thenReturn("13900000000");
+        when(userRepository.findUnboundActiveSubAccountsByPhone("13900000000"))
+                .thenReturn(java.util.List.of(employee));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WechatLoginDto dto = dto("phone-code");
+        dto.setRole(UserRole.BOSS);
+        var result = controller.wechatLogin(dto);
+
+        assertEquals(200, result.getCode());
+        assertEquals(20L, result.getData().get("userId"));
+        assertEquals(UserRole.BOSS, result.getData().get("role"));
+        assertEquals("openid-1", employee.getOpenid());
+        verify(userRepository).save(employee);
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).findByRole(any());
+    }
+
+    @Test
+    void multipleAuthorizedEmployeeAccounts_shouldRejectAmbiguousPhoneLogin() {
+        User first = authorizedEmployee(20L, "13900000000");
+        User second = authorizedEmployee(21L, "13900000000");
+        when(userRepository.findByOpenid("openid-1")).thenReturn(Optional.empty());
+        when(wechatService.getPhoneNumber("phone-code")).thenReturn("13900000000");
+        when(userRepository.findUnboundActiveSubAccountsByPhone("13900000000"))
+                .thenReturn(java.util.List.of(first, second));
+
+        WechatLoginDto dto = dto("phone-code");
+        dto.setRole(UserRole.BOSS);
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> controller.wechatLogin(dto));
+
+        assertEquals("该手机号关联多个老板授权账号，请联系老板确认后重新授权", error.getMessage());
+        verify(userRepository, never()).save(any());
+        verify(jwtUtil, never()).generateAccessToken(any(), any(), any());
+    }
+
+    @Test
     void phoneAuthorizationFailure_shouldNotCreateUser() {
         when(userRepository.findByOpenid("openid-1")).thenReturn(Optional.empty());
         when(wechatService.getPhoneNumber("bad-phone-code"))
@@ -250,5 +299,16 @@ class AuthControllerWechatLoginTests {
 
     private User userWithNickname(Long id, String role, String nickname) {
         User user = user(id, null); user.setRole(role); user.setNickname(nickname); return user;
+    }
+
+    private User authorizedEmployee(Long id, String phone) {
+        User user = new User();
+        user.setId(id);
+        user.setUsername("sub_" + id);
+        user.setRole(UserRole.BOSS);
+        user.setPhone(phone);
+        user.setParentUserId(10L);
+        user.setStatus("正常");
+        return user;
     }
 }

@@ -65,9 +65,11 @@ export function request({
   data,
   header = {},
   skipUserIdHeader = false,
+  skipMock = false,
   rawResponse = false,
 }) {
-  if (USE_MOCK) return Promise.resolve(mockResponse(url, method, data));
+  if (USE_MOCK && !skipMock)
+    return Promise.resolve(mockResponse(url, method, data));
   const token = uni.getStorageSync("token");
   const userId = uni.getStorageSync("userId") || "2001";
   const realUrl = resolveBackendUrl(url, userId, data);
@@ -131,15 +133,6 @@ function resolveBackendUrl(url, userId, data) {
   if (url === "/worker/wallet/records") return `/wallet/${userId}/flows`;
   if (url === "/worker/wallet/withdraw-records")
     return `/wallet/${userId}/withdraws`;
-  if (url === "/worker/wallet/withdraw") {
-    const params = {
-      userId,
-      amount: Math.round(Number(data?.amount || 0) * 100),
-      account: data?.account || data?.method || "",
-      remark: data?.remark || "",
-    };
-    return `/wallet/withdraw?${toQuery(params)}`;
-  }
   if (
     url === "/worker/notifications" ||
     url.startsWith("/worker/notifications?")

@@ -10,10 +10,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 import com.kuaima.app.domain.wallet.entity.Settlement;
 
 public interface SettlementRespository extends JpaRepository<Settlement, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Settlement s where s.id = :id")
+    java.util.Optional<Settlement> findByIdForUpdate(@Param("id") Long id);
 
     /** 后台结算管理组合筛选。 */
     @Query("""

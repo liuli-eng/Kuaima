@@ -6,7 +6,6 @@ import com.kuaima.app.domain.reward.entity.RewardAccount;
 import com.kuaima.app.domain.reward.repository.*;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
-import com.kuaima.app.domain.wallet.repository.*;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -21,8 +20,9 @@ class BossRewardIdentityTests {
         RewardAccount account = new RewardAccount(); account.setUserId(7L); account.setBalance(new BigDecimal("20.00"));
         when(users.findById(7L)).thenReturn(Optional.of(user)); when(accounts.findByUserId(7L)).thenReturn(Optional.of(account));
         when(flows.sumByUserIdAndType(7L, "INCOME")).thenReturn(new BigDecimal("20.00")); when(flows.sumByUserIdAndType(7L, "EXPENSE")).thenReturn(BigDecimal.ZERO);
-        BossRewardService service = new BossRewardService(accounts, flows, mock(RewardWithdrawalRepository.class),
-                mock(RewardLedgerService.class), mock(WalletRespository.class), mock(WalletFlowRespository.class), users);
+        BossRewardService service = new BossRewardService(accounts, flows, mock(RewardWithdrawalRepository.class), users,
+                mock(RewardWithdrawSettingsService.class), mock(WorkerRewardWithdrawalProcessor.class),
+                mock(WechatMerchantTransferClient.class));
 
         var result = service.overview(7L);
 

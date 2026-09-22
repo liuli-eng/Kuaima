@@ -204,7 +204,7 @@ export default {
       uni.showToast({ title: '查看星级权益', icon: 'none' })
     },
     showScoreDetail() {
-      uni.showToast({ title: '查看诚意分明细', icon: 'none' })
+      uni.navigateTo({ url: '/pages/boss/score-detail' })
     },
     showRules() {
       uni.showToast({ title: '查看规则', icon: 'none' })

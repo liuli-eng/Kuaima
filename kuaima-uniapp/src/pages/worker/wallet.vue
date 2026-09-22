@@ -9,7 +9,7 @@
       <view class="amount"
         ><text>¥</text><text class="num">{{ balance }}</text></view
       >
-      <text class="tip-white">可提现到银行卡，预计 1-2 个工作日到账</text>
+      <text class="tip-white">可提现到微信零钱，到账时间以微信处理结果为准</text>
     </view>
     <scroll-view scroll-y class="content">
       <view class="panel">
@@ -34,10 +34,11 @@
               v-model="amount"
               type="digit"
               placeholder="请输入提现金额"
-            /><text class="all" @click="amount = balance">全部提现</text></view
+              @input="idempotencyKey = ''"
+            /><text class="all" @click="amount = balance; idempotencyKey = ''">全部提现</text></view
           >
-          <text class="tip">ⓘ 单笔最低提现 ¥10，每日限提现 3 次</text
-          ><text class="method-title">选择提现方式</text>
+          <text class="tip">ⓘ 单笔最低提现 ¥0.01，到账时间以微信处理结果为准</text
+          ><text class="method-title">提现方式</text>
           <template v-for="item in accounts" :key="item.type"
             ><view
               class="account"
@@ -89,42 +90,30 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { request } from "@/api/http";
-import { applyWithdraw } from "@/api/backend";
+import { withdrawWorkerWallet } from "@/api/backend";
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 const balance = ref("0.00"),
   amount = ref(""),
-  selected = ref(null),
+  selected = ref("wechat"),
   activeTab = ref("withdraw"),
   submitting = ref(false),
   withdrawRecords = ref([]);
 const userInfo = uni.getStorageSync("userInfo") || {},
   profileName = userInfo.realName || userInfo.nickname || userInfo.name || "";
+const idempotencyKey = ref("");
 const accounts = [
   {
     type: "wechat",
     icon: "微",
     name: "微信账户",
-    desc: "微信已绑定 · 预计实时到账",
-    account: "138****2266",
-  },
-  {
-    type: "alipay",
-    icon: "支",
-    name: "支付宝账户",
-    desc: "支付宝已绑定 · 预计实时到账",
-    account: "138****2266",
-  },
-  {
-    type: "bank",
-    icon: "行",
-    name: "银行卡账户",
-    desc: "招商银行 · 尾号 8823 · 1-2 工作日到账",
-    account: "6222 **** **** 8823",
+    desc: "提交后由微信处理到账",
+    account: "当前绑定的微信账户",
   },
 ];
 const canSubmit = computed(
   () =>
-    Number(amount.value) >= 10 &&
+    /^(\d+)(\.\d{1,2})?$/.test(String(amount.value || "")) &&
+    Number(amount.value) >= 0.01 &&
     Number(amount.value) <= Number(balance.value) &&
     Boolean(selected.value),
 );
@@ -145,19 +134,28 @@ async function loadWallet() {
   }
 }
 function cents(value) {
-  return (Number(value || 0) / 100).toFixed(2);
+  return Number(value || 0).toFixed(2);
 }
 function normalize(item) {
+  const status = normalizeWithdrawStatus(item.statusText || item.status);
   return {
     ...item,
     name: item.accountName || item.account || "提现申请",
     time: item.applyTime || item.createTime || "",
     amount: cents(item.amount),
-    status: item.statusText || item.status || "申请中",
+    status,
   };
 }
+function normalizeWithdrawStatus(status) {
+  const value = String(status || "").toUpperCase();
+  if (["已打款", "SUCCESS", "PAID"].includes(status) || ["SUCCESS", "PAID"].includes(value))
+    return "提现成功";
+  if (["打款失败", "FAILED", "FAILURE"].includes(status) || ["FAILED", "FAILURE"].includes(value))
+    return "提现失败，余额已退回";
+  return "处理中";
+}
 function toggleAccount(type) {
-  selected.value = selected.value === type ? null : type;
+  selected.value = type;
 }
 function isPending(status) {
   return (
@@ -171,21 +169,19 @@ function goBack() {
 }
 async function submit() {
   const value = Number(amount.value);
-  if (value < 10)
-    return uni.showToast({ title: "单笔最低提现10元", icon: "none" });
+  if (!/^(\d+)(\.\d{1,2})?$/.test(String(amount.value || "")) || value < 0.01)
+    return uni.showToast({ title: "请输入有效金额，最多两位小数", icon: "none" });
   if (value > Number(balance.value))
     return uni.showToast({ title: "提现金额不能超过钱包余额", icon: "none" });
   if (!selected.value)
     return uni.showToast({ title: "请选择提现方式", icon: "none" });
   submitting.value = true;
+  if (!idempotencyKey.value) idempotencyKey.value = `worker-wallet-withdraw-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
-    await applyWithdraw({
-      userId: uni.getStorageSync("userId"),
-      amount: value,
-      account: selected.value,
-    });
+    await withdrawWorkerWallet({ amount: Number(value.toFixed(2)) }, idempotencyKey.value);
     amount.value = "";
-    uni.showToast({ title: "提现申请已提交", icon: "success" });
+    idempotencyKey.value = "";
+    uni.showToast({ title: "提现申请已提交，到账时间以微信处理结果为准", icon: "none", duration: 2500 });
     await loadWallet();
     activeTab.value = "records";
   } catch (e) {

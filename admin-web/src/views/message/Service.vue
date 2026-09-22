@@ -209,7 +209,7 @@ const loadFaqs = async () => {
   } catch (e) { console.error(e) }
 }
 
-const goChat = (id) => router.push(`/message/service-chat/${id}`)
+const goChat = (id) => router.push({ name: 'ServiceChat', params: { id: String(id) } })
 
 // ====== 快捷回复 ======
 const replyDialogVisible = ref(false)

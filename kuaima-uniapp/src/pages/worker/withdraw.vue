@@ -11,17 +11,12 @@
         <text class="label">提现金额</text>
         <view class="amount-row">
           <text class="currency">¥</text>
-          <input v-model="amount" type="digit" placeholder="请输入提现金额" />
-          <text class="all" @click="amount = available">全部</text>
+          <input v-model="amount" type="digit" placeholder="请输入提现金额" @input="idempotencyKey = ''" />
+          <text class="all" @click="amount = available; idempotencyKey = ''">全部</text>
         </view>
         <text class="label">提现方式</text>
-        <picker
-          :range="methods"
-          @change="method = methods[$event.detail.value]"
-        >
-          <view class="picker">{{ method }}<text>›</text></view>
-        </picker>
-        <text class="tip">提现将在1-3个工作日内到账，请确认账号信息准确。</text>
+        <view class="picker">微信零钱<text>微信处理</text></view>
+        <text class="tip">提现申请提交后，到账时间以微信处理结果为准。</text>
       </view>
     </scroll-view>
     <SafeBottomAction>
@@ -36,38 +31,32 @@ import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import SafeBottomAction from "@/components/safe-bottom-action.vue";
 import { request } from "@/api/http";
+import { withdrawWorkerWallet } from "@/api/backend";
 const available = ref("0.00");
 const amount = ref("");
-const methods = ["微信零钱", "支付宝", "银行卡"];
-const method = ref(methods[0]);
 const submitting = ref(false);
+const idempotencyKey = ref("");
 onMounted(async () => {
   try {
     const r = await request({ url: "/worker/wallet" });
     if (r)
-      available.value = (Number(r.balance ?? r.available ?? 0) / 100).toFixed(
-        2,
-      );
+      available.value = Number(r.balance ?? r.available ?? r.availableBalance ?? 0).toFixed(2);
   } catch (_) {}
 });
 async function submit() {
   const value = Number(amount.value);
-  if (!value || value <= 0)
-    return uni.showToast({ title: "请输入有效金额", icon: "none" });
+  if (!/^\d+(\.\d{1,2})?$/.test(String(amount.value || "")) || !value || value < 0.01)
+    return uni.showToast({ title: "请输入有效金额，最多两位小数", icon: "none" });
   if (value > Number(available.value))
     return uni.showToast({ title: "提现金额不能超过可提现余额", icon: "none" });
   submitting.value = true;
+  if (!idempotencyKey.value) idempotencyKey.value = `worker-wallet-withdraw-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
-    await request({
-      url: "/worker/wallet/withdraw",
-      method: "POST",
-      data: { amount: value, account: method.value },
-    });
-    uni.showToast({ title: "提现申请已提交", icon: "success" });
-    setTimeout(
-      () => uni.navigateTo({ url: "/pages/worker/withdraw-record" }),
-      500,
-    );
+    await withdrawWorkerWallet({ amount: Number(value.toFixed(2)) }, idempotencyKey.value);
+    amount.value = "";
+    idempotencyKey.value = "";
+    uni.showToast({ title: "提现申请已提交，到账时间以微信处理结果为准", icon: "none", duration: 2500 });
+    uni.navigateTo({ url: "/pages/worker/withdraw-record" });
   } catch (e) {
     uni.showToast({ title: e.message || "提现失败", icon: "none" });
   } finally {

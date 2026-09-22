@@ -41,3 +41,6 @@ jobs:
   reward-withdraw:
     sync-initial-delay: 60000
     sync-fixed-delay: 60000
+  wallet-withdraw:
+    sync-initial-delay: 60000
+    sync-fixed-delay: 60000

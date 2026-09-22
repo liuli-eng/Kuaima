@@ -3,14 +3,12 @@
     <AppNavBar title="提现记录" :show-back="true" />
     <scroll-view scroll-y class="content">
       <view v-for="item in records" :key="item.id" class="record-item">
-        <view :class="['record-icon', item.type || 'wechat']">{{
-          item.type === "alipay" ? "支" : "微"
-        }}</view>
+        <view class="record-icon">微</view>
         <view class="record-main">
           <text class="title">{{
-            item.typeName || `提现到${item.method}`
+            item.typeName || "微信提现"
           }}</text>
-          <text class="account">{{ item.account || item.method }}</text>
+          <text class="account">{{ item.account || "当前绑定的微信账户" }}</text>
           <text class="time">{{ item.time }}</text>
         </view>
         <view class="right">
@@ -20,7 +18,12 @@
           }}</text>
         </view>
       </view>
-      <view v-if="!records.length" class="empty">
+      <view v-if="loading" class="page-state">加载中...</view>
+      <view v-else-if="loadFailed" class="page-state">
+        <text>提现记录加载失败</text>
+        <text class="retry" @click="loadRecords">重新加载</text>
+      </view>
+      <view v-else-if="!records.length && !loadFailed" class="empty">
         <text class="empty-icon">⌁</text>
         <text>暂无提现记录</text>
         <text class="empty-hint">完成订单后即可申请提现</text>
@@ -33,34 +36,40 @@
 import { onMounted, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { request } from "@/api/http";
-const records = ref([
-  {
-    id: 1,
-    type: "wechat",
-    typeName: "微信支付",
-    account: "138****8888",
-    method: "微信零钱",
-    time: "2026-08-18 10:15",
-    amount: "100.00",
-    status: "success",
-    statusText: "已到账",
-  },
-]);
-onMounted(async () => {
+const records = ref([]);
+const loading = ref(false);
+const loadFailed = ref(false);
+onMounted(loadRecords);
+async function loadRecords() {
+  loading.value = true;
+  loadFailed.value = false;
   try {
     const result = await request({ url: "/worker/wallet/withdraw-records" });
-    if (Array.isArray(result))
-      records.value = result.map((item) => ({
+    records.value = Array.isArray(result)
+      ? result.map((item) => ({
         ...item,
-        type: item.account?.includes("支付宝") ? "alipay" : "wechat",
-        typeName: item.account || "提现申请",
-        method: item.account || item.channel || "",
+        typeName: "微信提现",
+        account: item.account || "当前绑定的微信账户",
         time: item.applyTime || item.createTime || "",
-        amount: (Number(item.amount || 0) / 100).toFixed(2),
-        statusText: item.status || "申请中",
-      }));
-  } catch (_) {}
-});
+        amount: Number(item.amount || 0).toFixed(2),
+        ...normalizeStatus(item.statusText || item.status),
+      }))
+      : [];
+  } catch (error) {
+    loadFailed.value = true;
+    records.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+function normalizeStatus(status) {
+  const value = String(status || "").toUpperCase();
+  if (["已打款", "提现成功"].includes(status) || ["SUCCESS", "PAID"].includes(value))
+    return { status: "success", statusText: "提现成功" };
+  if (["打款失败", "提现失败"].includes(status) || ["FAILED", "FAILURE"].includes(value))
+    return { status: "failed", statusText: "提现失败，余额已退回" };
+  return { status: "pending", statusText: "处理中" };
+}
 </script>
 
 <style scoped>
@@ -94,10 +103,6 @@ onMounted(async () => {
   color: #52c41a;
   font-size: 28rpx;
   font-weight: 700;
-}
-.record-icon.alipay {
-  background: #e6f7ff;
-  color: #1890ff;
 }
 .record-main {
   flex: 1;
@@ -168,5 +173,17 @@ onMounted(async () => {
   margin-top: 10rpx;
   color: #bbb;
   font-size: 21rpx;
+}
+.page-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 100rpx 0 20rpx;
+  color: #999;
+  font-size: 25rpx;
+}
+.retry {
+  margin-top: 20rpx;
+  color: #ff6b35;
 }
 </style>

@@ -131,8 +131,16 @@ public class SubAccountController {
     private User resolveOrCreateUser(Long bossId, String phone, String role, Map<String, Object> body) {
         List<User> matches = userRepository.findByPhone(phone);
         if (!matches.isEmpty()) {
-            User user = matches.stream().filter(u -> bossId.equals(u.getParentUserId())).findFirst()
-                    .orElseThrow(() -> new ForbiddenBusinessException("该手机号已属于其他账号，不能直接授权"));
+            if (matches.size() > 1) {
+                throw new IllegalStateException("该手机号对应多个用户，无法确定要授权的员工");
+            }
+            User user = matches.get(0);
+            if (bossId.equals(user.getId())) {
+                throw new IllegalArgumentException("不能授权当前登录老板自己的手机号");
+            }
+            if (isIndependentBossIdentity(user, bossId)) {
+                throw new ForbiddenBusinessException("该手机号已属于其他老板账号，不能直接授权");
+            }
             user.setSubRole(role);
             user.setStatus("正常");
             return userRepository.save(user);
@@ -150,6 +158,14 @@ public class SubAccountController {
         user.setSubRole(role);
         user.setStatus("正常");
         return userRepository.save(user);
+    }
+
+    /** 判断手机号对应的用户是否是其他独立老板身份，避免跨老板误授权。 */
+    private boolean isIndependentBossIdentity(User user, Long currentBossId) {
+        if (currentBossId.equals(user.getParentUserId())) return false;
+        if ("APPROVED".equals(user.getEnterpriseStatus())) return true;
+        if ("ENTERPRISE".equalsIgnoreCase(user.getCertType()) && "已通过".equals(user.getCertStatus())) return true;
+        return UserRole.BOSS.equals(user.getRole()) && user.getParentUserId() == null;
     }
 
     private void verifyCode(String code) {

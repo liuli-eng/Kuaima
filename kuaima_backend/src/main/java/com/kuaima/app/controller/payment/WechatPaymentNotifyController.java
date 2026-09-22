@@ -15,6 +15,9 @@ import com.alibaba.fastjson2.JSONObject;
 import com.kuaima.app.domain.points.service.BossPointsService;
 import com.kuaima.app.admin.repository.PointPurchaseOrderRepository;
 import com.kuaima.app.wechat.service.WechatPayService;
+import com.kuaima.app.domain.wallet.service.SettlementService;
+import com.kuaima.app.domain.reward.service.RewardRechargeService;
+import com.kuaima.app.domain.wallet.service.BossBalancePaymentService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,7 +36,17 @@ public class WechatPaymentNotifyController {
     private final WechatPayService wechatPay;
     private final BossPointsService points;
     private final PointPurchaseOrderRepository orders;
-    public WechatPaymentNotifyController(WechatPayService wechatPay, BossPointsService points, PointPurchaseOrderRepository orders) { this.wechatPay = wechatPay; this.points = points; this.orders = orders; }
+    private final SettlementService settlements;
+    private final RewardRechargeService rewardRecharges;
+    private final BossBalancePaymentService bossBalancePayments;
+    public WechatPaymentNotifyController(WechatPayService wechatPay, BossPointsService points,
+                                         PointPurchaseOrderRepository orders, SettlementService settlements,
+                                         RewardRechargeService rewardRecharges,
+                                         BossBalancePaymentService bossBalancePayments) {
+        this.wechatPay = wechatPay; this.points = points; this.orders = orders; this.settlements = settlements;
+        this.rewardRecharges = rewardRecharges;
+        this.bossBalancePayments = bossBalancePayments;
+    }
 
     @PostMapping(value = "/notify", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
@@ -53,10 +66,27 @@ public class WechatPaymentNotifyController {
             if (amount == null || !"CNY".equals(amount.getString("currency"))) throw new IllegalArgumentException("支付币种无效");
             String orderNo = data.getString("out_trade_no");
             int paidFen = amount.getIntValue("total");
-            var order = pointsOrder(orderNo);
-            int expectedFen = order.getAmount().movePointRight(2).intValueExact();
-            if (paidFen != expectedFen) throw new IllegalArgumentException("支付金额与订单不一致");
-            points.markPaidByWechatCallback(orderNo, data.getString("transaction_id"));
+            String transactionId = data.getString("transaction_id");
+            if (orderNo != null && orderNo.startsWith("RB")) {
+                var recharge = bossBalancePayments.callbackOrder(orderNo);
+                int expectedFen = recharge.getAmount().movePointRight(2).intValueExact();
+                if (paidFen != expectedFen) throw new IllegalArgumentException("支付金额与老板钱包充值单不一致");
+                bossBalancePayments.markPaid(orderNo, transactionId);
+            } else if (orderNo != null && (orderNo.startsWith("BR") || orderNo.startsWith("RR"))) {
+                var recharge = rewardRecharges.detailForCallback(orderNo);
+                int expectedFen = recharge.getAmount().movePointRight(2).intValueExact();
+                if (paidFen != expectedFen) throw new IllegalArgumentException("支付金额与奖励金充值单不一致");
+                rewardRecharges.markPaidByWechatCallback(orderNo, transactionId);
+            } else if (orderNo != null && orderNo.startsWith("SP")) {
+                var payment = settlements.findWechatPayment(orderNo);
+                if (paidFen != settlements.expectedWechatPaymentFen(payment)) throw new IllegalArgumentException("支付金额与结算单不一致");
+                settlements.markWechatPaymentPaid(orderNo, transactionId);
+            } else {
+                var order = pointsOrder(orderNo);
+                int expectedFen = order.getAmount().movePointRight(2).intValueExact();
+                if (paidFen != expectedFen) throw new IllegalArgumentException("支付金额与订单不一致");
+                points.markPaidByWechatCallback(orderNo, transactionId);
+            }
             return ok();
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("code", "FAIL", "message", ex.getMessage() == null ? "回调处理失败" : ex.getMessage()));

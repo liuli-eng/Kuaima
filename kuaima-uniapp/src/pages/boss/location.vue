@@ -47,10 +47,10 @@
         <!-- 地图控制 -->
         <view class="map-controls">
           <view class="map-ctrl-btn" @click="zoomIn">
-            <text>+</text>
+            <image src="/static/icons/boss-location/plus-dark.svg" mode="aspectFit" />
           </view>
           <view class="map-ctrl-btn" @click="zoomOut">
-            <text>−</text>
+            <image src="/static/icons/boss-location/minus-dark.svg" mode="aspectFit" />
           </view>
         </view>
       </view>
@@ -61,20 +61,9 @@
         class="scroll-area"
         style="flex: 1; overflow-y: auto; min-height: 0"
       >
-        <!-- 位置信息 -->
-        <view class="location-info">
-          <view class="location-title-row">
-            <text class="location-title">{{ selectedAddress.name }}</text>
-            <text class="location-tag">已选地点</text>
-            <text class="location-distance">距离您 {{ distance }}km</text>
-          </view>
-          <text class="location-address">{{ selectedAddress.address }}</text>
-        </view>
-
         <!-- 常用地点 -->
         <view class="section-header">
           <text class="section-title">常用地点</text>
-          <text class="section-action" @click="manageAddress">管理</text>
         </view>
 
         <!-- 地址列表 -->
@@ -87,11 +76,7 @@
             @click="selectAddress(index)"
           >
             <view class="address-icon">
-              <text
-                class="iconfont"
-                :class="item.icon"
-                style="font-size: 16px"
-              ></text>
+              <image class="address-type-icon" :src="addressIcon(item, index)" mode="aspectFit" />
             </view>
             <view class="address-info">
               <view class="address-name">
@@ -107,16 +92,23 @@
                 }}</text>
               </view>
             </view>
-            <view v-if="selectedIndex === index" class="address-actions">
-              <text @click.stop="editAddress(index)">编辑</text>
-              <text class="danger" @click.stop="removeAddress(index)">删除</text>
+            <view v-if="selectedIndex === index" class="addr-selected-badge">
+              <image src="/static/icons/boss-location/check-white.svg" mode="aspectFit" />
+            </view>
+            <view class="address-actions">
+              <view class="address-action" @click.stop="editAddress(index)">
+                <image src="/static/icons/boss-location/pen-gray.svg" mode="aspectFit" />
+              </view>
+              <view class="address-action danger" @click.stop="removeAddress(index)">
+                <image src="/static/icons/boss-location/trash-red.svg" mode="aspectFit" />
+              </view>
             </view>
           </view>
         </view>
 
         <!-- 新增地址 -->
         <view class="add-address-btn" @click="addNewAddress">
-          <text style="font-size: 14px">+</text>
+          <image src="/static/icons/boss-location/plus-gray.svg" mode="aspectFit" />
           <text>新增工作地点</text>
         </view>
       </scroll-view>
@@ -132,13 +124,13 @@
       <view class="sheet-grip" />
       <view class="sheet-header">
         <text class="sheet-title">{{ editingIndex === -1 ? '新增工作地点' : '编辑工作地点' }}</text>
-        <button class="sheet-close" @click="closeAddressSheet">×</button>
+        <button class="sheet-close" @click="closeAddressSheet"><image src="/static/icons/boss-location/xmark-gray.svg" mode="aspectFit" /></button>
       </view>
       <scroll-view scroll-y class="sheet-body">
         <view class="mini-map">
           <view class="map-bg" />
           <view class="mini-search"><image class="ui-icon" src="/static/icons/boss-location/search-gray.svg" mode="aspectFit" /><text>点击地图选点或搜索地址</text></view>
-          <view class="mini-pin"><image class="ui-icon pin-icon" src="/static/icons/boss-location/map-marker-white.svg" mode="aspectFit" /></view>
+          <view class="mini-pin"><image class="ui-icon pin-icon" src="/static/icons/boss-location/map-pin-white.svg" mode="aspectFit" /></view>
         </view>
         <view class="sheet-field">
           <text class="field-label"><text class="required">*</text> 地点名称</text>
@@ -157,7 +149,7 @@
       </scroll-view>
       <view class="sheet-footer">
         <button class="cancel-btn" @click="closeAddressSheet">取消</button>
-        <button class="save-btn" @click="saveAddressDraft">✓ 保存</button>
+        <button class="save-btn" @click="saveAddressDraft"><image src="/static/icons/boss-location/check-white.svg" mode="aspectFit" /> 保存</button>
       </view>
     </view>
   </view>
@@ -253,6 +245,17 @@ export default {
     },
     manageAddress() {
       uni.showToast({ title: "管理地址", icon: "none" });
+    },
+    addressIcon(item, index) {
+      const name = `${item?.name || ""}${item?.tag || ""}${(item?.tags || []).join("")}`;
+      if (/电子|工厂|生产/.test(name)) return "/static/icons/boss-location/industry-orange.svg";
+      if (/物流|仓库|分拣|装卸/.test(name)) return "/static/icons/boss-location/warehouse-orange.svg";
+      if (/餐饮|美食|酒店/.test(name)) return "/static/icons/boss-location/hotel-orange.svg";
+      return [
+        "/static/icons/boss-location/industry-orange.svg",
+        "/static/icons/boss-location/warehouse-orange.svg",
+        "/static/icons/boss-location/store-orange.svg",
+      ][index % 3];
     },
     addNewAddress() { this.editingIndex = -1; this.draft = { name: "", detail: "", tags: [], latitude: null, longitude: null }; this.sheetVisible = true; },
     editAddress(index) { const a = this.addresses[index]; this.editingIndex = index; this.draft = { ...a, name: a.name || "", detail: a.address || a.detail || "", tags: Array.isArray(a.tags) ? [...a.tags] : [], latitude: a.latitude, longitude: a.longitude }; this.sheetVisible = true; },
@@ -598,50 +601,6 @@ export default {
   color: #bbb;
 }
 
-.location-info {
-  background: white;
-  margin: -16px 12px 12px;
-  border-radius: 14px;
-  padding: 14px 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-  position: relative;
-  z-index: 20;
-}
-
-.location-title-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.location-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #333;
-  flex: 1;
-}
-
-.location-tag {
-  font-size: 11px;
-  color: #ff6b35;
-  background: #fff0e8;
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-right: 6px;
-}
-
-.location-distance {
-  font-size: 11px;
-  color: #999;
-}
-
-.location-address {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.5;
-  display: block;
-}
-
 .section-header {
   display: flex;
   align-items: center;
@@ -691,6 +650,27 @@ export default {
   margin-right: 12px;
   flex-shrink: 0;
 }
+
+.address-type-icon { width: 18px; height: 18px; }
+
+.addr-selected-badge {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+.addr-selected-badge image { width: 11px; height: 11px; }
+.address-actions { display: flex; gap: 4px; flex-shrink: 0; margin-left: 8px; opacity: 0.45; }
+.address-item.selected .address-actions { opacity: 1; }
+.address-action { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+.address-action image { width: 13px; height: 13px; }
+.address-action.danger { background: #fee2e2; }
 
 .address-info {
   flex: 1;
@@ -746,6 +726,7 @@ export default {
   font-size: 14px;
   color: #999;
 }
+.add-address-btn image { width: 14px; height: 14px; }
 
 .scroll-area {
   padding-bottom: 12px;
@@ -786,7 +767,8 @@ export default {
 .sheet-grip { width: 40px; height: 4px; margin: 10px auto 6px; border-radius: 2px; background: #e5e7eb; }
 .sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 18px 14px; }
 .sheet-title { color: #1f2937; font-size: 17px; font-weight: 700; }
-.sheet-close { width: 28px; height: 28px; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: #f3f4f6; color: #9ca3af; font-size: 22px; line-height: 28px; }
+.sheet-close { width: 28px; height: 28px; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: #f3f4f6; }
+.sheet-close image { width: 12px; height: 12px; }
 .sheet-close::after, .cancel-btn::after, .save-btn::after { border: 0; }
 .sheet-body { flex: 1; min-height: 0; box-sizing: border-box; padding: 0 18px 18px; }
 .mini-map { position: relative; height: 140px; margin-bottom: 16px; overflow: hidden; border: 1px solid #e5e7eb; border-radius: 12px; background: linear-gradient(180deg, #e8f4fd 0%, #f0ede4 100%); }
@@ -804,5 +786,7 @@ export default {
 .sheet-footer { flex-shrink: 0; display: flex; gap: 10px; padding: 14px 18px calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid #f3f4f6; background: #fff; }
 .cancel-btn, .save-btn { height: 48px; margin: 0; padding: 0; border-radius: 24px; font-size: 14px; font-weight: 600; line-height: 48px; }
 .cancel-btn { flex: 1; border: 1px solid #e5e7eb; background: #fff; color: #374151; }
-.save-btn { flex: 2; background: linear-gradient(135deg, #ff6b35, #ff8c5a); box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3); color: #fff; }
+.save-btn { flex: 2; display: flex; align-items: center; justify-content: center; gap: 5px; background: linear-gradient(135deg, #ff6b35, #ff8c5a); box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3); color: #fff; }
+.save-btn image { width: 12px; height: 12px; }
+.map-ctrl-btn image { width: 14px; height: 14px; }
 </style>

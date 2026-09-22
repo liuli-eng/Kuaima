@@ -3,7 +3,7 @@
     <!-- 顶部企业信息区 -->
     <view class="top-header">
       <view class="status-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
-        <span>{{ currentTime }}</span>
+        <text>{{ currentTime }}</text>
         <view class="status-icons">
           <text class="status-icon">📶</text>
           <text class="status-icon">📡</text>
@@ -367,6 +367,7 @@ export default {
 .scroll-area {
   flex: 1;
   min-height: 0;
+  height: 0;
   overflow-y: auto;
   padding: 0 16px 20px;
   width: 100%;

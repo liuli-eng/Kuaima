@@ -955,7 +955,7 @@ function formatLocalDate(date) {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  background: #fff8e6;
+  background: #f5f5f5;
 }
 
 .scroll-bottom-space {

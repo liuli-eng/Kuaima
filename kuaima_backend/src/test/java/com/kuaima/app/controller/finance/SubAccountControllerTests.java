@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -59,6 +61,50 @@ class SubAccountControllerTests {
         assertEquals(1002L, result.getData().getUserId());
         assertEquals("13800000000", result.getData().getPhone());
         assertEquals("ACTIVE", result.getData().getStatus());
+    }
+
+    @Test
+    void create_existingWorkerPhoneShouldReuseUserAndCreateAuthorizationRelation() {
+        SubAccountRepository repository = mock(SubAccountRepository.class);
+        UserRepository users = mock(UserRepository.class);
+        User worker = new User();
+        worker.setId(20L);
+        worker.setUsername("worker-20");
+        worker.setRole("USER");
+        worker.setPhone("13800000000");
+        worker.setOpenid("openid-worker");
+        when(users.findByPhone("13800000000")).thenReturn(List.of(worker));
+        when(users.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(repository.existsByParentIdAndUserId(1L, 20L)).thenReturn(false);
+        when(repository.save(any(SubAccount.class))).thenAnswer(invocation -> {
+            SubAccount subAccount = invocation.getArgument(0);
+            subAccount.setId(11L);
+            return subAccount;
+        });
+
+        var result = controller(repository, users, true).createSubAccount(
+                Map.of("phone", "13800000000", "code", "123456", "role", "OPERATOR"),
+                bossAuthentication(1L));
+
+        assertEquals(20L, result.getData().getUserId());
+        assertEquals(1L, result.getData().getParentId());
+        assertEquals("OPERATOR", worker.getSubRole());
+        assertEquals("正常", worker.getStatus());
+        verify(users, never()).findByUsername(any());
+    }
+
+    @Test
+    void create_shouldRejectOtherIndependentBossPhone() {
+        UserRepository users = mock(UserRepository.class);
+        User otherBoss = new User();
+        otherBoss.setId(30L);
+        otherBoss.setRole("BOSS");
+        otherBoss.setPhone("13800000000");
+        when(users.findByPhone("13800000000")).thenReturn(List.of(otherBoss));
+
+        assertThrows(ForbiddenBusinessException.class, () -> controller(mock(SubAccountRepository.class), users, true)
+                .createSubAccount(Map.of("phone", "13800000000", "code", "123456", "role", "OPERATOR"),
+                        bossAuthentication(1L)));
     }
 
     @Test

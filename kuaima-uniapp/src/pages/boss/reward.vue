@@ -8,11 +8,11 @@
       </view>
     </view>
 
-    <scroll-view scroll-y class="content">
+    <scroll-view scroll-y class="content" @scrolltolower="loadMore">
       <view class="content-inner">
         <view class="balance-card">
           <text class="balance-label">我的奖励金</text>
-          <text class="balance-value">¥{{ balance }}</text>
+          <text class="balance-value">¥{{ formatMoney(balance) }}</text>
           <view class="balance-actions">
             <view class="balance-btn" @click="recharge"><image :src="plusIcon" mode="aspectFit" /><text>充值</text></view>
             <view class="balance-btn" @click="withdraw"><image :src="arrowDownIcon" mode="aspectFit" /><text>提现</text></view>
@@ -20,13 +20,13 @@
         </view>
 
         <view class="tab-switch">
-          <view v-for="tab in tabs" :key="tab.key" :class="['tab-switch-item', { active: currentTab === tab.key }]" @click="currentTab = tab.key">{{ tab.label }}</view>
+          <view v-for="tab in tabs" :key="tab.key" :class="['tab-switch-item', { active: currentTab === tab.key }]" @click="switchTab(tab.key)">{{ tab.label }}</view>
         </view>
 
         <view class="income-section">
           <text class="income-title">收支明细</text>
-          <view v-if="filteredRecords.length" class="income-list">
-            <view v-for="item in filteredRecords" :key="item.id" class="income-item">
+          <view v-if="records.length" class="income-list">
+            <view v-for="item in records" :key="item.id" class="income-item">
               <view class="income-info">
                 <view class="income-icon"><image :src="recordIcon(item.icon)" mode="aspectFit" /></view>
                 <view><text class="income-name">{{ item.name }}</text><text class="income-date">{{ item.date }}</text></view>
@@ -34,7 +34,10 @@
               <text :class="['income-amount', item.type]">{{ item.type === 'income' ? '+' : '-' }}¥{{ formatMoney(item.amount) }}</text>
             </view>
           </view>
-          <view v-else class="empty-state"><text>暂无相关记录</text></view>
+          <view v-if="recordsLoading" class="empty-state"><text>加载中...</text></view>
+          <view v-else-if="recordsError" class="empty-state retry" @click="loadRecords(true)"><text>{{ recordsError }}，点击重试</text></view>
+          <view v-else-if="!records.length" class="empty-state"><text>暂无相关记录</text></view>
+          <view v-else-if="hasMore" class="load-more" @click="loadMore">加载更多</view>
         </view>
 
         <view class="rules-card">
@@ -47,13 +50,40 @@
         <view class="safe-space" />
       </view>
     </scroll-view>
+
+    <view v-if="rechargeVisible" class="sheet-mask" @click="closeRecharge">
+      <view class="action-sheet" @click.stop>
+        <view class="sheet-handle" />
+        <text class="sheet-title">奖励金充值</text>
+        <text class="sheet-tip">微信支付成功后，奖励金将由支付回调入账</text>
+        <view class="amount-input-wrap"><text>¥</text><input v-model="rechargeAmount" type="digit" placeholder="最低0.01元" @input="onRechargeInput" /></view>
+        <view class="quick-row"><text v-for="value in rechargeQuickAmounts" :key="value" @click="setRechargeAmount(value)">¥{{ value }}</text></view>
+        <button class="sheet-confirm" :disabled="rechargeSubmitting" @click="submitRecharge">{{ rechargeSubmitting ? '处理中...' : '微信支付' }}</button>
+      </view>
+    </view>
+
+    <view v-if="withdrawVisible" class="sheet-mask" @click="closeWithdraw">
+      <view class="action-sheet" @click.stop>
+        <view class="sheet-handle" />
+        <text class="sheet-title">奖励金提现</text>
+        <text class="sheet-tip">可提现 ¥{{ formatMoney(withdrawableAmount) }}，提现至当前微信实名账户</text>
+        <view class="amount-input-wrap"><text>¥</text><input v-model="withdrawAmount" type="digit" placeholder="请输入提现金额" @input="onWithdrawInput" /><text class="all-btn" @click="withdrawAll">全部</text></view>
+        <button class="sheet-confirm" :disabled="withdrawSubmitting" @click="submitWithdraw">{{ withdrawSubmitting ? '提交中...' : '确认提现' }}</button>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
-import { getBossProfileAssets } from "@/api/backend";
+import { ref } from "vue";
+import { onShow, onUnload } from "@dcloudio/uni-app";
+import {
+  createBossRewardRecharge,
+  createBossRewardWithdrawal,
+  getBossRewardOverview,
+  getBossRewardRecharge,
+  listBossRewardRecords,
+} from "@/api/backend";
 import arrowLeftIcon from "/static/icons/boss-points/arrow-left-dark.svg";
 import plusIcon from "/static/icons/boss-reward/plus-white.svg";
 import arrowDownIcon from "/static/icons/boss-reward/arrow-down-white.svg";
@@ -66,36 +96,86 @@ import moneyIcon from "/static/icons/boss-reward/money-bill-wave-orange.svg";
 import infoIcon from "/static/icons/boss-points/circle-info-orange.svg";
 
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
-const balance = ref("0.00");
-const currentTab = ref("all");
+const balance = ref(0);
+const withdrawableAmount = ref(0);
+const currentTab = ref("ALL");
 const records = ref([]);
-const tabs = [{ key: "all", label: "全部" }, { key: "income", label: "收入" }, { key: "expense", label: "支出" }];
+const recordsLoading = ref(false);
+const recordsError = ref("");
+const recordsPage = ref(0);
+const recordsTotal = ref(0);
+const hasMore = ref(false);
+const tabs = [{ key: "ALL", label: "全部" }, { key: "INCOME", label: "收入" }, { key: "EXPENSE", label: "支出" }];
 const icons = { gift: giftIcon, bullhorn: bullhornIcon, trophy: trophyIcon, share: shareIcon, coins: coinsIcon, money: moneyIcon };
-const filteredRecords = computed(() => currentTab.value === "all" ? records.value : records.value.filter(item => item.type === currentTab.value));
+const rechargeVisible = ref(false);
+const rechargeAmount = ref("");
+const rechargeSubmitting = ref(false);
+const rechargeIdempotencyKey = ref("");
+const rechargeQuickAmounts = [0.01, 10, 50, 100];
+const withdrawVisible = ref(false);
+const withdrawAmount = ref("");
+const withdrawSubmitting = ref(false);
+const withdrawIdempotencyKey = ref("");
+let paymentTimer = null;
+let paymentPolling = false;
 
-onShow(loadData);
+onShow(() => Promise.all([loadOverview(), loadRecords(true)]));
+onUnload(stopPaymentPolling);
 
-async function loadData() {
-  const userId = uni.getStorageSync("userId");
-  if (!userId) return;
+async function loadOverview() {
   try {
-    const data = await getBossProfileAssets(userId);
-    const cents = Number(data?.rewardAmount);
-    balance.value = Number.isFinite(cents) ? (cents / 100).toFixed(2) : "0.00";
-    const list = data?.rewardRecords || data?.rewardFlows || [];
-    records.value = Array.isArray(list) ? list.map(normalizeRecord) : [];
+    const data = await getBossRewardOverview();
+    balance.value = safeNumber(data?.balance);
+    withdrawableAmount.value = safeNumber(data?.withdrawableAmount ?? data?.balance);
   } catch (error) {
     uni.showToast({ title: error?.message || "奖励金加载失败", icon: "none" });
   }
 }
+
+async function loadRecords(reset = false) {
+  if (recordsLoading.value) return;
+  if (reset) {
+    recordsPage.value = 0;
+    records.value = [];
+    recordsTotal.value = 0;
+    hasMore.value = false;
+  }
+  recordsLoading.value = true;
+  recordsError.value = "";
+  try {
+    const data = await listBossRewardRecords({ page: recordsPage.value, size: 20, type: currentTab.value });
+    const list = Array.isArray(data?.records) ? data.records : [];
+    records.value = reset ? list.map(normalizeRecord) : records.value.concat(list.map(normalizeRecord));
+    recordsTotal.value = Number(data?.total ?? records.value.length);
+    hasMore.value = records.value.length < recordsTotal.value;
+  } catch (error) {
+    if (!reset && recordsPage.value > 0) recordsPage.value -= 1;
+    recordsError.value = error?.message || "明细加载失败";
+  } finally {
+    recordsLoading.value = false;
+  }
+}
+
+function switchTab(tab) {
+  if (currentTab.value === tab) return;
+  currentTab.value = tab;
+  loadRecords(true);
+}
+
+function loadMore() {
+  if (!hasMore.value || recordsLoading.value) return;
+  recordsPage.value += 1;
+  loadRecords(false);
+}
+
 function normalizeRecord(item, index) {
-  const rawType = String(item.type || item.direction || "").toLowerCase();
+  const rawType = String(item.type || item.direction || "").toUpperCase();
   return {
-    id: item.id || `${item.time || item.createTime || "reward"}-${index}`,
-    type: ["income", "plus", "in"].includes(rawType) ? "income" : "expense",
+    id: item.id || `${item.createdAt || "reward"}-${index}`,
+    type: rawType === "INCOME" ? "income" : "expense",
     name: item.name || item.title || item.remark || "奖励金变动",
-    date: formatTime(item.date || item.time || item.createTime),
-    amount: item.amount ?? item.value ?? 0,
+    date: formatTime(item.createdAt || item.date || item.time || item.createTime),
+    amount: safeNumber(item.amount ?? item.value),
     icon: item.icon || iconByName(item.name || item.title || item.remark),
   };
 }
@@ -109,16 +189,138 @@ function iconByName(name = "") {
 }
 function recordIcon(name) { return icons[name] || moneyIcon; }
 function formatMoney(value) {
-  const amount = Number(value || 0);
-  return (Math.abs(amount) >= 100 && Number.isInteger(amount) ? Math.abs(amount) / 100 : Math.abs(amount)).toFixed(2);
+  return Math.abs(safeNumber(value)).toFixed(2);
 }
+function safeNumber(value) { const number = Number(value); return Number.isFinite(number) ? number : 0; }
 function formatTime(value) {
   if (!value) return "--";
   return String(value).replace("T", " ").slice(0, 16);
 }
 function goBack() { uni.navigateBack(); }
-function recharge() { uni.showToast({ title: "奖励金充值接口暂未开放", icon: "none" }); }
-function withdraw() { uni.showToast({ title: "奖励金提现接口暂未开放", icon: "none" }); }
+
+function recharge() {
+  uni.navigateTo({ url: "/pages/boss/reward-recharge" });
+}
+function closeRecharge() { if (!rechargeSubmitting.value) rechargeVisible.value = false; }
+function setRechargeAmount(value) { rechargeAmount.value = String(value); rechargeIdempotencyKey.value = ""; }
+function onRechargeInput(event) {
+  rechargeAmount.value = sanitizeMoney(event?.detail?.value);
+  rechargeIdempotencyKey.value = "";
+}
+
+async function submitRecharge() {
+  if (rechargeSubmitting.value) return;
+  const amount = validateMoney(rechargeAmount.value, 0.01, "充值金额不能低于0.01元");
+  if (amount === null) return;
+  // #ifndef MP-WEIXIN
+  uni.showToast({ title: "请在微信小程序内完成支付", icon: "none" });
+  return;
+  // #endif
+  if (!rechargeIdempotencyKey.value) rechargeIdempotencyKey.value = createIdempotencyKey("boss-reward-recharge");
+  rechargeSubmitting.value = true;
+  try {
+    const order = await createBossRewardRecharge(amount, rechargeIdempotencyKey.value);
+    const payParams = order?.payParams || {};
+    if (!order?.orderNo) throw new Error("充值订单号无效");
+    if (!payParams.package || !payParams.paySign || !payParams.nonceStr || !payParams.timeStamp) throw new Error("微信支付参数无效");
+    // #ifdef MP-WEIXIN
+    await requestWechatPayment(payParams);
+    rechargeVisible.value = false;
+    startPaymentPolling(order.orderNo);
+    uni.showToast({ title: "支付结果确认中", icon: "none" });
+    // #endif
+  } catch (error) {
+    const message = String(error?.errMsg || error?.message || "充值失败");
+    uni.showToast({ title: /cancel/i.test(message) ? "支付已取消" : message, icon: "none" });
+  } finally {
+    rechargeSubmitting.value = false;
+  }
+}
+
+function requestWechatPayment(payParams) {
+  return new Promise((resolve, reject) => uni.requestPayment({
+    provider: "wxpay",
+    timeStamp: String(payParams.timeStamp),
+    nonceStr: String(payParams.nonceStr),
+    package: String(payParams.package),
+    signType: String(payParams.signType || "RSA"),
+    paySign: String(payParams.paySign),
+    success: resolve,
+    fail: reject,
+  }));
+}
+
+function startPaymentPolling(orderNo) {
+  stopPaymentPolling();
+  paymentPolling = true;
+  let attempts = 0;
+  const poll = async () => {
+    if (!paymentPolling) return;
+    attempts += 1;
+    try {
+      const order = await getBossRewardRecharge(orderNo);
+      if (["支付成功", "PAID", "SUCCESS"].includes(String(order?.status))) {
+        stopPaymentPolling();
+        rechargeIdempotencyKey.value = "";
+        uni.showToast({ title: "充值成功", icon: "success" });
+        await Promise.all([loadOverview(), loadRecords(true)]);
+        return;
+      }
+    } catch (_) {}
+    if (attempts >= 10) {
+      stopPaymentPolling();
+      uni.showToast({ title: "支付结果确认中，请稍后查看余额", icon: "none" });
+      return;
+    }
+    paymentTimer = setTimeout(poll, 1000);
+  };
+  poll();
+}
+function stopPaymentPolling() { paymentPolling = false; if (paymentTimer) clearTimeout(paymentTimer); paymentTimer = null; }
+
+function withdraw() {
+  withdrawVisible.value = true;
+  withdrawAmount.value = "";
+  withdrawIdempotencyKey.value = "";
+}
+function closeWithdraw() { if (!withdrawSubmitting.value) withdrawVisible.value = false; }
+function withdrawAll() { withdrawAmount.value = withdrawableAmount.value.toFixed(2); withdrawIdempotencyKey.value = ""; }
+function onWithdrawInput(event) { withdrawAmount.value = sanitizeMoney(event?.detail?.value); withdrawIdempotencyKey.value = ""; }
+
+async function submitWithdraw() {
+  if (withdrawSubmitting.value) return;
+  const amount = validateMoney(withdrawAmount.value, 0.01, "请输入正确的提现金额");
+  if (amount === null) return;
+  if (amount > withdrawableAmount.value) return uni.showToast({ title: "奖励金余额不足", icon: "none" });
+  if (!withdrawIdempotencyKey.value) withdrawIdempotencyKey.value = createIdempotencyKey("boss-reward-withdraw");
+  withdrawSubmitting.value = true;
+  try {
+    await createBossRewardWithdrawal(amount, withdrawIdempotencyKey.value);
+    withdrawVisible.value = false;
+    withdrawAmount.value = "";
+    withdrawIdempotencyKey.value = "";
+    uni.showToast({ title: "提现申请已提交", icon: "success" });
+    await Promise.all([loadOverview(), loadRecords(true)]);
+  } catch (error) {
+    uni.showToast({ title: error?.message || "提现失败", icon: "none" });
+    if (error?.statusCode === 502 || error?.code === 502 || error?.code === "502") await Promise.all([loadOverview(), loadRecords(true)]);
+  } finally {
+    withdrawSubmitting.value = false;
+  }
+}
+
+function sanitizeMoney(value) {
+  const clean = String(value || "").replace(/[^\d.]/g, "");
+  const dot = clean.indexOf(".");
+  return dot < 0 ? clean : `${clean.slice(0, dot)}.${clean.slice(dot + 1).replace(/\./g, "").slice(0, 2)}`;
+}
+function validateMoney(value, minimum, minimumMessage) {
+  if (!/^\d+(\.\d{1,2})?$/.test(String(value || ""))) { uni.showToast({ title: "请输入正确金额，最多两位小数", icon: "none" }); return null; }
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < minimum) { uni.showToast({ title: minimumMessage, icon: "none" }); return null; }
+  return Number(amount.toFixed(2));
+}
+function createIdempotencyKey(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 </script>
 
 <style scoped>
@@ -130,7 +332,14 @@ function withdraw() { uni.showToast({ title: "奖励金提现接口暂未开放"
 .balance-actions { display:flex; gap:24rpx; margin-top:32rpx; }.balance-btn { display:flex; align-items:center; justify-content:center; flex:1; gap:8rpx; padding:20rpx; border-radius:16rpx; background:rgba(255,255,255,.2); font-size:26rpx; }.balance-btn:active { background:rgba(255,255,255,.3); }.balance-btn image { width:26rpx; height:26rpx; }
 .tab-switch { display:flex; margin-bottom:24rpx; padding:8rpx; border-radius:20rpx; background:#fff; }.tab-switch-item { flex:1; padding:16rpx; border-radius:16rpx; color:#666; font-size:28rpx; text-align:center; }.tab-switch-item.active { color:#fff; font-weight:600; background:#ff6b35; }
 .income-section { margin-bottom:32rpx; padding:32rpx; border-radius:24rpx; background:#fff; }.income-title { display:block; margin-bottom:24rpx; color:#333; font-size:30rpx; font-weight:600; }.income-list { display:flex; flex-direction:column; gap:24rpx; }.income-item { display:flex; align-items:center; justify-content:space-between; padding:20rpx 0; border-bottom:1rpx solid #f5f5f5; }.income-item:last-child { border-bottom:0; }.income-info { display:flex; align-items:center; gap:20rpx; min-width:0; }.income-icon { display:flex; align-items:center; justify-content:center; width:72rpx; height:72rpx; flex-shrink:0; border-radius:16rpx; background:#fff3e0; }.income-icon image { width:32rpx; height:32rpx; }.income-name,.income-date { display:block; }.income-name { color:#333; font-size:28rpx; font-weight:500; }.income-date { margin-top:4rpx; color:#999; font-size:24rpx; }.income-amount { flex-shrink:0; margin-left:16rpx; font-size:32rpx; font-weight:600; }.income-amount.income { color:#ff6b35; }.income-amount.expense { color:#999; }
-.empty-state { padding:60rpx 0 48rpx; color:#bbb; font-size:26rpx; text-align:center; }
+.empty-state,.load-more { padding:60rpx 0 48rpx; color:#bbb; font-size:26rpx; text-align:center; }.empty-state.retry,.load-more { color:#ff6b35; }
 .rules-card { padding:32rpx; border-radius:24rpx; background:#fff; }.rules-title { display:flex; align-items:center; gap:8rpx; margin-bottom:20rpx; color:#333; font-size:28rpx; font-weight:600; }.rules-title image { width:28rpx; height:28rpx; }.rules-item { display:block; color:#666; font-size:24rpx; line-height:1.8; }
 .safe-space { height:calc(32rpx + env(safe-area-inset-bottom)); }
+.sheet-mask { position:fixed; z-index:20; inset:0; display:flex; align-items:flex-end; background:rgba(0,0,0,.45); }
+.action-sheet { width:100%; padding:20rpx 36rpx calc(36rpx + env(safe-area-inset-bottom)); border-radius:32rpx 32rpx 0 0; background:#fff; box-sizing:border-box; }
+.sheet-handle { width:72rpx; height:8rpx; margin:0 auto 22rpx; border-radius:8rpx; background:#ddd; }
+.sheet-title,.sheet-tip { display:block; text-align:center; }.sheet-title { color:#333; font-size:34rpx; font-weight:700; }.sheet-tip { margin-top:12rpx; color:#999; font-size:24rpx; }
+.amount-input-wrap { display:flex; align-items:center; height:96rpx; margin-top:32rpx; padding:0 24rpx; border:2rpx solid #eee; border-radius:18rpx; color:#333; font-size:38rpx; box-sizing:border-box; }.amount-input-wrap input { flex:1; min-width:0; height:96rpx; margin-left:12rpx; font-size:36rpx; }.all-btn { color:#ff6b35; font-size:25rpx; }
+.quick-row { display:flex; gap:16rpx; margin-top:20rpx; }.quick-row text { flex:1; padding:16rpx 0; border-radius:12rpx; color:#ff6b35; background:#fff3ed; font-size:24rpx; text-align:center; }
+.sheet-confirm { height:88rpx; margin:32rpx 0 0; border:0; border-radius:44rpx; color:#fff; background:linear-gradient(135deg,#ff6b35,#ff8c5a); font-size:30rpx; font-weight:600; line-height:88rpx; }.sheet-confirm::after { border:0; }.sheet-confirm[disabled] { opacity:.6; }
 </style>
