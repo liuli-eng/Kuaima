@@ -58,3 +58,16 @@ export function validateBossWorkLocation(location = {}, { allowEmpty = false } =
   }
   return { valid: true, address, longitude, latitude };
 }
+
+/** 从微信 chooseLocation 返回的完整地址中提取城市和区县。 */
+export function extractBossAddressRegion(address = "") {
+  const text = String(address || "").replace(/\s+/g, "");
+  if (!text) return { city: "", district: "" };
+  const municipality = text.match(/^(北京市|上海市|天津市|重庆市)/)?.[1] || "";
+  const cityMatch = text.match(/(?:省|自治区|特别行政区)?([^省市州地区盟县区]+?(?:市|自治州|地区|盟))/);
+  const districtMatch = text.match(/([^市州地区盟]+?(?:区|县|旗))/);
+  return {
+    city: municipality || cityMatch?.[1] || "",
+    district: districtMatch?.[1] || "",
+  };
+}

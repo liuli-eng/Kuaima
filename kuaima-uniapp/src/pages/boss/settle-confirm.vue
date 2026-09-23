@@ -29,16 +29,8 @@
       <!-- 费用明细 -->
       <view class="section-card">
         <text class="section-title">费用明细</text>
-        <view style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #f0f0f0;">
-          <text style="color:#666;font-size:14px;">订单总金额</text>
-          <text style="font-weight:500;color:#333;">¥{{ amount.toFixed(2) }}</text>
-        </view>
-        <view style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #f0f0f0;">
-          <text style="color:#666;font-size:14px;">平台服务费 (10%)</text>
-          <text style="font-weight:500;color:#FF6B35;">¥{{ serviceFee.toFixed(2) }}</text>
-        </view>
         <view style="display:flex;justify-content:space-between;padding:8px 0;margin-top:4px;">
-          <text style="font-weight:600;color:#333;font-size:15px;">实际支付金额</text>
+          <text style="font-weight:600;color:#333;font-size:15px;">服务端确认支付金额</text>
           <text style="font-weight:700;color:#FF6B35;font-size:18px;">¥{{ finalAmount.toFixed(2) }}</text>
         </view>
       </view>
@@ -80,7 +72,7 @@
             :class="{ active: selectedAccount === type.value }"
             v-for="type in accountTypes" 
             :key="type.value"
-            @click="selectedAccount = type.value"
+            @click="selectAccount(type.value)"
           >
             <view class="account-type-icon" :class="type.value">
               <text class="account-icon-text">{{ type.value === 'wechat' ? '微' : type.value === 'alipay' ? '支' : '¥' }}</text>
@@ -97,50 +89,208 @@
 
     <!-- 底部按钮 -->
     <view class="bottom-bar">
-      <button class="confirm-btn" :disabled="!selectedAccount" @click="submitSettle">确认付款{{ selectedAccount ? ` ¥${finalAmount.toFixed(2)}` : '' }}</button>
+      <button class="confirm-btn" :disabled="!selectedAccount || submitting" @click="submitSettle">
+        {{ submitting ? '处理中...' : `确认付款${selectedAccount ? ` ¥${finalAmount.toFixed(2)}` : ''}` }}
+      </button>
     </view>
   </view>
 </template>
 
 <script>
+import {
+  createBossSettlementWechatPayment,
+  getBossSettlementPayment,
+} from "@/api/backend";
+
+function parseSettlementIds(value) {
+  const toNumberArray = (items) => {
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter((item) => !Array.isArray(item) && item !== "" && item != null)
+      .map((item) => Number(item))
+      .filter((item) => Number.isSafeInteger(item) && item > 0);
+  };
+
+  if (Array.isArray(value)) return toNumberArray(value);
+
+  let text = String(value ?? "").trim();
+  if (!text) return [];
+
+  // 页面参数通常是 encodeURIComponent(JSON.stringify(ids)) 的结果，例如 %5B27%5D。
+  try {
+    text = decodeURIComponent(text);
+  } catch (_) {}
+  text = text.trim();
+
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return toNumberArray(parsed);
+    // 不把 JSON 字符串再次包裹成数组；单个数字仅作为兼容输入解析。
+    if (typeof parsed === "number") return toNumberArray([parsed]);
+    if (typeof parsed === "string" && parsed.trim() !== text) {
+      return toNumberArray(parsed.split(","));
+    }
+  } catch (_) {}
+
+  return toNumberArray(text.split(",").map((item) => item.trim()));
+}
+
+function createIdempotencyKey() {
+  return `boss-settlement-payment-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default {
   data() {
     return {
       statusBarHeight: 0,
+      settlementIds: [],
       amount: 0,
       count: 0,
-      serviceFee: 0,
       finalAmount: 0,
-      selectedAccount: null,
+      selectedAccount: "wechat",
+      submitting: false,
+      paymentNo: "",
+      paymentTimer: null,
+      polling: false,
+      idempotencyKey: "",
       accountTypes: [
         { value: 'wechat', name: '微信支付账号', desc: '使用微信支付付款', icon: 'icon-wechat' },
-        { value: 'alipay', name: '支付宝账号', desc: '使用支付宝付款', icon: 'icon-alipay' },
-        { value: 'bank', name: '银行账号', desc: '使用银行卡付款', icon: 'icon-university' }
       ]
     }
   },
   onLoad(options = {}) {
     try { const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync(); this.statusBarHeight = Number(info.statusBarHeight || 0) } catch (_) {}
-    this.amount = Number(options.amount || 0)
-    this.count = Number(options.count || 0)
-    this.serviceFee = this.amount * 0.1
-    this.finalAmount = this.amount + this.serviceFee
+    this.settlementIds = parseSettlementIds(options.settlementIds)
+    this.count = this.settlementIds.length || Number(options.count || 0)
+    const displayAmount = Number(options.amount)
+    if (Number.isFinite(displayAmount) && displayAmount >= 0) {
+      this.amount = displayAmount
+      this.finalAmount = displayAmount
+    }
+  },
+  onUnload() {
+    this.stopPaymentPolling()
   },
   methods: {
     goBack() {
       uni.navigateBack()
     },
-    submitSettle() {
-      if (!this.selectedAccount) {
-        uni.showToast({ title: '请选择付款账号', icon: 'none' })
+    selectAccount(value) {
+      if (value !== "wechat") {
+        uni.showToast({ title: "当前仅支持微信支付", icon: "none" })
         return
       }
-      uni.showModal({
-        title: '付款成功',
-        content: `付款金额 ¥${this.finalAmount.toFixed(2)} 已成功支付`,
-        showCancel: false,
-        success: () => { uni.navigateBack() }
+      this.selectedAccount = value
+    },
+    async submitSettle() {
+      if (this.submitting) return
+      if (this.selectedAccount !== "wechat") {
+        uni.showToast({ title: "当前仅支持微信支付", icon: "none" })
+        return
+      }
+      if (!this.settlementIds.length) {
+        uni.showToast({ title: "缺少待付款结算单", icon: "none" })
+        return
+      }
+      if (!this.idempotencyKey) this.idempotencyKey = createIdempotencyKey()
+      this.submitting = true
+      uni.showLoading({ title: "创建支付订单...", mask: true })
+      try {
+        const result = await createBossSettlementWechatPayment(
+          this.settlementIds,
+          this.idempotencyKey,
+        )
+        const payment = result?.data || result || {}
+        const serverAmount = Number(payment.amount)
+        if (Number.isFinite(serverAmount) && serverAmount >= 0) {
+          this.amount = serverAmount
+          this.finalAmount = serverAmount
+        }
+        this.paymentNo = payment.paymentNo || payment.orderNo || ""
+        const payParams = payment.payParams || {}
+        const required = ["timeStamp", "nonceStr", "package", "paySign"]
+        if (!this.paymentNo || required.some((key) => !payParams[key])) {
+          throw new Error("支付参数不完整，请稍后重试")
+        }
+        uni.hideLoading()
+        await this.requestWechatPayment(payParams)
+        uni.showToast({ title: "支付处理中", icon: "none" })
+        this.startPaymentPolling(this.paymentNo)
+      } catch (error) {
+        uni.hideLoading()
+        this.submitting = false
+        const message = String(error?.errMsg || error?.message || "支付失败")
+        uni.showToast({
+          title: /cancel/i.test(message) ? "支付已取消" : message,
+          icon: "none",
+        })
+      }
+    },
+    requestWechatPayment(payParams) {
+      return new Promise((resolve, reject) => {
+        // #ifdef H5
+        reject(new Error("请在微信小程序内完成支付"))
+        // #endif
+        // #ifndef H5
+        uni.requestPayment({
+          provider: "wxpay",
+          timeStamp: String(payParams.timeStamp),
+          nonceStr: String(payParams.nonceStr),
+          package: String(payParams.package),
+          signType: String(payParams.signType || "RSA"),
+          paySign: String(payParams.paySign),
+          success: resolve,
+          fail: reject,
+        })
+        // #endif
       })
+    },
+    startPaymentPolling(paymentNo) {
+      this.stopPaymentPolling()
+      this.polling = true
+      let attempts = 0
+      const poll = async () => {
+        if (!this.polling) return
+        attempts += 1
+        try {
+          const result = await getBossSettlementPayment(paymentNo)
+          const payment = result?.data || result || {}
+          const status = String(payment.status || "").toUpperCase()
+          if (status === "PAID") {
+            this.stopPaymentPolling()
+            this.submitting = false
+            uni.showToast({ title: "支付成功", icon: "success" })
+            setTimeout(() => uni.navigateBack(), 700)
+            return
+          }
+          if (["FAILED", "CLOSED", "CANCELLED", "REFUNDED"].includes(status)) {
+            this.stopPaymentPolling()
+            this.submitting = false
+            uni.showToast({
+              title: payment.message || payment.failureReason || "支付失败",
+              icon: "none",
+            })
+            return
+          }
+        } catch (_) {
+          // 轮询期间的瞬时错误继续重试，避免误判为支付失败。
+        }
+        if (attempts >= 15) {
+          this.stopPaymentPolling()
+          this.submitting = false
+          uni.showToast({ title: "支付结果确认中，请稍后查看结算记录", icon: "none" })
+          return
+        }
+        this.paymentTimer = setTimeout(poll, 2000)
+      }
+      poll()
+    },
+    stopPaymentPolling() {
+      this.polling = false
+      if (this.paymentTimer) {
+        clearTimeout(this.paymentTimer)
+        this.paymentTimer = null
+      }
     }
   }
 }

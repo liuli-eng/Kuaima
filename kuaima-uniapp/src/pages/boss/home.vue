@@ -143,6 +143,9 @@ export default {
       selectedSchedule: { stats: [{label:"接单",value:0},{label:"到达",value:0},{label:"开工",value:0},{label:"完工",value:0},{label:"结算",value:0,highlight:true}], records: [] },
       statsLoading: false,
       scheduleLoading: false,
+      attendanceLoading: false,
+      lastAttendanceLoadAt: 0,
+      overviewLoading: false,
       publishChecking: false,
       templateChecking: false,
     };
@@ -173,8 +176,21 @@ export default {
       this.loadHomeOverview();
     },
     async loadAttendanceCodes() {
-      try { this.attendance = { ...this.attendance, ...(await getBossAttendanceCodes() || {}) }; }
-      catch (error) { this.handleAttendanceRequestError(error, "考勤码加载失败"); }
+      const now = Date.now();
+      if (now - this.lastAttendanceLoadAt < 1000) return;
+      if (this.attendanceLoading) return;
+      this.attendanceLoading = true;
+      this.lastAttendanceLoadAt = now;
+      try {
+        this.attendance = {
+          ...this.attendance,
+          ...(await getBossAttendanceCodes() || {}),
+        };
+      } catch (error) {
+        this.handleAttendanceRequestError(error, "考勤码加载失败");
+      } finally {
+        this.attendanceLoading = false;
+      }
     },
     handleAttendanceRequestError(error, fallback) {
       const status = Number(error?.code || error?.statusCode);
@@ -182,9 +198,12 @@ export default {
       uni.showToast({ title: error?.message || fallback, icon: "none" });
     },
     async loadHomeOverview() {
+      if (this.overviewLoading) return;
+      this.overviewLoading = true;
       this.statsLoading = true;
       try {
-        const location = await this.getCurrentLocation();
+        // 定位仅用于优化附近人数展示，不能阻塞首页主体加载。
+        const location = await this.getCurrentLocation(1200);
         const result = await getBossHomeOverview({
           ...(location || {}),
           accountId: this.currentAccountId || undefined,
@@ -203,20 +222,30 @@ export default {
         const today = this.schedule.find((item) => item.key === "TODAY") || this.schedule[0];
         if (today) {
           this.selectedScheduleDate = today.date;
-          await this.loadSchedule(today);
+          // 排班属于次级信息，独立加载，避免首页等待第二个接口。
+          this.loadSchedule(today);
         }
       } catch (error) {
         this.handleRequestError(error, "首页数据加载失败");
       } finally {
         this.statsLoading = false;
+        this.overviewLoading = false;
       }
     },
-    getCurrentLocation() {
+    getCurrentLocation(timeout = 1200) {
       return new Promise((resolve) => {
+        let settled = false;
+        const timer = setTimeout(() => finish(null), timeout);
+        const finish = (value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve(value);
+        };
         uni.getLocation({
           type: "gcj02",
-          success: ({ longitude, latitude }) => resolve({ longitude, latitude }),
-          fail: () => resolve(null),
+          success: ({ longitude, latitude }) => finish({ longitude, latitude }),
+          fail: () => finish(null),
         });
       });
     },

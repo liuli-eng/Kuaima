@@ -352,6 +352,30 @@ export function paySettlement(id) {
   return request({ url: `/settle/${id}/pay`, method: "POST" });
 }
 
+/** 创建老板结算微信支付单，金额和身份均由服务端根据结算单确认。 */
+export function createBossSettlementWechatPayment(
+  settlementIds = [],
+  idempotencyKey = "",
+) {
+  return request({
+    url: "/boss/settlements/payments/wechat",
+    method: "POST",
+    data: { settlementIds },
+    header: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
+/** 查询老板结算微信支付单状态。 */
+export function getBossSettlementPayment(paymentNo) {
+  return request({
+    url: `/boss/settlements/payments/${encodeURIComponent(paymentNo)}`,
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
 export function listOrderSettlements(orderId) {
   return request({ url: `/settle/order/${orderId}` });
 }
@@ -514,6 +538,33 @@ export function getBossHomeSchedule(date, accountId) {
 /** 当前老板今日开工码/早退码状态，身份由 JWT 获取。 */
 export function getBossAttendanceCodes() {
   return request({ url: "/boss/attendance-codes", skipUserIdHeader: true, skipMock: true });
+}
+
+/** 老板项目管理接口，统一放在主 API 模块，避免微信分包加载独立 API 模块失败。 */
+export function listBossProjects(params = {}) {
+  return request({
+    url: `/boss/projects?${query({ page: 0, size: 50, ...params })}`,
+    skipUserIdHeader: true,
+  });
+}
+
+export function getBossProjectOverview() {
+  return request({ url: "/boss/projects/stats/overview", skipUserIdHeader: true });
+}
+
+export function createBossProject(data = {}) {
+  return request({
+    url: "/boss/projects",
+    method: "POST",
+    data,
+    skipUserIdHeader: true,
+  });
+}
+
+export function formatBossProjectDate(iso) {
+  if (!iso) return "";
+  const match = String(iso).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  return match ? `${match[1]}年${Number(match[2])}月${Number(match[3])}日` : iso;
 }
 
 export function refreshBossWorkCode() {
@@ -982,6 +1033,14 @@ export function rejectPayrollOrder(orderId, reason) {
 export function listPayrollEmployees(params = {}) {
   return request({
     url: `/boss/payroll/employees?${query(params)}`,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 老板企业成员列表，身份由当前 JWT 判断。 */
+export function listBossEnterpriseMembers(params = {}) {
+  return request({
+    url: `/boss/enterprise/members?${query(params)}`,
     skipUserIdHeader: true,
   });
 }

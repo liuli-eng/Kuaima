@@ -146,6 +146,7 @@ export default {
         this.jobs = rows.map((item) => ({
           ...item,
           id: item.id,
+          settlementId: item.settlementId || (Array.isArray(item.settlementIds) ? item.settlementIds[0] : ""),
           name: item.title || item.orderTitle || "待结算岗位",
           meta: `${item.workerCount || 0}人 · ${item.settlementType || "日结"} · ${item.address || "地点待定"}`,
           jobFee: Number(item.jobAmount || item.jobFee || 0),
@@ -163,10 +164,15 @@ export default {
     },
     useCoupon() {
       if (!this.selectedJob || !this.canUse(this.selectedJob)) return;
+      if (!this.selectedJob.settlementId) {
+        uni.showToast({ title: "当前订单缺少待付款结算单", icon: "none" });
+        return;
+      }
       const query = [
         `orderId=${encodeURIComponent(this.selectedJob.id)}`,
         `amount=${encodeURIComponent(this.payAmount)}`,
         "count=1",
+        `settlementIds=${encodeURIComponent(JSON.stringify([this.selectedJob.settlementId]))}`,
         this.userCouponId ? `userCouponId=${encodeURIComponent(this.userCouponId)}` : "",
       ].filter(Boolean).join("&");
       uni.navigateTo({

@@ -119,8 +119,19 @@
       </view>
     </view>
 
-    <view v-if="sheetVisible" class="sheet-mask" @click="closeAddressSheet" />
-    <view v-if="sheetVisible" class="address-sheet">
+    <BossAddressEditor
+      :visible="sheetVisible"
+      :editing="editingIndex >= 0"
+      :saving="savingAddress"
+      :draft="draft"
+      :tags="tagPresets"
+      @cancel="closeAddressSheet"
+      @choose-location="chooseAddressLocation"
+      @toggle-tag="toggleDraftTag"
+      @save="saveAddressDraft"
+    />
+    <view v-if="false && sheetVisible" class="sheet-mask" @click="closeAddressSheet" />
+    <view v-if="false && sheetVisible" class="address-sheet">
       <view class="sheet-grip" />
       <view class="sheet-header">
         <text class="sheet-title">{{ editingIndex === -1 ? '新增工作地点' : '编辑工作地点' }}</text>
@@ -163,8 +174,10 @@ import {
   updateBossRecruitAddress,
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
-import { normalizeBossAddressSelection, readAddressCoordinates } from "@/utils/boss-address";
+import { extractBossAddressRegion, normalizeBossAddressSelection, readAddressCoordinates } from "@/utils/boss-address";
+import BossAddressEditor from "@/components/BossAddressEditor.vue";
 export default {
+  components: { BossAddressEditor },
   data() {
     return {
       selectedIndex: 0,
@@ -174,11 +187,12 @@ export default {
       sheetVisible: false,
       editingIndex: -1,
       pendingEditId: null,
-      draft: { name: "", detail: "", tags: [], latitude: null, longitude: null },
+      draft: { name: "", detail: "", city: "", district: "", contactName: "", contactPhone: "", tags: [], latitude: null, longitude: null, isDefault: false },
       tagPresets: ["电子厂", "有空调", "物流", "仓库", "餐饮", "分拣", "装卸", "包装", "有休息区", "室内"],
       savingAddress: false,
       authRedirecting: false,
       returnAfterSave: false,
+      locationSelecting: false,
     };
   },
   computed: {
@@ -234,6 +248,28 @@ export default {
     locateMe() {
       uni.showToast({ title: "正在获取当前位置...", icon: "loading" });
     },
+    chooseAddressLocation() {
+      // #ifdef MP-WEIXIN
+      uni.chooseLocation({
+        success: ({ name, address, latitude, longitude }) => {
+          const region = extractBossAddressRegion(address);
+          this.draft = {
+            ...this.draft,
+            name: this.draft.name || name || "",
+            detail: address || name || this.draft.detail,
+            city: region.city || this.draft.city,
+            district: region.district || this.draft.district,
+            latitude: Number(latitude),
+            longitude: Number(longitude),
+          };
+        },
+        fail: (error) => { if (!String(error?.errMsg || "").includes("cancel")) uni.showToast({ title: "地图选点失败", icon: "none" }); },
+      });
+      // #endif
+      // #ifndef MP-WEIXIN
+      uni.showToast({ title: "请在微信小程序中使用地图选点", icon: "none" });
+      // #endif
+    },
     zoomIn() {
       uni.showToast({ title: "放大地图", icon: "none" });
     },
@@ -257,8 +293,8 @@ export default {
         "/static/icons/boss-location/store-orange.svg",
       ][index % 3];
     },
-    addNewAddress() { this.editingIndex = -1; this.draft = { name: "", detail: "", tags: [], latitude: null, longitude: null }; this.sheetVisible = true; },
-    editAddress(index) { const a = this.addresses[index]; this.editingIndex = index; this.draft = { ...a, name: a.name || "", detail: a.address || a.detail || "", tags: Array.isArray(a.tags) ? [...a.tags] : [], latitude: a.latitude, longitude: a.longitude }; this.sheetVisible = true; },
+    addNewAddress() { this.editingIndex = -1; this.draft = { name: "", detail: "", city: "", district: "", contactName: "", contactPhone: "", tags: [], latitude: null, longitude: null, isDefault: false }; this.sheetVisible = true; },
+    editAddress(index) { const a = this.addresses[index]; this.editingIndex = index; this.draft = { ...a, name: a.name || "", detail: a.detail || a.address || "", city: a.city || "", district: a.district || "", contactName: a.contactName || "", contactPhone: a.contactPhone || "", tags: Array.isArray(a.tags) ? [...a.tags] : [], latitude: a.latitude ?? a.lat ?? null, longitude: a.longitude ?? a.lng ?? null, isDefault: !!a.isDefault }; this.sheetVisible = true; },
     closeAddressSheet() { this.sheetVisible = false; },
     toggleDraftTag(tag) { const tags = new Set(this.draft.tags); tags.has(tag) ? tags.delete(tag) : tags.add(tag); this.draft.tags = [...tags]; },
     async saveAddressDraft() {
@@ -267,16 +303,22 @@ export default {
       const detail = this.draft.detail.trim();
       if (!name) return uni.showToast({ title: "请输入地点名称", icon: "none" });
       if (!detail) return uni.showToast({ title: "请输入详细地址", icon: "none" });
+      if (!this.draft.city?.trim()) return uni.showToast({ title: "请输入所在城市", icon: "none" });
+      if (!this.draft.district?.trim()) return uni.showToast({ title: "请输入所在区县", icon: "none" });
+      if (!this.draft.contactName?.trim()) return uni.showToast({ title: "请输入联系人姓名", icon: "none" });
+      if (!/^1\d{10}$/.test(this.draft.contactPhone?.trim() || "")) return uni.showToast({ title: "请输入正确的联系电话", icon: "none" });
+      if (!Number.isFinite(Number(this.draft.latitude)) || !Number.isFinite(Number(this.draft.longitude))) return uni.showToast({ title: "请先在地图选择地点", icon: "none" });
       const data = {
         name,
         detail,
         tags: this.draft.tags,
-        contactName: this.draft.contactName || "",
-        contactPhone: this.draft.contactPhone || "",
-        city: this.draft.city || "",
-        district: this.draft.district || "",
-        latitude: this.draft.latitude,
-        longitude: this.draft.longitude,
+        contactName: this.draft.contactName.trim(),
+        contactPhone: this.draft.contactPhone.trim(),
+        city: this.draft.city.trim(),
+        district: this.draft.district.trim(),
+        latitude: Number(this.draft.latitude),
+        longitude: Number(this.draft.longitude),
+        isDefault: Boolean(this.draft.isDefault),
         isDefault: this.editingIndex >= 0 ? !!this.addresses[this.editingIndex]?.isDefault : false,
       };
       this.savingAddress = true;

@@ -111,11 +111,11 @@
 <script>
 import BossPageHeader from "@/components/BossPageHeader.vue";
 import {
-  listProjects,
-  getProjectOverview,
-  createProject,
-  formatCnDate,
-} from "@/api/project";
+  listBossProjects,
+  getBossProjectOverview,
+  createBossProject,
+  formatBossProjectDate,
+} from "@/api/backend";
 
 export default {
   components: { BossPageHeader },
@@ -151,13 +151,13 @@ export default {
     this.loadData();
   },
   methods: {
-    formatCnDate,
+    formatCnDate: formatBossProjectDate,
     async loadData() {
       this.loading = true;
       try {
         const [overview, list] = await Promise.all([
-          getProjectOverview().catch(() => ({})),
-          listProjects({ status: this.tab === "created" ? "active" : "archived" }).catch(() => []),
+          getBossProjectOverview().catch(() => ({})),
+          listBossProjects({ status: this.tab === "created" ? "active" : "archived" }).catch(() => []),
         ]);
         this.overview = overview || {};
         this.list = Array.isArray(list) ? list : [];
@@ -195,7 +195,7 @@ export default {
         return;
       }
       try {
-        await createProject({
+        await createBossProject({
           name: this.form.name.trim(),
           companyName: this.form.companyName.trim(),
           leaderName: this.form.leaderName.trim(),

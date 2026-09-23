@@ -3,13 +3,11 @@ package com.kuaima.app.controller.finance;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,10 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.domain.enterprise.entity.EnterpriseMember;
+import com.kuaima.app.domain.enterprise.repository.EnterpriseMemberRepository;
+import com.kuaima.app.domain.enterprise.service.EnterpriseContextService;
 import com.kuaima.app.domain.subaccount.entity.SubAccount;
 import com.kuaima.app.domain.subaccount.repository.SubAccountRepository;
-import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
+import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.security.model.LoginUser;
 
@@ -42,18 +43,21 @@ public class SubAccountController {
 
     private final SubAccountRepository subAccountRepository;
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final EnterpriseMemberRepository enterpriseMemberRepository;
+    private final EnterpriseContextService enterpriseContextService;
     private final Environment environment;
     private final String devVerificationCode;
 
     public SubAccountController(SubAccountRepository subAccountRepository,
                                 UserRepository userRepository,
-                                PasswordEncoder passwordEncoder,
+                                EnterpriseMemberRepository enterpriseMemberRepository,
+                                EnterpriseContextService enterpriseContextService,
                                 Environment environment,
                                 @Value("${aliyun.sms.mock-code:}") String devVerificationCode) {
         this.subAccountRepository = subAccountRepository;
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.enterpriseMemberRepository = enterpriseMemberRepository;
+        this.enterpriseContextService = enterpriseContextService;
         this.environment = environment;
         this.devVerificationCode = devVerificationCode;
     }
@@ -74,25 +78,38 @@ public class SubAccountController {
 
     @PostMapping
     @Transactional
-    @Operation(summary = "开通授权员工", description = "请求phone、code、role；老板ID只取JWT。验证码仅在dev profile且启用aliyun.sms.mock-enabled时使用开发验证码，生产环境未接短信服务时拒绝创建")
+    @Operation(summary = "开通授权员工", description = "请求memberId、code、role；只绑定当前企业已有成员，不创建新用户；老板和企业身份均取当前JWT")
     public Result<SubAccount> createSubAccount(@RequestBody Map<String, Object> body,
                                                Authentication authentication) {
         Long bossId = requireBossId(authentication);
         rejectOtherParent(toLong(body.get("parentId")), bossId);
-        String phone = text(body.get("phone"));
+        Long memberId = toLong(body.get("memberId"));
         String code = text(body.get("code"));
         String role = normalizeRole(text(body.get("role")));
-        if (!phone.matches("^1\\d{10}$")) throw new IllegalArgumentException("手机号格式不正确");
+        if (memberId == null) throw new IllegalArgumentException("memberId不能为空");
         verifyCode(code);
 
-        User user = resolveOrCreateUser(bossId, phone, role, body);
+        EnterpriseContextService.Context context = enterpriseContextService.require(authentication, "MEMBER_WRITE");
+        EnterpriseMember member = enterpriseMemberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("企业成员不存在"));
+        if (!member.getEnterpriseId().equals(context.enterprise().getId())
+                || !"ACTIVE".equals(member.getStatus())) {
+            throw new ForbiddenBusinessException("无权授权该企业成员");
+        }
+        if (bossId.equals(member.getUserId())) {
+            throw new IllegalArgumentException("不能授权当前登录老板自己");
+        }
+        User user = userRepository.findById(member.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("企业成员对应的系统用户不存在"));
         if (subAccountRepository.existsByParentIdAndUserId(bossId, user.getId())) {
             throw new IllegalStateException("该员工已授权");
         }
+        user.setSubRole(role);
+        userRepository.save(user);
         SubAccount sub = new SubAccount();
         sub.setParentId(bossId);
         sub.setUserId(user.getId());
-        sub.setPhone(phone);
+        sub.setPhone(user.getPhone());
         sub.setRole(role);
         sub.setStatus("ACTIVE");
         return Result.success(subAccountRepository.save(sub));
@@ -126,46 +143,6 @@ public class SubAccountController {
             userRepository.save(user);
         });
         return Result.success(subAccountRepository.save(sub));
-    }
-
-    private User resolveOrCreateUser(Long bossId, String phone, String role, Map<String, Object> body) {
-        List<User> matches = userRepository.findByPhone(phone);
-        if (!matches.isEmpty()) {
-            if (matches.size() > 1) {
-                throw new IllegalStateException("该手机号对应多个用户，无法确定要授权的员工");
-            }
-            User user = matches.get(0);
-            if (bossId.equals(user.getId())) {
-                throw new IllegalArgumentException("不能授权当前登录老板自己的手机号");
-            }
-            if (isIndependentBossIdentity(user, bossId)) {
-                throw new ForbiddenBusinessException("该手机号已属于其他老板账号，不能直接授权");
-            }
-            user.setSubRole(role);
-            user.setStatus("正常");
-            return userRepository.save(user);
-        }
-        User user = new User();
-        String username = text(body.get("username"));
-        if (!StringUtils.hasText(username)) username = "sub_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        if (userRepository.findByUsername(username).isPresent()) throw new IllegalArgumentException("账号已存在: " + username);
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
-        user.setRole(UserRole.BOSS);
-        user.setNickname(StringUtils.hasText(text(body.get("nickname"))) ? text(body.get("nickname")) : "授权员工");
-        user.setPhone(phone);
-        user.setParentUserId(bossId);
-        user.setSubRole(role);
-        user.setStatus("正常");
-        return userRepository.save(user);
-    }
-
-    /** 判断手机号对应的用户是否是其他独立老板身份，避免跨老板误授权。 */
-    private boolean isIndependentBossIdentity(User user, Long currentBossId) {
-        if (currentBossId.equals(user.getParentUserId())) return false;
-        if ("APPROVED".equals(user.getEnterpriseStatus())) return true;
-        if ("ENTERPRISE".equalsIgnoreCase(user.getCertType()) && "已通过".equals(user.getCertStatus())) return true;
-        return UserRole.BOSS.equals(user.getRole()) && user.getParentUserId() == null;
     }
 
     private void verifyCode(String code) {

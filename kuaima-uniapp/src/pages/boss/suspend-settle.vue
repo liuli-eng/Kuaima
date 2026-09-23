@@ -93,13 +93,24 @@ export default {
         settlementIds: items.map((item) => item.settlementId).filter(Boolean),
         amount: this.selectedAmount,
       });
-      uni.navigateTo({ url: `/pages/boss/settle-confirm?amount=${this.selectedAmount.toFixed(2)}&count=${this.selectedIds.length}&ids=${this.selectedIds.join(',')}` });
+      const settlementIds = items.map((item) => item.settlementId).filter(Boolean);
+      if (!settlementIds.length) {
+        uni.showToast({ title: "缺少待付款结算单", icon: "none" });
+        return;
+      }
+      uni.navigateTo({
+        url: `/pages/boss/settle-confirm?amount=${encodeURIComponent(this.selectedAmount.toFixed(2))}&count=${this.selectedIds.length}&settlementIds=${encodeURIComponent(JSON.stringify(settlementIds))}`,
+      });
     }
   }
 }
 
 function normalizePendingOrder(item = {}) {
-  const items = Array.isArray(item.items) ? item.items : [];
+  const items = Array.isArray(item.items)
+    ? item.items
+    : item.settlementId != null
+      ? [{ settlementId: item.settlementId, itemId: item.itemId }]
+      : [];
   const amount = Number(item.amount ?? Number(item.amountFen || 0) / 100);
   return { ...item, id: Number(item.orderId ?? item.id), orderId: Number(item.orderId ?? item.id), job: item.job || item.orderTitle || item.postion || "岗位", date: formatDate(item.date || item.workDate || item.startTime), workers: Array.isArray(item.workers) ? item.workers.filter(Boolean) : [], workerCount: Number(item.workerCount ?? items.length), amount: Number.isFinite(amount) ? amount : 0, status: item.status || "waiting", statusText: item.statusText || (item.status === "partial" ? "部分结算" : "待结算"), items };
 }

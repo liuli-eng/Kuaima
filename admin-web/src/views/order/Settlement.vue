@@ -150,11 +150,11 @@
         <el-table-column label="结算时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.time) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="130" fixed="right">
+        <el-table-column label="操作" min-width="400" fixed="right">
           <template #default="{ row }">
             <div class="action-btns">
               <el-button link type="primary" size="small" @click="openDetail(row)">详情</el-button>
-              <el-button v-if="row.status === '待结算'" link type="success" size="small" @click="handleSettlePay(row)">结算</el-button>
+              <el-button v-if="row.status === '待结算'" link type="success" size="small" @click="openDetail(row)">结算</el-button>
             </div>
           </template>
         </el-table-column>
@@ -175,10 +175,13 @@
       </div>
     </div>
 
-    <el-dialog v-model="detailVisible" title="结算详情" width="760px" class="settlement-detail-dialog">
+    <el-dialog v-model="detailVisible" width="760px" class="settlement-detail-dialog" :show-close="false" :close-on-click-modal="false">
+      <template #header>
+        <div class="detail-dialog-header"><div><span class="detail-dialog-title">结算详情</span><span :class="['status-badge', detailStatusClass]">{{ detailRow.status || '-' }}</span></div><button class="detail-close" type="button" @click="detailVisible = false"><i class="fas fa-times"></i></button></div>
+      </template>
       <div class="settle-summary">
         <div class="settle-summary-item"><div class="label">结算金额</div><div class="value primary">¥{{ formatMoney(detailRow.amount) }}</div></div>
-        <div class="settle-summary-item"><div class="label">平台服务费</div><div class="value danger">¥{{ formatMoney(detailRow.platformFee) }}</div></div>
+        <div class="settle-summary-item"><div class="label">平台服务费</div><div class="value danger">-¥{{ formatMoney(detailRow.platformFee) }}</div></div>
         <div class="settle-summary-item"><div class="label">实付金额</div><div class="value success">¥{{ formatMoney(detailRow.actualAmount) }}</div></div>
       </div>
 
@@ -201,26 +204,45 @@
       <div class="detail-section-title">零工信息</div>
       <div class="detail-info-grid">
         <div class="detail-info-item"><span class="label">零工姓名</span><span class="value">{{ detailRow.workerName || '-' }}</span></div>
-        <div class="detail-info-item"><span class="label">联系电话</span><span class="value">{{ detailRow.workerPhone || '-' }}</span></div>
-        <div class="detail-info-item"><span class="label">工作天数</span><span class="value">{{ detailRow.workDays ?? '-' }} 天</span></div>
-        <div class="detail-info-item"><span class="label">岗位</span><span class="value">{{ detailRow.jobTitle || detailRow.postion || '-' }}</span></div>
+        <div class="detail-info-item"><span class="label">收款账户</span><span class="value">{{ detailRow.workerAccount || '—' }}</span></div>
+        <div class="detail-info-item"><span class="label">账户实名</span><span class="value">{{ detailRow.workerRealname || detailRow.workerName || '—' }}</span></div>
+        <div class="detail-info-item"><span class="label">实名认证</span><span class="value success-text">{{ detailRow.workerVerified === false ? '未认证' : '已认证' }}</span></div>
       </div>
 
       <div class="detail-section-title">费用明细</div>
       <div class="fee-box">
         <div class="fee-row"><span>订单金额</span><strong>¥{{ formatMoney(detailRow.amount) }}</strong></div>
-        <div class="fee-row"><span>平台服务费</span><strong class="danger">¥{{ formatMoney(detailRow.platformFee) }}</strong></div>
-        <div class="fee-row"><span>优惠券抵扣</span><strong class="success">-¥{{ formatMoney(detailRow.couponAmount) }}</strong></div>
+        <div class="fee-row"><span>平台服务费 (10%)</span><strong class="danger">-¥{{ formatMoney(detailRow.platformFee) }}</strong></div>
         <div class="fee-row total"><span>实付金额</span><strong class="success">¥{{ formatMoney(detailRow.actualAmount) }}</strong></div>
+      </div>
+
+      <div class="detail-section-title">服务费收款账户</div>
+      <div class="detail-info-grid service-account-grid">
+        <div class="detail-info-item"><span class="label">收款账户</span><span class="value">快马日结平台对公账户</span></div>
+        <div class="detail-info-item"><span class="label">收款银行</span><span class="value">工商银行上海分行</span></div>
+        <div class="detail-info-item"><span class="label">银行账号</span><span class="value">6222 **** **** 8888</span></div>
+        <div class="detail-info-item"><span class="label">账户名</span><span class="value">快马日结科技有限公司</span></div>
       </div>
 
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="detailVisible = false">关闭</el-button>
-          <el-button v-if="detailRow.status === '待结算'" type="primary" @click="handleSettlePay(detailRow)">财务确认结算</el-button>
+          <el-button class="reminder-button" @click="showReminder"><i class="fas fa-comment-dots"></i> 发消息提醒</el-button>
+          <el-button v-if="detailRow.status === '待结算'" type="primary" @click="openConfirm(detailRow)"><i class="fas fa-check-circle"></i> 财务确认结算</el-button>
         </div>
       </template>
     </el-dialog>
+
+    <div v-if="confirmVisible" class="settlement-confirm-overlay" @click.self="confirmVisible = false">
+      <div class="settlement-confirm-card" role="dialog" aria-modal="true" aria-labelledby="settlement-confirm-title">
+        <div class="confirm-content">
+          <div class="confirm-icon"><i class="fas fa-check-circle"></i></div>
+          <div id="settlement-confirm-title" class="confirm-title">财务确认结算</div>
+          <div class="confirm-desc">确认后将标记该笔订单为已结算，<br>此操作不可撤销。</div>
+          <div class="confirm-actions"><button class="confirm-cancel" type="button" @click="confirmVisible = false">取消</button><button class="confirm-submit" type="button" @click="confirmSettlement"><i class="fas fa-check"></i> 确认结算</button></div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -240,6 +262,8 @@ const settlementData = ref([])
 const stats = ref({ pendingCount: 0, settledAmount: 0, settledCount: 0, successRate: 0, totalCount: 0 })
 const detailVisible = ref(false)
 const detailRow = ref({})
+const confirmVisible = ref(false)
+const pendingSettleRow = ref(null)
 
 const quickFilters = [
   { label: '全部', value: '' },
@@ -250,6 +274,7 @@ const quickFilters = [
 ]
 
 const pendingRows = computed(() => settlementData.value.filter(item => item.status === '待结算'))
+const detailStatusClass = computed(() => detailRow.value.statusClass || statusClassMap[detailRow.value.status] || 'default')
 
 const statusClassMap = {
   '待结算': 'warning',
@@ -381,26 +406,29 @@ const payOne = async row => {
   await settlePay(row.id)
 }
 
-const handleSettlePay = async row => {
-  try {
-    await ElMessageBox.confirm(`确认对结算单 ${settlementNo(row)} 进行支付结算？此操作不可撤销。`, '财务确认结算', {
-      confirmButtonText: '确认结算',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-  } catch {
-    return
-  }
+const openConfirm = row => {
+  pendingSettleRow.value = row
+  detailVisible.value = false
+  confirmVisible.value = true
+}
+
+const confirmSettlement = async () => {
+  const row = pendingSettleRow.value
+  if (!row) return
   try {
     await payOne(row)
     ElMessage.success('结算成功')
+    confirmVisible.value = false
     detailVisible.value = false
+    pendingSettleRow.value = null
     await Promise.all([loadSettlements(), loadStats()])
   } catch (error) {
     console.warn('[Settlement] settlePay API 调用失败:', error)
     ElMessage.error('结算失败，请重试')
   }
 }
+
+const showReminder = () => ElMessage.info('结算提醒消息功能暂未开放')
 
 const handleBatchSettle = async () => {
   const pending = pendingRows.value
@@ -481,4 +509,32 @@ onMounted(() => {
 .fee-row.total { margin-top: 4px; padding-bottom: 0; border-bottom: 0; color: #111827; font-weight: 700; }
 .fee-row.total strong { font-size: 16px; }
 .dialog-footer { display: flex; justify-content: flex-end; gap: 12px; }
+.success-text { color: var(--success,#059669) !important; }
+.service-account-grid { margin-bottom: 0; }
+.reminder-button { border-color: var(--primary); color: var(--primary); }
+.reminder-button:hover { border-color: var(--primary); background: #FFF0EB; color: var(--primary); }
+.detail-dialog-header { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.detail-dialog-title { color: var(--text-primary,#111827); font-size: 18px; font-weight: 600; }
+.detail-dialog-header .status-badge { margin-left: 10px; }
+.detail-close { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted,#9CA3AF); cursor: pointer; }
+.detail-close:hover { background: #F3F4F6; color: #4B5563; }
+:deep(.settlement-detail-dialog) { overflow: hidden; border-radius: 16px; }
+:deep(.settlement-detail-dialog.el-dialog) { width: 700px !important; max-width: 90vw; max-height: 92vh; margin: 4vh auto !important; border-radius: 16px; }
+:deep(.settlement-detail-dialog .el-dialog__header) { display: flex; margin: 0; padding: 20px 24px; border-bottom: 1px solid #E5E7EB; }
+:deep(.settlement-detail-dialog .el-dialog__body) { overflow-y: auto; max-height: 65vh; padding: 24px; }
+:deep(.settlement-detail-dialog .el-dialog__footer) { padding: 16px 24px; border-top: 1px solid #E5E7EB; }
+.settlement-confirm-overlay { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.5); box-sizing: border-box; }
+.settlement-confirm-card { width: 90%; max-width: 440px; overflow: hidden; border-radius: 16px; background: #fff; box-sizing: border-box; }
+.confirm-content { text-align: center; }
+.confirm-content { padding: 24px; }
+.confirm-icon { display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; margin: 0 auto 16px; border-radius: 50%; background: #ECFDF5; color: var(--success,#059669); font-size: 24px; }
+.confirm-title { margin-bottom: 8px; color: var(--text-primary,#111827); font-size: 18px; font-weight: 600; }
+.confirm-desc { margin-bottom: 20px; color: var(--text-secondary,#4B5563); font-size: 14px; line-height: 1.7; }
+.confirm-actions { display: flex; justify-content: center; gap: 12px; }
+.confirm-cancel,.confirm-submit { min-width: 88px; height: 36px; padding: 0 16px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+.confirm-cancel { border: 1px solid var(--border,#E5E7EB); background: #fff; color: var(--text-secondary,#4B5563); }
+.confirm-cancel:hover { border-color: var(--primary,#FF6B35); color: var(--primary,#FF6B35); }
+.confirm-submit { border: 1px solid var(--primary,#FF6B35); background: var(--primary,#FF6B35); color: #fff; }
+.confirm-submit:hover { border-color: var(--primary-dark,#E55A2B); background: var(--primary-dark,#E55A2B); }
+@media (max-width: 800px) { .settle-summary,.detail-info-grid { grid-template-columns: 1fr; } }
 </style>

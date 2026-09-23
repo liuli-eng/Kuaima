@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +20,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.domain.subaccount.entity.SubAccount;
 import com.kuaima.app.domain.subaccount.repository.SubAccountRepository;
+import com.kuaima.app.domain.enterprise.entity.Enterprise;
+import com.kuaima.app.domain.enterprise.entity.EnterpriseMember;
+import com.kuaima.app.domain.enterprise.repository.EnterpriseMemberRepository;
+import com.kuaima.app.domain.enterprise.service.EnterpriseContextService;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.security.model.LoginUser;
@@ -28,7 +31,8 @@ import com.kuaima.app.security.model.LoginUser;
 class SubAccountControllerTests {
     @Test
     void list_shouldRejectAnotherBossParentId() {
-        SubAccountController controller = controller(mock(SubAccountRepository.class), mock(UserRepository.class), true);
+        SubAccountController controller = controller(mock(SubAccountRepository.class), mock(UserRepository.class),
+                mock(EnterpriseMemberRepository.class), mock(EnterpriseContextService.class), true);
         assertThrows(ForbiddenBusinessException.class,
                 () -> controller.listSubAccounts(9L, bossAuthentication(1L)));
     }
@@ -38,87 +42,61 @@ class SubAccountControllerTests {
         SubAccountRepository repository = mock(SubAccountRepository.class);
         when(repository.findByIdAndParentId(10L, 1L)).thenReturn(Optional.empty());
         when(repository.existsById(10L)).thenReturn(true);
-        SubAccountController controller = controller(repository, mock(UserRepository.class), true);
+        SubAccountController controller = controller(repository, mock(UserRepository.class),
+                mock(EnterpriseMemberRepository.class), mock(EnterpriseContextService.class), true);
         assertThrows(ForbiddenBusinessException.class,
                 () -> controller.deleteSubAccount(10L, bossAuthentication(1L)));
     }
 
     @Test
-    void create_shouldUseJwtBossAndConfiguredDevCode() {
+    void create_shouldBindExistingEnterpriseMemberWithoutCreatingUser() {
         SubAccountRepository repository = mock(SubAccountRepository.class);
         UserRepository users = mock(UserRepository.class);
-        when(users.findByPhone("13800000000")).thenReturn(List.of());
-        when(users.findByUsername(any())).thenReturn(Optional.empty());
-        when(users.save(any(User.class))).thenAnswer(invocation -> { User u = invocation.getArgument(0); u.setId(1002L); return u; });
-        when(repository.existsByParentIdAndUserId(1L, 1002L)).thenReturn(false);
+        EnterpriseMemberRepository members = mock(EnterpriseMemberRepository.class);
+        EnterpriseContextService contextService = mock(EnterpriseContextService.class);
+        Enterprise enterprise = new Enterprise(); enterprise.setId(13L);
+        EnterpriseMember contextMember = new EnterpriseMember(); contextMember.setEnterpriseId(13L); contextMember.setStatus("ACTIVE");
+        User worker = new User(); worker.setId(20L); worker.setPhone("13800000000");
+        EnterpriseMember member = new EnterpriseMember(); member.setId(7L); member.setEnterpriseId(13L); member.setUserId(20L); member.setStatus("ACTIVE");
+        when(contextService.require(any(), org.mockito.ArgumentMatchers.eq("MEMBER_WRITE")))
+                .thenReturn(new EnterpriseContextService.Context(new User(), enterprise, contextMember));
+        when(members.findById(7L)).thenReturn(Optional.of(member));
+        when(users.findById(20L)).thenReturn(Optional.of(worker));
+        when(repository.existsByParentIdAndUserId(1L, 20L)).thenReturn(false);
         when(repository.save(any(SubAccount.class))).thenAnswer(invocation -> { SubAccount s = invocation.getArgument(0); s.setId(10L); return s; });
 
-        var result = controller(repository, users, true).createSubAccount(
-                Map.of("phone", "13800000000", "code", "123456", "role", "OPERATOR"), bossAuthentication(1L));
+        var result = controller(repository, users, members, contextService, true).createSubAccount(
+                Map.of("memberId", 7L, "code", "123456", "role", "OPERATOR"), bossAuthentication(1L));
 
         assertEquals(10L, result.getData().getId());
         assertEquals(1L, result.getData().getParentId());
-        assertEquals(1002L, result.getData().getUserId());
+        assertEquals(20L, result.getData().getUserId());
         assertEquals("13800000000", result.getData().getPhone());
         assertEquals("ACTIVE", result.getData().getStatus());
     }
 
     @Test
-    void create_existingWorkerPhoneShouldReuseUserAndCreateAuthorizationRelation() {
-        SubAccountRepository repository = mock(SubAccountRepository.class);
-        UserRepository users = mock(UserRepository.class);
-        User worker = new User();
-        worker.setId(20L);
-        worker.setUsername("worker-20");
-        worker.setRole("USER");
-        worker.setPhone("13800000000");
-        worker.setOpenid("openid-worker");
-        when(users.findByPhone("13800000000")).thenReturn(List.of(worker));
-        when(users.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(repository.existsByParentIdAndUserId(1L, 20L)).thenReturn(false);
-        when(repository.save(any(SubAccount.class))).thenAnswer(invocation -> {
-            SubAccount subAccount = invocation.getArgument(0);
-            subAccount.setId(11L);
-            return subAccount;
-        });
-
-        var result = controller(repository, users, true).createSubAccount(
-                Map.of("phone", "13800000000", "code", "123456", "role", "OPERATOR"),
-                bossAuthentication(1L));
-
-        assertEquals(20L, result.getData().getUserId());
-        assertEquals(1L, result.getData().getParentId());
-        assertEquals("OPERATOR", worker.getSubRole());
-        assertEquals("正常", worker.getStatus());
-        verify(users, never()).findByUsername(any());
+    void create_shouldRejectNonMember() {
+        EnterpriseMemberRepository members = mock(EnterpriseMemberRepository.class);
+        EnterpriseContextService contextService = mock(EnterpriseContextService.class);
+        Enterprise enterprise = new Enterprise(); enterprise.setId(13L);
+        EnterpriseMember contextMember = new EnterpriseMember(); contextMember.setEnterpriseId(13L); contextMember.setStatus("ACTIVE");
+        when(contextService.require(any(), org.mockito.ArgumentMatchers.eq("MEMBER_WRITE")))
+                .thenReturn(new EnterpriseContextService.Context(new User(), enterprise, contextMember));
+        EnterpriseMember member = new EnterpriseMember(); member.setId(7L); member.setEnterpriseId(99L); member.setUserId(20L); member.setStatus("ACTIVE");
+        when(members.findById(7L)).thenReturn(Optional.of(member));
+        SubAccountController controller = controller(mock(SubAccountRepository.class), mock(UserRepository.class), members, contextService, true);
+        assertThrows(ForbiddenBusinessException.class, () -> controller.createSubAccount(
+                Map.of("memberId", 7L, "code", "123456", "role", "OPERATOR"), bossAuthentication(1L)));
     }
 
-    @Test
-    void create_shouldRejectOtherIndependentBossPhone() {
-        UserRepository users = mock(UserRepository.class);
-        User otherBoss = new User();
-        otherBoss.setId(30L);
-        otherBoss.setRole("BOSS");
-        otherBoss.setPhone("13800000000");
-        when(users.findByPhone("13800000000")).thenReturn(List.of(otherBoss));
-
-        assertThrows(ForbiddenBusinessException.class, () -> controller(mock(SubAccountRepository.class), users, true)
-                .createSubAccount(Map.of("phone", "13800000000", "code", "123456", "role", "OPERATOR"),
-                        bossAuthentication(1L)));
-    }
-
-    @Test
-    void create_shouldRejectCodeWhenNotInDevProfile() {
-        SubAccountController controller = controller(mock(SubAccountRepository.class), mock(UserRepository.class), false);
-        assertThrows(IllegalStateException.class, () -> controller.createSubAccount(
-                Map.of("phone", "13800000000", "code", "123456", "role", "OPERATOR"), bossAuthentication(1L)));
-    }
-
-    private SubAccountController controller(SubAccountRepository repository, UserRepository users, boolean dev) {
+    private SubAccountController controller(SubAccountRepository repository, UserRepository users,
+                                            EnterpriseMemberRepository members,
+                                            EnterpriseContextService contextService, boolean dev) {
         PasswordEncoder encoder = mock(PasswordEncoder.class); when(encoder.encode(any())).thenReturn("encoded");
         Environment environment = mock(Environment.class); when(environment.acceptsProfiles(any(Profiles.class))).thenReturn(dev);
         when(environment.getProperty("aliyun.sms.mock-enabled", "false")).thenReturn(Boolean.toString(dev));
-        return new SubAccountController(repository, users, encoder, environment, "123456");
+        return new SubAccountController(repository, users, members, contextService, environment, "123456");
     }
 
     private Authentication bossAuthentication(Long id) {

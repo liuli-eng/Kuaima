@@ -78,7 +78,7 @@
           </view>
           <view class="balance-actions">
             <button class="btn-outline" @click="navigateTo('balance')">账户明细</button>
-            <button class="btn-primary-sm" @click="navigateTo('balance')">立即充值</button>
+            <button class="btn-primary-sm" @click="navigateTo('recharge')">立即充值</button>
           </view>
         </view>
       </view>
@@ -352,7 +352,7 @@ export default {
         'expense-detail', 'payment-detail', 'recruit-manager', 'recruit-address', 
         'sub-account', 'authorize', 'suspend-settle', 'switch-account', 'invite-code', 'blacklist',
         'all-jobs', 'boss-filter', 'settlement', 'contract', 'system-notice', 'missed-call', 
-        'signup-notice', 'invite-friend', 'service-chat', 'insurance', 'realname', 'balance',
+        'signup-notice', 'invite-friend', 'service-chat', 'insurance', 'realname', 'balance', 'recharge',
         'personal-info', 'points', 'voucher', 'reward'
       ]
       const sharedPageMap = {

@@ -57,115 +57,17 @@
       </view>
     </scroll-view>
 
-    <view v-if="sheetVisible" class="sheet-mask" @click="closeAddressSheet" />
-    <view v-if="sheetVisible" class="address-sheet">
-      <view class="sheet-grip" />
-      <view class="sheet-header">
-        <text class="sheet-title">{{ editingAddressId ? "编辑招工地址" : "新增招工地址" }}</text>
-        <button class="sheet-close" @click="closeAddressSheet">×</button>
-      </view>
-
-      <scroll-view scroll-y class="sheet-body">
-        <view class="address-minimap" @click="chooseAddressLocation">
-          <view class="minimap-grid" />
-          <view class="minimap-road minimap-road-horizontal" />
-          <view class="minimap-road minimap-road-vertical" />
-          <view class="minimap-search">
-            <image
-              class="minimap-search-icon"
-              src="/static/icons/boss-location/search-gray.svg"
-              mode="aspectFit"
-            />
-            <text class="minimap-search-text">
-              {{ addressDraft.detail || "点击地图选点或搜索地址" }}
-            </text>
-          </view>
-          <view class="minimap-pin">
-            <image
-              src="/static/icons/boss-location/map-marker-white.svg"
-              mode="aspectFit"
-            />
-          </view>
-        </view>
-
-        <view class="form-item">
-          <text class="form-label"><text class="required">*</text> 地点名称</text>
-          <input
-            v-model="addressDraft.name"
-            class="form-input"
-            maxlength="50"
-            placeholder="请输入地点名称，如：观澜电子厂"
-          />
-        </view>
-        <view class="form-item">
-          <text class="form-label"><text class="required">*</text> 详细地址</text>
-          <input
-            v-model="addressDraft.detail"
-            class="form-input"
-            maxlength="100"
-            placeholder="请输入详细地址，如：龙华区观澜街道桂月路316号"
-          />
-        </view>
-        <view class="form-item">
-          <text class="form-label"><text class="required">*</text> 所在城市</text>
-          <input
-            v-model="addressDraft.city"
-            class="form-input"
-            maxlength="30"
-            placeholder="请输入所在城市，如：深圳市"
-          />
-        </view>
-        <view class="form-item">
-          <text class="form-label"><text class="required">*</text> 所在区县</text>
-          <input
-            v-model="addressDraft.district"
-            class="form-input"
-            maxlength="30"
-            placeholder="请输入所在区县，如：龙华区"
-          />
-        </view>
-        <view class="form-item">
-          <text class="form-label">地点标签（可多选）</text>
-          <view class="tag-chips">
-            <text
-              v-for="tag in tagPresets"
-              :key="tag"
-              class="tag-chip"
-              :class="{ active: addressDraft.tags.includes(tag) }"
-              @click="toggleAddressTag(tag)"
-            >
-              {{ tag }}
-            </text>
-          </view>
-        </view>
-        <view class="form-item">
-          <text class="form-label"><text class="required">*</text> 联系人</text>
-          <input
-            v-model="addressDraft.contactName"
-            class="form-input"
-            maxlength="20"
-            placeholder="请输入联系人姓名"
-          />
-        </view>
-        <view class="form-item">
-          <text class="form-label"><text class="required">*</text> 联系电话</text>
-          <input
-            v-model="addressDraft.contactPhone"
-            class="form-input"
-            type="number"
-            maxlength="11"
-            placeholder="请输入联系电话"
-          />
-        </view>
-      </scroll-view>
-
-      <view class="sheet-footer">
-        <button class="cancel-btn" :disabled="savingAddress" @click="closeAddressSheet">取消</button>
-        <button class="save-btn" :disabled="savingAddress" @click="saveAddress">
-          {{ savingAddress ? "保存中..." : "保存" }}
-        </button>
-      </view>
-    </view>
+    <BossAddressEditor
+      :visible="sheetVisible"
+      :editing="Boolean(editingAddressId)"
+      :saving="savingAddress"
+      :draft="addressDraft"
+      :tags="tagPresets"
+      @cancel="closeAddressSheet"
+      @choose-location="chooseAddressLocation"
+      @toggle-tag="toggleAddressTag"
+      @save="saveAddress"
+    />
   </view>
 </template>
 
@@ -178,6 +80,8 @@ import {
   updateBossRecruitAddress,
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
+import BossAddressEditor from "@/components/BossAddressEditor.vue";
+import { extractBossAddressRegion } from "@/utils/boss-address";
 
 function normalizeLocationParams(draft = {}) {
   const latitude = Number(draft.latitude);
@@ -193,19 +97,8 @@ function normalizeLocationParams(draft = {}) {
   };
 }
 
-function extractRegion(address = "") {
-  const text = String(address || "").replace(/\s+/g, "");
-  if (!text) return { city: "", district: "" };
-  const municipality = text.match(/^(北京市|上海市|天津市|重庆市)/)?.[1] || "";
-  const cityMatch = text.match(/(?:省|自治区|特别行政区)?([^省市州地区盟县区]+?(?:市|自治州|地区|盟))/);
-  const districtMatch = text.match(/([^市州地区盟]+?(?:区|县|旗))/);
-  return {
-    city: municipality || cityMatch?.[1] || "",
-    district: districtMatch?.[1] || "",
-  };
-}
-
 export default {
+  components: { BossAddressEditor },
   data() {
     return {
       addresses: [],
@@ -340,7 +233,7 @@ export default {
       // #ifdef MP-WEIXIN
       const options = {
         success: ({ name, address, latitude, longitude }) => {
-          const region = extractRegion(address);
+          const region = extractBossAddressRegion(address);
           this.addressDraft = {
             ...this.addressDraft,
             name: this.addressDraft.name || name || "",

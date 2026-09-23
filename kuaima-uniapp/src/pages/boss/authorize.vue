@@ -18,7 +18,7 @@
           <view class="picker-value">
             <text v-if="!selectedEmployees.length" class="picker-placeholder">请选择要授权的员工（可多选）</text>
             <view v-else class="picker-selected">
-              <view v-for="employee in selectedEmployees" :key="employee.id" class="selected-chip">
+                <view v-for="employee in selectedEmployees" :key="employee.memberId" class="selected-chip">
                 <view class="mini-avatar" :style="{ background: employee.avatarBg }">{{ employee.initial }}</view>
                 <text class="chip-name">{{ employee.name }}</text>
                 <image
@@ -47,7 +47,7 @@
             <view v-else-if="!filteredEmployees.length" class="picker-state">未找到匹配的员工</view>
             <view
               v-for="employee in filteredEmployees"
-              :key="employee.id"
+              :key="employee.memberId"
               class="picker-item"
               :class="{ active: employee.selected }"
               @click="toggleEmployee(employee)"
@@ -58,7 +58,7 @@
                   {{ employee.name }}
                   <text v-if="employee.statusText !== '在职'" class="employee-status">（{{ employee.statusText }}）</text>
                 </view>
-                <text class="employee-meta">{{ employee.maskedPhone }} · {{ employee.roleName }}</text>
+                <text class="employee-meta">{{ employee.maskedPhone }} · {{ employee.role }} · {{ employee.title }}</text>
               </view>
               <view class="employee-check">
                 <image v-if="employee.selected" :src="checkWhiteIcon" mode="aspectFit" />
@@ -69,9 +69,8 @@
       </view>
 
       <view class="form-card">
-        <view class="form-row"><text class="form-label">手机号</text><input v-model="form.phone" class="form-input" maxlength="11" type="number" placeholder="请输入对方手机号" /></view>
+        <view class="form-row"><text class="form-label">老板手机号</text><input v-model="form.phone" class="form-input" maxlength="11" type="number" disabled placeholder="当前登录老板手机号" /></view>
         <view class="form-row"><text class="form-label">验证码</text><input v-model="form.code" class="form-input" maxlength="6" type="number" placeholder="请输入验证码" /><text class="code-btn" :class="{ disabled: countdown }" @click="sendCode">{{ countdown ? `${countdown}s 后重发` : "获取验证码" }}</text></view>
-        <view class="form-row"><text class="form-label">备注名称</text><input v-model="form.nickname" class="form-input" maxlength="20" placeholder="给授权人起个名称（选填）" /></view>
       </view>
 
       <view class="perm-card">
@@ -92,8 +91,8 @@
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { getCurrentUser } from "@/api/auth";
-import { createBossSubAccount, listPayrollEmployees } from "@/api/backend";
+import { getCurrentUser, sendSmsCode } from "@/api/auth";
+import { createBossSubAccount, listBossEnterpriseMembers } from "@/api/backend";
 import chevronDownGrayIcon from "/static/icons/boss-authorize/chevron-down-gray.svg";
 import chevronDownOrangeIcon from "/static/icons/boss-authorize/chevron-down-orange.svg";
 import checkWhiteIcon from "/static/icons/boss-authorize/check-white.svg";
@@ -108,6 +107,7 @@ import xmarkOrangeIcon from "/static/icons/boss-authorize/xmark-orange.svg";
 
 const form = ref({ phone: "", code: "", nickname: "" });
 const submitting = ref(false);
+const sendingCode = ref(false);
 const countdown = ref(0);
 const permissions = [
   { value: "HOME", label: "首页", desc: "查看数据概览、待办提醒", icon: houseWhiteIcon },
@@ -139,10 +139,14 @@ onLoad(() => {
 async function loadEmployees() {
   employeesLoading.value = true;
   try {
-    const result = await listPayrollEmployees();
+    const result = await listBossEnterpriseMembers({ page: 0, size: 100, status: "ACTIVE" });
     const body = result?.data ?? result ?? {};
-    const rows = Array.isArray(body) ? body : (body.employees || []);
-    employees.value = rows.map((employee, index) => normalizeEmployee(employee, index));
+    const rows = Array.isArray(body)
+      ? body
+      : body.members || body.records || body.content || body.list || body.employees || [];
+    employees.value = rows
+      .filter((employee) => !employee.status || String(employee.status).toUpperCase() === "ACTIVE")
+      .map((employee, index) => normalizeEmployee(employee, index));
   } catch (error) {
     employees.value = [];
     uni.showToast({ title: error?.message || "员工列表加载失败", icon: "none" });
@@ -152,23 +156,23 @@ async function loadEmployees() {
 }
 
 function normalizeEmployee(employee, index) {
-  const name = employee.name || employee.nickname || employee.realName || `员工${employee.id || index + 1}`;
-  const phone = String(employee.phone || "").trim();
-  const roleName = employee.position
-    || employee.projectName
-    || employee.employmentType
-    || "员工";
+  const name = employee.name || employee.nickname || employee.realName || employee.memberName || `员工${employee.id || index + 1}`;
+  const phone = String(employee.phone || employee.mobile || employee.phoneNumber || "").trim();
+  const role = employee.role || employee.roleName || employee.position || employee.employmentType || "员工";
+  const title = employee.title || employee.jobTitle || employee.projectName || "";
   const statusText = ({ active: "在职", temp: "临时", left: "离职" })[employee.status] || "在职";
   return {
     ...employee,
-    id: employee.id || `${phone || name}-${index}`,
+    memberId: employee.memberId ?? employee.id,
     name,
     initial: name.slice(0, 1),
     phone,
     maskedPhone: maskPhone(phone),
-    roleName,
+    role,
+    title,
+    roleName: role,
     statusText,
-    avatarBg: avatarGradient(roleName, statusText, index),
+    avatarBg: avatarGradient(role, statusText, index),
     selected: false,
   };
 }
@@ -210,12 +214,21 @@ function togglePermission(value) {
   selectedPermissions.value = next;
 }
 
-function sendCode() {
-  if (countdown.value) return;
+async function sendCode() {
+  if (countdown.value || sendingCode.value) return;
   if (!/^1\d{10}$/.test(form.value.phone)) {
     return uni.showToast({ title: "请输入正确手机号", icon: "none" });
   }
-  uni.showToast({ title: "验证码发送功能待后端短信服务接入", icon: "none" });
+  sendingCode.value = true;
+  try {
+    await sendSmsCode(form.value.phone);
+    uni.showToast({ title: "验证码已发送", icon: "success" });
+  } catch (error) {
+    uni.showToast({ title: error?.message || "验证码发送失败", icon: "none" });
+    return;
+  } finally {
+    sendingCode.value = false;
+  }
   countdown.value = 60;
   const timer = setInterval(() => {
     countdown.value -= 1;
@@ -226,8 +239,8 @@ function sendCode() {
 async function submit() {
   if (!/^1\d{10}$/.test(form.value.phone)) return uni.showToast({ title: "请输入正确手机号", icon: "none" });
   if (!selectedEmployees.value.length) return uni.showToast({ title: "请先选择要授权的员工", icon: "none" });
-  const invalidEmployee = selectedEmployees.value.find((employee) => !/^1\d{10}$/.test(employee.phone || ""));
-  if (invalidEmployee) return uni.showToast({ title: `${invalidEmployee.name}手机号无效`, icon: "none" });
+  const invalidEmployee = selectedEmployees.value.find((employee) => !employee.memberId);
+  if (invalidEmployee) return uni.showToast({ title: `${invalidEmployee.name}成员标识无效`, icon: "none" });
   if (!form.value.code.trim()) return uni.showToast({ title: "请输入验证码", icon: "none" });
   if (!selectedPermissions.value.length) return uni.showToast({ title: "请选择授权权限", icon: "none" });
   if (submitting.value) return;
@@ -235,12 +248,7 @@ async function submit() {
   try {
     const role = selectedPermissions.value.includes("WORKBENCH") ? "ADMIN" : "OPERATOR";
     for (const employee of selectedEmployees.value) {
-      await createBossSubAccount({
-        phone: employee.phone,
-        code: form.value.code,
-        nickname: form.value.nickname || employee.name,
-        role,
-      });
+      await createBossSubAccount({ memberId: employee.memberId, code: form.value.code, role });
     }
     uni.showToast({ title: "授权成功", icon: "success" });
     setTimeout(() => uni.navigateBack(), 600);

@@ -1,4 +1,6 @@
 <script setup>
+import { onLaunch, onShow } from "@dcloudio/uni-app";
+
 // 避免 onLaunch / onShow 重复触发扫码入口跳转
 let __lastScanCode = null;
 let __lastScanTs = 0;
