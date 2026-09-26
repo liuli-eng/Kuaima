@@ -14,6 +14,7 @@ public interface WalletFlowRespository extends JpaRepository<WalletFlow, Long> {
 
     /** 按用户查流水（外部排序按 id 倒序） */
     List<WalletFlow> findByUserIdOrderByIdDesc(Long userId);
+    List<WalletFlow> findByUserIdAndRoleOrderByIdDesc(Long userId, String role);
 
     /** 按用户分页查流水（按 id 倒序） */
     Page<WalletFlow> findByUserIdOrderByIdDesc(Long userId, Pageable pageable);

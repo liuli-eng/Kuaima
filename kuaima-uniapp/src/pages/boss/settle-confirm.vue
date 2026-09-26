@@ -29,9 +29,70 @@
       <!-- 费用明细 -->
       <view class="section-card">
         <text class="section-title">费用明细</text>
-        <view style="display:flex;justify-content:space-between;padding:8px 0;margin-top:4px;">
-          <text style="font-weight:600;color:#333;font-size:15px;">服务端确认支付金额</text>
-          <text style="font-weight:700;color:#FF6B35;font-size:18px;">¥{{ finalAmount.toFixed(2) }}</text>
+        <view class="fee-row">
+          <text class="fee-label">订单总金额</text>
+          <text class="fee-value">{{ formatFee(orderAmount) }}</text>
+        </view>
+        <view class="fee-row">
+          <text class="fee-label">平台服务费</text>
+          <text class="fee-value fee-accent">{{ formatFee(serviceFee) }}</text>
+        </view>
+        <view class="fee-row points-input-row">
+          <view class="fee-label-wrap">
+            <text class="fee-label">积分抵扣</text>
+            <text class="fee-hint">{{ pointsHint }}</text>
+          </view>
+          <view class="points-input-wrap">
+            <input
+              class="points-input"
+              type="number"
+              :value="pointsToUse"
+              placeholder="输入积分"
+              @input="handlePointsInput"
+            />
+            <text class="points-unit">积分</text>
+          </view>
+        </view>
+        <view class="fee-row">
+          <text class="fee-label">积分抵扣金额</text>
+          <text class="fee-value fee-green">{{ formatFee(pointsDeductAmount, true) }}</text>
+        </view>
+        <view class="fee-row coupon-row" @click="openCouponPicker">
+          <text class="fee-label">优惠券</text>
+          <text class="coupon-value">{{ couponLabel }} <text class="coupon-arrow">›</text></text>
+        </view>
+        <view class="fee-row">
+          <text class="fee-label">优惠券抵扣</text>
+          <text class="fee-value fee-green">{{ formatFee(couponDeductAmount, true) }}</text>
+        </view>
+        <view class="fee-row fee-total-row">
+          <text class="fee-total-label">实际支付金额</text>
+          <text class="fee-total-value">¥{{ finalAmount.toFixed(2) }}</text>
+        </view>
+      </view>
+
+      <view v-if="couponPickerVisible" class="coupon-picker-mask" @click="closeCouponPicker">
+        <view class="coupon-picker" @click.stop>
+          <view class="coupon-picker-header">
+            <text class="coupon-picker-title">选择优惠券</text>
+            <text class="coupon-picker-close" @click="closeCouponPicker">×</text>
+          </view>
+          <scroll-view scroll-y class="coupon-picker-list">
+            <view
+              v-for="coupon in couponOptions"
+              :key="coupon.userCouponId || coupon.id || coupon.couponId"
+              class="coupon-option"
+              :class="{ selected: String(selectedUserCouponId) === String(coupon.userCouponId) }"
+              @click="selectCoupon(coupon)"
+            >
+              <view>
+                <text class="coupon-option-name">{{ coupon.name || coupon.title || "优惠券" }}</text>
+                <text class="coupon-option-desc">满{{ coupon.threshold || coupon.minSpend || 0 }}元可用 · 抵扣¥{{ Number(coupon.deductAmount ?? coupon.amount ?? 0).toFixed(2) }}</text>
+              </view>
+              <text class="coupon-option-check">{{ String(selectedUserCouponId) === String(coupon.userCouponId) ? "✓" : "" }}</text>
+            </view>
+            <view v-if="!couponOptions.length" class="coupon-empty">暂无可用优惠券</view>
+          </scroll-view>
         </view>
       </view>
 
@@ -100,6 +161,7 @@
 import {
   createBossSettlementWechatPayment,
   getBossSettlementPayment,
+  previewBossSettlementPayment,
 } from "@/api/backend";
 
 function parseSettlementIds(value) {
@@ -146,6 +208,19 @@ export default {
       settlementIds: [],
       amount: 0,
       count: 0,
+      orderAmount: null,
+      serviceFee: null,
+      pointsAvailable: 0,
+      pointsDeductRate: 100,
+      pointsToUse: "",
+      pointsHint: "可用积分暂未获取",
+      pointsDeductAmount: 0,
+      couponLabel: "暂不可用",
+      couponDeductAmount: 0,
+      couponOptions: [],
+      selectedUserCouponId: null,
+      selectedCouponName: "",
+      couponPickerVisible: false,
       finalAmount: 0,
       selectedAccount: "wechat",
       submitting: false,
@@ -160,18 +235,98 @@ export default {
   },
   onLoad(options = {}) {
     try { const info = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync(); this.statusBarHeight = Number(info.statusBarHeight || 0) } catch (_) {}
-    this.settlementIds = parseSettlementIds(options.settlementIds)
+    // 兼容旧入口和原型中的 ids 参数，但最终统一转换为数字数组。
+    this.settlementIds = parseSettlementIds(options.settlementIds ?? options.ids)
     this.count = this.settlementIds.length || Number(options.count || 0)
     const displayAmount = Number(options.amount)
     if (Number.isFinite(displayAmount) && displayAmount >= 0) {
       this.amount = displayAmount
+      this.orderAmount = displayAmount
       this.finalAmount = displayAmount
     }
+    if (this.settlementIds.length) this.loadPaymentPreview()
   },
   onUnload() {
     this.stopPaymentPolling()
   },
   methods: {
+    async loadPaymentPreview() {
+      try {
+        const result = await previewBossSettlementPayment(
+          this.settlementIds,
+          this.selectedUserCouponId,
+        )
+        const preview = result?.data || result || {}
+        const orderAmount = Number(preview.orderAmount)
+        const serviceFee = Number(preview.serviceFee)
+        const pointsAvailable = Number(preview.pointsAvailable)
+        const pointsDeductAmount = Number(preview.pointsDeductAmount)
+        const couponDeductAmount = Number(preview.couponDeductAmount)
+        if (Number.isFinite(orderAmount)) this.orderAmount = orderAmount
+        if (Number.isFinite(serviceFee)) this.serviceFee = serviceFee
+        if (Number.isFinite(pointsAvailable)) {
+          const rate = Number(preview.pointsDeductRate)
+          this.pointsAvailable = Math.max(0, Math.floor(pointsAvailable))
+          if (Number.isFinite(rate) && rate > 0) this.pointsDeductRate = rate
+          this.pointsHint = `可用积分 ${pointsAvailable}${Number.isFinite(rate) && rate > 0 ? ` · ${rate}积分 = ¥1` : ""}`
+        }
+        if (Number.isFinite(pointsDeductAmount)) this.pointsDeductAmount = pointsDeductAmount
+        if (Number.isFinite(couponDeductAmount)) this.couponDeductAmount = couponDeductAmount
+        // 该字段由后端按当前结算单金额筛选，作为最终可用优惠券列表。
+        const options = preview.couponOptions
+        this.couponOptions = Array.isArray(options) ? options : []
+        this.couponLabel = preview.couponAvailable === true
+          ? (preview.couponName || this.selectedCouponName || "可用优惠券")
+          : "暂不可用"
+        const payableAmount = Number(preview.payableAmount ?? preview.amount)
+        if (Number.isFinite(payableAmount) && payableAmount >= 0) {
+          this.amount = payableAmount
+          this.finalAmount = payableAmount
+        }
+      } catch (error) {
+        uni.showToast({ title: error?.message || "费用明细加载失败", icon: "none" })
+      }
+    },
+    openCouponPicker() {
+      if (!this.couponOptions.length) {
+        uni.showToast({ title: "暂无可用优惠券", icon: "none" })
+        return
+      }
+      this.couponPickerVisible = true
+    },
+    closeCouponPicker() {
+      this.couponPickerVisible = false
+    },
+    selectCoupon(coupon) {
+      // 结算优惠券接口使用用户券记录 ID，不使用 couponId 作为支付入参。
+      const userCouponId = coupon?.userCouponId
+      if (userCouponId === undefined || userCouponId === null || userCouponId === "") {
+        uni.showToast({ title: "优惠券信息不完整，请刷新后重试", icon: "none" })
+        return
+      }
+      this.selectedUserCouponId = userCouponId
+      this.selectedCouponName = coupon.name || coupon.title || "优惠券"
+      this.couponPickerVisible = false
+      this.loadPaymentPreview()
+    },
+    formatFee(value, negative = false) {
+      const amount = Number(value)
+      if (!Number.isFinite(amount)) return "暂未提供"
+      return `${negative ? "-" : ""}¥${amount.toFixed(2)}`
+    },
+    handlePointsInput(event) {
+      const raw = String(event?.detail?.value ?? "").replace(/\D/g, "")
+      if (!raw) {
+        this.pointsToUse = ""
+        this.pointsDeductAmount = 0
+        return
+      }
+      const value = Math.min(Number(raw), this.pointsAvailable)
+      this.pointsToUse = String(Number.isFinite(value) ? value : 0)
+      this.pointsDeductAmount = Number(
+        (Number(this.pointsToUse) / this.pointsDeductRate).toFixed(2),
+      )
+    },
     goBack() {
       uni.navigateBack()
     },
@@ -192,6 +347,10 @@ export default {
         uni.showToast({ title: "缺少待付款结算单", icon: "none" })
         return
       }
+      if (Number(this.pointsToUse) > 0) {
+        uni.showToast({ title: "支付接口暂未支持提交积分抵扣", icon: "none" })
+        return
+      }
       if (!this.idempotencyKey) this.idempotencyKey = createIdempotencyKey()
       this.submitting = true
       uni.showLoading({ title: "创建支付订单...", mask: true })
@@ -199,8 +358,27 @@ export default {
         const result = await createBossSettlementWechatPayment(
           this.settlementIds,
           this.idempotencyKey,
+          this.selectedUserCouponId,
         )
         const payment = result?.data || result || {}
+        const orderAmount = Number(payment.orderAmount)
+        const serviceFee = Number(payment.serviceFee)
+        const pointsAvailable = Number(payment.pointsAvailable)
+        const pointsDeductAmount = Number(payment.pointsDeductAmount)
+        const couponDeductAmount = Number(payment.couponDeductAmount)
+        if (Number.isFinite(orderAmount)) this.orderAmount = orderAmount
+        if (Number.isFinite(serviceFee)) this.serviceFee = serviceFee
+        if (Number.isFinite(pointsAvailable)) {
+          const rate = Number(payment.pointsDeductRate)
+          this.pointsAvailable = Math.max(0, Math.floor(pointsAvailable))
+          if (Number.isFinite(rate) && rate > 0) this.pointsDeductRate = rate
+          this.pointsHint = `可用积分 ${pointsAvailable}${Number.isFinite(rate) && rate > 0 ? ` · ${rate}积分 = ¥1` : ""}`
+        }
+        if (Number.isFinite(pointsDeductAmount)) this.pointsDeductAmount = pointsDeductAmount
+        if (Number.isFinite(couponDeductAmount)) this.couponDeductAmount = couponDeductAmount
+        this.couponLabel = payment.couponAvailable === true
+          ? (payment.couponName || "可用优惠券")
+          : "暂不可用"
         const serverAmount = Number(payment.amount)
         if (Number.isFinite(serverAmount) && serverAmount >= 0) {
           this.amount = serverAmount
@@ -388,6 +566,141 @@ export default {
   color: #333;
   margin-bottom: 14px;
   display: block;
+}
+
+.fee-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #f0f0f0;
+  box-sizing: border-box;
+}
+
+.fee-label-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fee-label,
+.fee-value,
+.coupon-value {
+  color: #666;
+  font-size: 14px;
+}
+
+.fee-value {
+  color: #333;
+  font-weight: 500;
+}
+
+.fee-accent { color: #ff6b35; }
+.fee-green { color: #059669; }
+
+.fee-hint {
+  color: #bbb;
+  font-size: 11px;
+}
+
+.points-input-row { align-items: flex-start; }
+
+.points-input-wrap {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  opacity: .75;
+}
+
+.points-input {
+  width: 88px;
+  height: 34px;
+  padding: 0 4px 0 10px;
+  color: #333;
+  font-size: 13px;
+  text-align: right;
+  background: transparent;
+}
+
+.points-unit {
+  padding: 0 10px 0 4px;
+  color: #999;
+  font-size: 12px;
+}
+
+.coupon-row { align-items: center; }
+.coupon-value { color: #999; }
+.coupon-arrow { color: #bbb; font-size: 16px; }
+
+.coupon-picker-mask {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, .45);
+}
+
+.coupon-picker {
+  width: 100%;
+  max-height: 65vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+}
+
+.coupon-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.coupon-picker-title { color: #333; font-size: 16px; font-weight: 600; }
+.coupon-picker-close { color: #999; font-size: 24px; line-height: 1; }
+
+.coupon-picker-list { max-height: 48vh; padding: 8px 16px 16px; box-sizing: border-box; }
+
+.coupon-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 62px;
+  padding: 12px;
+  margin-top: 8px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+}
+
+.coupon-option.selected { border-color: #ff6b35; background: #fff8f5; }
+.coupon-option-name { display: block; color: #333; font-size: 14px; font-weight: 600; }
+.coupon-option-desc { display: block; margin-top: 5px; color: #999; font-size: 12px; }
+.coupon-option-check { color: #ff6b35; font-size: 18px; font-weight: 700; }
+.coupon-empty { padding: 36px 0; color: #999; font-size: 13px; text-align: center; }
+
+.fee-total-row {
+  margin-top: 4px;
+  border-bottom: 0;
+}
+
+.fee-total-label {
+  color: #333;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fee-total-value {
+  color: #ff6b35;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .order-summary {

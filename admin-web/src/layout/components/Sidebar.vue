@@ -72,6 +72,7 @@ const menuGroups = [
     name: '用户管理',
     items: [
       { path: '/admin/workers', name: '零工管理', icon: 'fa-user', permKey: 'permUser.u1' },
+      { path: '/admin/credit-manage', name: '信用分管理', icon: 'fa-star', permKey: 'permUser.u1' },
       { path: '/admin/bosses', name: '老板管理', icon: 'fa-building', permKey: 'permUser.u2' },
       { path: '/admin/enterprise-cert', name: '企业认证', icon: 'fa-id-card', permKey: 'permUser.u2' }
     ]

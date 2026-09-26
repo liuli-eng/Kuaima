@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS reward_earning_rule (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO admin_setting(setting_key, setting_value, category, description) VALUES
-('reward.withdraw.minimumAmount', '1000', 'reward', '奖励金最低提现金额（分）'),
+('reward.withdraw.minimumAmount', '1', 'reward', '奖励金最低提现金额（分），测试阶段为1分'),
 ('reward.withdraw.enabled', 'true', 'reward', '奖励金提现开关'),
 ('reward.withdraw.disabledReason', '', 'reward', '奖励金提现关闭原因'),
 ('reward.withdraw.channel', 'WECHAT', 'reward', '奖励金提现渠道');

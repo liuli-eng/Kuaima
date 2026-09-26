@@ -83,6 +83,18 @@ public class PointPurchaseService {
         o.setPointsGranted(true); orderRepo.save(o);
     }
 
+    @Transactional
+    public OrderResponse confirmPayment(String orderNo, String payMethod, String transactionId, Long operatorId, String operatorName) {
+        if (orderNo == null || orderNo.isBlank()) throw new IllegalArgumentException("订单号不能为空");
+        PointPurchaseOrder o = orderRepo.findByOrderNoForUpdate(orderNo).orElseThrow(() -> new EntityNotFoundException("积分购买订单不存在: " + orderNo));
+        if ("支付成功".equals(o.getStatus())) return toDto(o);
+        if (!"待支付".equals(o.getStatus())) throw new IllegalArgumentException("当前订单状态不能确认支付");
+        if (payMethod != null && !payMethod.isBlank() && !payMethod.equals(o.getPayMethod())) throw new IllegalArgumentException("支付方式与订单不一致");
+        o.setStatus("支付成功"); o.setPaidAt(LocalDateTime.now(ZONE)); o.setOperatorId(operatorId); o.setOperatorName(operatorName); o.setOperatorTime(LocalDateTime.now(ZONE));
+        if (transactionId != null && !transactionId.isBlank()) o.setWechatTransactionId(transactionId.trim());
+        grant(o); return toDto(o);
+    }
+
     public Page<OrderResponse> search(String keyword, String payMethod, String status, LocalDate date, Pageable pageable) {
         var range = range(date); Page<PointPurchaseOrder> p = orderRepo.search(blank(keyword), blank(payMethod), blank(status), range[0], range[1], pageable); return p.map(this::toDto);
     }

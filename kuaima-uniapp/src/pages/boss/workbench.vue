@@ -144,25 +144,25 @@
 
     <!-- 底部TabBar -->
     <view class="tab-bar">
-      <view class="tab-item" @click="switchTab('home')">
+      <view v-if="canAccess('HOME_VIEW')" class="tab-item" @click="switchTab('home')">
         <view class="tab-icon-wrap">
           <text class="tab-ico">🏠</text>
         </view>
         <text class="tab-label">首页</text>
       </view>
-      <view class="tab-item" @click="switchTab('order')">
+      <view v-if="canAccess('ORDER_VIEW')" class="tab-item" @click="switchTab('order')">
         <view class="tab-icon-wrap">
           <text class="tab-ico">📅</text>
         </view>
         <text class="tab-label">招工订单</text>
       </view>
-      <view class="tab-item active">
+      <view v-if="canAccess('WORKBENCH_VIEW')" class="tab-item active">
         <view class="tab-icon-wrap active">
           <text class="tab-ico">💼</text>
         </view>
         <text class="tab-label active">工作台</text>
       </view>
-      <view class="tab-item" @click="switchTab('message')">
+      <view v-if="canAccess('MESSAGE_VIEW')" class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap">
           <text class="tab-ico">💬</text>
         </view>
@@ -179,6 +179,7 @@
 </template>
 
 <script>
+import { hasEnterprisePermission } from "@/api/enterprise-context";
 export default {
   data() {
     return {
@@ -197,6 +198,7 @@ export default {
     this.currentTime = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
   },
   methods: {
+    canAccess(code) { return hasEnterprisePermission(code); },
     navigateTo(page) {
       const pages = {
         members: "/pages/boss/members",

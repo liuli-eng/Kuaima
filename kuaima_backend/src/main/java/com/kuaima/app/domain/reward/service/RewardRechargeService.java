@@ -159,7 +159,7 @@ public class RewardRechargeService {
         RewardRechargeOrder order = orders.findByOrderNoForUpdate(orderNo)
                 .orElseThrow(() -> new EntityNotFoundException("奖励金充值订单不存在"));
         if (Boolean.TRUE.equals(order.getRewardCredited())) return order;
-        ledger.credit(order.getUserId(), value(order.getAmount()).add(value(order.getBonusAmount())), "REWARD_RECHARGE", order.getId(),
+        ledger.credit(order.getUserId(), UserRole.BOSS, value(order.getAmount()).add(value(order.getBonusAmount())), "REWARD_RECHARGE", order.getId(),
                 "微信充值奖励金", "微信支付奖励金充值", "REWARD_RECHARGE:" + order.getId());
         order.setRewardCredited(true);
         order.setStatus("PAID");
@@ -238,7 +238,7 @@ public class RewardRechargeService {
 
     private BigDecimal ledgerAccount(Long userId) {
         if (accounts == null) return BigDecimal.ZERO.setScale(2);
-        return accounts.findByUserId(userId).map(a -> value(a.getBalance())).orElse(BigDecimal.ZERO.setScale(2));
+        return accounts.findByUserIdAndRole(userId, UserRole.BOSS).map(a -> value(a.getBalance())).orElse(BigDecimal.ZERO.setScale(2));
     }
 
     private BigDecimal value(BigDecimal value) { return value == null ? BigDecimal.ZERO.setScale(2) : value.setScale(2); }

@@ -45,8 +45,14 @@ public class RulesController {
         return Result.success(result.getContent(), page, result.getTotalElements());
     }
 
+    @Operation(summary = "平台规则列表", description = "返回平台规则，并兼容未设置 rule_type 的历史数据")
+    @GetMapping("/platform")
+    public Result<List<Rules>> platformRules() {
+        return Result.success(repo.findPlatformRules());
+    }
+
     @Operation(summary = "规则详情", description = "按 id 查询 Rules 完整信息")
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public Result<Rules> get(@PathVariable Long id) {
         return Result.success(repo.findById(id).orElseThrow());
     }

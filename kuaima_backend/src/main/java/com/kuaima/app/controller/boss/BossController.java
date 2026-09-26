@@ -364,7 +364,7 @@ public class BossController {
         Long current = requireCurrentBossId(authentication);
         if (!current.equals(userId)) throw new ForbiddenBusinessException("只能查询当前老板账号资产");
         Map<String, Object> data = new HashMap<>();
-        data.put("balance", walletService.getOrCreateWallet(userId).getBalance());
+        data.put("balance", walletService.getOrCreateWallet(userId, UserRole.BOSS).getBalance());
         data.put("points", pointsAccountRepository.findByUserIdAndRole(userId, UserRole.BOSS)
                 .map(a -> a.getBalance() == null ? 0 : a.getBalance()).orElse(0));
         Date now = new Date(System.currentTimeMillis());

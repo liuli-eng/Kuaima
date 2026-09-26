@@ -29,27 +29,28 @@
       <div class="edit-header-left">
         <div class="edit-header-info">
           <h2>{{ isEdit ? '编辑规则' : '新增规则' }}</h2>
-          <div class="edit-header-meta">
+          <div v-if="currentType !== 'platform'" class="edit-header-meta">
             <span class="edit-id-badge">{{ isEdit ? ('ID: ' + (form.code || form.id || '--')) : '新规则' }}</span>
             <span>{{ form.category || typeCategoryMap[currentType] }}</span>
           </div>
         </div>
-        <span :class="['status-badge', statusBadgeClass]">{{ statusLabel(form.status) }}</span>
+        <span v-if="currentType !== 'platform'" :class="['status-badge', statusBadgeClass]">{{ statusLabel(form.status) }}</span>
       </div>
       <div class="edit-header-actions">
         <button class="btn btn-outline" @click="goBack">
           <i class="fas fa-arrow-left"></i> 返回列表
         </button>
-        <button class="btn btn-outline" @click="previewRule">
+        <button v-if="currentType !== 'platform'" class="btn btn-outline" @click="previewRule">
           <i class="fas fa-eye"></i> 预览
         </button>
+        <button v-else class="btn btn-outline" @click="saveDraft"><i class="fas fa-save"></i> 保存草稿</button>
         <button class="btn btn-primary" @click="saveAndPublish">
           <i class="fas fa-check"></i> 保存发布
         </button>
       </div>
     </div>
 
-    <div class="edit-layout">
+    <div class="edit-layout" :class="{ 'platform-edit': currentType === 'platform' }">
       <!-- 左栏 -->
       <div class="left-col">
         <!-- 1. 基本信息 -->
@@ -70,7 +71,7 @@
               </div>
             </div>
 
-            <div style="margin-bottom: 18px;">
+            <div v-if="currentType !== 'platform'" style="margin-bottom: 18px;">
               <label class="form-label">规则类型 <span class="required">*</span></label>
               <el-select v-model="currentType" style="width: 240px;" @change="selectType">
                 <el-option v-for="t in typeOptions" :key="t.key" :label="t.name" :value="t.key" />
@@ -80,7 +81,8 @@
             <div class="form-group">
               <div>
                 <label class="form-label">规则分类</label>
-                <el-input v-model="form.category" placeholder="自动生成或手动填写" />
+                <el-select v-if="currentType === 'platform'" v-model="form.category" style="width: 100%;"><el-option label="规则公示" value="规则公示" /><el-option label="收费规则" value="收费规则" /><el-option label="交易规则" value="交易规则" /><el-option label="飞单认定与处理规则" value="飞单认定与处理规则" /></el-select>
+                <el-input v-else v-model="form.category" placeholder="自动生成或手动填写" />
               </div>
               <div>
                 <label class="form-label">状态</label>
@@ -120,6 +122,11 @@
                 <button type="button" title="引用" @click="exec('formatBlock', 'blockquote')"><i class="fas fa-quote-left"></i></button>
                 <span class="divider"></span>
                 <button type="button" title="超链接" @click="insertLink"><i class="fas fa-link"></i></button>
+                <button type="button" title="图片"><i class="fas fa-image"></i></button>
+                <span class="divider"></span>
+                <button type="button" title="左对齐" @click="exec('justifyLeft')"><i class="fas fa-align-left"></i></button>
+                <button type="button" title="居中" @click="exec('justifyCenter')"><i class="fas fa-align-center"></i></button>
+                <button type="button" title="右对齐" @click="exec('justifyRight')"><i class="fas fa-align-right"></i></button>
                 <span class="divider"></span>
                 <button type="button" title="撤销" @click="exec('undo')"><i class="fas fa-undo"></i></button>
                 <button type="button" title="重做" @click="exec('redo')"><i class="fas fa-redo"></i></button>
@@ -136,7 +143,7 @@
         </div>
 
         <!-- 3. 发布设置 -->
-        <div class="card">
+        <div v-if="currentType !== 'platform'" class="card">
           <div class="form-section">
             <div class="form-section-title">
               <span class="section-num">3</span> 发布设置
@@ -183,7 +190,7 @@
         </div>
 
         <!-- 底部操作栏 -->
-        <div class="action-bar">
+        <div v-if="currentType !== 'platform'" class="action-bar">
           <button class="btn btn-outline" @click="goBack">
             <i class="fas fa-arrow-left"></i> 返回
           </button>
@@ -197,7 +204,7 @@
       </div>
 
       <!-- 右栏 -->
-      <div class="right-col">
+      <div v-if="currentType !== 'platform'" class="right-col">
         <!-- 规则信息 -->
         <div class="card info-card">
           <div class="info-card-title">
@@ -288,7 +295,7 @@ const isEdit = computed(() => !!routeId.value)
 const isCredit = computed(() => routeTab.value === 'credit' || currentType.value === 'credit')
 
 const typeCategoryMap = {
-  platform: '平台规则',
+  platform: '规则公示',
   credit: '信用分规则',
   fee: '收费规则',
   trade: '交易规则',
@@ -569,6 +576,8 @@ onMounted(loadExisting)
   gap: 20px;
   align-items: start;
 }
+.edit-layout.platform-edit { display: block; }
+.platform-edit .left-col { gap: 16px; }
 .left-col, .right-col {
   display: flex;
   flex-direction: column;
@@ -667,7 +676,7 @@ onMounted(loadExisting)
   cursor: pointer;
 }
 .content-editor {
-  min-height: 300px;
+  min-height: 340px;
   border: 1px solid var(--border, #E5E7EB);
   border-top: none;
   border-radius: 0 0 6px 6px;

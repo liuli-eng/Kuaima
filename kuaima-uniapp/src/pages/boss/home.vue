@@ -60,19 +60,19 @@
 
     <!-- 底部TabBar -->
     <view class="tab-bar">
-      <view class="tab-item active" @click="switchTab('home')">
+      <view v-if="canAccess('HOME_VIEW')" class="tab-item active" @click="switchTab('home')">
         <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/house-white.svg" mode="aspectFit" /></view>
         <text class="tab-label">首页</text>
       </view>
-      <view class="tab-item" @click="switchTab('order')">
+      <view v-if="canAccess('ORDER_VIEW')" class="tab-item" @click="switchTab('order')">
         <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/calendar-check-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">招工订单</text>
       </view>
-      <view class="tab-item" @click="switchTab('workbench')">
+      <view v-if="canAccess('WORKBENCH_VIEW')" class="tab-item" @click="switchTab('workbench')">
         <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/briefcase-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">工作台</text>
       </view>
-      <view class="tab-item" @click="switchTab('message')">
+      <view v-if="canAccess('MESSAGE_VIEW')" class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/comment-dots-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">消息</text>
       </view>
@@ -93,6 +93,7 @@ import {
 } from "@/api/backend";
 import { handleTokenInvalid } from "@/api/auth";
 import { checkBossPublishEligibility } from "@/api/publish-eligibility";
+import { hasEnterprisePermission } from "@/api/enterprise-context";
 import squarePlusIcon from "/static/icons/boss-home/square-plus-orange.svg";
 import fileLinesIcon from "/static/icons/boss-home/file-lines.svg";
 import gearIcon from "/static/icons/boss-home/gear.svg";
@@ -171,6 +172,7 @@ export default {
     },
   },
   methods: {
+    canAccess(code) { return hasEnterprisePermission(code); },
     handleRecruitSettingsSaved() {
       this.loadAttendanceCodes();
       this.loadHomeOverview();

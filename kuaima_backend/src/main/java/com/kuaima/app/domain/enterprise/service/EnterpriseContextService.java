@@ -12,6 +12,11 @@ import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.security.model.LoginUser;
 import java.util.List;
 import java.util.Objects;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
+import com.alibaba.fastjson2.JSON;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.security.core.Authentication;
@@ -26,6 +31,10 @@ public class EnterpriseContextService {
         }
         public boolean can(String permission) {
             if (ownerOrAdmin()) return true;
+            Set<String> configured = permissions(member.getPermissions());
+            if (configured.contains(permission)) return true;
+            // 兼容历史数据：尚未配置细粒度权限的成员继续使用旧角色默认权限。
+            if (!configured.isEmpty()) return false;
             if ("VIEWER".equals(member.getMemberRole())) return permission.endsWith("_VIEW");
             if ("RECRUITER".equals(member.getMemberRole())) {
                 return permission.startsWith("ORDER_") || "TALENT_VIEW".equals(permission)
@@ -36,7 +45,21 @@ public class EnterpriseContextService {
                 return permission.startsWith("SETTLEMENT_") || permission.startsWith("COUPON_")
                         || "ORDER_VIEW".equals(permission);
             }
-            return false;
+                return false;
+        }
+
+        private static Set<String> permissions(String value) {
+            if (!StringUtils.hasText(value)) return Collections.emptySet();
+            try {
+                if (value.trim().startsWith("[")) {
+                    return JSON.parseArray(value).stream().map(String::valueOf)
+                            .map(String::toUpperCase).collect(Collectors.toSet());
+                }
+                return Arrays.stream(value.split(",")).map(String::trim).filter(StringUtils::hasText)
+                        .map(String::toUpperCase).collect(Collectors.toSet());
+            } catch (RuntimeException ex) {
+                return Collections.emptySet();
+            }
         }
     }
 
@@ -60,7 +83,8 @@ public class EnterpriseContextService {
         User user = users.findById(login.id())
                 .orElseThrow(() -> new ForbiddenBusinessException("当前用户不存在"));
         EnterpriseMember member = resolveMember(login, user);
-        if (member == null || !"ACTIVE".equals(member.getStatus())) {
+        if (member == null || !"ACTIVE".equals(member.getStatus())
+                || (!"OWNER".equals(member.getMemberRole()) && Boolean.FALSE.equals(member.getPortalEnabled()))) {
             throw new ForbiddenBusinessException("当前账号不是有效的企业成员");
         }
         Enterprise enterprise = enterprises.findById(member.getEnterpriseId())

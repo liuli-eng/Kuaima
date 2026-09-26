@@ -356,12 +356,28 @@ export function paySettlement(id) {
 export function createBossSettlementWechatPayment(
   settlementIds = [],
   idempotencyKey = "",
+  userCouponId = null,
 ) {
   return request({
     url: "/boss/settlements/payments/wechat",
     method: "POST",
-    data: { settlementIds },
+    data: {
+      settlementIds,
+      ...(userCouponId ? { userCouponId } : {}),
+    },
     header: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    skipUserIdHeader: true,
+    skipMock: true,
+  });
+}
+
+/** 查询老板结算付款预览，不创建支付订单。 */
+export function previewBossSettlementPayment(settlementIds = [], userCouponId = null) {
+  return request({
+    url: `/boss/settlements/payments/preview?${query({
+      settlementIds: settlementIds.join(","),
+      userCouponId: userCouponId || undefined,
+    })}`,
     skipUserIdHeader: true,
     skipMock: true,
   });
@@ -1444,6 +1460,25 @@ export function createBossSubAccount(data = {}) {
     url: "/boss/sub-accounts",
     method: "POST",
     data,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 修改当前企业成员的菜单权限，memberId 为企业成员 ID。 */
+export function updateBossSubAccountPermissions(memberId, permissionCodes = []) {
+  return request({
+    url: `/boss/sub-accounts/${encodeURIComponent(memberId)}/permissions`,
+    method: "PUT",
+    data: { permissionCodes },
+    skipUserIdHeader: true,
+  });
+}
+
+/** 撤销当前企业成员的企业端权限。 */
+export function revokeBossSubAccountPermissions(memberId) {
+  return request({
+    url: `/boss/sub-accounts/${encodeURIComponent(memberId)}/permissions`,
+    method: "DELETE",
     skipUserIdHeader: true,
   });
 }

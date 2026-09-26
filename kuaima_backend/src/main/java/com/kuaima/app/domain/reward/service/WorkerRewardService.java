@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.data.domain.Page;
@@ -58,7 +59,7 @@ public class WorkerRewardService {
     public Map<String, Object> overview(Long userId) {
         User user = currentUser(userId);
         RewardWithdrawSettings settings = settingsService.settings();
-        RewardAccount account = accounts.findByUserId(userId).orElse(null);
+        RewardAccount account = accounts.findByUserIdAndRole(userId, "USER").orElseGet(() -> accounts.findByUserId(userId).orElse(null));
         long balance = fen(account == null ? null : account.getBalance());
         long frozen = fen(account == null ? null : account.getFrozenAmount());
         long withdrawable = Math.max(0, balance - frozen);
@@ -80,8 +81,8 @@ public class WorkerRewardService {
             throw new IllegalArgumentException("type 只能是 ALL、INCOME 或 WITHDRAW");
         }
         Page<RewardFlow> page = "ALL".equals(normalized)
-                ? flows.findByUserIdOrderByCreatedAtDescIdDesc(userId, pageable)
-                : flows.findByUserIdAndTypeOrderByCreatedAtDescIdDesc(userId, storageType(normalized), pageable);
+                ? Optional.ofNullable(flows.findByUserIdAndRoleOrderByCreatedAtDescIdDesc(userId, "USER", pageable)).orElseGet(() -> flows.findByUserIdOrderByCreatedAtDescIdDesc(userId, pageable))
+                : Optional.ofNullable(flows.findByUserIdAndRoleAndTypeOrderByCreatedAtDescIdDesc(userId, "USER", storageType(normalized), pageable)).orElseGet(() -> flows.findByUserIdAndTypeOrderByCreatedAtDescIdDesc(userId, storageType(normalized), pageable));
         return Map.of(
                 "records", page.map(this::recordView).getContent(),
                 "total", page.getTotalElements(),
@@ -113,7 +114,8 @@ public class WorkerRewardService {
 
         RewardWithdrawal submitted;
         try {
-            submitted = withdrawalProcessor.submit(userId, amount, normalizedChannel, settings, key);
+            submitted = withdrawalProcessor.submit(userId, amount, normalizedChannel, settings, key, "USER");
+            if (submitted == null) submitted = withdrawalProcessor.submit(userId, amount, normalizedChannel, settings, key);
         } catch (DataIntegrityViolationException e) {
             RewardWithdrawal concurrent = withdrawalProcessor.existing(userId, amount, normalizedChannel, key).orElse(null);
             if (concurrent != null) return withdrawalView(concurrent);
@@ -192,7 +194,7 @@ public class WorkerRewardService {
     }
 
     private Map<String, Object> withdrawalView(RewardWithdrawal withdrawal) {
-        RewardAccount account = accounts.findByUserId(withdrawal.getUserId()).orElse(null);
+        RewardAccount account = accounts.findByUserIdAndRole(withdrawal.getUserId(), "USER").orElseGet(() -> accounts.findByUserId(withdrawal.getUserId()).orElse(null));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("withdrawId", withdrawal.getId());
         result.put("amount", fen(withdrawal.getAmount()));

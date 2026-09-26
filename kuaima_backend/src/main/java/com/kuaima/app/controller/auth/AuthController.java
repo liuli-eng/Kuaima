@@ -25,6 +25,8 @@ import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.enterprise.entity.EnterpriseMember;
 import com.kuaima.app.domain.enterprise.repository.EnterpriseMemberRepository;
+import com.kuaima.app.domain.enterprise.repository.EnterpriseRepository;
+import com.kuaima.app.domain.enterprise.entity.Enterprise;
 import com.kuaima.app.security.dto.WechatLoginDto;
 import com.kuaima.app.security.model.LoginUser;
 import com.kuaima.app.security.util.JwtUtil;
@@ -45,13 +47,14 @@ public class AuthController {
     private final WechatService wechatService;
     private final SmsService smsService;
     private final EnterpriseMemberRepository enterpriseMemberRepository;
+    private final EnterpriseRepository enterpriseRepository;
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           JwtUtil jwtUtil,
                           WechatService wechatService,
                           SmsService smsService) {
-        this(userRepository, passwordEncoder, jwtUtil, wechatService, smsService, null);
+        this(userRepository, passwordEncoder, jwtUtil, wechatService, smsService, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -60,13 +63,69 @@ public class AuthController {
                           JwtUtil jwtUtil,
                           WechatService wechatService,
                           SmsService smsService,
-                          EnterpriseMemberRepository enterpriseMemberRepository) {
+                          EnterpriseMemberRepository enterpriseMemberRepository,
+                          EnterpriseRepository enterpriseRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.wechatService = wechatService;
         this.smsService = smsService;
         this.enterpriseMemberRepository = enterpriseMemberRepository;
+        this.enterpriseRepository = enterpriseRepository;
+    }
+
+    @GetMapping("/enterprise-contexts")
+    @Operation(summary = "查询当前用户可进入的企业")
+    public Result<List<Map<String, Object>>> enterpriseContexts(Authentication authentication) {
+        Long uid = currentUserId(authentication);
+        if (uid == null || enterpriseMemberRepository == null || enterpriseRepository == null) {
+            return Result.success(List.of());
+        }
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (EnterpriseMember member : enterpriseMemberRepository.findByUserIdAndStatus(uid, "ACTIVE")) {
+            if (!"OWNER".equals(member.getMemberRole()) && Boolean.FALSE.equals(member.getPortalEnabled())) continue;
+            Enterprise enterprise = enterpriseRepository.findById(member.getEnterpriseId()).orElse(null);
+            if (enterprise == null || !"ACTIVE".equals(enterprise.getStatus())) continue;
+            Map<String, Object> item = new HashMap<>();
+            item.put("enterpriseId", enterprise.getId());
+            item.put("enterpriseName", enterprise.getCompanyName());
+            item.put("memberRole", member.getMemberRole());
+            item.put("permissions", member.getPermissions() == null ? List.of()
+                    : com.alibaba.fastjson2.JSON.parseArray(member.getPermissions()));
+            result.add(item);
+        }
+        return Result.success(result);
+    }
+
+    public record EnterpriseContextRequest(Long enterpriseId) {}
+
+    @PostMapping("/enterprise-context/switch")
+    @Transactional(readOnly = true)
+    @Operation(summary = "切换进入指定企业菜单")
+    public Result<Map<String, Object>> switchEnterpriseContext(@RequestBody EnterpriseContextRequest request,
+                                                                Authentication authentication) {
+        Long uid = currentUserId(authentication);
+        if (uid == null || request == null || request.enterpriseId() == null) {
+            throw new IllegalArgumentException("enterpriseId 不能为空");
+        }
+        EnterpriseMember member = enterpriseMemberRepository.findByEnterpriseIdAndUserId(request.enterpriseId(), uid)
+                .filter(m -> "ACTIVE".equals(m.getStatus()))
+                .filter(m -> "OWNER".equals(m.getMemberRole()) || !Boolean.FALSE.equals(m.getPortalEnabled()))
+                .orElseThrow(() -> new com.kuaima.app.common.ForbiddenBusinessException("当前用户未获准进入该企业"));
+        Enterprise enterprise = enterpriseRepository.findById(member.getEnterpriseId())
+                .filter(e -> "ACTIVE".equals(e.getStatus()))
+                .orElseThrow(() -> new com.kuaima.app.common.ForbiddenBusinessException("企业不存在或已停用"));
+        User user = userRepository.findById(uid).orElseThrow(() -> new EntityNotFoundException("用户不存在"));
+        String token = jwtUtil.generateAccessToken(user.getUsername(), UserRole.BOSS, uid, uid,
+                enterprise.getId(), member.getMemberRole());
+        Map<String, Object> data = new HashMap<>();
+        data.put("accessToken", token);
+        data.put("enterpriseId", enterprise.getId());
+        data.put("enterpriseName", enterprise.getCompanyName());
+        data.put("memberRole", member.getMemberRole());
+        data.put("permissions", member.getPermissions() == null ? List.of()
+                : com.alibaba.fastjson2.JSON.parseArray(member.getPermissions()));
+        return Result.success(data);
     }
 
     private Map<String, Object> buildTokenResponse(User user) {

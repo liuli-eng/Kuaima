@@ -131,7 +131,6 @@ const simulateCourse = computed(() => findCourse(["SIMULATE_ORDER", "SIMULATE", 
 const learningRuleCourse = computed(() => findCourse(["LEARNING_RULE", "RULE_LEARNING", "学习规则"]));
 const examCourse = computed(() => findCourse(["EXAM", "QUIZ", "答题测试"]) || learningRuleCourse.value);
 const orderCourse = computed(() => findCourse(["HOW_TO_ORDER", "ORDER_GUIDE", "如何接单"]));
-const learningRules = computed(() => normalizeRows(classroom.value.learningRules));
 const howToOrder = computed(() => normalizeRows(classroom.value.howToOrder));
 const platformRules = computed(() => normalizeRows(classroom.value.platformRules));
 const quizQuestions = computed(() => normalizeRows(classroom.value.quiz?.questions));
@@ -227,8 +226,8 @@ function isCourseDone(course, taskType = "COURSE") {
 }
 
 function openTask(task) {
-  if (task.key === "rule" && learningRules.value.length) {
-    return uni.navigateTo({ url: `/pages/worker/course-rule-detail?id=${encodeURIComponent(learningRules.value[0].id)}` });
+  if (task.key === "rule") {
+    return uni.navigateTo({ url: "/pages/worker/classroom-rule" });
   }
   if (task.key === "exam" && quizQuestions.value.length) {
     return uni.navigateTo({ url: "/pages/worker/quiz" });
@@ -238,9 +237,6 @@ function openTask(task) {
     return;
   }
   if (task.key === "simulate") return openCourse(task.course);
-  if (task.key === "rule") {
-    return uni.navigateTo({ url: `/pages/worker/course-rule-detail?id=${encodeURIComponent(task.course.id)}` });
-  }
   uni.navigateTo({ url: `/pages/worker/quiz?courseId=${task.course.id}` });
 }
 

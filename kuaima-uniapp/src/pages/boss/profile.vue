@@ -112,26 +112,26 @@
           </view>
           <text class="service-label">报酬支付明细</text>
         </view>
-        <view class="service-item" @click="navigateTo('expense-detail')"><view class="service-icon"><image :src="calendarIcon" mode="aspectFit" /></view><text class="service-label">费用报销明细</text></view>
+        <view class="service-item" @click="navigateTo('expense-detail')"><view class="service-icon"><image class="expense-icon" :src="calendarIcon" mode="aspectFit" /></view><text class="service-label">费用报销明细</text></view>
       </view>
 
       <!-- 其他功能 -->
       <text class="section-title">其他功能</text>
       <view class="other-grid card-shadow">
         <view class="other-item" @click="navigateTo('service-chat')">
-          <view class="other-icon" style="color: #FF6B35;">
+          <view class="other-icon">
             <image :src="headsetIcon" mode="aspectFit" />
           </view>
           <text class="other-label">联系客服</text>
         </view>
         <view class="other-item" @click="navigateTo('realname')">
-          <view class="other-icon" style="color: #FF6B35;">
+          <view class="other-icon">
             <image :src="userShieldIcon" mode="aspectFit" />
           </view>
           <text class="other-label">实名认证</text>
         </view>
         <view class="other-item" @click="navigateTo('enterprise-cert')">
-          <view class="other-icon" style="color: #FF6B35;">
+          <view class="other-icon">
             <image :src="buildingColumnsIcon" mode="aspectFit" />
           </view>
           <text class="other-label">企业认证</text>
@@ -143,25 +143,25 @@
           <text class="other-label">更换账号</text>
         </view>
         <view class="other-item" @click="navigateTo('user-agreement')">
-          <view class="other-icon" style="color: #FF6B35;">
+          <view class="other-icon">
             <image :src="fileLinesIcon" mode="aspectFit" />
           </view>
           <text class="other-label">用户服务协议</text>
         </view>
         <view class="other-item" @click="navigateTo('privacy')">
-          <view class="other-icon" style="color: #FF6B35;">
+          <view class="other-icon">
             <image :src="lockIcon" mode="aspectFit" />
           </view>
           <text class="other-label">隐私协议</text>
         </view>
         <view class="other-item" @click="navigateTo('copyright')">
-          <view class="other-icon" style="color: #FF6B35;">
+          <view class="other-icon">
             <image :src="bookOpenIcon" mode="aspectFit" />
           </view>
           <text class="other-label">知识产权规则</text>
         </view>
         <view class="other-item" @click="navigateTo('rule')">
-          <view class="other-icon" style="color: #FF6B35;">
+          <view class="other-icon">
             <image :src="clipboardListIcon" mode="aspectFit" />
           </view>
           <text class="other-label">平台规则</text>
@@ -180,25 +180,25 @@
 
     <!-- 底部TabBar -->
     <view class="tab-bar">
-      <view class="tab-item" @click="switchTab('home')">
+      <view v-if="canAccess('HOME_VIEW')" class="tab-item" @click="switchTab('home')">
         <view class="tab-icon-wrap">
           <image :src="houseGrayIcon" mode="aspectFit" />
         </view>
         <text class="tab-label">首页</text>
       </view>
-      <view class="tab-item" @click="switchTab('order')">
+      <view v-if="canAccess('ORDER_VIEW')" class="tab-item" @click="switchTab('order')">
         <view class="tab-icon-wrap">
           <image :src="calendarCheckGrayIcon" mode="aspectFit" />
         </view>
         <text class="tab-label">招工订单</text>
       </view>
-      <view class="tab-item" @click="switchTab('workbench')">
+      <view v-if="canAccess('WORKBENCH_VIEW')" class="tab-item" @click="switchTab('workbench')">
         <view class="tab-icon-wrap">
           <image src="/static/icons/boss-tabbar/briefcase-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">工作台</text>
       </view>
-      <view class="tab-item" @click="switchTab('message')">
+      <view v-if="canAccess('MESSAGE_VIEW')" class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap">
           <image :src="commentDotsGrayIcon" mode="aspectFit" />
         </view>
@@ -215,7 +215,15 @@
 </template>
 
 <script>
-import { getCurrentUser, getUser, getBossProfile, getBossProfileAssets, getBossProfileStats } from '@/api/backend'
+import {
+  getCurrentUser,
+  getUser,
+  getBossProfile,
+  getBossProfileAssets,
+  getBossProfileStats,
+  getBossBalance,
+  getBossRewardOverview,
+} from '@/api/backend'
 import userIcon from '/static/avatars/default-boss-avatar.png'
 import chevronRightIcon from '/static/icons/boss-profile/chevron-right.svg'
 import exchangeIcon from '/static/icons/boss-profile/exchange.svg'
@@ -238,6 +246,7 @@ import banIcon from '/static/icons/boss-profile/ban-dark.svg'
 import fileInvoiceDollarIcon from '/static/icons/boss-profile/file-invoice-dollar-dark.svg'
 import userShieldIcon from '/static/icons/boss-profile/user-shield-orange.svg'
 import exchangeDarkIcon from '/static/icons/boss-profile/exchange-dark.svg'
+import { hasEnterprisePermission } from '@/api/enterprise-context'
 
 export default {
   data() {
@@ -290,6 +299,7 @@ export default {
     this.loadProfile()
   },
   methods: {
+    canAccess(code) { return hasEnterprisePermission(code) },
     formatMoney(value) {
       const cents = Number(value)
       return Number.isFinite(cents) ? (cents / 100).toFixed(2) : '--'
@@ -303,13 +313,16 @@ export default {
     async loadProfile() {
       try {
         const userId = uni.getStorageSync('userId')
-        const [currentUser, user, bossProfile, assetSummary, profileStats] = await Promise.all([
+        const results = await Promise.all([
           getCurrentUser().catch(() => null),
           userId ? getUser(userId).catch(() => null) : Promise.resolve(null),
           userId ? getBossProfile(userId).catch(() => null) : Promise.resolve(null),
           userId ? getBossProfileAssets(userId).catch(() => null) : Promise.resolve(null),
           userId ? getBossProfileStats(userId).catch(() => null) : Promise.resolve(null),
+          getBossBalance().catch(() => null),
+          getBossRewardOverview().catch(() => null),
         ])
+        const [currentUser, user, bossProfile, assetSummary, profileStats, walletBalance, rewardOverview] = results
         const data = { ...(user || {}), ...(currentUser || {}), ...(bossProfile || {}) }
         const cached = uni.getStorageSync('userInfo') || {}
         const name = data.nickname || data.name || data.realName || cached.nickname || cached.name || '用户'
@@ -328,6 +341,21 @@ export default {
             { value: assetSummary.couponCount ?? 0, label: '券包(个)', page: 'voucher' },
             { value: Number.isFinite(rewardCents) ? (rewardCents / 100).toFixed(2) : '0.00', label: '奖励金(元)', page: 'reward' },
           ]
+        }
+        // 支付页返回时，资产汇总接口可能仍是旧快照；以钱包和奖励金专用接口的最新余额覆盖展示。
+        if (walletBalance) {
+          const walletCents = Number(walletBalance.balanceFen ?? walletBalance.balance)
+          if (Number.isFinite(walletCents)) this.stats.balance = (walletCents / 100).toFixed(2)
+        }
+        if (rewardOverview) {
+          const rewardAmount = Number(rewardOverview.balance ?? rewardOverview.amount)
+          if (Number.isFinite(rewardAmount)) {
+            this.assets = this.assets.map((asset) =>
+              asset.page === 'reward'
+                ? { ...asset, value: rewardAmount.toFixed(2) }
+                : asset,
+            )
+          }
         }
         if (profileStats) {
           this.stats = {
@@ -651,6 +679,11 @@ export default {
   color: #666;
 }
 
+.expense-icon {
+  /* 该 SVG 原色较浅，压暗后与同组服务图标统一。 */
+  filter: grayscale(1) brightness(0.45);
+}
+
 .other-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -673,6 +706,11 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* 其他功能图标与“我的服务”统一为深灰色；部分 SVG 本身为橙色，使用滤镜跨端统一色值。 */
+.other-icon image {
+  filter: grayscale(1) brightness(0.45);
 }
 
 .other-label {

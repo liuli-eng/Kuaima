@@ -3,6 +3,7 @@ package com.kuaima.app.controller.finance;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -106,6 +107,13 @@ public class SubAccountController {
         }
         user.setSubRole(role);
         userRepository.save(user);
+        List<String> permissionCodes = permissionCodes(body.get("permissionCodes"), body.get("menuCodes"));
+        member.setPermissions(com.alibaba.fastjson2.JSON.toJSONString(permissionCodes));
+        member.setPortalEnabled(true);
+        member.setAuthorizedBy(bossId);
+        member.setAuthorizedAt(java.time.LocalDateTime.now());
+        member.setPermissionVersion(member.getPermissionVersion() == null ? 1 : member.getPermissionVersion() + 1);
+        enterpriseMemberRepository.save(member);
         SubAccount sub = new SubAccount();
         sub.setParentId(bossId);
         sub.setUserId(user.getId());
@@ -113,6 +121,45 @@ public class SubAccountController {
         sub.setRole(role);
         sub.setStatus("ACTIVE");
         return Result.success(subAccountRepository.save(sub));
+    }
+
+    @PutMapping("/{id}/permissions")
+    @Transactional
+    @Operation(summary = "修改员工菜单权限", description = "只修改当前企业已有成员权限，不创建系统用户")
+    public Result<EnterpriseMember> updatePermissions(@PathVariable Long id,
+                                                       @RequestBody Map<String, Object> body,
+                                                       Authentication authentication) {
+        Long bossId = requireBossId(authentication);
+        EnterpriseContextService.Context context = enterpriseContextService.require(authentication, "MEMBER_WRITE");
+        EnterpriseMember member = enterpriseMemberRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("企业成员不存在"));
+        if (!context.enterprise().getId().equals(member.getEnterpriseId()) || bossId.equals(member.getUserId())) {
+            throw new ForbiddenBusinessException("无权修改该企业成员");
+        }
+        member.setPermissions(com.alibaba.fastjson2.JSON.toJSONString(permissionCodes(body.get("permissionCodes"), body.get("menuCodes"))));
+        member.setPortalEnabled(true);
+        member.setAuthorizedBy(bossId);
+        member.setAuthorizedAt(java.time.LocalDateTime.now());
+        member.setPermissionVersion(member.getPermissionVersion() == null ? 1 : member.getPermissionVersion() + 1);
+        return Result.success(enterpriseMemberRepository.save(member));
+    }
+
+    @DeleteMapping("/{id}/permissions")
+    @Transactional
+    @Operation(summary = "撤销员工企业端权限")
+    public Result<Void> revokePermissions(@PathVariable Long id, Authentication authentication) {
+        Long bossId = requireBossId(authentication);
+        EnterpriseContextService.Context context = enterpriseContextService.require(authentication, "MEMBER_WRITE");
+        EnterpriseMember member = enterpriseMemberRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("企业成员不存在"));
+        if (!context.enterprise().getId().equals(member.getEnterpriseId()) || bossId.equals(member.getUserId())) {
+            throw new ForbiddenBusinessException("无权撤销该企业成员");
+        }
+        member.setPortalEnabled(false);
+        member.setPermissions("[]");
+        member.setPermissionVersion(member.getPermissionVersion() == null ? 1 : member.getPermissionVersion() + 1);
+        enterpriseMemberRepository.save(member);
+        return Result.success();
     }
 
     @DeleteMapping("/{id}")
@@ -179,4 +226,25 @@ public class SubAccountController {
 
     private Long toLong(Object value) { return value == null ? null : Long.valueOf(value.toString()); }
     private String text(Object value) { return value == null ? "" : value.toString().trim(); }
+
+    private List<String> permissionCodes(Object permissions, Object menus) {
+        Object source = permissions != null ? permissions : menus;
+        if (!(source instanceof List<?> list)) return List.of("HOME_VIEW");
+        List<String> result = new ArrayList<>();
+        for (Object item : list) {
+            String code = text(item).toUpperCase();
+            code = switch (code) {
+                case "HOME" -> "HOME_VIEW";
+                case "ORDER", "RECRUIT_ORDER" -> "ORDER_VIEW";
+                case "MESSAGE" -> "MESSAGE_VIEW";
+                case "WORKBENCH" -> "WORKBENCH_VIEW";
+                case "ATTENDANCE" -> "ATTENDANCE_VIEW";
+                case "SETTLEMENT" -> "SETTLEMENT_VIEW";
+                case "REPORT" -> "REPORT_VIEW";
+                default -> code;
+            };
+            if (!code.isBlank() && code.length() <= 60 && code.matches("[A-Z0-9_]+")) result.add(code);
+        }
+        return result.stream().distinct().toList();
+    }
 }

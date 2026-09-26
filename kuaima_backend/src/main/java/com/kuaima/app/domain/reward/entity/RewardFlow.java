@@ -20,6 +20,7 @@ public class RewardFlow {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(name = "user_id", nullable = false) private Long userId;
+    @Column(nullable = false, length = 20) private String role = "USER";
     @Column(nullable = false, length = 10) private String type;
     @Column(nullable = false, precision = 18, scale = 2) private BigDecimal amount;
     @Column(name = "balance_after", nullable = false, precision = 18, scale = 2) private BigDecimal balanceAfter;

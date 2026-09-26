@@ -37,7 +37,7 @@
         <el-table-column prop="payMethod" label="支付方式" width="110"><template #default="{ row }"><span :class="['pay-tag', payClass(row.payMethod)]"><i :class="payIcon(row.payMethod)"></i>{{ row.payMethod || '-' }}</span></template></el-table-column>
         <el-table-column label="状态" width="100"><template #default="{ row }"><span :class="['status-badge', statusClass(row.status)]">{{ row.status || '-' }}</span></template></el-table-column>
         <el-table-column prop="purchaseTime" label="购买时间" min-width="155"><template #default="{ row }">{{ formatTime(row.purchaseTime) }}</template></el-table-column>
-        <el-table-column label="操作" width="80" fixed="right"><template #default="{ row }"><el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button></template></el-table-column>
+        <el-table-column label="操作" width="140" fixed="right"><template #default="{ row }"><div class="action-btns"><el-button v-if="row.status === '待支付'" class="pay-action" type="primary" size="small" @click="openPayment(row)"><i class="fas fa-credit-card"></i>支付</el-button><el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button></div></template></el-table-column>
       </el-table>
       <div class="pagination"><div class="pagination-info">共 {{ total }} 条记录</div><el-pagination v-model:current-page="page" v-model:page-size="size" :page-sizes="[10, 20, 50, 100]" :total="total" layout="sizes, prev, pager, next, jumper" background @size-change="load" @current-change="load" /></div>
     </div>
@@ -59,6 +59,47 @@
               <div class="d-grid"><div class="d-item"><span>实付金额</span><b class="money-val">¥{{ currency(current.amount) }}</b></div><div class="d-item"><span>积分到账</span><b class="arrival">{{ current.status === '支付成功' ? '已实时到账' : '待支付' }}</b></div></div>
             </div>
             <div class="modal-footer"><button class="btn btn-outline" @click="detailVisible = false">关闭</button></div>
+          </div>
+        </div>
+      </Transition>
+
+      <Transition name="modal-fade">
+        <div v-if="paymentVisible" class="modal-overlay" @click.self="closePayment">
+          <div v-if="paymentCurrent" class="purchase-modal payment-modal">
+            <div class="modal-header">
+              <div class="modal-title"><i class="fas fa-credit-card payment-title-icon"></i>订单支付</div>
+              <button class="modal-close" type="button" aria-label="关闭" @click="closePayment"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+              <div class="d-section-title payment-section-title">订单信息</div>
+              <div class="pay-info-grid">
+                <div class="pay-kv"><span>订单号</span><b class="order-no">{{ paymentCurrent.orderNo }}</b></div>
+                <div class="pay-kv"><span>订单状态</span><b><span class="status-badge warning">待支付</span></b></div>
+                <div class="pay-kv"><span>购买老板</span><b>{{ paymentCurrent.bossName || '-' }}</b></div>
+                <div class="pay-kv"><span>老板ID</span><b class="order-no">{{ paymentCurrent.bossId || '-' }}</b></div>
+                <div class="pay-kv"><span>企业名称</span><b>{{ paymentCurrent.companyName || '-' }}</b></div>
+                <div class="pay-kv"><span>购买积分</span><b class="points-val">{{ number(paymentCurrent.points) }} 积分</b></div>
+              </div>
+              <div class="d-section-title payment-section-title">应付金额</div>
+              <div class="pay-amount-box">
+                <div class="label">请在支付截止时间前完成付款</div>
+                <div class="money"><small>¥</small>{{ currency(paymentCurrent.amount) }}</div>
+                <div class="sub">积分数量 <span>{{ number(paymentCurrent.points) }}</span> · 单价 ¥0.01/积分</div>
+              </div>
+              <div class="d-section-title payment-section-title">选择支付方式</div>
+              <div class="pay-method-tabs">
+                <button :class="['pay-method-tab', { active: paymentMethod === '微信支付' }]" type="button" @click="switchPaymentMethod('微信支付')"><i class="fab fa-weixin"></i>微信支付</button>
+                <button :class="['pay-method-tab', { active: paymentMethod === '支付宝' }]" type="button" @click="switchPaymentMethod('支付宝')"><i class="fab fa-alipay"></i>支付宝</button>
+              </div>
+              <div class="pay-qr-wrap">
+                <div :class="['pay-qr-box', paymentMethod === '微信支付' ? 'wechat' : 'alipay']">
+                  <div class="qr-img"><img :src="paymentQrUrl" :alt="paymentMethod + '二维码'"><div class="qr-icon"><i :class="payIcon(paymentMethod)"></i></div></div>
+                  <div class="qr-tip">请使用{{ paymentMethod }}扫描二维码完成支付</div>
+                </div>
+              </div>
+              <div class="pay-countdown">二维码将在 <span class="num">{{ countdownText }}</span> 后过期</div>
+            </div>
+            <div class="modal-footer payment-footer"><button class="btn btn-outline" type="button" @click="refreshPaymentQr"><i class="fas fa-arrows-rotate"></i>刷新二维码</button><button class="btn btn-primary" type="button" @click="confirmPayment"><i class="fas fa-circle-check"></i>我已完成支付</button></div>
           </div>
         </div>
       </Transition>
@@ -223,11 +264,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listBosses } from '@/api/user'
 import {
   createPointPurchaseOrder,
+  confirmPointPurchasePayment,
   exportPointPurchaseOrders,
   getPointPurchaseStats,
   listPointPurchaseOrders,
@@ -248,6 +290,7 @@ const packages = [10000, 50000, 100000, 500000, 1000000, 5000000]
 const filters = reactive({ keyword: '', payMethod: '', status: '', date: '' })
 const orders = ref([]); const bosses = ref([]); const total = ref(0); const page = ref(1); const size = ref(10); const stats = reactive({ todayCount: 0, todayPoints: 0, monthPoints: 0, monthAmount: 0, changes: {} })
 const drawerVisible = ref(false); const detailVisible = ref(false); const current = ref(null); const customPoints = ref(''); const submitting = ref(false)
+const paymentVisible = ref(false); const paymentCurrent = ref(null); const paymentMethod = ref('微信支付'); const paymentSeconds = ref(15 * 60); let paymentTimer = null
 const form = reactive({ bossId: '', points: 0, payMethod: '微信支付', deal: 'paid', remark: '' })
 const statCards = computed(() => [{ label: '今日购买笔数', value: number(stats.todayCount), icon: 'fa-file-invoice-dollar', color: '' , change: stats.changes.todayCount || 0, compareLabel: '较昨日' }, { label: '今日售出积分', value: number(stats.todayPoints), icon: 'fa-coins', color: 'purple', change: stats.changes.todayPoints || 0, compareLabel: '较昨日' }, { label: '本月售出积分', value: number(stats.monthPoints), icon: 'fa-chart-line', color: 'purple', change: stats.changes.monthPoints || 0, compareLabel: '较上月' }, { label: '本月收入金额', value: `¥${money(stats.monthAmount)}`, icon: 'fa-sack-dollar', color: 'green', change: stats.changes.monthAmount || 0, compareLabel: '较上月' }])
 const number = v => Number(v || 0).toLocaleString('zh-CN')
@@ -257,6 +300,11 @@ const formatTime = v => { if (!v) return '-'; const d = typeof v === 'number' ? 
 const statusClass = s => ({ '支付成功': 'success', '待支付': 'warning', '已退款': 'default' }[s] || 'default')
 const payClass = v => ({ '微信支付': 'pay-wechat', '支付宝': 'pay-alipay', '对公转账': 'pay-bank' }[v] || '')
 const payIcon = v => ({ '微信支付': 'fab fa-weixin', '支付宝': 'fab fa-alipay', '对公转账': 'fas fa-building-columns' }[v] || 'fas fa-wallet')
+const countdownText = computed(() => paymentSeconds.value <= 0 ? '已过期' : String(Math.floor(paymentSeconds.value / 60)).padStart(2, '0') + ':' + String(paymentSeconds.value % 60).padStart(2, '0'))
+const paymentQrUrl = computed(() => {
+  const target = paymentMethod.value === '微信支付' ? 'https://pay.weixin.qq.com/mch/pay' : 'https://qr.alipay.com/pay'
+  return 'https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=' + encodeURIComponent(target)
+})
 const packageCount = v => v / 10000
 const packageTag = v => ({ 500000: '常用', 5000000: '企业推荐' }[v] || '')
 const bossOptionLabel = b => `${b.name}（${b.id}） · ${b.companyName || '未填写企业名称'} · 企业编号：${b.companyCode || '-'}`
@@ -265,6 +313,23 @@ async function load () { try { const [listRes, statRes] = await Promise.all([lis
 async function loadBosses () { try { const r = await listBosses({ page: 0, size: 100 }); const d = r.data; bosses.value = (Array.isArray(d) ? d : (d?.content || d?.list || [])).map(b => ({ ...b, name: b.name || b.nickname || b.username || '-', companyName: b.companyName || b.company || b.enterpriseName || '', companyCode: b.companyCode || b.enterpriseCode || '' })) } catch { bosses.value = [] } }
 function search () { page.value = 1; load() }; function reset () { Object.assign(filters, { keyword: '', payMethod: '', status: '', date: '' }); search() }
 function showDetail (row) { current.value = row; detailVisible.value = true }
+function stopPaymentTimer () { if (paymentTimer) { clearInterval(paymentTimer); paymentTimer = null } }
+function startPaymentTimer () { stopPaymentTimer(); paymentTimer = setInterval(() => { if (paymentSeconds.value <= 0) return stopPaymentTimer(); paymentSeconds.value -= 1 }, 1000) }
+function openPayment (row) { paymentCurrent.value = row; paymentMethod.value = row.payMethod === '支付宝' ? '支付宝' : '微信支付'; paymentSeconds.value = 15 * 60; paymentVisible.value = true; startPaymentTimer() }
+function closePayment () { paymentVisible.value = false; paymentCurrent.value = null; stopPaymentTimer() }
+function switchPaymentMethod (method) { paymentMethod.value = method; paymentSeconds.value = 15 * 60; startPaymentTimer() }
+function refreshPaymentQr () { paymentSeconds.value = 15 * 60; startPaymentTimer(); ElMessage.success('二维码已刷新，倒计时重置为 15 分钟') }
+async function confirmPayment () {
+  if (!paymentCurrent.value) return
+  try {
+    await confirmPointPurchasePayment(paymentCurrent.value.orderNo, { payMethod: paymentMethod.value })
+    ElMessage.success('订单 ' + paymentCurrent.value.orderNo + ' 已确认支付，积分已发放')
+    closePayment()
+    await load()
+  } catch (_) {
+    ElMessage.error('支付确认失败，请稍后重试')
+  }
+}
 function selectPackage (points) { form.points = points; customPoints.value = number(points) }
 function onCustomPoints (v) { const raw = String(v).replace(/\D/g, ''); form.points = raw ? Number(raw) : 0; customPoints.value = raw ? number(form.points) : '' }
 function openDrawer () { Object.assign(form, { bossId: '', points: 0, payMethod: '微信支付', deal: 'paid', remark: '' }); customPoints.value = ''; drawerVisible.value = true; if (!bosses.value.length) loadBosses() }
@@ -294,6 +359,7 @@ async function loadPackages () { const r = await listPointPackages(); packagesLi
 async function loadExchangeRules () { const r = await listPointExchangeRules(); exchangeList.value = responseList(r.data) }
 async function loadEarnRules () { const r = await listPointEarnRules(); earnList.value = responseList(r.data) }
 onMounted(() => { load(); loadBosses() })
+onUnmounted(stopPaymentTimer)
 </script>
 
 <style scoped>
@@ -303,6 +369,7 @@ onMounted(() => { load(); loadBosses() })
 .filter-spacer { flex:1; }
 .boss-cell { display:flex; align-items:center; gap:10px; }.boss-cell small { display:block; margin-top:2px; color:var(--text-muted); font-size:12px; }.mini-avatar { width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:8px; color:#fff; font-weight:600; }.order-no { color:var(--primary); font-family:monospace; font-size:12px; }.points-val { color:#9333EA; font-weight:600; }.money-val { color:var(--danger); font-weight:700; }.down { color:var(--danger) !important; }
 .pay-tag { display:inline-flex; align-items:center; gap:5px; color:#4b5563; font-size:12px; white-space:nowrap; }.pay-tag i { font-size:14px; }.pay-wechat i { color:#07c160; }.pay-alipay i { color:#1677ff; }.pay-bank i { color:#6b7280; }
+.action-btns { display:flex; align-items:center; gap:4px; white-space:nowrap; }.pay-action { padding:5px 9px; }.pay-action i { margin-right:4px; }
 .modal-overlay { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,.5); }
 .purchase-modal { width:90%; max-width:600px; max-height:90vh; overflow:hidden; background:#fff; border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.18); }
 .modal-header { display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--border); }
@@ -312,6 +379,7 @@ onMounted(() => { load(); loadBosses() })
 .modal-body { max-height:60vh; overflow-y:auto; padding:24px; }.modal-footer { display:flex; justify-content:flex-end; gap:12px; padding:16px 24px; border-top:1px solid var(--border); }
 .modal-fade-enter-active,.modal-fade-leave-active { transition:opacity .2s ease; }.modal-fade-enter-active .purchase-modal,.modal-fade-leave-active .purchase-modal { transition:transform .2s ease; }.modal-fade-enter-from,.modal-fade-leave-to { opacity:0; }.modal-fade-enter-from .purchase-modal,.modal-fade-leave-to .purchase-modal { transform:translateY(8px) scale(.98); }
 .d-section-title { margin:0 0 12px; padding-bottom:8px; color:var(--text-primary); font-size:14px; font-weight:600; border-bottom:1px solid var(--border); }.d-section-grid { margin-bottom:20px; }.d-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px 24px; }.d-item { display:flex; flex-direction:column; gap:4px; min-width:0; }.d-item > span { color:var(--text-muted); font-size:12px; }.d-item > b { color:var(--text-primary); font-size:14px; font-weight:500; overflow-wrap:anywhere; }.d-item > b.arrival { color:var(--success); }
+.payment-modal { max-width:560px; }.payment-title-icon { margin-right:7px; color:var(--primary); }.payment-section-title { margin-top:0; }.pay-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; margin-bottom:14px; }.pay-kv { display:flex; align-items:center; min-width:0; gap:10px; font-size:13px; }.pay-kv > span { flex-shrink:0; width:66px; color:var(--text-secondary); }.pay-kv > b { min-width:0; overflow-wrap:anywhere; color:var(--text-primary); font-weight:500; }.pay-amount-box { margin-bottom:16px; padding:10px 0 8px; text-align:center; background:#fffaf6; border-radius:8px; }.pay-amount-box .label { color:var(--text-secondary); font-size:12px; }.pay-amount-box .money { margin-top:4px; color:var(--primary); font-size:30px; font-weight:700; letter-spacing:-1px; }.pay-amount-box .money small { margin-right:3px; font-size:15px; font-weight:500; }.pay-amount-box .sub { margin-top:2px; color:var(--text-secondary); font-size:12px; }.pay-amount-box .sub span { color:var(--primary); font-weight:600; }.pay-method-tabs { display:flex; gap:10px; margin-bottom:16px; }.pay-method-tab { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 0; color:var(--text-secondary); font-size:14px; cursor:pointer; background:#fff; border:1px solid var(--border); border-radius:10px; transition:all .2s; }.pay-method-tab:hover { color:var(--primary); border-color:var(--primary); }.pay-method-tab.active { color:var(--primary); font-weight:600; background:#fff7f0; border-color:var(--primary); box-shadow:0 0 0 2px rgba(255,107,53,.1); }.pay-method-tab i.fa-weixin { color:#07c160; }.pay-method-tab i.fa-alipay { color:#1677ff; }.pay-method-tab.active i { color:var(--primary); }.pay-qr-wrap { display:flex; justify-content:center; }.pay-qr-box { padding:18px 24px; text-align:center; border-radius:12px; }.pay-qr-box.wechat { background:#f0fbf2; border:1px solid #d1fadf; }.pay-qr-box.alipay { background:#eff6ff; border:1px solid #bfdbfe; }.qr-img { position:relative; display:flex; align-items:center; justify-content:center; width:150px; height:150px; margin-bottom:10px; padding:10px; background:#fff; border-radius:8px; box-sizing:border-box; }.pay-qr-box.wechat .qr-img { border:1px dashed #07c160; }.pay-qr-box.alipay .qr-img { border:1px dashed #1677ff; }.qr-img img { display:block; width:130px; height:130px; }.qr-icon { position:absolute; top:50%; left:50%; display:flex; align-items:center; justify-content:center; width:30px; height:30px; color:#fff; font-size:13px; border-radius:6px; transform:translate(-50%,-50%); }.wechat .qr-icon { background:#07c160; }.alipay .qr-icon { background:#1677ff; }.qr-icon i { color:#fff !important; }.qr-tip { font-size:12px; }.wechat .qr-tip { color:#14532d; }.alipay .qr-tip { color:#1e3a8a; }.pay-countdown { margin-top:10px; color:var(--text-secondary); font-size:12px; text-align:center; }.pay-countdown .num { color:var(--danger); font-weight:600; }.payment-footer { justify-content:flex-end; }.payment-footer .btn { flex:0 0 auto; }
 .drawer-mask { position:fixed; inset:0; z-index:1000; visibility:hidden; opacity:0; background:rgba(0,0,0,.45); transition:opacity .25s,visibility .25s; }.drawer-mask.open { visibility:visible; opacity:1; }
 .purchase-drawer-panel { position:fixed; top:0; right:0; bottom:0; z-index:1001; width:520px; max-width:92vw; display:flex; flex-direction:column; background:#fff; box-shadow:-8px 0 30px rgba(0,0,0,.12); transform:translateX(105%); transition:transform .28s ease; }.purchase-drawer-panel.open { transform:translateX(0); }
 .drawer-header { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; padding:18px 24px; border-bottom:1px solid var(--border); }.drawer-body { flex:1; overflow-y:auto; padding:20px 24px; }.drawer-footer { display:flex; flex-shrink:0; gap:12px; padding:14px 24px; border-top:1px solid var(--border); }.drawer-footer .btn { flex:1; justify-content:center; }

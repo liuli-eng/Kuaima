@@ -41,6 +41,12 @@ const routes = [
         meta: { title: '零工详情', icon: 'fa-eye', hidden: true, permKey: 'permUser.u1' }
       },
       {
+        path: 'credit-manage',
+        name: 'CreditManage',
+        component: () => import('@/views/user/CreditManage.vue'),
+        meta: { title: '信用分管理', icon: 'fa-star', permKey: 'permUser.u1' }
+      },
+      {
         path: 'bosses',
         name: 'Bosses',
         component: () => import('@/views/user/Bosses.vue'),

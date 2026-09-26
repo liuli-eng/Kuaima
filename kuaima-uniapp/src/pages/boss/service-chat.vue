@@ -22,7 +22,7 @@
         <text class="chat-name">快马日结小助手</text>
         <view class="chat-status">
           <view class="status-dot"></view>
-          <text style="margin-left:4px;">在线 · 平均1分钟回复</text>
+          <text style="margin-left:4px;">{{ statusText }}</text>
         </view>
       </view>
       <view class="chat-close">
@@ -38,7 +38,7 @@
     </view>
 
     <!-- 消息列表 -->
-    <scroll-view scroll-y class="chat-messages">
+    <scroll-view scroll-y class="chat-messages" :scroll-top="scrollTop" :show-scrollbar="false">
       <text class="msg-time">今天 19:48</text>
 
       <!-- 客服欢迎消息 -->
@@ -74,12 +74,12 @@
       <!-- 用户消息 -->
       <view
         class="msg-row"
-        :class="{ self: msg.role === 'user' }"
+        :class="{ self: msg.self }"
         v-for="(msg, index) in messages"
         :key="index"
       >
-        <view class="msg-avatar" :class="msg.role === 'user' ? 'user' : 'service'">
-          <text style="font-size:14px;">{{ msg.role === "user" ? "👤" : "🎧" }}</text>
+        <view class="msg-avatar" :class="msg.self ? 'user' : 'service'">
+          <text style="font-size:14px;">{{ msg.self ? "👤" : "🎧" }}</text>
         </view>
         <view class="msg-content">
           <view class="msg-bubble">{{ msg.text }}</view>
@@ -95,49 +95,105 @@
       <view class="input-wrap">
         <input type="text" class="input-field" v-model="inputText" placeholder="请输入您的问题" @confirm="sendMessage" />
       </view>
-      <button class="send-btn" @click="sendMessage">发送</button>
+      <button class="send-btn" :disabled="!inputText.trim() || sending" @click="sendMessage">发送</button>
     </view>
   </view>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      showSecurityTip: true,
-      inputText: '',
-      messages: [],
-      hotQuestions: [
-        '零工中途跑了怎么办？',
-        '临时有变化不需要招工了怎么办？',
-        '工作地址填错了怎么办？',
-        '招工信息需要修改怎么办？',
-        '零工完工后没有点击收工，一直没法结算报酬怎么办？'
-      ]
-    }
-  },
-  methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-    selectHotQuestion(question) {
-      this.inputText = question
-      this.sendMessage()
-    },
-    sendMessage() {
-      if (!this.inputText.trim()) return
-      const text = this.inputText.trim()
-      this.messages.push({ text, role: "user" })
-      this.inputText = ''
-      // 模拟客服回复
-      setTimeout(() => {
-        this.messages.push({
-          text: '收到您的问题了，客服专员正在为您处理，请稍候...',
-          role: "service",
-        })
-      }, 1000)
-    }
+<script setup>
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { onHide, onShow } from "@dcloudio/uni-app";
+import { createChatSession, listChatMessages, sendChatMessage } from "@/api/backend";
+import wsClient from "@/api/chat-websocket";
+
+const showSecurityTip = ref(true);
+const inputText = ref("");
+const messages = ref([]);
+const sessionId = ref("");
+const scrollTop = ref(0);
+const sending = ref(false);
+const connected = ref(false);
+const userId = String(uni.getStorageSync("userId") || "2001");
+const hotQuestions = ["零工中途跑了怎么办？", "临时有变化不需要招工了怎么办？", "工作地址填错了怎么办？", "招工信息需要修改怎么办？", "零工完工后没有点击收工，一直没法结算报酬怎么办？"];
+const wsBaseUrl = resolveWsBaseUrl();
+let syncTimer = null;
+
+const statusText = computed(() => connected.value ? "在线 · 平均1分钟回复" : "连接中…");
+onMounted(loadSession);
+onShow(() => { if (sessionId.value) { connectIm(); refreshMessages(); startMessageSync(); } });
+onHide(stopMessageSync);
+onUnmounted(() => { stopMessageSync(); removeSocketListeners(); wsClient.close(); });
+
+function resolveWsBaseUrl() {
+  const explicit = import.meta.env.VITE_WS_BASE_URL;
+  if (explicit) return explicit.replace(/\/$/, "");
+  const configured = import.meta.env.VITE_MP_API_BASE_URL || import.meta.env.VITE_PROXY_TARGET || "http://127.0.0.1:8080";
+  return configured.replace(/^https:/, "wss:").replace(/^http:/, "ws:").replace(/\/$/, "");
+}
+async function loadSession() {
+  try {
+    const session = await createChatSession({ userId: Number(userId) });
+    sessionId.value = String(session.sessionId || session.id || "");
+    if (!sessionId.value) throw new Error("客服会话创建失败");
+    await refreshMessages(true);
+    connectIm();
+    startMessageSync();
+  } catch (error) {
+    uni.showToast({ title: error.message || "客服连接失败", icon: "none" });
   }
+}
+function removeSocketListeners() {
+  wsClient.off("open", handleOpen); wsClient.off("close", handleClose);
+  wsClient.off("MESSAGE", handleSocketMessage); wsClient.off("message", handleSocketMessage);
+}
+function connectIm() {
+  removeSocketListeners();
+  wsClient.on("open", handleOpen); wsClient.on("close", handleClose);
+  wsClient.on("MESSAGE", handleSocketMessage); wsClient.on("message", handleSocketMessage);
+  if (!wsClient.connected) wsClient.connect(wsBaseUrl, userId, "USER");
+}
+function handleOpen() { connected.value = true; wsClient.send({ type: "JOIN", sessionId: Number(sessionId.value) }); }
+function handleClose() { connected.value = false; }
+function handleSocketMessage(data) {
+  if (data?.type && data.type !== "MESSAGE") return;
+  if (data?.sessionId && String(data.sessionId) !== String(sessionId.value)) return;
+  appendMessage(data);
+}
+async function refreshMessages(initial = false) {
+  if (!sessionId.value) return;
+  try {
+    const result = await listChatMessages(sessionId.value, { page: 0, size: 50 });
+    const rows = Array.isArray(result) ? result : result?.records || result?.content || [];
+    const incoming = rows.map(normalizeMessage).filter((item) => item.text);
+    if (initial) messages.value = incoming; else incoming.forEach(appendMessage);
+    if (initial && incoming.length) scrollToLatest();
+  } catch (_) {}
+}
+function normalizeMessage(item = {}) {
+  const timestamp = item.timestamp || item.createTime;
+  return { ...item, id: item.id || item.messageId, text: item.content || item.text || "", self: String(item.fromId) === userId || String(item.fromType || "").toUpperCase() === "USER", time: timestamp ? formatTime(timestamp) : "" };
+}
+function appendMessage(item) {
+  const normalized = normalizeMessage(item);
+  if (!normalized.text) return;
+  const key = String(normalized.id || normalized.messageId || "");
+  if (key && messages.value.some((message) => String(message.id || message.messageId || "") === key)) return;
+  messages.value.push(normalized); scrollToLatest();
+}
+function formatTime(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? "" : `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`; }
+function scrollToLatest() { scrollTop.value = 0; setTimeout(() => { scrollTop.value = 999999; }, 30); }
+function startMessageSync() { stopMessageSync(); syncTimer = setInterval(() => refreshMessages(), 3000); }
+function stopMessageSync() { if (syncTimer) clearInterval(syncTimer); syncTimer = null; }
+function goBack() { uni.navigateBack(); }
+function selectHotQuestion(question) { inputText.value = question; sendMessage(); }
+async function sendMessage() {
+  const text = inputText.value.trim();
+  if (!text || sending.value) return;
+  if (!sessionId.value) return uni.showToast({ title: "客服会话尚未建立", icon: "none" });
+  sending.value = true; inputText.value = "";
+  const sentBySocket = wsClient.send({ type: "MESSAGE", sessionId: Number(sessionId.value), content: text, contentType: "TEXT" });
+  if (sentBySocket) { sending.value = false; scrollToLatest(); return; }
+  try { const result = await sendChatMessage(sessionId.value, { fromId: Number(userId), content: text }); if (result) appendMessage(result); } catch (error) { inputText.value = text; uni.showToast({ title: error.message || "发送失败", icon: "none" }); } finally { sending.value = false; }
 }
 </script>
 
@@ -398,5 +454,9 @@ export default {
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+}
+
+.send-btn[disabled] {
+  opacity: .5;
 }
 </style>

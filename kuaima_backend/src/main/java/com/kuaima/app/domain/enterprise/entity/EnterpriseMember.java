@@ -26,6 +26,14 @@ public class EnterpriseMember extends BaseEntity {
     private String status = "ACTIVE";
     @Column(columnDefinition = "TEXT")
     private String permissions;
+    @Column(name = "portal_enabled", nullable = false)
+    private Boolean portalEnabled = false;
+    @Column(name = "authorized_by")
+    private Long authorizedBy;
+    @Column(name = "authorized_at")
+    private java.time.LocalDateTime authorizedAt;
+    @Column(name = "permission_version", nullable = false)
+    private Integer permissionVersion = 1;
     @Column(length = 50)
     private String title;
     @Column(name = "invited_by")

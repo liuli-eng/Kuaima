@@ -253,9 +253,7 @@ async function doLogin(phoneCode = "") {
         const payload = phoneCode && registrationToken.value
           ? { registrationToken: registrationToken.value, role, phoneCode }
           : { code, role, ...(phoneCode ? { phoneCode } : {}) };
-        console.log("[wechatLogin] payload:", payload);
         const result = await wechatLogin(payload);
-        console.log("[wechatLogin] result:", result);
         if (result.needPhoneNumber === true) {
           if (phoneCode) throw new Error("手机号绑定未完成，请重试");
           phoneRequired.value = true;
@@ -272,7 +270,7 @@ async function doLogin(phoneCode = "") {
         preparedLoginResult.value = null;
         await completeLogin(result);
       } catch (e) {
-        console.error("[wechatLogin] error:", e);
+        console.error("[wechatLogin] error:", e?.message || e);
         flowMessage.value = "";
         errorMessage.value = e.message || "微信登录失败";
         loggingIn.value = false;
@@ -316,9 +314,7 @@ function prepareWechatLogin() {
     provider: "weixin",
     success: async ({ code }) => {
       try {
-        console.log("[prepareWechatLogin] code:", code, "role:", role);
         const result = await wechatLogin({ code, role });
-        console.log("[prepareWechatLogin] result:", result);
         if (result.needPhoneNumber === true) {
           registrationToken.value = result.registrationToken || "";
           phoneRequired.value = true;
@@ -330,7 +326,7 @@ function prepareWechatLogin() {
         phoneRequired.value = false;
         preparedLoginResult.value = result;
       } catch (e) {
-        console.error("[prepareWechatLogin] error:", e);
+        console.error("[prepareWechatLogin] error:", e?.message || e);
         errorMessage.value = e.message || "登录状态检查失败";
       } finally {
         preparingLogin.value = false;
@@ -354,22 +350,47 @@ async function completeLogin(result) {
   uni.setStorageSync("userId", String(result.userId));
   uni.setStorageSync("role", result.role);
   if (result.phone) uni.setStorageSync("userPhone", result.phone);
+  if (result.enterpriseId !== undefined && result.enterpriseId !== null) uni.setStorageSync("enterpriseId", String(result.enterpriseId));
+  else uni.removeStorageSync("enterpriseId");
+  if (Array.isArray(result.permissions)) uni.setStorageSync("enterprisePermissions", result.permissions);
+  else uni.removeStorageSync("enterprisePermissions");
   if (result.certStatus) {
     uni.setStorageSync("workerCertStatus", result.certStatus);
     uni.setStorageSync("certStatus", result.certStatus);
   }
-  try {
-    const user = await getCurrentUser();
-    if (user && typeof user === "object") {
-      uni.setStorageSync("userInfo", user);
-      if (user.phone) uni.setStorageSync("userPhone", user.phone);
-      if (user.certStatus) {
-        uni.setStorageSync("workerCertStatus", user.certStatus);
+  const target = result.role === "BOSS" ? "/pages/boss/home" : "/pages/worker/home";
+
+  // 登录态已经写入本地，先进入首页；用户资料属于补充信息，不应阻塞主导航。
+  getCurrentUser()
+    .then((user) => {
+      if (user && typeof user === "object") {
+        uni.setStorageSync("userInfo", user);
+        if (user.phone) uni.setStorageSync("userPhone", user.phone);
+        if (user.certStatus) uni.setStorageSync("workerCertStatus", user.certStatus);
       }
-    }
-  } catch (_) {}
-  uni.reLaunch({
-    url: result.role === "BOSS" ? "/pages/boss/home" : "/pages/worker/home",
+    })
+    .catch(() => {});
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      if (error) reject(error);
+      else resolve();
+    };
+    uni.reLaunch({
+      url: target,
+      success: () => finish(),
+      fail: (error) => {
+        // 开发者工具热重载期间 reLaunch 偶发超时，使用 redirectTo 做一次兜底。
+        uni.redirectTo({
+          url: target,
+          success: () => finish(),
+          fail: (redirectError) => finish(redirectError || error),
+        });
+      },
+    });
   });
 }
 </script>

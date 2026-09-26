@@ -8,9 +8,21 @@ import java.util.Map;
 public final class SettlementPaymentModels {
     private SettlementPaymentModels() {}
 
-    public record WechatPayRequest(List<Long> settlementIds) {}
+    public record WechatPayRequest(List<Long> settlementIds, Long userCouponId) {}
+
+    public record SettlementFeePreview(List<Long> settlementIds, BigDecimal amount,
+                                       BigDecimal orderAmount, BigDecimal serviceFee,
+                                       Integer pointsAvailable, Integer pointsDeductRate,
+                                       BigDecimal pointsDeductAmount, Boolean couponAvailable,
+                                       String couponName, List<Map<String, Object>> couponOptions,
+                                       BigDecimal couponDeductAmount,
+                                       BigDecimal payableAmount) {}
 
     public record WechatPayView(String paymentNo, List<Long> settlementIds, BigDecimal amount,
-                                String status, Map<String, Object> payParams,
+                                BigDecimal orderAmount, BigDecimal serviceFee,
+                                Integer pointsAvailable, Integer pointsDeductRate,
+                                BigDecimal pointsDeductAmount, Boolean couponAvailable,
+                                String couponName, BigDecimal couponDeductAmount,
+                                BigDecimal payableAmount, String status, Map<String, Object> payParams,
                                 LocalDateTime createdAt, LocalDateTime paidAt) {}
 }

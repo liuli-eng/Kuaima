@@ -2,7 +2,7 @@
   <div>
     <div class="page-header">
       <h1 class="page-title">零工管理</h1>
-      <p class="page-desc">管理平台所有零工用户，支持查看、冻结、解冻等操作</p>
+      <p class="page-desc">管理平台零工信息、状态、操作</p>
     </div>
 
     <!-- 统计卡片 -->
@@ -17,44 +17,42 @@
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
-          <span class="stat-card-title">正常</span>
-          <div class="stat-card-icon green"><i class="fas fa-check-circle"></i></div>
+          <span class="stat-card-title">本月新增</span>
+          <div class="stat-card-icon blue"><i class="fas fa-user-plus"></i></div>
         </div>
-        <div class="stat-card-value">{{ stats.normal }}</div>
-        <div class="stat-card-change"><span class="text-muted">正常状态</span></div>
+        <div class="stat-card-value">{{ stats.monthNew }}</div>
+        <div class="stat-card-change"><span class="text-muted">本月注册用户</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-title">在线人数</span>
+          <div class="stat-card-icon green"><i class="fas fa-signal"></i></div>
+        </div>
+        <div class="stat-card-value">{{ stats.online }}</div>
+        <div class="stat-card-change"><span class="text-muted">当前在线零工</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">已冻结</span>
-          <div class="stat-card-icon yellow"><i class="fas fa-lock"></i></div>
+          <div class="stat-card-icon red"><i class="fas fa-user-lock"></i></div>
         </div>
         <div class="stat-card-value">{{ stats.frozen }}</div>
         <div class="stat-card-change"><span class="text-muted">冻结状态</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-header">
-          <span class="stat-card-title">已认证</span>
-          <div class="stat-card-icon blue"><i class="fas fa-id-card"></i></div>
-        </div>
-        <div class="stat-card-value">{{ stats.certified }}</div>
-        <div class="stat-card-change"><span class="text-muted">实名认证</span></div>
       </div>
     </div>
 
     <!-- 筛选和表格 -->
     <div class="card">
       <div class="filter-bar">
-        <el-input v-model="searchKeyword" placeholder="搜索姓名/手机号/ID" clearable style="width: 240px;" prefix-icon="Search" />
-        <el-select v-model="statusFilter" placeholder="状态" clearable style="width: 120px;">
+        <div class="filter-item"><span>关键词</span><el-input v-model="searchKeyword" placeholder="姓名/手机号/ID" clearable style="width: 220px;" prefix-icon="Search" /></div>
+        <div class="filter-item"><span>状态</span><el-select v-model="statusFilter" placeholder="全部" clearable style="width: 120px;">
           <el-option label="正常" value="正常" />
           <el-option label="冻结" value="冻结" />
-        </el-select>
-        <div class="date-picker-wrap" style="width: 240px;">
-          <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 100%;" />
-        </div>
+        </el-select></div>
+        <div class="filter-item"><span>注册日期</span><div class="date-picker-wrap"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 280px;" /></div></div>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
-        <button class="btn btn-outline btn-sm" style="margin-left: auto;"><i class="fas fa-download"></i> 导出</button>
+        <button class="btn btn-outline btn-sm export-button"><i class="fas fa-download"></i> 导出数据</button>
       </div>
 
       <el-table class="workers-table" :data="tableData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
@@ -131,7 +129,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listWorkers, freezeUser, unfreezeUser } from '@/api/user'
+import { listWorkers, getWorkerStats, freezeUser, unfreezeUser } from '@/api/user'
 
 const router = useRouter()
 
@@ -146,23 +144,13 @@ const total = ref(0)
 const tableData = ref([])
 
 // 统计数据
-const stats = ref({ total: '-', normal: '-', frozen: '-', certified: '-' })
+const stats = ref({ total: '-', monthNew: '-', online: '-', frozen: '-' })
 
 // 加载统计
 const loadStats = async () => {
   try {
-    const [allRes, normalRes, frozenRes] = await Promise.all([
-      listWorkers({ page: 0, size: 1 }),
-      listWorkers({ status: '正常', page: 0, size: 1 }),
-      listWorkers({ status: '冻结', page: 0, size: 1 })
-    ])
-    stats.value.total = allRes.total ?? 0
-    stats.value.normal = normalRes.total ?? 0
-    stats.value.frozen = frozenRes.total ?? 0
-    const allDataRes = await listWorkers({ page: 0, size: 1000 })
-    const d = allDataRes.data
-    const list = Array.isArray(d) ? d : (d?.content || [])
-    stats.value.certified = list.filter(u => u.certStatus === true || u.certStatus === 1 || u.certStatus === '已认证').length
+    const result = await getWorkerStats()
+    stats.value = { ...stats.value, ...(result.data || {}) }
   } catch (e) {
     console.warn('[Workers] 加载统计失败:', e)
   }
@@ -211,6 +199,8 @@ const loadData = async () => {
     const result = await listWorkers({
       keyword: searchKeyword.value || undefined,
       status: statusFilter.value || undefined,
+      startDate: dateRange.value?.[0] || undefined,
+      endDate: dateRange.value?.[1] || undefined,
       page: currentPage.value - 1,
       size: pageSize.value
     })
@@ -340,12 +330,49 @@ onMounted(() => {
 .filter-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.filter-item :deep(.el-input__wrapper),
+.filter-item :deep(.el-select__wrapper),
+.date-picker-wrap :deep(.el-input__wrapper) {
+  min-height: 36px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #E5E7EB inset;
+}
+.filter-item :deep(.el-input__wrapper:hover),
+.filter-item :deep(.el-input__wrapper.is-focus),
+.filter-item :deep(.el-select__wrapper:hover),
+.date-picker-wrap :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px var(--primary) inset;
+}
+.date-picker-wrap { display: flex; align-items: center; }
+.export-button { margin-left: auto; }
 .workers-table :deep(.el-table__header),
 .workers-table :deep(.el-table__body) { min-width: 1400px; }
+
+.workers-table :deep(.el-table__header th) {
+  height: 48px;
+  background: #F9FAFB !important;
+  color: #6B7280;
+  font-size: 13px;
+  font-weight: 600;
+}
+.workers-table :deep(.el-table__row td) {
+  height: 68px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.workers-table :deep(.el-table__inner-wrapper::before) { display: none; }
 
 .user-cell {
   display: flex;

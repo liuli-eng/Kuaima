@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -19,6 +20,7 @@ import com.alibaba.fastjson2.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.kuaima.app.domain.boss.constant.BossStatus;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
@@ -31,6 +33,12 @@ import com.kuaima.app.domain.message.service.MessageService;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.points.entity.PointsAccount;
+import com.kuaima.app.domain.points.repository.PointsAccountRepository;
+import com.kuaima.app.domain.coupon.entity.Coupon;
+import com.kuaima.app.domain.coupon.entity.UserCoupon;
+import com.kuaima.app.domain.coupon.repository.CouponRepository;
+import com.kuaima.app.domain.coupon.repository.UserCouponRepository;
 import com.kuaima.app.domain.user.service.CreditScoreService;
 import com.kuaima.app.domain.wallet.constant.SettlementStatus;
 import com.kuaima.app.domain.wallet.entity.Settlement;
@@ -67,6 +75,9 @@ public class SettlementService {
     private final CreditScoreService creditScoreService;
     private final SettlementPaymentOrderRepository paymentOrders;
     private final WechatPayService wechatPay;
+    private final PointsAccountRepository pointsAccounts;
+    private final UserCouponRepository userCoupons;
+    private final CouponRepository coupons;
 
     /** 平台服务费率(% of wage)，规则待定，默认 0 */
     @Value("${kuaima.settle.service-fee-rate:0}")
@@ -104,7 +115,6 @@ public class SettlementService {
                 adminSettingRepository, creditScoreService, null, null);
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
     public SettlementService(SettlementRespository settlementRepository,
                              BossOrderRespository orderRepository,
                              BaseOrderItemRespository itemRepository,
@@ -115,6 +125,33 @@ public class SettlementService {
                              CreditScoreService creditScoreService,
                              SettlementPaymentOrderRepository paymentOrders,
                              WechatPayService wechatPay) {
+        this(settlementRepository, orderRepository, itemRepository, walletService, messageService, userRepository,
+                adminSettingRepository, creditScoreService, paymentOrders, wechatPay, null);
+    }
+
+    public SettlementService(SettlementRespository settlementRepository,
+                             BossOrderRespository orderRepository,
+                             BaseOrderItemRespository itemRepository,
+                             WalletService walletService,
+                             MessageService messageService,
+                             UserRepository userRepository,
+                             AdminSettingRepository adminSettingRepository,
+                             CreditScoreService creditScoreService,
+                             SettlementPaymentOrderRepository paymentOrders,
+                             WechatPayService wechatPay,
+                             PointsAccountRepository pointsAccounts) {
+        this(settlementRepository, orderRepository, itemRepository, walletService, messageService, userRepository,
+                adminSettingRepository, creditScoreService, paymentOrders, wechatPay, pointsAccounts, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public SettlementService(SettlementRespository settlementRepository, BossOrderRespository orderRepository,
+                             BaseOrderItemRespository itemRepository, WalletService walletService,
+                             MessageService messageService, UserRepository userRepository,
+                             AdminSettingRepository adminSettingRepository, CreditScoreService creditScoreService,
+                             SettlementPaymentOrderRepository paymentOrders, WechatPayService wechatPay,
+                             PointsAccountRepository pointsAccounts, UserCouponRepository userCoupons,
+                             CouponRepository coupons) {
         this.settlementRepository = settlementRepository;
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
@@ -125,6 +162,9 @@ public class SettlementService {
         this.creditScoreService = creditScoreService;
         this.paymentOrders = paymentOrders;
         this.wechatPay = wechatPay;
+        this.pointsAccounts = pointsAccounts;
+        this.userCoupons = userCoupons;
+        this.coupons = coupons;
     }
 
     /**
@@ -203,6 +243,12 @@ public class SettlementService {
     @Transactional
     public com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayView createWechatPayment(
             Long bossId, List<Long> settlementIds, String idempotencyKey) {
+        return createWechatPayment(bossId, settlementIds, null, idempotencyKey);
+    }
+
+    @Transactional
+    public com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayView createWechatPayment(
+            Long bossId, List<Long> settlementIds, Long userCouponId, String idempotencyKey) {
         if (paymentOrders == null || wechatPay == null) throw new IllegalStateException("微信结算支付服务未配置");
         if (bossId == null) throw new IllegalArgumentException("老板用户ID不能为空");
         if (!org.springframework.util.StringUtils.hasText(idempotencyKey)) {
@@ -212,6 +258,9 @@ public class SettlementService {
         SettlementPaymentOrder old = paymentOrders.findByIdempotencyKey(key).orElse(null);
         if (old != null) {
             if (!bossId.equals(old.getBossId())) throw new com.kuaima.app.common.ForbiddenBusinessException("幂等键已被其他用户使用");
+            if (!Objects.equals(old.getUserCouponId(), userCouponId)) {
+                throw new IllegalArgumentException("幂等键已绑定其他优惠券");
+            }
             return paymentView(old);
         }
         List<Long> ids = settlementIds == null ? List.of() : settlementIds.stream()
@@ -245,6 +294,10 @@ public class SettlementService {
         payment.setBossId(bossId);
         payment.setSettlementIds(ids.stream().map(String::valueOf).collect(Collectors.joining(",")));
         payment.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+        CouponCalculation coupon = calculateCoupon(bossId, userCouponId, amount);
+        payment.setUserCouponId(userCouponId);
+        payment.setCouponDeductAmount(coupon.deductAmount());
+        payment.setAmount(amount.subtract(coupon.deductAmount()).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP));
         payment.setStatus(PAYMENT_PENDING);
         payment.setCreatedAt(LocalDateTime.now());
         payment = paymentOrders.save(payment);
@@ -253,6 +306,97 @@ public class SettlementService {
         payment.setPayParams(payParams.toJSONString());
         payment = paymentOrders.save(payment);
         return paymentView(payment);
+    }
+
+    @Transactional(readOnly = true)
+    public com.kuaima.app.domain.wallet.model.SettlementPaymentModels.SettlementFeePreview previewWechatPayment(
+            Long bossId, List<Long> settlementIds) {
+        return previewWechatPayment(bossId, settlementIds, null);
+    }
+
+    @Transactional(readOnly = true)
+    public com.kuaima.app.domain.wallet.model.SettlementPaymentModels.SettlementFeePreview previewWechatPayment(
+            Long bossId, List<Long> settlementIds, Long userCouponId) {
+        List<Long> ids = settlementIds == null ? List.of() : settlementIds.stream()
+                .filter(Objects::nonNull).distinct().sorted().toList();
+        if (ids.isEmpty()) throw new IllegalArgumentException("settlementIds 不能为空");
+        if (ids.size() > 100) throw new IllegalArgumentException("单次最多查询100笔结算单");
+        BigDecimal orderAmount = BigDecimal.ZERO;
+        BigDecimal serviceFee = BigDecimal.ZERO;
+        for (Long id : ids) {
+            Settlement settlement = settlementRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("结算单不存在: " + id));
+            BossOrder order = orderRepository.findById(settlement.getOrderId())
+                    .orElseThrow(() -> new EntityNotFoundException("订单不存在: " + settlement.getOrderId()));
+            if (!bossId.equals(order.getCreateBy())) throw new com.kuaima.app.common.ForbiddenBusinessException("无权查看该结算单");
+            if (!SettlementStatus.PENDING.equals(settlement.getStatus())) throw new IllegalStateException("仅待支付的结算单可以预览");
+            orderAmount = orderAmount.add(value(settlement.getWage()));
+            serviceFee = serviceFee.add(value(settlement.getServiceFee()));
+        }
+        BigDecimal total = orderAmount.add(serviceFee).setScale(2, RoundingMode.HALF_UP);
+        CouponCalculation coupon = calculateCoupon(bossId, userCouponId, total);
+        BigDecimal payable = total.subtract(coupon.deductAmount()).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        Integer points = pointsAccounts == null ? 0 : pointsAccounts.findByUserIdAndRole(bossId, UserRole.BOSS)
+                .map(a -> a.getBalance() == null ? 0 : a.getBalance()).orElse(0);
+        BigDecimal zero = BigDecimal.ZERO.setScale(2);
+        return new com.kuaima.app.domain.wallet.model.SettlementPaymentModels.SettlementFeePreview(
+                ids, payable, orderAmount.setScale(2, RoundingMode.HALF_UP), serviceFee.setScale(2, RoundingMode.HALF_UP),
+                points, 100, zero, coupon.available(), coupon.name(), coupon.options(), coupon.deductAmount(), payable);
+    }
+
+    private CouponCalculation calculateCoupon(Long bossId, Long userCouponId, BigDecimal total) {
+        if (userCoupons == null || coupons == null) return new CouponCalculation(false, null, BigDecimal.ZERO.setScale(2));
+        List<Map<String, Object>> availableOptions = new ArrayList<>();
+        for (UserCoupon candidate : userCoupons.findByUserIdAndStatus(bossId, "UNUSED")) {
+            if (candidate.getExpireAt() != null && candidate.getExpireAt().toLocalDate().isBefore(java.time.LocalDate.now())) continue;
+            Coupon definition = coupons.findById(candidate.getCouponId()).orElse(null);
+            if (definition == null) continue;
+            if (!isCouponUsable(definition)) continue;
+            BigDecimal threshold = definition.getThreshold() != null ? definition.getThreshold() : Optional.ofNullable(definition.getMinSpend()).orElse(BigDecimal.ZERO);
+            if (total.compareTo(threshold) < 0) continue;
+            BigDecimal deduct = couponDeduct(definition, total);
+            String name = StringUtils.hasText(definition.getName()) ? definition.getName() : definition.getTitle();
+            Map<String, Object> option = new LinkedHashMap<>();
+            option.put("userCouponId", candidate.getId()); option.put("couponId", definition.getId());
+            option.put("name", name); option.put("amount", value(definition.getAmount())); option.put("threshold", threshold);
+            option.put("deductAmount", deduct); option.put("expireAt", candidate.getExpireAt());
+            availableOptions.add(option);
+        }
+        if (userCouponId == null) return new CouponCalculation(!availableOptions.isEmpty(), null, availableOptions, BigDecimal.ZERO.setScale(2));
+        UserCoupon record = userCoupons.findById(userCouponId).orElseThrow(() -> new EntityNotFoundException("优惠券不存在"));
+        if (!Objects.equals(record.getUserId(), bossId)) throw new com.kuaima.app.common.ForbiddenBusinessException("无权使用该优惠券");
+        if (!"UNUSED".equals(record.getStatus())) throw new IllegalArgumentException("优惠券已使用或不可用");
+        if (record.getExpireAt() != null && record.getExpireAt().toLocalDate().isBefore(java.time.LocalDate.now())) throw new IllegalArgumentException("优惠券已过期");
+        Coupon coupon = coupons.findById(record.getCouponId()).orElseThrow(() -> new EntityNotFoundException("优惠券不存在"));
+        if (!isCouponUsable(coupon)) throw new IllegalArgumentException("优惠券当前不可用");
+        BigDecimal threshold = coupon.getThreshold() != null ? coupon.getThreshold() : Optional.ofNullable(coupon.getMinSpend()).orElse(BigDecimal.ZERO);
+        if (total.compareTo(threshold) < 0) throw new IllegalArgumentException("结算金额未达到优惠券使用门槛");
+        BigDecimal deduct = couponDeduct(coupon, total);
+        String name = StringUtils.hasText(coupon.getName()) ? coupon.getName() : coupon.getTitle();
+        Map<String, Object> option = new LinkedHashMap<>();
+        option.put("userCouponId", record.getId()); option.put("couponId", coupon.getId());
+        option.put("name", name); option.put("amount", value(coupon.getAmount())); option.put("threshold", threshold);
+        option.put("deductAmount", deduct); option.put("expireAt", record.getExpireAt());
+        return new CouponCalculation(true, name, availableOptions, deduct);
+    }
+
+    private boolean isCouponUsable(Coupon coupon) {
+        return coupon != null
+                && !Boolean.TRUE.equals(coupon.getDeleted())
+                && !Boolean.TRUE.equals(coupon.getStopped())
+                && (coupon.getStatus() == null || "ISSUED".equalsIgnoreCase(coupon.getStatus()));
+    }
+
+    private BigDecimal couponDeduct(Coupon coupon, BigDecimal total) {
+        return "DISCOUNT".equalsIgnoreCase(coupon.getType()) && coupon.getDiscount() != null
+                ? total.multiply(BigDecimal.ONE.subtract(coupon.getDiscount().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP))).setScale(2, RoundingMode.HALF_UP)
+                : value(coupon.getAmount()).min(total).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private record CouponCalculation(boolean available, String name, List<Map<String, Object>> options, BigDecimal deductAmount) {
+        CouponCalculation(boolean available, String name, BigDecimal deductAmount) {
+            this(available, name, List.of(), deductAmount);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -285,9 +429,29 @@ public class SettlementService {
             }
         }
         payment.setStatus(PAYMENT_PAID);
+        redeemCoupon(payment);
         payment.setWechatTransactionId(transactionId);
         payment.setPaidAt(LocalDateTime.now());
         return paymentOrders.save(payment);
+    }
+
+    private void redeemCoupon(SettlementPaymentOrder payment) {
+        if (payment.getUserCouponId() == null || userCoupons == null || coupons == null) return;
+        UserCoupon record = userCoupons.findByIdForUpdate(payment.getUserCouponId()).orElseThrow(() -> new EntityNotFoundException("优惠券不存在"));
+        if ("USED".equals(record.getStatus())) return;
+        if (!"UNUSED".equals(record.getStatus())) throw new IllegalStateException("优惠券状态不能核销");
+        Coupon coupon = coupons.findByIdForUpdate(record.getCouponId()).orElseThrow(() -> new EntityNotFoundException("优惠券不存在"));
+        if (!isCouponUsable(coupon)) throw new IllegalStateException("优惠券当前不可用");
+        record.setStatus("USED");
+        record.setUsedAt(java.sql.Timestamp.valueOf(LocalDateTime.now(java.time.ZoneId.of("Asia/Shanghai"))));
+        Long firstOrderId = parseSettlementIds(payment.getSettlementIds()).stream()
+                .findFirst()
+                .flatMap(id -> settlementRepository.findById(id).map(Settlement::getOrderId))
+                .orElse(null);
+        record.setUseOrderId(firstOrderId);
+        userCoupons.save(record);
+        coupon.setUsed((coupon.getUsed() == null ? 0 : coupon.getUsed()) + 1);
+        coupons.save(coupon);
     }
 
     public int expectedWechatPaymentFen(SettlementPaymentOrder payment) {
@@ -315,9 +479,43 @@ public class SettlementService {
         if (org.springframework.util.StringUtils.hasText(payment.getPayParams())) {
             params = new LinkedHashMap<>(JSON.parseObject(payment.getPayParams()));
         }
+        List<Long> ids = parseSettlementIds(payment.getSettlementIds());
+        BigDecimal orderAmount = BigDecimal.ZERO.setScale(2);
+        BigDecimal serviceFee = BigDecimal.ZERO.setScale(2);
+        for (Long id : ids) {
+            Settlement settlement = settlementRepository.findById(id).orElse(null);
+            if (settlement == null) continue;
+            orderAmount = orderAmount.add(value(settlement.getWage()));
+            serviceFee = serviceFee.add(value(settlement.getServiceFee()));
+        }
+        orderAmount = orderAmount.setScale(2, RoundingMode.HALF_UP);
+        serviceFee = serviceFee.setScale(2, RoundingMode.HALF_UP);
+        Integer pointsAvailable = pointsAccounts == null ? 0 : pointsAccounts
+                .findByUserIdAndRole(payment.getBossId(), UserRole.BOSS)
+                .map(a -> a.getBalance() == null ? 0 : a.getBalance()).orElse(0);
+        BigDecimal zero = BigDecimal.ZERO.setScale(2);
+        BigDecimal total = orderAmount.add(serviceFee).setScale(2, RoundingMode.HALF_UP);
+        String couponName = null;
+        boolean couponAvailable = false;
+        BigDecimal couponDeductAmount = value(payment.getCouponDeductAmount()).setScale(2, RoundingMode.HALF_UP);
+        if (payment.getUserCouponId() != null && userCoupons != null && coupons != null) {
+            UserCoupon record = userCoupons.findById(payment.getUserCouponId()).orElse(null);
+            if (record != null) {
+                Coupon coupon = coupons.findById(record.getCouponId()).orElse(null);
+                if (coupon != null) {
+                    couponName = StringUtils.hasText(coupon.getName()) ? coupon.getName() : coupon.getTitle();
+                    couponAvailable = couponDeductAmount.signum() > 0 || PAYMENT_PENDING.equals(payment.getStatus());
+                }
+            }
+        }
         return new com.kuaima.app.domain.wallet.model.SettlementPaymentModels.WechatPayView(
-                payment.getPaymentNo(), parseSettlementIds(payment.getSettlementIds()), payment.getAmount(),
+                payment.getPaymentNo(), ids, payment.getAmount(), orderAmount, serviceFee,
+                pointsAvailable, 100, zero, couponAvailable, couponName, couponDeductAmount, payment.getAmount(),
                 payment.getStatus(), params, payment.getCreatedAt(), payment.getPaidAt());
+    }
+
+    private BigDecimal value(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private List<Long> parseSettlementIds(String value) {

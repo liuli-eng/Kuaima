@@ -2,6 +2,26 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
+// 后端时间字段可能带有微秒（例如 2026-09-24 11:18:03.979582）。
+// Web 端统一展示到秒，避免各页面直接展示不同精度的原始值。
+const normalizeDateTime = (value) => {
+  if (typeof value !== 'string') return value
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?([Zz]|[+-]\d{2}:?\d{2})?$/)
+  if (!match) return value
+  return `${match[1]} ${match[2]}`
+}
+
+const normalizeDateTimes = (value) => {
+  if (Array.isArray(value)) return value.map(normalizeDateTimes)
+  if (value && typeof value === 'object') {
+    Object.keys(value).forEach((key) => {
+      value[key] = normalizeDateTimes(value[key])
+    })
+    return value
+  }
+  return normalizeDateTime(value)
+}
+
 const BASE_URL = '/api'
 
 const request = axios.create({
@@ -26,6 +46,7 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (resp) => {
     const body = resp.data
+    normalizeDateTimes(body)
     // 后端统一 Result 格式：{ code, message, data, page, total }
     if (body && typeof body === 'object' && 'code' in body) {
       if (body.code === 200) {

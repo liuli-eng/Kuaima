@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 public interface RewardWithdrawalRepository extends JpaRepository<RewardWithdrawal, Long> {
     Optional<RewardWithdrawal> findByIdempotencyKey(String idempotencyKey);
     Page<RewardWithdrawal> findByUserIdOrderByAppliedAtDescIdDesc(Long userId, Pageable pageable);
+    Page<RewardWithdrawal> findByUserIdAndRoleOrderByAppliedAtDescIdDesc(Long userId, String role, Pageable pageable);
     List<RewardWithdrawal> findTop20ByStatusAndAppliedAtBeforeOrderByAppliedAtAscIdAsc(String status, LocalDateTime time);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

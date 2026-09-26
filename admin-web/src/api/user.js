@@ -1,8 +1,12 @@
 import request from './request'
 
 // 零工列表
-export function listWorkers({ status, keyword, page = 0, size = 10 } = {}) {
-  return request.get('/admin/users/workers', { params: { status, keyword, page, size } })
+export function listWorkers({ status, keyword, startDate, endDate, page = 0, size = 10 } = {}) {
+  return request.get('/admin/users/workers', { params: { status, keyword, startDate, endDate, page, size } })
+}
+
+export function getWorkerStats() {
+  return request.get('/admin/users/workers/stats')
 }
 
 // 雇主列表

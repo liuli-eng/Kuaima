@@ -10,8 +10,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface RewardAccountRepository extends JpaRepository<RewardAccount, Long> {
     Optional<RewardAccount> findByUserId(Long userId);
+    Optional<RewardAccount> findByUserIdAndRole(Long userId, String role);
     List<RewardAccount> findByUserIdIn(Collection<Long> userIds);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from RewardAccount a where a.userId=:userId")
     Optional<RewardAccount> findByUserIdForUpdate(@Param("userId") Long userId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from RewardAccount a where a.userId=:userId and a.role=:role")
+    Optional<RewardAccount> findByUserIdAndRoleForUpdate(@Param("userId") Long userId, @Param("role") String role);
 }

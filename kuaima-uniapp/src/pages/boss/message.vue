@@ -50,28 +50,28 @@
       </view>
     </scroll-view>
     <view class="tab-bar">
-      <view class="tab-item" @click="switchTab('home')"
+      <view v-if="canAccess('HOME_VIEW')" class="tab-item" @click="switchTab('home')"
         ><view class="tab-icon-wrap"
           ><image
             src="/static/icons/boss-tabbar/house-gray.svg"
             mode="aspectFit" /></view
         ><text class="tab-label">首页</text></view
       >
-      <view class="tab-item" @click="switchTab('order')"
+      <view v-if="canAccess('ORDER_VIEW')" class="tab-item" @click="switchTab('order')"
         ><view class="tab-icon-wrap"
           ><image
             src="/static/icons/boss-tabbar/calendar-check-gray.svg"
             mode="aspectFit" /></view
         ><text class="tab-label">日结订单</text></view
       >
-      <view class="tab-item" @click="switchTab('workbench')"
+      <view v-if="canAccess('WORKBENCH_VIEW')" class="tab-item" @click="switchTab('workbench')"
         ><view class="tab-icon-wrap"
           ><image
             src="/static/icons/boss-tabbar/briefcase-gray.svg"
             mode="aspectFit" /></view
         ><text class="tab-label">工作台</text></view
       >
-      <view class="tab-item active"
+      <view v-if="canAccess('MESSAGE_VIEW')" class="tab-item active"
         ><view class="tab-icon-wrap"
           ><image
             src="/static/icons/boss-tabbar/comment-dots-white.svg"
@@ -90,6 +90,7 @@
 </template>
 
 <script>
+import { hasEnterprisePermission } from "@/api/enterprise-context";
 import buildingIcon from "/static/icons/boss-message/building-blue.svg";
 import bellIcon from "/static/icons/boss-message/bell-orange.svg";
 import userPlusIcon from "/static/icons/boss-message/user-plus-green.svg";
@@ -153,6 +154,7 @@ export default {
     this.loadSummary();
   },
   methods: {
+    canAccess(code) { return hasEnterprisePermission(code); },
     openMessage(item) {
       const target = {
         "enterprise-certification": "/pages/boss/enterprise-cert",

@@ -58,12 +58,17 @@ public class WalletService {
     /** 查询钱包，不存在则创建空钱包（余额 0） */
     @Transactional
     public Wallet getOrCreateWallet(Long userId) {
+        return getOrCreateWallet(userId, UserRole.USER);
+    }
+
+    public Wallet getOrCreateWallet(Long userId, String role) {
         if (userId == null) {
             throw new IllegalArgumentException("userId 不能为空");
         }
-        return walletRepository.findByUserId(userId).orElseGet(() -> {
+        return walletRepository.findByUserIdAndRole(userId, role).orElseGet(() -> {
             Wallet wallet = new Wallet();
             wallet.setUserId(userId);
+            wallet.setRole(role);
             wallet.setBalance(BigDecimal.ZERO);
             return walletRepository.save(wallet);
         });
@@ -71,7 +76,7 @@ public class WalletService {
 
     /** 查询钱包（只读，不自动创建） */
     public Wallet getWallet(Long userId) {
-        return walletRepository.findByUserId(userId)
+        return walletRepository.findByUserIdAndRole(userId, UserRole.USER)
                 .orElseThrow(() -> new EntityNotFoundException("钱包不存在: " + userId));
     }
 
@@ -142,14 +147,14 @@ public class WalletService {
         Optional<WithDraw> old = withdrawRepository.findByIdempotencyKey(key);
         if (old.isPresent()) return old.get();
         amount = normalize(amount);
-        Wallet wallet = walletRepository.findByUserIdForUpdate(userId).orElseGet(() -> {
-            Wallet created = new Wallet(); created.setUserId(userId); created.setBalance(BigDecimal.ZERO);
+        Wallet wallet = walletRepository.findByUserIdAndRoleForUpdate(userId, UserRole.USER).orElseGet(() -> {
+            Wallet created = new Wallet(); created.setUserId(userId); created.setRole(UserRole.USER); created.setBalance(BigDecimal.ZERO);
             return walletRepository.saveAndFlush(created);
         });
         if (value(wallet.getBalance()).compareTo(amount) < 0) throw new IllegalArgumentException("钱包可提现余额不足");
         wallet.setBalance(value(wallet.getBalance()).subtract(amount)); walletRepository.saveAndFlush(wallet);
         String suffix = System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        WithDraw draw = new WithDraw(); draw.setUserId(userId); draw.setAmount(amount);
+        WithDraw draw = new WithDraw(); draw.setUserId(userId); draw.setRole(UserRole.USER); draw.setAmount(amount);
         draw.setStatus(WithDrawStatus.PENDING); draw.setChannel(CHANNEL_WECHAT); draw.setAccount(openid);
         draw.setIdempotencyKey(key); draw.setMerchantBatchNo("WWB" + suffix); draw.setMerchantDetailNo("WWD" + suffix);
         draw.setApplyTime(LocalDateTime.now()); draw = withdrawRepository.saveAndFlush(draw);
@@ -177,7 +182,7 @@ public class WalletService {
         WithDraw draw = lockedWithdraw(id);
         if (WithDrawStatus.FAILED.equals(draw.getStatus())) return draw;
         if (!WithDrawStatus.PENDING.equals(draw.getStatus())) throw new IllegalStateException("提现单状态不能标记失败");
-        Wallet wallet = walletRepository.findByUserIdForUpdate(draw.getUserId())
+        Wallet wallet = walletRepository.findByUserIdAndRoleForUpdate(draw.getUserId(), draw.getRole())
                 .orElseThrow(() -> new IllegalStateException("钱包不存在"));
         wallet.setBalance(value(wallet.getBalance()).add(draw.getAmount())); walletRepository.saveAndFlush(wallet);
         draw.setStatus(WithDrawStatus.FAILED); draw.setRemark(reason); draw.setWechatTransferNo(transferNo);
@@ -225,12 +230,12 @@ public class WalletService {
 
     /** 用户提现单列表 */
     public List<WithDraw> listWithdraws(Long userId) {
-        return withdrawRepository.findByUserIdOrderByIdDesc(userId);
+        return withdrawRepository.findByUserIdAndRoleOrderByIdDesc(userId, UserRole.USER);
     }
 
     /** 用户钱包流水 */
     public List<WalletFlow> listFlows(Long userId) {
-        return flowRepository.findByUserIdOrderByIdDesc(userId);
+        return flowRepository.findByUserIdAndRoleOrderByIdDesc(userId, UserRole.USER);
     }
 
     // ==================== 内部方法 ====================
@@ -239,6 +244,7 @@ public class WalletService {
                           BigDecimal amount, BigDecimal balanceAfter, Long bizId, String remark) {
         WalletFlow flow = new WalletFlow();
         flow.setUserId(userId);
+        flow.setRole(UserRole.USER);
         flow.setDirection(direction);
         flow.setBizType(bizType);
         flow.setAmount(amount);

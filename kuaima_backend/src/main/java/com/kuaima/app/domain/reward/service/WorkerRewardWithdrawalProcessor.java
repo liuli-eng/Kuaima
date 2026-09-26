@@ -49,14 +49,23 @@ public class WorkerRewardWithdrawalProcessor {
 
     @Transactional(readOnly = true)
     public Optional<RewardWithdrawal> existing(Long userId, long amount, String channel, String normalizedKey) {
+        return existing(userId, amount, channel, normalizedKey, "USER");
+    }
+
+    public Optional<RewardWithdrawal> existing(Long userId, long amount, String channel, String normalizedKey, String role) {
         return withdrawals.findByIdempotencyKey(normalizedKey)
-                .map(old -> requireSameRequest(old, userId, amount, channel));
+                .map(old -> requireSameRequest(old, userId, amount, channel, role));
     }
 
     @Transactional
     public RewardWithdrawal submit(Long userId, long amount, String channel, RewardWithdrawSettings settings,
             String normalizedKey) {
-        Optional<RewardWithdrawal> old = existing(userId, amount, channel, normalizedKey);
+        return submit(userId, amount, channel, settings, normalizedKey, "USER");
+    }
+
+    public RewardWithdrawal submit(Long userId, long amount, String channel, RewardWithdrawSettings settings,
+            String normalizedKey, String role) {
+        Optional<RewardWithdrawal> old = existing(userId, amount, channel, normalizedKey, role);
         if (old.isPresent()) return old.get();
 
         User user = users.findByIdForUpdate(userId)
@@ -74,7 +83,7 @@ public class WorkerRewardWithdrawalProcessor {
             throw new IllegalArgumentException("最低提现金额为" + settings.minimumAmount() + "分");
         }
 
-        RewardAccount account = lockedAccount(userId);
+        RewardAccount account = lockedAccount(userId, role);
         BigDecimal amountYuan = yuan(amount);
         BigDecimal balance = value(account.getBalance());
         BigDecimal frozen = value(account.getFrozenAmount());
@@ -84,6 +93,7 @@ public class WorkerRewardWithdrawalProcessor {
 
         RewardWithdrawal withdrawal = new RewardWithdrawal();
         withdrawal.setUserId(userId);
+        withdrawal.setRole(role);
         withdrawal.setAmount(amountYuan);
         withdrawal.setChannel(channel);
         withdrawal.setStatus("PENDING");
@@ -109,7 +119,7 @@ public class WorkerRewardWithdrawalProcessor {
         locked.setTransferResponse(result.rawResponse());
         locked.setUpdatedAt(LocalDateTime.now(ZONE));
         RewardWithdrawal saved = withdrawals.saveAndFlush(locked);
-        flows.findByUserIdAndBizTypeAndBizId(saved.getUserId(), "WECHAT_WITHDRAW", saved.getId())
+        flows.findByUserIdAndRoleAndBizTypeAndBizId(saved.getUserId(), saved.getRole(), "WECHAT_WITHDRAW", saved.getId())
                 .ifPresent(flow -> flow.setStatus("PENDING"));
         return saved;
     }
@@ -127,7 +137,7 @@ public class WorkerRewardWithdrawalProcessor {
         withdrawal.setPaidAt(LocalDateTime.now(ZONE));
         withdrawal.setUpdatedAt(LocalDateTime.now(ZONE));
         RewardWithdrawal saved = withdrawals.saveAndFlush(withdrawal);
-        flows.findByUserIdAndBizTypeAndBizId(saved.getUserId(), "WECHAT_WITHDRAW", saved.getId())
+        flows.findByUserIdAndRoleAndBizTypeAndBizId(saved.getUserId(), saved.getRole(), "WECHAT_WITHDRAW", saved.getId())
                 .ifPresent(flow -> flow.setStatus("SUCCESS"));
         return saved;
     }
@@ -144,17 +154,19 @@ public class WorkerRewardWithdrawalProcessor {
         if (!"PENDING".equals(withdrawal.getStatus())) {
             throw new IllegalStateException("当前提现单状态不能标记失败");
         }
-        RewardAccount account = accounts.findByUserIdForUpdate(withdrawal.getUserId())
+        RewardAccount account = accounts.findByUserIdAndRoleForUpdate(withdrawal.getUserId(), withdrawal.getRole())
+                .or(() -> "USER".equals(withdrawal.getRole()) ? accounts.findByUserIdForUpdate(withdrawal.getUserId()) : java.util.Optional.empty())
                 .orElseThrow(() -> new IllegalStateException("奖励金账户不存在"));
         BigDecimal amount = withdrawal.getAmount();
         account.setBalance(value(account.getBalance()).add(amount));
         accounts.saveAndFlush(account);
 
-        RewardFlow withdrawFlow = flows.findByUserIdAndBizTypeAndBizId(withdrawal.getUserId(), "WECHAT_WITHDRAW", withdrawalId)
+        RewardFlow withdrawFlow = flows.findByUserIdAndRoleAndBizTypeAndBizId(withdrawal.getUserId(), withdrawal.getRole(), "WECHAT_WITHDRAW", withdrawalId)
                 .orElse(null);
         if (withdrawFlow != null) withdrawFlow.setStatus("FAILED");
         RewardFlow refund = new RewardFlow();
         refund.setUserId(withdrawal.getUserId());
+        refund.setRole(withdrawal.getRole());
         refund.setType("INCOME");
         refund.setAmount(amount);
         refund.setBalanceAfter(account.getBalance());
@@ -182,10 +194,12 @@ public class WorkerRewardWithdrawalProcessor {
                 .orElseThrow(() -> new EntityNotFoundException("奖励金提现单不存在: " + id));
     }
 
-    private RewardAccount lockedAccount(Long userId) {
-        return accounts.findByUserIdForUpdate(userId).orElseGet(() -> {
+    private RewardAccount lockedAccount(Long userId, String role) {
+        return accounts.findByUserIdAndRoleForUpdate(userId, role)
+                .or(() -> "USER".equals(role) ? accounts.findByUserIdForUpdate(userId) : java.util.Optional.empty()).orElseGet(() -> {
             RewardAccount created = new RewardAccount();
             created.setUserId(userId);
+            created.setRole(role);
             created.setBalance(BigDecimal.ZERO);
             created.setFrozenAmount(BigDecimal.ZERO);
             return accounts.saveAndFlush(created);
@@ -196,6 +210,7 @@ public class WorkerRewardWithdrawalProcessor {
             String bizType, String title, String description, String status, String idempotencyKey) {
         RewardFlow flow = new RewardFlow();
         flow.setUserId(withdrawal.getUserId());
+        flow.setRole(withdrawal.getRole());
         flow.setType(type);
         flow.setAmount(amount);
         flow.setBalanceAfter(balanceAfter);
@@ -211,10 +226,11 @@ public class WorkerRewardWithdrawalProcessor {
         flows.saveAndFlush(flow);
     }
 
-    private RewardWithdrawal requireSameRequest(RewardWithdrawal withdrawal, Long userId, long amount, String channel) {
+    private RewardWithdrawal requireSameRequest(RewardWithdrawal withdrawal, Long userId, long amount, String channel, String role) {
         if (!Objects.equals(withdrawal.getUserId(), userId)) {
             throw new ForbiddenBusinessException("幂等键已被其他用户使用");
         }
+        if (!Objects.equals(withdrawal.getRole(), role)) throw new ForbiddenBusinessException("幂等键已被其他身份使用");
         if (withdrawal.getAmount().compareTo(yuan(amount)) != 0) {
             throw new IllegalArgumentException("同一Idempotency-Key不能用于不同提现金额");
         }

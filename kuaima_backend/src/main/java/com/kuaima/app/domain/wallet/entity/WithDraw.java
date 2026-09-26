@@ -28,6 +28,9 @@ public class WithDraw extends BaseEntity {
     @Column(comment = "提现用户")
     private Long userId;
 
+    @Column(nullable = false, length = 20, comment = "账户身份: BOSS/USER")
+    private String role = "USER";
+
     @Column(precision = 18, scale = 2, comment = "提现金额（元）")
     private BigDecimal amount;
 

@@ -16,16 +16,22 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.security.core.Authentication;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.security.model.LoginUser;
 
 /**
  * 后台订单管理（基于报名记录的 admin 视角订单列表）
@@ -117,5 +123,30 @@ public class AdminOrderController {
         });
 
         return Result.success(views, page, items.getTotalElements());
+    }
+
+    @PutMapping("/{id}/cancel")
+    @Operation(summary = "后台取消订单", description = "取消指定报名记录，并记录取消原因")
+    public Result<JSONObject> cancel(@PathVariable Long id,
+                                     @RequestBody(required = false) Map<String, Object> body,
+                                     Authentication authentication) {
+        requireAdmin(authentication);
+        BaseOrderItem item = itemRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("订单不存在: " + id));
+        if ("已完成".equals(item.getStatus()) || "已结算".equals(item.getStatus())) {
+            throw new IllegalArgumentException("已完成或已结算订单不可取消");
+        }
+        item.setStatus("取消招工");
+        item.setCancelReason(body == null || body.get("reason") == null ? "管理员取消" : String.valueOf(body.get("reason")));
+        item.setCancelDate(new java.sql.Date(System.currentTimeMillis()));
+        BaseOrderItem saved = itemRepository.save(item);
+        return Result.success((JSONObject) JSON.toJSON(saved));
+    }
+
+    private void requireAdmin(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof LoginUser user)
+                || user.role() == null || !user.role().startsWith("ADMIN_")) {
+            throw new ForbiddenBusinessException("仅管理员可操作");
+        }
     }
 }

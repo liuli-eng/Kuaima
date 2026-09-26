@@ -132,8 +132,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         push.put("contentType", contentType);
         push.put("timestamp", System.currentTimeMillis());
 
-        // 推送给发送者自己
-        sendToSession(session, push.toJSONString());
+        // 后台客服端发送后已经在界面乐观插入消息；若再回推给发送者，
+        // 会导致同一条客服回复在后台显示两次。用户端仍需通过回显
+        // 看到自己发送的消息，因此只跳过 AGENT 的发送者回推。
+        if (!"AGENT".equalsIgnoreCase(fromType)) {
+            sendToSession(session, push.toJSONString());
+        }
 
         // 推送给对方
         chatSessionRepository.findById(sessionId).ifPresent(s -> {

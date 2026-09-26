@@ -202,25 +202,25 @@
 
     <!-- 底部TabBar -->
     <view class="tab-bar">
-      <view class="tab-item" @click="switchTab('home')">
+      <view v-if="canAccess('HOME_VIEW')" class="tab-item" @click="switchTab('home')">
         <view class="tab-icon-wrap">
           <image class="tab-svg" src="/static/icons/boss-tabbar/house-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">首页</text>
       </view>
-      <view class="tab-item active" @click="switchTab('order')">
+      <view v-if="canAccess('ORDER_VIEW')" class="tab-item active" @click="switchTab('order')">
         <view class="tab-icon-wrap">
           <image class="tab-svg" src="/static/icons/boss-tabbar/calendar-check-white.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">招工订单</text>
       </view>
-      <view class="tab-item" @click="switchTab('workbench')">
+      <view v-if="canAccess('WORKBENCH_VIEW')" class="tab-item" @click="switchTab('workbench')">
         <view class="tab-icon-wrap">
           <image class="tab-svg" src="/static/icons/boss-tabbar/briefcase-gray.svg" mode="aspectFit" />
         </view>
         <text class="tab-label">工作台</text>
       </view>
-      <view class="tab-item" @click="switchTab('message')">
+      <view v-if="canAccess('MESSAGE_VIEW')" class="tab-item" @click="switchTab('message')">
         <view class="tab-icon-wrap">
           <image class="tab-svg" src="/static/icons/boss-tabbar/comment-dots-gray.svg" mode="aspectFit" />
         </view>
@@ -331,6 +331,7 @@
 </template>
 
 <script>
+import { hasEnterprisePermission } from "@/api/enterprise-context";
 import {
   changeOrderStatus,
   getBossAttendanceCodes,
@@ -596,6 +597,7 @@ export default {
     uni.$off("recruitSettingsSaved", this.loadAttendanceCodes);
   },
   methods: {
+    canAccess(code) { return hasEnterprisePermission(code); },
     openReview(job) {
       this.reviewTarget = job;
       this.reviewForm = { overallScore: 0, attitudeScore: 0, efficiencyScore: 0, skillScore: 0, content: "" };

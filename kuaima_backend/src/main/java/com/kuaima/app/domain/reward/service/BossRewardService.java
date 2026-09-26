@@ -37,9 +37,9 @@ public class BossRewardService {
     @Transactional(readOnly = true)
     public Map<String, Object> overview(Long bossId) {
         requireBossExists(bossId);
-        BigDecimal balance = accounts.findByUserId(bossId).map(a -> value(a.getBalance())).orElse(BigDecimal.ZERO);
-        BigDecimal income = value(flows.sumByUserIdAndType(bossId, "INCOME"));
-        BigDecimal expense = value(flows.sumByUserIdAndType(bossId, "EXPENSE"));
+        BigDecimal balance = accounts.findByUserIdAndRole(bossId, UserRole.BOSS).map(a -> value(a.getBalance())).orElse(BigDecimal.ZERO);
+        BigDecimal income = value(flows.sumByUserIdAndRoleAndType(bossId, UserRole.BOSS, "INCOME"));
+        BigDecimal expense = value(flows.sumByUserIdAndRoleAndType(bossId, UserRole.BOSS, "EXPENSE"));
         return Map.of("balance", balance, "totalIncome", income, "totalExpense", expense,
                 "withdrawableAmount", balance);
     }
@@ -51,8 +51,8 @@ public class BossRewardService {
         if (!Set.of("ALL", "INCOME", "EXPENSE").contains(normalized))
             throw new IllegalArgumentException("type 只能是 ALL、INCOME 或 EXPENSE");
         Page<RewardFlow> page = "ALL".equals(normalized)
-                ? flows.findByUserIdOrderByCreatedAtDescIdDesc(bossId, pageable)
-                : flows.findByUserIdAndTypeOrderByCreatedAtDescIdDesc(bossId, normalized, pageable);
+                ? flows.findByUserIdAndRoleOrderByCreatedAtDescIdDesc(bossId, UserRole.BOSS, pageable)
+                : flows.findByUserIdAndRoleAndTypeOrderByCreatedAtDescIdDesc(bossId, UserRole.BOSS, normalized, pageable);
         return page.map(this::flowView);
     }
 
@@ -64,13 +64,14 @@ public class BossRewardService {
         String key = normalizeKey(bossId, idempotencyKey);
         users.findById(bossId).filter(UserRole::isBossIdentity)
                 .orElseThrow(() -> new EntityNotFoundException("老板账号不存在: " + bossId));
-        RewardWithdrawal existing = withdrawalProcessor.existing(bossId, amountFen, "WECHAT", key).orElse(null);
+        RewardWithdrawal existing = withdrawalProcessor.existing(bossId, amountFen, "WECHAT", key, UserRole.BOSS).orElse(null);
         if (existing != null) return withdrawalView(existing);
         RewardWithdrawal submitted;
         try {
-            submitted = withdrawalProcessor.submit(bossId, amountFen, "WECHAT", settingsService.settings(), key);
+            submitted = withdrawalProcessor.submit(bossId, amountFen, "WECHAT", settingsService.settings(), key, UserRole.BOSS);
+            if (submitted == null) submitted = withdrawalProcessor.submit(bossId, amountFen, "WECHAT", settingsService.settings(), key);
         } catch (DataIntegrityViolationException e) {
-            RewardWithdrawal concurrent = withdrawalProcessor.existing(bossId, amountFen, "WECHAT", key).orElse(null);
+            RewardWithdrawal concurrent = withdrawalProcessor.existing(bossId, amountFen, "WECHAT", key, UserRole.BOSS).orElse(null);
             if (concurrent != null) return withdrawalView(concurrent);
             throw e;
         }
@@ -89,7 +90,7 @@ public class BossRewardService {
     @Transactional(readOnly = true)
     public Page<Map<String, Object>> withdrawals(Long bossId, Pageable pageable) {
         requireBossExists(bossId);
-        return withdrawals.findByUserIdOrderByAppliedAtDescIdDesc(bossId, pageable).map(this::withdrawalView);
+        return withdrawals.findByUserIdAndRoleOrderByAppliedAtDescIdDesc(bossId, UserRole.BOSS, pageable).map(this::withdrawalView);
     }
 
     private void requireBossExists(Long bossId) {

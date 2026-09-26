@@ -1,6 +1,8 @@
 package com.kuaima.app.websocket;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
@@ -35,5 +37,16 @@ public class WebSocketSessionManager {
 
     public int getOnlineCount() {
         return (int) userSessions.values().stream().filter(WebSocketSession::isOpen).count();
+    }
+
+    /** 当前连接在线客服 WebSocket 的零工用户 ID。 */
+    public Set<Long> getOnlineWorkerIds() {
+        return userSessions.values().stream()
+                .filter(WebSocketSession::isOpen)
+                .filter(session -> "USER".equalsIgnoreCase((String) session.getAttributes().get("type")))
+                .map(session -> (String) session.getAttributes().get("userId"))
+                .filter(id -> id != null && id.matches("\\d+"))
+                .map(Long::valueOf)
+                .collect(Collectors.toSet());
     }
 }

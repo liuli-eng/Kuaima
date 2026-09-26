@@ -97,6 +97,16 @@ class WorkerRewardWithdrawalProcessorTests {
     }
 
     @Test
+    void testStageAllowsAnyPositiveCentAmount() {
+        RewardWithdrawSettings testStage = new RewardWithdrawSettings(1L, true, null, "WECHAT");
+
+        RewardWithdrawal result = processor.submit(30L, 1L, "WECHAT", testStage, "worker-reward:30:one-cent");
+
+        assertEquals(new BigDecimal("0.01"), result.getAmount());
+        assertEquals(new BigDecimal("19.99"), account.getBalance());
+    }
+
+    @Test
     void unverifiedRealnameIsRejectedBeforeBalanceChanges() {
         worker.setRealnameStatus("UNVERIFIED");
 

@@ -12,6 +12,7 @@ public interface WithDrawRespository extends JpaRepository<WithDraw, Long> {
 
     /** 按用户查提现单（最新在前） */
     List<WithDraw> findByUserIdOrderByIdDesc(Long userId);
+    List<WithDraw> findByUserIdAndRoleOrderByIdDesc(Long userId, String role);
 
     Optional<WithDraw> findByIdempotencyKey(String idempotencyKey);
 

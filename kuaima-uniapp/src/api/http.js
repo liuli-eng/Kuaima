@@ -1,5 +1,9 @@
 let BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
+const ENABLE_ORDER_REQUEST_LOG =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_API_LOG === "true";
+const ENABLE_AUTH_TOKEN_LOG =
+  import.meta.env.VITE_ENABLE_AUTH_TOKEN_LOG === "true";
 
 // H5 开发环境通过 Vite 代理访问 /api；微信开发者工具不支持该相对代理地址。
 // #ifdef MP-WEIXIN
@@ -73,6 +77,17 @@ export function request({
   const token = uni.getStorageSync("token");
   const userId = uni.getStorageSync("userId") || "2001";
   const realUrl = resolveBackendUrl(url, userId, data);
+  const shouldLogOrderRequest = ENABLE_ORDER_REQUEST_LOG && isOrderRequest(url);
+  if (shouldLogOrderRequest) {
+    console.info("[订单接口请求]", {
+      method,
+      url: realUrl,
+      data: sanitizeLogData(data),
+    });
+    if (ENABLE_AUTH_TOKEN_LOG) {
+      console.info("[订单接口Token]", token || "[未登录]");
+    }
+  }
   return new Promise((resolve, reject) => {
     uni.request({
       url: `${BASE_URL}${realUrl}`,
@@ -86,6 +101,15 @@ export function request({
       },
       success(response) {
         const payload = response.data;
+        if (shouldLogOrderRequest) {
+          console.info("[订单接口响应]", {
+            method,
+            url: realUrl,
+            statusCode: response.statusCode,
+            code: payload?.code,
+            message: payload?.message || payload?.msg,
+          });
+        }
         if (
           response.statusCode >= 200 &&
           response.statusCode < 300 &&
@@ -109,10 +133,33 @@ export function request({
         reject(error);
       },
       fail(error) {
+        if (shouldLogOrderRequest) {
+          console.warn("[订单接口失败]", {
+            method,
+            url: realUrl,
+            error: error?.errMsg || error?.message || error,
+          });
+        }
         reject(formatError(error, "网络请求失败"));
       },
     });
   });
+}
+
+function isOrderRequest(url = "") {
+  return /^\/(?:boss\/order(?:\/|\?|$)|jobs(?:\/|\?|$)|worker\/orders(?:\/|\?|$))/.test(url);
+}
+
+function sanitizeLogData(data) {
+  if (!data || typeof data !== "object") return data;
+  const sensitiveKeys = new Set(["token", "authorization", "password", "openid", "code"]);
+  if (Array.isArray(data)) return data.map((item) => sanitizeLogData(item));
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [
+      key,
+      sensitiveKeys.has(key.toLowerCase()) ? "[已隐藏]" : sanitizeLogData(value),
+    ]),
+  );
 }
 
 function resolveBackendUrl(url, userId, data) {

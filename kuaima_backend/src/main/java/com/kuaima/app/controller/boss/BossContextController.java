@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import com.alibaba.fastjson2.JSON;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -36,6 +37,7 @@ public class BossContextController {
     public Result<Map<String, Object>> list(Authentication authentication) {
         EnterpriseContextService.Context current = contexts.require(authentication);
         List<Map<String, Object>> records = contexts.memberships(current.user().getId()).stream()
+                .filter(member -> "OWNER".equals(member.getMemberRole()) || !Boolean.FALSE.equals(member.getPortalEnabled()))
                 .map(member -> enterpriseView(member, member.getEnterpriseId(), current.enterprise().getId()))
                 .toList();
         Map<String, Object> data = new LinkedHashMap<>();
@@ -56,6 +58,7 @@ public class BossContextController {
         }
         EnterpriseMember target = contexts.memberships(current.user().getId()).stream()
                 .filter(member -> Objects.equals(member.getEnterpriseId(), request.enterpriseId()))
+                .filter(member -> "OWNER".equals(member.getMemberRole()) || !Boolean.FALSE.equals(member.getPortalEnabled()))
                 .findFirst().orElseThrow(() -> new com.kuaima.app.common.ForbiddenBusinessException("无权访问该企业"));
         Enterprise enterprise = enterprises.findById(target.getEnterpriseId())
                 .orElseThrow(() -> new com.kuaima.app.common.ForbiddenBusinessException("企业不存在"));
@@ -67,6 +70,7 @@ public class BossContextController {
         data.put("memberRole", target.getMemberRole());
         data.put("companyCode", enterprise.getCompanyCode());
         data.put("companyName", enterprise.getCompanyName());
+        data.put("permissions", target.getPermissions() == null ? List.of() : JSON.parseArray(target.getPermissions()));
         return Result.success(data);
     }
 
@@ -78,6 +82,8 @@ public class BossContextController {
         view.put("companyName", enterprise == null ? "" : enterprise.getCompanyName());
         view.put("memberRole", member.getMemberRole());
         view.put("current", Objects.equals(enterpriseId, currentId));
+        view.put("portalEnabled", "OWNER".equals(member.getMemberRole()) || !Boolean.FALSE.equals(member.getPortalEnabled()));
+        view.put("permissions", member.getPermissions() == null ? List.of() : JSON.parseArray(member.getPermissions()));
         return view;
     }
 }

@@ -2,6 +2,7 @@ package com.kuaima.app.domain.user.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -59,6 +60,26 @@ public interface UserRepository extends JpaRepository<User, Long> {
                             @Param("status") String status,
                             @Param("keyword") String keyword,
                             Pageable pageable);
+
+    /** 后台零工列表：支持注册日期范围筛选。 */
+    @Query("""
+            select u from User u
+            where u.role = :role
+              and (:status is null or u.status = :status)
+              and (:startDate is null or u.date >= :startDate)
+              and (:endDate is null or u.date <= :endDate)
+              and ((:keyword is null) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%) or (u.companyName like %:keyword%))
+            """)
+    Page<User> searchWorkers(@Param("role") String role,
+                             @Param("status") String status,
+                             @Param("keyword") String keyword,
+                             @Param("startDate") LocalDate startDate,
+                             @Param("endDate") LocalDate endDate,
+                             Pageable pageable);
+
+    long countByRoleAndStatus(String role, String status);
+
+    long countByRoleAndDateBetween(String role, LocalDate startDate, LocalDate endDate);
 
     @Query("select u from User u where (:role is null or u.role = :role) and (:keyword is null or u.username like concat('%', :keyword, '%') or u.nickname like concat('%', :keyword, '%') or u.phone like concat('%', :keyword, '%') or u.companyName like concat('%', :keyword, '%'))")
     Page<User> searchRecipients(@Param("role") String role, @Param("keyword") String keyword, Pageable pageable);

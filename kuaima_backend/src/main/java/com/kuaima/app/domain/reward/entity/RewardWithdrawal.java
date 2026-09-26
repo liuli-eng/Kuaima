@@ -16,6 +16,7 @@ public class RewardWithdrawal {
     public void setAmount(BigDecimal value) { this.amount = value; }
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(name = "user_id", nullable = false) private Long userId;
+    @Column(nullable = false, length = 20) private String role = "USER";
     @Column(nullable = false, precision = 18, scale = 2) private BigDecimal amount;
     @Column(nullable = false, length = 20) private String channel = "WECHAT";
     @Column(nullable = false, length = 20) private String status;

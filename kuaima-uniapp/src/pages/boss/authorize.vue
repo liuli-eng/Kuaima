@@ -75,15 +75,19 @@
 
       <view class="perm-card">
         <view class="perm-title"><image :src="keyOrangeIcon" mode="aspectFit" />授权权限范围</view>
-        <view v-for="item in permissions" :key="item.value" class="perm-item" :class="{ active: selectedPermissions.includes(item.value) }" @click="togglePermission(item.value)">
+        <view v-for="item in permissions" :key="item.value" class="perm-item" :class="{ active: selectedPermissionGroups.includes(item.value) }" @click="togglePermission(item.value)">
           <view class="perm-icon" :class="`icon-${item.value.toLowerCase()}`"><image :src="item.icon" mode="aspectFit" /></view>
           <view class="perm-main"><text class="perm-name">{{ item.label }}</text><text class="perm-desc">{{ item.desc }}</text></view>
-          <view class="check"><image v-if="selectedPermissions.includes(item.value)" :src="checkWhiteIcon" mode="aspectFit" /></view>
+          <view class="check"><image v-if="selectedPermissionGroups.includes(item.value)" :src="checkWhiteIcon" mode="aspectFit" /></view>
         </view>
       </view>
       <view class="bottom-space" />
     </scroll-view>
-    <view class="footer"><button class="confirm" :disabled="submitting" @click="submit">{{ submitting ? "授权中…" : "确认授权" }}</button><text class="agree">点击确认即表示同意《授权服务协议》</text></view>
+    <view class="footer">
+      <button v-if="selectedEmployees.length === 1 && selectedEmployees[0].portalEnabled" class="revoke" :disabled="submitting" @click="revokeSelected">撤销企业端权限</button>
+      <button class="confirm" :disabled="submitting" @click="submit">{{ submitting ? "处理中…" : selectedEmployees.length === 1 && selectedEmployees[0].portalEnabled ? "保存权限" : "确认授权" }}</button>
+      <text class="agree">点击确认即表示同意《授权服务协议》</text>
+    </view>
   </view>
 </template>
 
@@ -92,7 +96,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import AppNavBar from "@/components/AppNavBar.vue";
 import { getCurrentUser, sendSmsCode } from "@/api/auth";
-import { createBossSubAccount, listBossEnterpriseMembers } from "@/api/backend";
+import { createBossSubAccount, listBossEnterpriseMembers, revokeBossSubAccountPermissions, updateBossSubAccountPermissions } from "@/api/backend";
 import chevronDownGrayIcon from "/static/icons/boss-authorize/chevron-down-gray.svg";
 import chevronDownOrangeIcon from "/static/icons/boss-authorize/chevron-down-orange.svg";
 import checkWhiteIcon from "/static/icons/boss-authorize/check-white.svg";
@@ -110,12 +114,12 @@ const submitting = ref(false);
 const sendingCode = ref(false);
 const countdown = ref(0);
 const permissions = [
-  { value: "HOME", label: "首页", desc: "查看数据概览、待办提醒", icon: houseWhiteIcon },
-  { value: "ORDER", label: "招工订单", desc: "发布岗位、管理报名、订单结算", icon: clipboardListWhiteIcon },
-  { value: "MESSAGE", label: "消息", desc: "系统通知、员工沟通", icon: commentDotsWhiteIcon },
-  { value: "WORKBENCH", label: "工作台", desc: "发薪结算、考勤管理、报表查看", icon: briefcaseWhiteIcon },
+  { value: "HOME", codes: ["HOME_VIEW"], label: "首页", desc: "查看数据概览、待办提醒", icon: houseWhiteIcon },
+  { value: "ORDER", codes: ["ORDER_VIEW", "ORDER_CREATE"], label: "招工订单", desc: "发布岗位、管理报名、订单结算", icon: clipboardListWhiteIcon },
+  { value: "MESSAGE", codes: ["MESSAGE_VIEW"], label: "消息", desc: "系统通知、员工沟通", icon: commentDotsWhiteIcon },
+  { value: "WORKBENCH", codes: ["WORKBENCH_VIEW", "ATTENDANCE_VIEW", "SETTLEMENT_VIEW", "REPORT_VIEW"], label: "工作台", desc: "发薪结算、考勤管理、报表查看", icon: briefcaseWhiteIcon },
 ];
-const selectedPermissions = ref(["HOME", "ORDER", "MESSAGE"]);
+const selectedPermissionGroups = ref(["HOME", "ORDER", "MESSAGE", "WORKBENCH"]);
 const employeePickerOpen = ref(false);
 const employeeKeyword = ref("");
 const employees = ref([]);
@@ -174,7 +178,17 @@ function normalizeEmployee(employee, index) {
     statusText,
     avatarBg: avatarGradient(role, statusText, index),
     selected: false,
+    portalEnabled: employee.portalEnabled === true,
+    permissions: normalizePermissions(employee.permissions || employee.permissionCodes),
   };
+}
+
+function normalizePermissions(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try { const result = JSON.parse(value); return Array.isArray(result) ? result : []; } catch (_) { return []; }
+  }
+  return [];
 }
 
 function maskPhone(phone) {
@@ -202,16 +216,34 @@ function toggleEmployeePicker() {
 
 function toggleEmployee(employee) {
   employee.selected = !employee.selected;
+  if (employee.selected && employee.portalEnabled && employee.permissions.length) {
+    selectedPermissionGroups.value = permissions
+      .filter((item) => item.codes.some((code) => employee.permissions.includes(code)))
+      .map((item) => item.value);
+  }
 }
 
 function togglePermission(value) {
   if (value === "WORKBENCH") {
-    selectedPermissions.value = selectedPermissions.value.includes(value) ? [] : permissions.map((item) => item.value);
+    selectedPermissionGroups.value = permissions.map((item) => item.value);
     return;
   }
-  const next = selectedPermissions.value.filter((item) => item !== value);
-  if (!selectedPermissions.value.includes(value)) next.push(value);
-  selectedPermissions.value = next;
+  const next = selectedPermissionGroups.value.filter((item) => item !== value);
+  if (!selectedPermissionGroups.value.includes(value)) next.push(value);
+  const moduleValues = permissions.filter((item) => item.value !== "WORKBENCH").map((item) => item.value);
+  const allModulesSelected = moduleValues.every((item) => next.includes(item));
+  if (allModulesSelected && !next.includes("WORKBENCH")) next.push("WORKBENCH");
+  if (!allModulesSelected) {
+    const workbenchIndex = next.indexOf("WORKBENCH");
+    if (workbenchIndex >= 0) next.splice(workbenchIndex, 1);
+  }
+  selectedPermissionGroups.value = next;
+}
+
+function selectedPermissionCodes() {
+  return permissions
+    .filter((item) => selectedPermissionGroups.value.includes(item.value))
+    .flatMap((item) => item.codes);
 }
 
 async function sendCode() {
@@ -242,21 +274,46 @@ async function submit() {
   const invalidEmployee = selectedEmployees.value.find((employee) => !employee.memberId);
   if (invalidEmployee) return uni.showToast({ title: `${invalidEmployee.name}成员标识无效`, icon: "none" });
   if (!form.value.code.trim()) return uni.showToast({ title: "请输入验证码", icon: "none" });
-  if (!selectedPermissions.value.length) return uni.showToast({ title: "请选择授权权限", icon: "none" });
+  if (!selectedPermissionGroups.value.length) return uni.showToast({ title: "请选择授权权限", icon: "none" });
   if (submitting.value) return;
   submitting.value = true;
   try {
-    const role = selectedPermissions.value.includes("WORKBENCH") ? "ADMIN" : "OPERATOR";
+    const permissionCodes = selectedPermissionCodes();
+    const role = selectedPermissionGroups.value.includes("WORKBENCH") ? "ADMIN" : "OPERATOR";
     for (const employee of selectedEmployees.value) {
-      await createBossSubAccount({ memberId: employee.memberId, code: form.value.code, role });
+      if (employee.portalEnabled) {
+        await updateBossSubAccountPermissions(employee.memberId, permissionCodes);
+      } else {
+        await createBossSubAccount({ memberId: Number(employee.memberId), role, permissionCodes, code: form.value.code });
+      }
     }
-    uni.showToast({ title: "授权成功", icon: "success" });
+    uni.showToast({ title: "权限保存成功", icon: "success" });
     setTimeout(() => uni.navigateBack(), 600);
   } catch (error) {
     uni.showToast({ title: error?.message || "授权失败，请重试", icon: "none" });
   } finally {
     submitting.value = false;
   }
+}
+
+function revokeSelected() {
+  const employee = selectedEmployees.value[0];
+  if (!employee?.memberId || submitting.value) return;
+  uni.showModal({
+    title: "撤销权限",
+    content: `撤销后，${employee.name} 将无法进入当前企业，是否继续？`,
+    success: async ({ confirm }) => {
+      if (!confirm) return;
+      submitting.value = true;
+      try {
+        await revokeBossSubAccountPermissions(employee.memberId);
+        uni.showToast({ title: "已撤销企业端权限", icon: "success" });
+        await loadEmployees();
+      } catch (error) {
+        uni.showToast({ title: error?.message || "撤销失败", icon: "none" });
+      } finally { submitting.value = false; }
+    },
+  });
 }
 
 function cachedCurrentUserPhone() {
@@ -315,4 +372,5 @@ async function loadCurrentUserPhone() {
 .form-card { padding: 4rpx 32rpx; }.form-row { min-height: 100rpx; display: flex; align-items: center; border-bottom: 1rpx solid #f5f5f5; }.form-row:last-child { border-bottom: 0; }.form-label { width: 150rpx; color: #333; font-size: 28rpx; }.form-input { flex: 1; min-width: 0; color: #333; font-size: 28rpx; }.code-btn { margin-left: 12rpx; color: #2563eb; font-size: 24rpx; white-space: nowrap; }.code-btn.disabled { color: #aaa; }
 .perm-card { padding: 28rpx 32rpx; }.perm-title { display: flex; align-items: center; gap: 12rpx; margin-bottom: 16rpx; color: #333; font-size: 30rpx; font-weight: 600; }.perm-title image { width: 26rpx; height: 26rpx; }.perm-item { display: flex; align-items: center; padding: 22rpx 24rpx; margin-top: 8rpx; background: #fafafa; border: 2rpx solid transparent; border-radius: 16rpx; }.perm-item.active { background: #fff3ed; border-color: #ff6b35; }.perm-icon { display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx; flex-shrink: 0; margin-right: 20rpx; border-radius: 16rpx; }.perm-icon image { width: 26rpx; height: 26rpx; }.perm-icon.icon-home { background: #ff8c5a; }.perm-icon.icon-order { background: #36cfc9; }.perm-icon.icon-message { background: #722ed1; }.perm-icon.icon-workbench { background: #faad14; }.perm-main { flex: 1; }.perm-name, .perm-desc { display: block; }.perm-name { color: #333; font-size: 27rpx; }.perm-item.active .perm-name { color: #ff6b35; }.perm-desc { margin-top: 4rpx; color: #999; font-size: 22rpx; }.check { display: flex; align-items: center; justify-content: center; width: 40rpx; height: 40rpx; flex-shrink: 0; border: 3rpx solid #d8d8d8; border-radius: 50%; box-sizing: border-box; }.check image { width: 22rpx; height: 24rpx; }.active .check { background: #ff6b35; border-color: #ff6b35; }
 .bottom-space { height: 180rpx; }.footer { padding: 20rpx 32rpx calc(28rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -2rpx 10rpx rgba(0,0,0,.05); }.confirm { width: 100%; height: 88rpx; margin: 0; color: #fff; background: linear-gradient(135deg, #ff8c5a, #ff6b35); border: 0; border-radius: 44rpx; font-size: 30rpx; }.confirm[disabled] { opacity: .6; }.confirm::after { border: 0; }.agree { display: block; margin-top: 14rpx; color: #999; font-size: 21rpx; text-align: center; }
+.revoke { width: 100%; height: 76rpx; margin: 0 0 16rpx; border: 2rpx solid #ff4d4f; border-radius: 38rpx; color: #ff4d4f; background: #fff; font-size: 27rpx; }.revoke::after { border: 0; }
 </style>

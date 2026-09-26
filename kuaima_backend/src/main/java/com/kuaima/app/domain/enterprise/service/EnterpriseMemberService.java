@@ -60,12 +60,16 @@ public class EnterpriseMemberService {
             User u = userRepo.findById(m.getUserId()).orElse(null);
             Map<String, Object> item = new java.util.HashMap<>();
             item.put("id", m.getId());
+            item.put("memberId", m.getId());
             item.put("userId", m.getUserId());
             item.put("name", u != null && u.getNickname() != null ? u.getNickname()
                     : (u != null ? u.getUsername() : "成员" + m.getUserId()));
             item.put("phone", u != null ? maskPhone(u.getPhone()) : "");
             item.put("role", m.getMemberRole());
             item.put("title", m.getTitle() != null ? m.getTitle() : "");
+            item.put("portalEnabled", "OWNER".equals(m.getMemberRole()) || !Boolean.FALSE.equals(m.getPortalEnabled()));
+            item.put("permissions", m.getPermissions() == null
+                    ? List.of() : com.alibaba.fastjson2.JSON.parseArray(m.getPermissions()));
             item.put("joinDate", m.getDate() != null ? m.getDate().toString() : "");
             return item;
         }).toList();
@@ -85,7 +89,9 @@ public class EnterpriseMemberService {
         detail.put("joinDate", member.getDate() != null ? member.getDate().toString() : "");
         detail.put("invitedByName", inviter != null ? userRepo.findById(inviter.getUserId())
                 .map(u -> u.getNickname() != null ? u.getNickname() : u.getUsername()).orElse("") : "");
-        detail.put("permissions", PERMISSIONS);
+        detail.put("permissions", member.getPermissions() == null
+                ? List.of() : com.alibaba.fastjson2.JSON.parseArray(member.getPermissions()));
+        detail.put("portalEnabled", "OWNER".equals(member.getMemberRole()) || !Boolean.FALSE.equals(member.getPortalEnabled()));
         detail.put("permIndexes", permIndexes(member.getMemberRole()));
         detail.put("jobCount", 0);
         detail.put("self", false);

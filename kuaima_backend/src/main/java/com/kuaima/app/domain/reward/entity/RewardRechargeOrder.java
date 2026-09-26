@@ -38,6 +38,8 @@ public class RewardRechargeOrder {
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+    @Column(nullable = false, length = 20)
+    private String role = "BOSS";
 
     @Column(name = "enterprise_id")
     private Long enterpriseId;

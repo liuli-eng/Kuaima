@@ -19,24 +19,38 @@ public class RewardLedgerService {
 
     @Transactional
     public void credit(Long userId, BigDecimal amount, String bizType, Long bizId, String title, String remark, String sourceKey) {
+        credit(userId, "BOSS", amount, bizType, bizId, title, remark, sourceKey);
+    }
+
+    public void credit(Long userId, String role, BigDecimal amount, String bizType, Long bizId, String title, String remark, String sourceKey) {
         amount = normalize(amount);
         if (amount.signum() <= 0 || flows.findBySourceKey(sourceKey).isPresent()) return;
-        RewardAccount account = lockedAccount(userId);
+        RewardAccount account = lockedAccount(userId, role);
         account.setBalance(value(account.getBalance()).add(amount));
         accounts.save(account);
-        saveFlow(userId, "INCOME", amount, account.getBalance(), title, remark, bizType, bizId, sourceKey);
+        saveFlow(userId, role, "INCOME", amount, account.getBalance(), title, remark, bizType, bizId, sourceKey);
     }
 
     public RewardAccount lockedAccount(Long userId) {
-        return accounts.findByUserIdForUpdate(userId).orElseGet(() -> {
+        return lockedAccount(userId, "BOSS");
+    }
+
+    public RewardAccount lockedAccount(Long userId, String role) {
+        return accounts.findByUserIdAndRoleForUpdate(userId, role).orElseGet(() -> {
             RewardAccount account = new RewardAccount(); account.setUserId(userId); account.setBalance(BigDecimal.ZERO);
+            account.setRole(role);
             return accounts.save(account);
         });
     }
 
     public void saveFlow(Long userId, String type, BigDecimal amount, BigDecimal balanceAfter, String title,
                          String remark, String bizType, Long bizId, String sourceKey) {
+        saveFlow(userId, "BOSS", type, amount, balanceAfter, title, remark, bizType, bizId, sourceKey);
+    }
+    public void saveFlow(Long userId, String role, String type, BigDecimal amount, BigDecimal balanceAfter, String title,
+                         String remark, String bizType, Long bizId, String sourceKey) {
         RewardFlow flow = new RewardFlow(); flow.setUserId(userId); flow.setType(type); flow.setAmount(amount);
+        flow.setRole(role);
         flow.setBalanceAfter(balanceAfter); flow.setTitle(title); flow.setRemark(remark); flow.setBizType(bizType);
         flow.setBizId(bizId); flow.setSourceKey(sourceKey); flow.setCreatedAt(LocalDateTime.now(ZONE)); flows.save(flow);
     }

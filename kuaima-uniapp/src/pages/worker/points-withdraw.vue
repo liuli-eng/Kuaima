@@ -21,6 +21,11 @@
         <view class="balance-rate"><image src="/static/icons/worker-points-withdraw/coins-white.svg" mode="aspectFit" />兑换比例 {{ exchangeRate }}积分 = {{ cashRate }}元，手续费 ¥{{ formatMoney(fee) }}</view>
       </view>
 
+      <view class="records-entry" @click="openRecords">
+        <view><text class="records-entry-title">积分提现记录</text><text class="records-entry-desc">查看处理中、已到账和失败记录</text></view>
+        <text class="records-entry-arrow">›</text>
+      </view>
+
       <view class="form-card">
         <text class="field-label">到账方式</text>
         <view
@@ -285,6 +290,7 @@ function finish() {
 .balance-value { margin-top: 12rpx; font-size: 68rpx; font-weight: 700; }.balance-value text { margin-left: 8rpx; font-size: 28rpx; font-weight: 500; }
 .balance-sub { display: block; margin-top: 4rpx; color: rgba(255,255,255,.85); font-size: 24rpx; }.balance-rate { display: inline-flex; align-items: center; gap: 8rpx; margin-top: 24rpx; padding: 8rpx 20rpx; border-radius: 22rpx; color: rgba(255,255,255,.95); background: rgba(255,255,255,.18); font-size: 22rpx; }.balance-rate image { width: 22rpx; height: 22rpx; }
 .form-card { margin: 0 24rpx 24rpx; padding: 32rpx; border-radius: 24rpx; background: #fff; }.field-label { display: block; color: #333; font-size: 28rpx; font-weight: 600; }
+.records-entry { display: flex; align-items: center; justify-content: space-between; margin: 0 24rpx 24rpx; padding: 28rpx 32rpx; border-radius: 24rpx; background: #fff; }.records-entry-title,.records-entry-desc { display: block; }.records-entry-title { color: #333; font-size: 28rpx; font-weight: 600; }.records-entry-desc { margin-top: 8rpx; color: #999; font-size: 23rpx; }.records-entry-arrow { color: #999; font-size: 44rpx; font-weight: 300; }
 .channel-item { display: flex; align-items: center; gap: 24rpx; padding: 26rpx 0; border-bottom: 1rpx solid #f5f5f5; }.channel-item:last-child { border-bottom: 0; }.channel-icon { display: flex; align-items: center; justify-content: center; width: 80rpx; height: 80rpx; border-radius: 20rpx; }.channel-icon image { width: 44rpx; height: 44rpx; }.channel-icon.wechat { background: #07c160; }.channel-icon.alipay { background: #1677ff; }.channel-info { flex: 1; }.channel-name,.channel-desc { display: block; }.channel-name { color: #333; font-size: 28rpx; font-weight: 500; }.channel-desc { margin-top: 6rpx; color: #999; font-size: 23rpx; }.radio-dot { width: 40rpx; height: 40rpx; border: 4rpx solid #ddd; border-radius: 50%; box-sizing: border-box; }.channel-item.active .radio-dot { border-color: #ff6b35; box-shadow: inset 0 0 0 8rpx #fff; background: #ff6b35; }
 .channel-item.unavailable { opacity: .55; }
 .amount-box { margin-top: 24rpx; padding: 24rpx; border: 2rpx solid #f0e3da; border-radius: 24rpx; }.amount-box.focused { border-color: #ff6b35; }.amount-row { display: flex; align-items: center; }.amount-input { flex: 1; min-width: 0; font-size: 52rpx; font-weight: 700; }.amount-unit { margin-left: 10rpx; color: #999; font-size: 26rpx; }.amount-all { margin-left: 18rpx; color: #ff6b35; font-size: 26rpx; font-weight: 600; }.amount-meta { display: flex; justify-content: space-between; margin-top: 14rpx; color: #999; font-size: 22rpx; }.quick-row { display: flex; gap: 12rpx; margin-top: 20rpx; }.quick-chip { flex: 1; padding: 14rpx 0; border-radius: 12rpx; color: #666; background: #f7f7f7; font-size: 24rpx; text-align: center; }.quick-chip.active { color: #ff6b35; background: #fff3ed; font-weight: 600; }

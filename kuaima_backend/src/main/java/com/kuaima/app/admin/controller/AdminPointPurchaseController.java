@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.admin.dto.PointPurchaseDtos.CreateRequest;
+import com.kuaima.app.admin.dto.PointPurchaseDtos.PayRequest;
 import com.kuaima.app.admin.dto.PointPurchaseDtos.OrderResponse;
 import com.kuaima.app.admin.entity.PointPurchaseOrder;
 import com.kuaima.app.admin.repository.AdminUserRepository;
@@ -63,6 +64,14 @@ public class AdminPointPurchaseController {
         LoginUser u=requireAdmin(true); String name=u.username();
         var admin=adminRepo.findById(u.id()).orElse(null); if(admin!=null && admin.getName()!=null) name=admin.getName();
         return Result.success(service.create(request,u.id(),name));
+    }
+
+    @PostMapping("/orders/{orderNo}/pay")
+    @Operation(summary="确认积分购买订单支付")
+    public Result<OrderResponse> confirmPayment(@org.springframework.web.bind.annotation.PathVariable String orderNo, @RequestBody(required=false) PayRequest request) {
+        LoginUser u=requireAdmin(true); String name=u.username();
+        var admin=adminRepo.findById(u.id()).orElse(null); if(admin!=null && admin.getName()!=null) name=admin.getName();
+        return Result.success(service.confirmPayment(orderNo, request == null ? null : request.payMethod(), request == null ? null : request.transactionId(), u.id(), name));
     }
 
     @GetMapping("/orders/export")

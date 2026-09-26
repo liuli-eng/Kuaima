@@ -15,9 +15,13 @@ public interface WalletRespository extends JpaRepository<Wallet, Long> {
 
     /** 按用户查钱包 */
     Optional<Wallet> findByUserId(Long userId);
+    Optional<Wallet> findByUserIdAndRole(Long userId, String role);
 
     List<Wallet> findByUserIdIn(java.util.Collection<Long> userIds);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select w from Wallet w where w.userId=:userId")
     Optional<Wallet> findByUserIdForUpdate(@Param("userId") Long userId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select w from Wallet w where w.userId=:userId and w.role=:role")
+    Optional<Wallet> findByUserIdAndRoleForUpdate(@Param("userId") Long userId, @Param("role") String role);
 }

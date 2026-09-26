@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.HashMap;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -51,6 +53,7 @@ import com.kuaima.app.domain.wallet.entity.Wallet;
 import com.kuaima.app.domain.wallet.repository.WalletRespository;
 import com.kuaima.app.domain.wallet.repository.WalletFlowRespository;
 import com.kuaima.app.security.model.LoginUser;
+import com.kuaima.app.websocket.WebSocketSessionManager;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -73,6 +76,7 @@ public class AdminUserController {
     private final UserCouponRepository userCouponRepository;
     private final CouponRepository couponRepository;
     private final WalletFlowRespository walletFlowRepository;
+    private final WebSocketSessionManager webSocketSessionManager;
 
     public AdminUserController(UserRepository userRepository,
                                BaseOrderItemRespository orderItemRepository,
@@ -85,7 +89,7 @@ public class AdminUserController {
                                UserCouponRepository userCouponRepository,
                                CouponRepository couponRepository) {
         this(userRepository, orderItemRepository, bossOrderRepository, walletRepository, pointsAccountRepository,
-                rewardAccountRepository, pointsFlowRepository, rewardFlowRepository, userCouponRepository, couponRepository, null);
+                rewardAccountRepository, pointsFlowRepository, rewardFlowRepository, userCouponRepository, couponRepository, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -99,7 +103,8 @@ public class AdminUserController {
                                RewardFlowRepository rewardFlowRepository,
                                UserCouponRepository userCouponRepository,
                                CouponRepository couponRepository,
-                               WalletFlowRespository walletFlowRepository) {
+                               WalletFlowRespository walletFlowRepository,
+                               WebSocketSessionManager webSocketSessionManager) {
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
         this.bossOrderRepository = bossOrderRepository;
@@ -111,6 +116,7 @@ public class AdminUserController {
         this.userCouponRepository = userCouponRepository;
         this.couponRepository = couponRepository;
         this.walletFlowRepository = walletFlowRepository;
+        this.webSocketSessionManager = webSocketSessionManager;
     }
 
     /** 零工列表（附加 completedOrders 已完成订单数） */
@@ -118,13 +124,15 @@ public class AdminUserController {
     @GetMapping("/workers")
     public Result<Page<JSONObject>> workers(@RequestParam(required = false) String status,
                                             @RequestParam(required = false) String keyword,
+                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                                             @RequestParam(defaultValue = "0") int page,
                                             @RequestParam(defaultValue = "10") int size,
                                             Authentication authentication) {
         requireAdmin(authentication);
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         String kw = keyword != null && !keyword.isBlank() ? keyword : null;
-        Page<User> result = userRepository.searchByRole(UserRole.USER, status, kw, pageable);
+        Page<User> result = userRepository.searchWorkers(UserRole.USER, status, kw, startDate, endDate, pageable);
 
         // 批量统计零工已完成订单数
         Set<Long> userIds = result.stream().map(User::getId).collect(Collectors.toSet());
@@ -142,6 +150,21 @@ public class AdminUserController {
             return obj;
         });
         return Result.success(views, page, result.getTotalElements());
+    }
+
+    @Operation(summary = "零工管理统计", description = "返回零工总人数、本月新增、当前在线和已冻结人数")
+    @GetMapping("/workers/stats")
+    public Result<Map<String, Long>> workerStats(Authentication authentication) {
+        requireAdmin(authentication);
+        YearMonth month = YearMonth.now();
+        Map<String, Long> stats = new LinkedHashMap<>();
+        stats.put("total", userRepository.countByRole(UserRole.USER));
+        stats.put("monthNew", userRepository.countByRoleAndDateBetween(
+                UserRole.USER, month.atDay(1), month.atEndOfMonth()));
+        stats.put("online", webSocketSessionManager == null ? 0L
+                : (long) webSocketSessionManager.getOnlineWorkerIds().size());
+        stats.put("frozen", userRepository.countByRoleAndStatus(UserRole.USER, "冻结"));
+        return Result.success(stats);
     }
 
     /** 雇主列表（附加经营与资产字段，使用 fastjson 序列化确保 password 不泄露） */

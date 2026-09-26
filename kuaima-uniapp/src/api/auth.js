@@ -8,6 +8,29 @@ export function getCurrentUser() {
   return request({ url: "/auth/me" });
 }
 
+export function getEnterpriseContexts() {
+  return request({ url: "/auth/enterprise-contexts", skipUserIdHeader: true });
+}
+
+export function switchEnterpriseContext(enterpriseId) {
+  return request({
+    url: "/auth/enterprise-context/switch",
+    method: "POST",
+    data: { enterpriseId },
+    skipUserIdHeader: true,
+  });
+}
+
+export function saveEnterpriseContext(data = {}) {
+  if (data.accessToken) uni.setStorageSync("token", data.accessToken);
+  if (data.enterpriseId !== undefined) uni.setStorageSync("enterpriseId", String(data.enterpriseId));
+  if (data.enterpriseName) uni.setStorageSync("enterpriseName", data.enterpriseName);
+  if (data.memberRole) uni.setStorageSync("enterpriseMemberRole", data.memberRole);
+  if (Array.isArray(data.permissions)) uni.setStorageSync("enterprisePermissions", data.permissions);
+  uni.setStorageSync("role", data.role || "BOSS");
+  uni.setStorageSync("currentRole", "boss");
+}
+
 export function sendSmsCode(phone) {
   const value = String(phone || "").trim();
   if (!/^1[3-9]\d{9}$/.test(value)) {
@@ -30,6 +53,10 @@ export const LOGIN_STORAGE_KEYS = [
   "certStatus",
   "workerCertStatus",
   "bossCertStatus",
+  "enterpriseId",
+  "enterpriseName",
+  "enterpriseMemberRole",
+  "enterprisePermissions",
 ];
 
 export function clearLoginStorage() {

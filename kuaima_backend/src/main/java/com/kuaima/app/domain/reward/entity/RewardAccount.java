@@ -7,7 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "reward_account", uniqueConstraints = @UniqueConstraint(name = "uk_reward_account_user", columnNames = "user_id"))
+@Table(name = "reward_account", uniqueConstraints = @UniqueConstraint(
+        name = "uk_reward_account_user_role", columnNames = {"user_id", "role"}))
 @Getter @Setter
 public class RewardAccount {
     public void setBalance(Long value) { this.balance = value == null ? null : BigDecimal.valueOf(value); }
@@ -17,6 +18,9 @@ public class RewardAccount {
     private Long id;
     @Column(name = "user_id", nullable = false)
     private Long userId;
+
+    @Column(nullable = false, length = 20, comment = "账户身份: BOSS/USER")
+    private String role = "USER";
     @Column(nullable = false, precision = 18, scale = 2)
     private BigDecimal balance = BigDecimal.ZERO;
 

@@ -23,7 +23,8 @@ public class WorkerRewardSettingsInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        setting("reward.withdraw.minimumAmount", "1000", "奖励金最低提现金额（分）");
+        // 测试阶段不设置固定门槛，提现金额只需大于 0 分；正式运营前再由后台配置业务最低金额。
+        setting("reward.withdraw.minimumAmount", "1", "奖励金最低提现金额（分），测试阶段为1分");
         setting("reward.withdraw.enabled", "true", "奖励金提现开关");
         setting("reward.withdraw.disabledReason", "", "奖励金提现关闭原因");
         setting("reward.withdraw.channel", "WECHAT", "奖励金提现渠道");

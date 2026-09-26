@@ -26,7 +26,7 @@
         </div>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
-        <button class="btn btn-outline btn-sm" style="margin-left: auto;"><i class="fas fa-download"></i> 导出</button>
+        <button class="btn btn-outline btn-sm" style="margin-left: auto;" @click="handleExport"><i class="fas fa-download"></i> 导出</button>
       </div>
 
       <el-table :data="ordersData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
@@ -52,9 +52,9 @@
         </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small">详情</el-button>
-            <el-button link type="warning" size="small" v-if="row.status === '纠纷'">处理纠纷</el-button>
-            <el-button link type="danger" size="small">取消</el-button>
+            <el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button>
+            <el-button link type="warning" size="small" v-if="row.status === '纠纷'" @click="handleDispute(row)">处理纠纷</el-button>
+            <el-button link type="danger" size="small" :disabled="isCanceled(row)" @click="handleCancel(row)">取消</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -73,13 +73,22 @@
         />
       </div>
     </div>
+    <el-dialog v-model="detailVisible" title="订单详情" width="620px">
+      <el-descriptions v-if="selectedOrder" :column="2" border>
+        <el-descriptions-item label="订单号">{{ selectedOrder.id }}</el-descriptions-item><el-descriptions-item label="状态">{{ selectedOrder.status }}</el-descriptions-item>
+        <el-descriptions-item label="雇主">{{ selectedOrder.employer }}</el-descriptions-item><el-descriptions-item label="零工">{{ selectedOrder.worker }}</el-descriptions-item>
+        <el-descriptions-item label="工种">{{ selectedOrder.job }}</el-descriptions-item><el-descriptions-item label="金额">¥{{ selectedOrder.amount }}</el-descriptions-item>
+        <el-descriptions-item label="开始时间">{{ selectedOrder.startTime }}</el-descriptions-item><el-descriptions-item label="结束时间">{{ selectedOrder.endTime }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer><el-button @click="detailVisible = false">关闭</el-button></template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { listOrders } from '@/api/order'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { cancelOrder, listOrders } from '@/api/order'
 
 const searchKeyword = ref('')
 const statusFilter = ref('')
@@ -91,6 +100,8 @@ const pageSize = ref(10)
 const total = ref(0)
 
 const ordersData = ref([])
+const detailVisible = ref(false)
+const selectedOrder = ref(null)
 
 const statusClassMap = {
   '已完成': 'success',
@@ -180,6 +191,34 @@ const onSizeChange = (size) => {
 const onPageChange = (page) => {
   currentPage.value = page
   loadOrders()
+}
+
+const showDetail = (row) => { selectedOrder.value = row; detailVisible.value = true }
+const isCanceled = (row) => ['已取消', '取消招工', '取消报名'].includes(row.status)
+
+const handleCancel = async (row) => {
+  if (isCanceled(row)) return
+  try {
+    const result = await ElMessageBox.prompt('请输入取消原因（可选）', '取消订单', { inputPlaceholder: '例如：后台管理员取消', confirmButtonText: '确认取消', cancelButtonText: '返回' })
+    await cancelOrder(row.id, result.value)
+    ElMessage.success('订单已取消')
+    await loadOrders()
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e?.message || '取消订单失败')
+  }
+}
+
+const handleDispute = (row) => {
+  selectedOrder.value = row
+  ElMessageBox.alert('请先核实雇主与零工双方凭证，再通过订单详情处理后续结算。', `处理纠纷 · ${row.id}`, { confirmButtonText: '知道了', type: 'warning' })
+}
+
+const handleExport = () => {
+  if (!ordersData.value.length) return ElMessage.info('当前没有可导出的订单')
+  const headers = ['订单号', '雇主', '零工', '工种', '金额', '开始时间', '结束时间', '状态']
+  const lines = ordersData.value.map(row => [row.id, row.employer, row.worker, row.job, row.amount, row.startTime, row.endTime, row.status].map(value => `"${String(value ?? '').replaceAll('"', '""')}"`).join(','))
+  const blob = new Blob([`\ufeff${headers.join(',')}\n${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = '用工订单.csv'; link.click(); URL.revokeObjectURL(url)
 }
 
 onMounted(loadOrders)

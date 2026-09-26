@@ -593,6 +593,12 @@
           }
         },
         {
+          "path": "expense-apply",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
           "path": "gender-age",
           "style": {
             "navigationStyle": "custom"
@@ -828,6 +834,12 @@
         },
         {
           "path": "authorize",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "enterprise-context",
           "style": {
             "navigationStyle": "custom"
           }

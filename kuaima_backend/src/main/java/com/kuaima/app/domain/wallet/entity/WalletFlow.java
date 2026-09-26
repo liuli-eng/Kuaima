@@ -28,6 +28,9 @@ public class WalletFlow extends BaseEntity {
     @Column(comment = "钱包所属用户")
     private Long userId;
 
+    @Column(nullable = false, length = 20, comment = "账户身份: BOSS/USER")
+    private String role = "USER";
+
     @Column(comment = "方向:income(收入)/outcome(支出)")
     private String direction;
 
