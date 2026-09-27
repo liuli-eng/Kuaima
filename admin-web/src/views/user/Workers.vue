@@ -10,7 +10,7 @@
       <div class="stat-card">
         <div class="stat-card-header">
           <span class="stat-card-title">总人数</span>
-          <div class="stat-card-icon"><i class="fas fa-users"></i></div>
+          <div class="stat-card-icon"><i class="fas fa-user-friends"></i></div>
         </div>
         <div class="stat-card-value">{{ stats.total }}</div>
         <div class="stat-card-change"><span class="text-muted">全部零工用户</span></div>
@@ -55,9 +55,10 @@
         <button class="btn btn-outline btn-sm export-button"><i class="fas fa-download"></i> 导出数据</button>
       </div>
 
-      <el-table class="workers-table" :data="tableData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column prop="id" label="零工ID" show-overflow-tooltip />
-        <el-table-column label="头像+姓名" min-width="170" show-overflow-tooltip>
+      <div class="table-scroll">
+      <el-table class="workers-table" :data="tableData" :fit="false" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
+        <el-table-column prop="id" label="零工ID" width="110" show-overflow-tooltip />
+        <el-table-column label="头像+姓名" width="185" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="user-cell">
               <span class="mini-avatar" :style="{ background: row.avatarColor || getAvatarColor(row.name) }">{{ getAvatarLetter(row.name) }}</span>
@@ -68,35 +69,35 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="phone" label="手机号" min-width="130" show-overflow-tooltip />
-        <el-table-column prop="certStatus" label="实名状态" min-width="105" show-overflow-tooltip>
+        <el-table-column prop="phone" label="手机号" width="130" show-overflow-tooltip />
+        <el-table-column prop="certStatus" label="实名状态" width="105" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['realname-status', isPhoneVerified(row) ? 'verified' : 'unverified']"><i :class="['fas', isPhoneVerified(row) ? 'fa-check-circle' : 'fa-clock']"></i>{{ isPhoneVerified(row) ? '已认证' : '未认证' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="技能标签" min-width="170" show-overflow-tooltip>
+        <el-table-column label="技能标签" width="170" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="skill-tags"><span v-for="(skill, idx) in normalizeSkills(row.skills)" :key="idx" class="worker-tag" :class="`worker-tag-${idx % 4}`">{{ skill }}</span><span v-if="!normalizeSkills(row.skills).length" class="text-muted">-</span></div>
           </template>
         </el-table-column>
-        <el-table-column label="信用分" min-width="95" show-overflow-tooltip>
+        <el-table-column label="信用分" width="95" show-overflow-tooltip>
           <template #default="{ row }"><span v-if="row.creditScore != null" :class="['credit-tag', creditLevel(row.creditScore)]">{{ row.creditScore }} {{ creditLabel(row.creditScore) }}</span><span v-else>-</span></template>
         </el-table-column>
-        <el-table-column label="奖励金余额" min-width="110" show-overflow-tooltip>
+        <el-table-column label="奖励金余额" width="110" show-overflow-tooltip>
           <template #default="{ row }"><span class="asset-num">{{ formatMoney(row.rewardBalance ?? row.rewardAmount ?? row.reward ?? null) }}</span></template>
         </el-table-column>
-        <el-table-column label="积分余额" min-width="95" show-overflow-tooltip>
+        <el-table-column label="积分余额" width="90" show-overflow-tooltip>
           <template #default="{ row }"><span class="asset-num points">{{ formatNumber(row.pointsBalance ?? row.pointBalance ?? row.points ?? null) }}</span></template>
         </el-table-column>
-        <el-table-column prop="orders" label="完成订单" min-width="95" show-overflow-tooltip>
+        <el-table-column prop="orders" label="完成订单" width="95" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.completedOrders ?? 0 }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="registerTime" label="注册时间" min-width="115" show-overflow-tooltip>
+        <el-table-column prop="registerTime" label="注册时间" width="115" show-overflow-tooltip>
           <template #default="{ row }">{{ formatDateTime(row.registerTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="205" fixed="right">
+        <el-table-column label="操作" width="195" fixed="right">
           <template #default="{ row }">
             <div class="action-cell">
               <el-button link type="primary" size="small" @click="handleDetail(row)">查看</el-button>
@@ -106,6 +107,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <div class="pagination">
         <div class="pagination-info">共 {{ total }} 条记录</div>
@@ -330,14 +332,14 @@ onMounted(() => {
 .filter-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
 .filter-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--text-secondary);
   font-size: 13px;
   white-space: nowrap;
@@ -360,6 +362,8 @@ onMounted(() => {
 .workers-table :deep(.el-table__header),
 .workers-table :deep(.el-table__body) { min-width: 1400px; }
 
+.table-scroll { width: 100%; overflow-x: auto; }
+
 .workers-table :deep(.el-table__header th) {
   height: 48px;
   background: #F9FAFB !important;
@@ -368,7 +372,7 @@ onMounted(() => {
   font-weight: 600;
 }
 .workers-table :deep(.el-table__row td) {
-  height: 68px;
+  height: 64px;
   color: var(--text-primary);
   font-size: 13px;
 }

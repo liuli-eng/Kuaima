@@ -8,7 +8,9 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,6 +48,7 @@ public class AdminCreditController {
         this(users, scores, null);
     }
 
+    @Autowired
     public AdminCreditController(UserRepository users, CreditScoreService scores, CreditFlowRepository flows) {
         this.users = users;
         this.scores = scores;
@@ -62,16 +65,21 @@ public class AdminCreditController {
         admin(authentication, false);
         String kw = keyword == null || keyword.isBlank() ? null : keyword.trim().toLowerCase(Locale.ROOT);
         String normalizedRole = normalizeRole(role);
-        List<User> candidates = normalizedRole == null
-                ? users.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
-                    .filter(user -> UserRole.USER.equals(user.getRole()) || UserRole.BOSS.equals(user.getRole())).toList()
-                : users.findByRole(normalizedRole);
+        if (role != null && !role.isBlank() && normalizedRole == null) {
+            throw new IllegalArgumentException("role 参数无效");
+        }
+        List<User> candidates = users.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
+                .filter(user -> normalizedRole == null
+                        ? (UserRole.isBossIdentity(user) || UserRole.isWorkerIdentity(user))
+                        : (UserRole.BOSS.equals(normalizedRole) ? UserRole.isBossIdentity(user) : UserRole.isWorkerIdentity(user)))
+                .toList();
         List<Map<String, Object>> rows = new ArrayList<>();
         for (User user : candidates) {
             String name = firstText(user.getRealName(), user.getNickname(), user.getUsername(), user.getPhone());
             if (kw != null && !containsAny(kw, user.getId(), name, user.getUsername(), user.getNickname(), user.getPhone())) continue;
-            String scoreType = CreditScoreService.BOSS_CREDIT;
-            int score = value(user.getCreditScore());
+            String scoreType = UserRole.isBossIdentity(user)
+                    ? CreditScoreService.BOSS_CREDIT : CreditScoreService.WORKER_STAR;
+            int score = UserRole.isBossIdentity(user) ? value(user.getCreditScore()) : value(user.getStarScore());
             String levelKey = levelKey(score);
             if (level != null && !level.isBlank() && !levelKey.equals(level)) continue;
             List<CreditFlow> history = flows == null ? List.of()
@@ -95,12 +103,15 @@ public class AdminCreditController {
     public Result<Map<String, Object>> detail(@PathVariable Long userId, Authentication authentication) {
         admin(authentication, false);
         User user = users.findById(userId).orElseThrow(() -> new EntityNotFoundException("用户不存在: " + userId));
+        String scoreType = scoreType(user);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("userId", userId);
         data.put("creditScore", user.getCreditScore() == null ? 0 : user.getCreditScore());
         data.put("starScore", user.getStarScore() == null ? 0 : user.getStarScore());
-        data.put("creditFlows", scores.flows(userId, CreditScoreService.BOSS_CREDIT));
-        data.put("starFlows", scores.flows(userId, CreditScoreService.WORKER_STAR));
+        data.put("scoreType", scoreType);
+        List<CreditFlow> activeFlows = scores.flows(userId, scoreType);
+        data.put("creditFlows", activeFlows);
+        data.put("starFlows", activeFlows);
         return Result.success(data);
     }
 
@@ -109,12 +120,22 @@ public class AdminCreditController {
                                                Authentication authentication) {
         LoginUser operator = admin(authentication, true);
         String type = text(body, "scoreType", CreditScoreService.BOSS_CREDIT);
+        User target = users.findById(userId).orElseThrow(() -> new EntityNotFoundException("用户不存在: " + userId));
+        String expectedType = scoreType(target);
+        if (!expectedType.equals(type)) throw new IllegalArgumentException("scoreType 与用户身份不匹配");
         int delta = number(body.get("delta"));
+        if (delta == 0) throw new IllegalArgumentException("delta 不能为0");
         String reason = text(body, "reason", "管理员人工调整");
         String ruleCode = text(body, "ruleCode", "ADMIN_MANUAL_ADJUST");
         String bizId = text(body, "bizId", String.valueOf(System.currentTimeMillis()));
-        scores.adjust(userId, type, delta, ruleCode, "ADMIN", "ADMIN:" + operator.id() + ":" + userId + ":" + bizId, reason);
+        boolean adjusted = scores.adjust(userId, type, delta, ruleCode, "ADMIN",
+                "ADMIN:" + operator.id() + ":" + userId + ":" + bizId + ":" + UUID.randomUUID(), reason);
+        if (!adjusted) throw new IllegalStateException("信用分调整未生效");
         return detail(userId, authentication);
+    }
+
+    private String scoreType(User user) {
+        return UserRole.isBossIdentity(user) ? CreditScoreService.BOSS_CREDIT : CreditScoreService.WORKER_STAR;
     }
 
     private LoginUser admin(Authentication authentication, boolean write) {

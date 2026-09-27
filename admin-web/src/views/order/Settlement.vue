@@ -12,7 +12,7 @@
           <div class="stat-card-icon yellow"><i class="fas fa-hourglass-half"></i></div>
         </div>
         <div class="stat-card-value">{{ formatNumber(stats.pendingCount) }}</div>
-        <div class="stat-card-change"><span class="text-muted">需要处理</span></div>
+        <div class="stat-card-change down"><i class="fas fa-clock"></i><span>需要处理</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
@@ -20,7 +20,7 @@
           <div class="stat-card-icon"><i class="fas fa-yen-sign"></i></div>
         </div>
         <div class="stat-card-value">¥{{ formatNumber(stats.settledAmount) }}</div>
-        <div class="stat-card-change"><span class="text-muted">今日结算总额</span></div>
+        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>今日结算总额</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
@@ -28,7 +28,7 @@
           <div class="stat-card-icon green"><i class="fas fa-check-double"></i></div>
         </div>
         <div class="stat-card-value">{{ formatNumber(stats.settledCount) }}</div>
-        <div class="stat-card-change"><span class="text-muted">结算笔数</span></div>
+        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>结算笔数</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
@@ -36,7 +36,7 @@
           <div class="stat-card-icon blue"><i class="fas fa-percentage"></i></div>
         </div>
         <div class="stat-card-value">{{ stats.successRate }}%</div>
-        <div class="stat-card-change"><span class="text-muted">本周平均</span></div>
+        <div class="stat-card-change up"><i class="fas fa-arrow-up"></i><span>本周平均</span></div>
       </div>
     </div>
 
@@ -55,24 +55,24 @@
 
     <div class="card">
       <div class="filter-bar">
-        <el-select v-model="cycleFilter" placeholder="结算周期" clearable style="width: 110px">
+        <div class="filter-item"><span>结算周期</span><el-select v-model="cycleFilter" placeholder="全部" clearable style="width: 110px">
           <el-option label="今日" value="today" />
           <el-option label="本周" value="week" />
           <el-option label="本月" value="month" />
-        </el-select>
-        <el-select v-model="statusFilter" placeholder="结算状态" clearable style="width: 110px">
+        </el-select></div>
+        <div class="filter-item"><span>结算状态</span><el-select v-model="statusFilter" placeholder="全部" clearable style="width: 110px">
           <el-option label="待结算" value="待结算" />
           <el-option label="结算中" value="结算中" />
           <el-option label="已结算" value="已结算" />
           <el-option label="已失败" value="结算失败" />
-        </el-select>
-        <el-select v-model="methodFilter" placeholder="支付方式" clearable style="width: 110px">
+        </el-select></div>
+        <div class="filter-item"><span>支付方式</span><el-select v-model="methodFilter" placeholder="全部" clearable style="width: 110px">
           <el-option label="微信支付" value="微信支付" />
           <el-option label="支付宝" value="支付宝" />
           <el-option label="银行卡" value="银行卡" />
           <el-option label="现金" value="现金" />
-        </el-select>
-        <el-date-picker
+        </el-select></div>
+        <div class="filter-item"><span>日期范围</span><el-date-picker
           v-model="dateRange"
           type="daterange"
           range-separator="至"
@@ -80,7 +80,7 @@
           end-placeholder="结束日期"
           style="width: 250px"
           value-format="YYYY-MM-DD"
-        />
+        /></div>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
         <div class="filter-space"></div>
@@ -150,7 +150,7 @@
         <el-table-column label="结算时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.time) }}</template>
         </el-table-column>
-        <el-table-column label="操作" min-width="400" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
             <div class="action-btns">
               <el-button link type="primary" size="small" @click="openDetail(row)">详情</el-button>
@@ -288,7 +288,7 @@ const formatMoney = value => Number(value ?? 0).toLocaleString('zh-CN', { minimu
 const formatDateTime = value => {
   if (!value) return '-'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('zh-CN', { hour12: false })
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleTimeString('zh-CN', { hour12: false })
 }
 const settlementNo = row => `JS${String(row?.id ?? 0).padStart(6, '0')}`
 const orderNo = row => `ORD${String(row?.orderId ?? 0).padStart(6, '0')}`
@@ -463,6 +463,8 @@ onMounted(() => {
 
 <style scoped>
 .filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-item { display: flex; align-items: center; gap: 8px; }
+.filter-item > span { color: var(--text-secondary,#4B5563); font-size: 13px; white-space: nowrap; }
 .filter-space { flex: 1; }
 .quick-filter-bar { display: flex; gap: 8px; margin-bottom: 16px; }
 .quick-filter { padding: 5px 12px; border: 1px solid #E5E7EB; border-radius: 16px; background: #fff; color: var(--text-secondary,#4B5563); font-size: 13px; cursor: pointer; }
@@ -473,6 +475,7 @@ onMounted(() => {
 .warning-text { color: var(--warning,#D97706); }
 .batch-actions { display: flex; gap: 10px; }
 .settlement-table :deep(.el-table__row) { height: 56px; }
+.settlement-table :deep(.el-table__header th) { height: 44px; }
 .settle-id-cell { color: var(--primary); font-family: monospace; font-weight: 500; }
 .employer-cell { display: flex; align-items: center; gap: 8px; }
 .employer-logo { width: 32px; height: 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 600; }
@@ -512,6 +515,13 @@ onMounted(() => {
 .success-text { color: var(--success,#059669) !important; }
 .service-account-grid { margin-bottom: 0; }
 .reminder-button { border-color: var(--primary); color: var(--primary); }
+.stat-card-icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#FFF0EB 0%,#FFE8DC 100%); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.stat-card-icon.blue { background: linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%); color: var(--secondary); }
+.stat-card-icon.green { background: linear-gradient(135deg,#ECFDF5 0%,#D1FAE5 100%); color: var(--success); }
+.stat-card-icon.yellow { background: linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%); color: var(--warning); }
+.stat-card-change { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.stat-card-change.up { color: var(--success); }
+.stat-card-change.down { color: var(--warning); }
 .reminder-button:hover { border-color: var(--primary); background: #FFF0EB; color: var(--primary); }
 .detail-dialog-header { display: flex; align-items: center; justify-content: space-between; width: 100%; }
 .detail-dialog-title { color: var(--text-primary,#111827); font-size: 18px; font-weight: 600; }

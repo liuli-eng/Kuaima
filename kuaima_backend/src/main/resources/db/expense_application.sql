@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS expense_application (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    boss_id BIGINT NOT NULL,
+    order_id BIGINT NOT NULL,
+    order_title VARCHAR(200),
+    type VARCHAR(20) NOT NULL,
+    amount DECIMAL(18,2) NOT NULL,
+    reason VARCHAR(300) NOT NULL,
+    attachments TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    reject_reason VARCHAR(500),
+    manual_review BOOLEAN NOT NULL DEFAULT FALSE,
+    idempotency_key VARCHAR(128) NOT NULL,
+    create_time DATETIME NOT NULL,
+    audit_time DATETIME NULL,
+    paid_time DATETIME NULL,
+    UNIQUE KEY uk_expense_application_boss_idempotency (boss_id, idempotency_key),
+    KEY idx_expense_application_boss_status_created (boss_id, status, create_time),
+    KEY idx_expense_application_order (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

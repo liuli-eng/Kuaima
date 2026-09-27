@@ -8,10 +8,10 @@
     <div class="card filter-card">
       <div class="filter-bar">
         <el-input v-model="filters.keyword" clearable placeholder="搜索 ID / 姓名 / 手机号" prefix-icon="Search" style="width:220px" @keyup.enter="search" />
-        <el-select v-model="filters.role" clearable placeholder="全部角色" style="width:125px">
+        <el-select v-model="filters.role" clearable placeholder="全部角色" style="width:125px" @change="search">
           <el-option label="零工" value="worker" /><el-option label="老板" value="boss" />
         </el-select>
-        <el-select v-model="filters.level" clearable placeholder="全部等级" style="width:135px">
+        <el-select v-model="filters.level" clearable placeholder="全部等级" style="width:135px" @change="search">
           <el-option label="优秀（≥90）" value="excellent" /><el-option label="良好（75-89）" value="good" />
           <el-option label="一般（60-74）" value="medium" /><el-option label="较差（<60）" value="low" />
         </el-select>
@@ -62,11 +62,11 @@ const adjust = reactive({ direction: 'in', amount: 5, reason: '' })
 const afterScore = computed(() => Math.max(0, Math.min(100, Number(current.value?.score || 0) + (adjust.direction === 'in' ? 1 : -1) * Number(adjust.amount || 0))))
 const detailStats = computed(() => ({ add: flows.value.filter(f => f.delta > 0).reduce((n, f) => n + f.delta, 0), sub: flows.value.filter(f => f.delta < 0).reduce((n, f) => n + Math.abs(f.delta), 0) }))
 const levelText = key => ({ excellent: '优秀', good: '良好', medium: '一般', low: '较差' }[key] || '-')
-async function load () { loading.value = true; try { const result = await listCreditUsers({ ...filters, page: page.value - 1, size: size.value }); const data = result.data; rows.value = data?.content || []; total.value = result.total ?? data?.totalElements ?? 0 } catch (e) { rows.value = []; total.value = 0 } finally { loading.value = false } }
+async function load () { loading.value = true; try { const result = await listCreditUsers({ ...filters, page: page.value - 1, size: size.value }); const data = result?.data; const content = Array.isArray(data) ? data : (data?.content || data?.records || data?.list || []); rows.value = content.map(row => ({ ...row, score: Number(row.score ?? 0), addTotal: Number(row.addTotal ?? 0), subTotal: Number(row.subTotal ?? 0) })); total.value = result?.total ?? data?.totalElements ?? data?.total ?? content.length } catch (e) { rows.value = []; total.value = 0 } finally { loading.value = false } }
 function search () { page.value = 1; load() }
 function reset () { Object.assign(filters, { keyword: '', role: '', level: '' }); search() }
 function openAdjust (row) { current.value = row; Object.assign(adjust, { direction: 'in', amount: 5, reason: '' }); adjustVisible.value = true }
-async function submitAdjust () { if (!current.value || !adjust.amount) return; saving.value = true; try { await adjustCredit(current.value.id, { scoreType: current.value.scoreType, delta: adjust.direction === 'in' ? adjust.amount : -adjust.amount, reason: adjust.reason || '管理员手动调整' }); ElMessage.success('信用分调整成功'); adjustVisible.value = false; await load() } catch (e) { ElMessage.error('信用分调整失败') } finally { saving.value = false } }
+async function submitAdjust () { if (!current.value || !adjust.amount) return; if (!adjust.reason.trim()) { ElMessage.warning('请填写调整原因'); return } saving.value = true; try { await adjustCredit(current.value.id, { scoreType: current.value.scoreType, delta: adjust.direction === 'in' ? Math.abs(Number(adjust.amount)) : -Math.abs(Number(adjust.amount)), reason: adjust.reason.trim(), ruleCode: 'ADMIN_MANUAL_ADJUST' }); ElMessage.success('信用分调整成功'); adjustVisible.value = false; await load() } catch (e) { ElMessage.error(e?.message || '信用分调整失败') } finally { saving.value = false } }
 async function openDetail (row) { current.value = row; try { const result = await getCreditDetail(row.id); const data = result.data || {}; flows.value = data.creditFlows || []; detailVisible.value = true } catch (e) { ElMessage.error('信用分明细加载失败') } }
 onMounted(load)
 </script>

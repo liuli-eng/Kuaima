@@ -31,6 +31,12 @@ import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.wallet.entity.Settlement;
+import com.kuaima.app.domain.wallet.repository.SettlementRespository;
+import com.kuaima.app.domain.review.entity.BossReview;
+import com.kuaima.app.domain.review.entity.WorkerReview;
+import com.kuaima.app.domain.review.repository.BossReviewRepository;
+import com.kuaima.app.domain.review.repository.WorkerReviewRepository;
 import com.kuaima.app.security.model.LoginUser;
 
 /**
@@ -44,13 +50,22 @@ public class AdminOrderController {
     private final BaseOrderItemRespository itemRepository;
     private final BossOrderRespository orderRepository;
     private final UserRepository userRepository;
+    private final SettlementRespository settlementRepository;
+    private final BossReviewRepository bossReviewRepository;
+    private final WorkerReviewRepository workerReviewRepository;
 
     public AdminOrderController(BaseOrderItemRespository itemRepository,
                                 BossOrderRespository orderRepository,
-                                UserRepository userRepository) {
+                                UserRepository userRepository,
+                                SettlementRespository settlementRepository,
+                                BossReviewRepository bossReviewRepository,
+                                WorkerReviewRepository workerReviewRepository) {
         this.itemRepository = itemRepository;
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
+        this.settlementRepository = settlementRepository;
+        this.bossReviewRepository = bossReviewRepository;
+        this.workerReviewRepository = workerReviewRepository;
     }
 
     /** 订单/报名列表（admin 全量视图，关联雇主名称、零工名称、工种、金额、时间） */
@@ -80,6 +95,17 @@ public class AdminOrderController {
         Map<Long, User> userMap = new HashMap<>();
         if (!userIds.isEmpty()) {
             userRepository.findAllById(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+
+        Map<Long, Settlement> settlementMap = new HashMap<>();
+        Map<Long, BossReview> bossReviewMap = new HashMap<>();
+        Map<Long, WorkerReview> workerReviewMap = new HashMap<>();
+        if (!items.isEmpty()) {
+            List<Long> itemIds = items.stream().map(BaseOrderItem::getId).toList();
+            settlementRepository.findByItemIdInOrderByIdDesc(itemIds)
+                    .forEach(s -> settlementMap.putIfAbsent(s.getItemId(), s));
+            bossReviewRepository.findByItemIdIn(itemIds).forEach(r -> bossReviewMap.put(r.getItemId(), r));
+            workerReviewRepository.findByItemIdIn(itemIds).forEach(r -> workerReviewMap.put(r.getItemId(), r));
         }
 
         Page<JSONObject> views = items.map(item -> {
@@ -119,10 +145,46 @@ public class AdminOrderController {
                 obj.put("workerName", "未知零工");
             }
 
+            // 时间线节点：报名/录用/到岗/完工来自报名记录，结算/完成来自实际支付记录。
+            // 这些字段不能用订单计划开始/结束时间替代，否则会把计划时间误显示为操作时间。
+            Settlement settlement = settlementMap.get(item.getId());
+            obj.put("settlementCreatedAt", settlement == null ? null : settlement.getTimestamp());
+            obj.put("settlementPayTime", settlement == null ? null : settlement.getPayTime());
+
+            BossReview bossReview = bossReviewMap.get(item.getId());
+            if (bossReview != null) {
+                Map<String, Object> review = new HashMap<>();
+                review.put("score", average(bossReview.getAttitudeScore(), bossReview.getSettlementScore(), bossReview.getEnvironmentScore()));
+                review.put("time", bossReview.getCreatedAt());
+                review.put("content", bossReview.getContent());
+                review.put("dimensions", List.of(
+                        Map.of("label", "工作态度", "score", bossReview.getAttitudeScore()),
+                        Map.of("label", "工资结算", "score", bossReview.getSettlementScore()),
+                        Map.of("label", "工作环境", "score", bossReview.getEnvironmentScore())));
+                obj.put("bossReview", review);
+            }
+            WorkerReview workerReview = workerReviewMap.get(item.getId());
+            if (workerReview != null) {
+                Map<String, Object> review = new HashMap<>();
+                review.put("score", workerReview.getOverallScore());
+                review.put("time", workerReview.getCreatedAt());
+                review.put("content", workerReview.getContent());
+                review.put("dimensions", List.of(
+                        Map.of("label", "工作态度", "score", workerReview.getAttitudeScore()),
+                        Map.of("label", "工作效率", "score", workerReview.getEfficiencyScore()),
+                        Map.of("label", "专业技能", "score", workerReview.getSkillScore())));
+                obj.put("workerReview", review);
+            }
+
             return obj;
         });
 
         return Result.success(views, page, items.getTotalElements());
+    }
+
+    private double average(Integer... values) {
+        return java.util.Arrays.stream(values).filter(java.util.Objects::nonNull)
+                .mapToInt(Integer::intValue).average().orElse(0);
     }
 
     @PutMapping("/{id}/cancel")

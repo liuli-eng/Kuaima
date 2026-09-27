@@ -146,6 +146,36 @@ export function request({
   });
 }
 
+/** 跨端上传文件，沿用 request 的鉴权和后端地址配置。 */
+export function uploadFile({ url, filePath, name = "file", formData = {}, header = {} }) {
+  const token = uni.getStorageSync("token");
+  const userId = uni.getStorageSync("userId") || "2001";
+  const realUrl = resolveBackendUrl(url, userId, formData);
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: `${BASE_URL}${realUrl}`,
+      filePath,
+      name,
+      formData,
+      header: {
+        ...header,
+        Authorization: token ? `Bearer ${token}` : "",
+        "X-User-Id": userId,
+      },
+      success(response) {
+        let payload = response.data;
+        try { payload = typeof payload === "string" ? JSON.parse(payload) : payload; } catch (_) {}
+        if (response.statusCode >= 200 && response.statusCode < 300 && (!payload?.code || [0, 200, "0", "200"].includes(payload.code))) {
+          resolve(payload?.data ?? payload);
+          return;
+        }
+        reject(formatError(payload, `上传失败（${response.statusCode}）`));
+      },
+      fail(error) { reject(formatError(error, "文件上传失败")); },
+    });
+  });
+}
+
 function isOrderRequest(url = "") {
   return /^\/(?:boss\/order(?:\/|\?|$)|jobs(?:\/|\?|$)|worker\/orders(?:\/|\?|$))/.test(url);
 }

@@ -16,7 +16,7 @@
 <script setup>
 import { reactive, ref } from "vue";
 import AppNavBar from "@/components/AppNavBar.vue";
-import { listBossPendingSettlements } from "@/api/backend";
+import { createExpenseApplication, listBossPendingSettlements, uploadExpenseFile } from "@/api/backend";
 
 const expenseTypes = [{ value: "TRANSPORT", label: "交通费" }, { value: "MEAL", label: "餐费" }, { value: "MATERIAL", label: "材料费" }, { value: "INSURANCE", label: "保险费" }, { value: "OTHER", label: "其他" }];
 const form = reactive({ type: "", orderId: null, amount: "", reason: "", attachments: [] });
@@ -28,10 +28,32 @@ async function loadOrders() {
   try {
     const result = await listBossPendingSettlements();
     const rows = Array.isArray(result) ? result : result?.records || result?.content || [];
-    orders.value = rows.map((item) => ({ id: item.settlementId || item.id, title: item.orderTitle || item.title || item.position || "待结算订单", meta: [item.date || item.workDate, item.workerName || item.worker?.name, item.days ? `${item.days}天` : ""].filter(Boolean).join(" · ") })).filter((item) => item.id != null);
+    orders.value = rows.map((item) => ({ id: item.orderId || item.id, title: item.orderTitle || item.title || item.job || item.position || "待结算订单", meta: [item.date || item.workDate, Array.isArray(item.workers) ? item.workers.join("、") : (item.workerName || item.worker?.name), item.workerCount ? `${item.workerCount}人` : ""].filter(Boolean).join(" · ") })).filter((item) => item.id != null);
   } catch (_) { orders.value = []; }
 }
-function chooseImage() { uni.chooseImage({ count: 6 - form.attachments.length, sourceType: ["album", "camera"], success: (result) => { form.attachments.push(...(result.tempFilePaths || [])); } }); }
+function chooseImage() {
+  uni.chooseImage({
+    count: 6 - form.attachments.length,
+    sourceType: ["album", "camera"],
+    success: async (result) => {
+      const paths = result.tempFilePaths || [];
+      if (!paths.length) return;
+      uni.showLoading({ title: "凭证上传中...", mask: true });
+      try {
+        for (const path of paths) {
+          const uploaded = await uploadExpenseFile(path);
+          const url = uploaded?.url || uploaded?.fileUrl;
+          if (!url) throw new Error("上传接口未返回凭证地址");
+          form.attachments.push(url);
+        }
+      } catch (error) {
+        uni.showToast({ title: error.message || "凭证上传失败", icon: "none" });
+      } finally {
+        uni.hideLoading();
+      }
+    },
+  });
+}
 function removeImage(index) { form.attachments.splice(index, 1); }
 function validate() {
   if (!form.type) return "请选择报销类型";
@@ -41,11 +63,26 @@ function validate() {
   if (!String(form.reason).trim()) return "请填写报销事由";
   return "";
 }
-function submitApply() {
+async function submitApply() {
   if (submitting.value) return;
   const message = validate();
   if (message) { uni.showToast({ title: message, icon: "none" }); return; }
-  uni.showToast({ title: "报销申请提交接口待后端发布", icon: "none" });
+  submitting.value = true;
+  try {
+    await createExpenseApplication({
+      type: form.type,
+      orderId: Number(form.orderId),
+      amount: Number(form.amount),
+      reason: String(form.reason).trim(),
+      attachments: form.attachments,
+    });
+    uni.showToast({ title: "申请提交成功", icon: "success" });
+    setTimeout(() => uni.navigateBack(), 700);
+  } catch (error) {
+    uni.showToast({ title: error.message || "申请提交失败", icon: "none" });
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 

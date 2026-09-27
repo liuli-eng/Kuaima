@@ -1,4 +1,4 @@
-import { request } from "@/api/http";
+import { request, uploadFile } from "@/api/http";
 export { wechatLogin, getCurrentUser } from "@/api/auth";
 
 function query(params) {
@@ -398,6 +398,27 @@ export function listOrderSettlements(orderId) {
 
 export function listBossPendingSettlements() {
   return request({ url: "/boss/settlements/pending" });
+}
+
+export function createExpenseApplication(data, idempotencyKey) {
+  return request({
+    url: "/expenses/applications",
+    method: "POST",
+    data,
+    header: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    skipMock: true,
+  });
+}
+
+export function listExpenseApplications(params = {}) {
+  return request({
+    url: `/expenses/applications?${query({ page: 0, size: 20, ...params })}`,
+    skipMock: true,
+  });
+}
+
+export function uploadExpenseFile(filePath) {
+  return uploadFile({ url: "/files/upload", filePath, name: "file" });
 }
 
 export function getWallet(userId) {
