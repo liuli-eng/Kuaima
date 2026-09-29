@@ -4,7 +4,7 @@
     <scroll-view scroll-y class="body">
       <!-- 搜索 -->
       <view class="search-bar">
-        <text class="search-icon">🔍</text>
+        <image class="search-svg" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />
         <input
           class="search-input"
           v-model="keyword"
@@ -45,24 +45,26 @@
           <view class="proj-name">
             <text class="proj-name-text">{{ item.name }}</text>
             <text v-if="tab === 'archived'" class="wb-tag gray">已归档</text>
-            <text class="proj-arrow">›</text>
+            <image class="proj-arrow-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
           </view>
           <view class="proj-info">
-            <text class="proj-info-ico">🏢</text>
+            <image class="proj-info-svg" src="/static/icons/boss-projects/building-gray.svg" mode="aspectFit" />
             <text class="proj-info-text">用工企业：{{ item.companyName || "—" }}</text>
           </view>
           <view class="proj-info">
-            <text class="proj-info-ico">👤</text>
+            <image class="proj-info-svg" src="/static/icons/boss-projects/user-gray.svg" mode="aspectFit" />
             <text class="proj-info-text">负责人：{{ item.leaderName || "—" }}</text>
           </view>
           <view class="proj-info">
-            <text class="proj-info-ico">📅</text>
+            <image class="proj-info-svg" src="/static/icons/boss-tabbar/calendar-check-gray.svg" mode="aspectFit" />
             <text class="proj-info-text">立项日期：{{ formatCnDate(item.establishDate) || "—" }}</text>
           </view>
         </view>
       </view>
       <view v-else class="empty">
-        <text class="empty-ico">📂</text>
+        <view class="empty-icon">
+          <image class="empty-svg" src="/static/icons/boss-projects/folder-open-gray.svg" mode="aspectFit" />
+        </view>
         <text class="empty-text">{{ loading ? "加载中…" : "暂无项目" }}</text>
       </view>
       <view class="bottom-space" />
@@ -71,7 +73,7 @@
     <!-- 新建项目 -->
     <view class="footer">
       <view class="primary-btn" @click="openCreate">
-        <text class="primary-btn-ico">＋</text>创建新的项目
+        <image class="primary-btn-svg" src="/static/icons/boss-reward/plus-white.svg" mode="aspectFit" />创建新的项目
       </view>
     </view>
 
@@ -243,7 +245,7 @@ export default {
   width: 100%;
   box-sizing: border-box;
 }
-.search-icon { font-size: 14px; color: #bbb; margin-right: 8px; }
+.search-svg { width: 15px; height: 15px; flex-shrink: 0; margin-right: 8px; }
 .search-input { flex: 1; font-size: 13px; color: #333; }
 .proj-tabs {
   display: flex;
@@ -299,7 +301,7 @@ export default {
   justify-content: space-between;
 }
 .proj-name-text { flex: 1; }
-.proj-arrow { color: #c8c8c8; font-size: 16px; margin-left: 6px; }
+.proj-arrow-svg { width: 13px; height: 13px; margin-left: 6px; flex-shrink: 0; }
 .wb-tag {
   font-size: 11px;
   padding: 1px 8px;
@@ -314,13 +316,23 @@ export default {
   color: #888;
   margin-top: 5px;
 }
-.proj-info-ico { width: 14px; color: #b0b0b0; font-size: 11px; text-align: center; }
+.proj-info-svg { width: 14px; height: 14px; flex-shrink: 0; }
 .empty {
   text-align: center;
   padding: 60px 0;
   color: #bbb;
 }
-.empty-ico { font-size: 34px; display: block; margin-bottom: 10px; }
+.empty-svg { width: 36px; height: 36px; }
+.empty-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #F5F0EA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
 .empty-text { font-size: 13px; }
 .bottom-space { height: 16px; }
 .footer {
@@ -338,8 +350,11 @@ export default {
   font-size: 15px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.primary-btn-ico { margin-right: 4px; font-weight: 700; }
+.primary-btn-svg { width: 16px; height: 16px; margin-right: 4px; }
 .mask {
   position: fixed;
   inset: 0;

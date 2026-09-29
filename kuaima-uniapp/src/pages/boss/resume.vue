@@ -2,47 +2,47 @@
   <view class="container">
     <!-- 顶部导航 -->
     <view class="wb-header" :style="{ paddingTop: statusBarHeight + 8 + 'px' }">
-      <view class="wb-back" @click="goBack"><text class="back-ico">‹</text></view>
+      <view class="wb-back" @click="goBack"><image class="back-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" /></view>
       <text class="wb-title">简历库</text>
       <view class="wb-capsule">
-        <view class="cap-btn"><text class="cap-ico">⋯</text></view>
+        <view class="cap-btn"><image class="cap-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" /></view>
         <view class="cap-divider"></view>
-        <view class="cap-btn"><text class="cap-ico">○</text></view>
+        <view class="cap-btn"><image class="cap-svg cap-svg-dot" src="/static/icons/boss-profile/dot.svg" mode="aspectFit" /></view>
       </view>
     </view>
 
     <view class="wb-body has-footer">
       <!-- 搜索 -->
       <view class="wb-search" @click="goList()">
-        <text class="search-ico">🔍</text>
+        <image class="search-svg" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />
         <input type="text" placeholder="搜索职位、姓名、关键词等" disabled />
       </view>
 
       <!-- 统计卡片 -->
       <view class="stat-grid">
         <view class="stat-mini">
-          <view class="stat-mini-icon" style="background: linear-gradient(135deg, #4A90E2, #357ABD)"><text class="stat-ico">📄</text></view>
+          <view class="stat-mini-icon" style="background: linear-gradient(135deg, #4A90E2, #357ABD)"><image class="stat-svg" src="/static/icons/boss-workbench/file-lines-white.svg" mode="aspectFit" /></view>
           <view class="stat-mini-info">
             <text class="stat-mini-num">{{ stats.total || 0 }}</text>
             <text class="stat-mini-label">简历总数</text>
           </view>
         </view>
         <view class="stat-mini">
-          <view class="stat-mini-icon" style="background: linear-gradient(135deg, #10B981, #059669)"><text class="stat-ico">👤</text></view>
+          <view class="stat-mini-icon" style="background: linear-gradient(135deg, #10B981, #059669)"><image class="stat-svg" src="/static/icons/boss-profile/user-plus-white.svg" mode="aspectFit" /></view>
           <view class="stat-mini-info">
             <text class="stat-mini-num">{{ stats.todayNew || 0 }}</text>
             <text class="stat-mini-label">今日新增</text>
           </view>
         </view>
         <view class="stat-mini">
-          <view class="stat-mini-icon" style="background: linear-gradient(135deg, #F5A623, #E8910C)"><text class="stat-ico">🕘</text></view>
+          <view class="stat-mini-icon" style="background: linear-gradient(135deg, #F5A623, #E8910C)"><image class="stat-svg" src="/static/icons/boss-resume/clock-white.svg" mode="aspectFit" /></view>
           <view class="stat-mini-info">
             <text class="stat-mini-num">{{ stats.pending || 0 }}</text>
             <text class="stat-mini-label">待处理</text>
           </view>
         </view>
         <view class="stat-mini">
-          <view class="stat-mini-icon" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9)"><text class="stat-ico">📨</text></view>
+          <view class="stat-mini-icon" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9)"><image class="stat-svg" src="/static/icons/boss-resume/paper-plane-white.svg" mode="aspectFit" /></view>
           <view class="stat-mini-info">
             <text class="stat-mini-num">{{ stats.sent || 0 }}</text>
             <text class="stat-mini-label">已投递</text>
@@ -53,15 +53,15 @@
       <!-- 快捷入口 -->
       <view class="quick-grid">
         <view class="quick-item" @click="goList()">
-          <text class="quick-ico">📋</text>
+          <image class="quick-svg" src="/static/icons/boss-profile/clipboard-list.svg" mode="aspectFit" />
           <text class="q-name">简历管理</text>
         </view>
         <view class="quick-item" @click="goList('fav')">
-          <text class="quick-ico">⭐</text>
+          <image class="quick-svg" src="/static/icons/boss-resume/star-orange.svg" mode="aspectFit" />
           <text class="q-name">我的收藏</text>
         </view>
         <view class="quick-item" @click="goImport">
-          <text class="quick-ico">☁️</text>
+          <image class="quick-svg" src="/static/icons/enterprise-cert-form/cloud-arrow-up.svg" mode="aspectFit" />
           <text class="q-name">简历导入</text>
         </view>
       </view>
@@ -69,12 +69,12 @@
       <!-- 最新简历 -->
       <view class="section-head">
         <text class="section-title">最新简历</text>
-        <view class="section-more" @click="goList()">查看更多 ›</view>
+        <view class="section-more" @click="goList()">查看更多<image class="more-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" /></view>
       </view>
       <view class="wb-card">
         <view v-if="loading" class="wb-empty"><text class="wb-empty-text">加载中...</text></view>
         <view v-else-if="!latest.length" class="wb-empty">
-          <view class="wb-empty-icon"><text>📄</text></view>
+          <view class="wb-empty-icon"><image class="empty-svg" src="/static/icons/boss-resume/file-lines-gray.svg" mode="aspectFit" /></view>
           <text class="wb-empty-text">暂无简历</text>
         </view>
         <view v-for="r in latest" :key="r.id" class="resume-row" @click="goDetail(r)">
@@ -96,7 +96,7 @@
 
     <!-- 底部按钮 -->
     <view class="wb-footer">
-      <view class="footer-btn-primary" @click="goList()">📋 进入简历管理</view>
+      <view class="footer-btn-primary" @click="goList()"><image class="footer-svg" src="/static/icons/boss-authorize/clipboard-list-white.svg" mode="aspectFit" /><text>进入简历管理</text></view>
     </view>
   </view>
 </template>
@@ -165,28 +165,32 @@ export default {
   align-items: center;
   gap: 10px;
   background: #fff;
-  padding: 6px 16px 12px;
+  padding: 8px 16px 12px;
   flex-shrink: 0;
 }
 
 .wb-back {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.back-ico {
-  font-size: 22px;
-  color: #333;
+.back-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .wb-title {
   flex: 1;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #333;
+  color: #1a1a1a;
 }
 
 .wb-capsule {
@@ -206,9 +210,14 @@ export default {
   justify-content: center;
 }
 
-.cap-ico {
-  font-size: 14px;
-  color: #666;
+.cap-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cap-svg-dot {
+  width: 9px;
+  height: 9px;
 }
 
 .cap-divider {
@@ -239,8 +248,10 @@ export default {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
-.search-ico {
-  font-size: 14px;
+.search-svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .wb-search input {
@@ -276,8 +287,9 @@ export default {
   justify-content: center;
 }
 
-.stat-ico {
-  font-size: 16px;
+.stat-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .stat-mini-num {
@@ -314,10 +326,10 @@ export default {
   transform: scale(0.96);
 }
 
-.quick-ico {
-  font-size: 20px;
+.quick-svg {
+  width: 22px;
+  height: 22px;
   margin-bottom: 7px;
-  display: block;
 }
 
 .q-name {
@@ -342,6 +354,14 @@ export default {
 .section-more {
   font-size: 12px;
   color: #999;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.more-svg {
+  width: 10px;
+  height: 10px;
 }
 
 .wb-card {
@@ -452,9 +472,12 @@ export default {
 }
 
 .wb-empty-icon {
-  font-size: 34px;
-  color: #ddd;
   margin-bottom: 10px;
+}
+
+.empty-svg {
+  width: 34px;
+  height: 34px;
 }
 
 .wb-empty-text {
@@ -481,5 +504,14 @@ export default {
   font-size: 15px;
   font-weight: 600;
   box-shadow: 0 6px 16px rgba(255, 107, 53, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.footer-svg {
+  width: 16px;
+  height: 16px;
 }
 </style>

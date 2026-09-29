@@ -2,38 +2,38 @@
   <view class="container">
     <!-- 顶部导航 -->
     <view class="wb-header" :style="{ paddingTop: statusBarHeight + 8 + 'px' }">
-      <view class="wb-back" @click="goBack"><text class="back-ico">‹</text></view>
+      <view class="wb-back" @click="goBack"><image class="back-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" /></view>
       <text class="wb-title">企业成员({{ members.length }})</text>
       <view class="wb-capsule">
-        <view class="cap-btn"><text class="cap-ico">⋯</text></view>
+        <view class="cap-btn"><image class="cap-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" /></view>
         <view class="cap-divider"></view>
-        <view class="cap-btn"><text class="cap-ico">○</text></view>
+        <view class="cap-btn"><image class="cap-svg cap-svg-dot" src="/static/icons/boss-profile/dot.svg" mode="aspectFit" /></view>
       </view>
     </view>
 
     <view class="wb-body">
       <!-- 搜索 -->
       <view class="wb-search">
-        <text class="search-ico">🔍</text>
+        <image class="search-svg" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />
         <input type="text" v-model="keyword" placeholder="搜索成员" @confirm="loadMembers" />
       </view>
 
       <!-- 功能列表 -->
       <view class="wb-card">
         <view class="wb-row" @click="navigateTo('member-apply-list')">
-          <view class="wb-row-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)"><text class="row-ico">📝</text></view>
+          <view class="wb-row-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)"><image class="row-svg" src="/static/icons/boss-members/file-signature-white.svg" mode="aspectFit" /></view>
           <view class="wb-row-main"><text class="wb-row-title">申请列表</text></view>
-          <text class="wb-row-arrow">›</text>
+          <image class="arrow-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
         </view>
         <view class="wb-row" @click="navigateTo('member-invite')">
-          <view class="wb-row-icon" style="background: linear-gradient(135deg, #FF8C5A, #FF6B35)"><text class="row-ico">👤</text></view>
+          <view class="wb-row-icon" style="background: linear-gradient(135deg, #FF8C5A, #FF6B35)"><image class="row-svg" src="/static/icons/boss-members/user-plus-white.svg" mode="aspectFit" /></view>
           <view class="wb-row-main"><text class="wb-row-title">邀请新成员</text></view>
-          <text class="wb-row-arrow">›</text>
+          <image class="arrow-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
         </view>
         <view class="wb-row" @click="navigateTo('member-exit')">
-          <view class="wb-row-icon" style="background: linear-gradient(135deg, #FF7743, #FF5C33)"><text class="row-ico">🚪</text></view>
+          <view class="wb-row-icon" style="background: linear-gradient(135deg, #FF7743, #FF5C33)"><image class="row-svg" src="/static/icons/boss-members/ban-white.svg" mode="aspectFit" /></view>
           <view class="wb-row-main"><text class="wb-row-title">退出当前企业</text></view>
-          <text class="wb-row-arrow">›</text>
+          <image class="arrow-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
         </view>
       </view>
 
@@ -41,7 +41,7 @@
       <view class="wb-card" style="margin-top: 12px">
         <view v-if="loading" class="wb-empty"><text class="wb-empty-text">加载中...</text></view>
         <view v-else-if="!members.length" class="wb-empty">
-          <view class="wb-empty-icon"><text>👥</text></view>
+          <view class="wb-empty-icon"><image class="empty-svg" src="/static/icons/boss-members/users-gray.svg" mode="aspectFit" /></view>
           <text class="wb-empty-text">暂无企业成员</text>
         </view>
         <view v-for="m in members" :key="m.id" class="wb-row" @click="goDetail(m)">
@@ -50,7 +50,7 @@
             <text class="wb-row-title">{{ memberName(m) }}</text>
             <text class="wb-row-desc">{{ roleDesc(m) }}</text>
           </view>
-          <text class="wb-row-arrow">›</text>
+          <image class="arrow-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
         </view>
       </view>
     </view>
@@ -127,16 +127,25 @@ export default {
   align-items: center;
   gap: 10px;
   background: #fff;
-  padding: 6px 16px 12px;
+  padding: 8px 16px 12px;
   flex-shrink: 0;
 }
 
 .wb-back {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.back-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .back-ico {
@@ -146,9 +155,9 @@ export default {
 
 .wb-title {
   flex: 1;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #333;
+  color: #1a1a1a;
 }
 
 .wb-capsule {
@@ -171,6 +180,16 @@ export default {
 .cap-ico {
   font-size: 14px;
   color: #666;
+}
+
+.cap-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cap-svg-dot {
+  width: 9px;
+  height: 9px;
 }
 
 .cap-divider {
@@ -201,6 +220,11 @@ export default {
   font-size: 14px;
 }
 
+.search-svg {
+  width: 15px;
+  height: 15px;
+}
+
 .wb-search input {
   flex: 1;
   font-size: 14px;
@@ -229,7 +253,7 @@ export default {
 .wb-row-icon {
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,6 +262,11 @@ export default {
 
 .row-ico {
   font-size: 17px;
+}
+
+.row-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .wb-avatar {
@@ -277,6 +306,12 @@ export default {
   color: #ccc;
 }
 
+.arrow-svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
 .wb-empty {
   padding: 30px 0;
   display: flex;
@@ -285,9 +320,19 @@ export default {
 }
 
 .wb-empty-icon {
-  font-size: 34px;
-  color: #ddd;
-  margin-bottom: 10px;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #f5f0ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-svg {
+  width: 34px;
+  height: 34px;
 }
 
 .wb-empty-text {

@@ -4,7 +4,7 @@
     <scroll-view scroll-y class="body">
       <!-- 项目信息 -->
       <view class="card">
-        <view class="detail-name">{{ project.name || "项目详情" }}</view>
+        <view v-if="project.name" class="detail-name">{{ project.name }}</view>
         <view class="detail-row">
           <text class="detail-label">用工企业：</text>
           <text class="detail-value">{{ project.companyName || "—" }}</text>
@@ -18,7 +18,8 @@
           <text class="detail-value">{{ formatCnDate(project.establishDate) || "—" }}</text>
         </view>
         <view class="sign-btn" @click="showSignCode">
-          <text class="sign-btn-ico">📷</text>签到码
+          <image class="sign-btn-ico" src="/static/icons/boss-project-detail/qrcode-white.svg" mode="aspectFit" />
+          <text>签到码</text>
         </view>
       </view>
 
@@ -26,15 +27,21 @@
       <view class="card">
         <view class="quick-row">
           <view class="quick-item" @click="goAttendance">
-            <view class="quick-icon"><text class="quick-emoji">👆</text></view>
+            <view class="quick-icon">
+              <image class="quick-img" src="/static/icons/boss-project-detail/fingerprint-white.svg" mode="aspectFit" />
+            </view>
             <text class="quick-label">考勤打卡</text>
           </view>
           <view class="quick-item" @click="goOnsite">
-            <view class="quick-icon orange"><text class="quick-emoji">📍</text></view>
+            <view class="quick-icon orange">
+              <image class="quick-img" src="/static/icons/boss-project-detail/location-dot-white.svg" mode="aspectFit" />
+            </view>
             <text class="quick-label">驻场管理</text>
           </view>
           <view class="quick-item" @click="goSettings">
-            <view class="quick-icon red"><text class="quick-emoji">⚙️</text></view>
+            <view class="quick-icon red">
+              <image class="quick-img" src="/static/icons/boss-project-detail/gear-white.svg" mode="aspectFit" />
+            </view>
             <text class="quick-label">项目设置</text>
           </view>
         </view>
@@ -44,7 +51,10 @@
       <view class="card">
         <view class="card-head">
           <text class="card-head-title">项目成员</text>
-          <text class="card-head-more" @click="goMembers">查看 ›</text>
+          <view class="card-head-more" @click="goMembers">
+            <text class="card-head-more-text">查看</text>
+            <image class="card-head-more-ico" src="/static/icons/boss-project-detail/chevron-right-orange.svg" mode="aspectFit" />
+          </view>
         </view>
         <view class="stats-row">
           <view class="stat">
@@ -70,17 +80,20 @@
       <view class="section-title">人事管理</view>
       <view class="card row-card">
         <view class="row-item" @click="goCheckin">
-          <view class="row-icon"><text class="row-emoji">📋</text></view>
+          <view class="row-icon">
+            <image class="row-img" src="/static/icons/boss-project-detail/clipboard-user-white.svg" mode="aspectFit" />
+          </view>
           <text class="row-title">签到记录</text>
-          <text class="row-arrow">›</text>
+          <image class="row-arrow" src="/static/icons/boss-project-detail/chevron-right-gray.svg" mode="aspectFit" />
         </view>
         <view class="row-item" @click="goOnboard">
-          <view class="row-icon orange"><text class="row-emoji">🤝</text></view>
+          <view class="row-icon orange">
+            <image class="row-img" src="/static/icons/boss-profile/user-plus-white.svg" mode="aspectFit" />
+          </view>
           <text class="row-title">入职记录</text>
-          <text class="row-arrow">›</text>
+          <image class="row-arrow" src="/static/icons/boss-project-detail/chevron-right-gray.svg" mode="aspectFit" />
         </view>
       </view>
-      <view class="bottom-space" />
     </scroll-view>
   </view>
 </template>
@@ -159,13 +172,13 @@ export default {
   flex: 1;
   overflow-y: auto;
   width: 100%;
-  padding: 12px 16px 0;
+  padding: 0 16px 30px;
   box-sizing: border-box;
 }
 .card {
   background: #fff;
   border-radius: 16px;
-  padding: 14px 16px;
+  padding: 16px;
   margin-bottom: 12px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
   width: 100%;
@@ -182,13 +195,15 @@ export default {
   color: #fff;
   border-radius: 12px;
   padding: 11px 0;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
-.sign-btn-ico { margin-right: 6px; }
-.quick-row { display: flex; padding: 6px 0 2px; }
+.sign-btn-ico { width: 15px; height: 15px; margin-right: 6px; flex-shrink: 0; }
+.quick-row { display: flex; padding: 16px 0 6px; }
 .quick-item { flex: 1; text-align: center; }
 .quick-icon {
   width: 46px;
@@ -198,13 +213,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 19px;
   color: #fff;
   background: linear-gradient(135deg, #ff8c5a, #ff6b35);
 }
 .quick-icon.orange { background: linear-gradient(135deg, #ffb84d, #f09a3e); }
 .quick-icon.red { background: linear-gradient(135deg, #ff7743, #ff5c33); }
-.quick-emoji { font-size: 20px; }
+.quick-img { width: 20px; height: 20px; }
 .quick-label { font-size: 12px; color: #666; }
 .card-head {
   display: flex;
@@ -213,7 +227,9 @@ export default {
   margin-bottom: 14px;
 }
 .card-head-title { font-size: 15px; font-weight: 600; color: #333; }
-.card-head-more { font-size: 12px; color: #ff6b35; }
+.card-head-more { display: flex; align-items: center; gap: 3px; }
+.card-head-more-text { font-size: 12px; color: #ff6b35; }
+.card-head-more-ico { width: 10px; height: 10px; flex-shrink: 0; }
 .stats-row { display: flex; }
 .stat { flex: 1; text-align: center; position: relative; }
 .stat:not(:last-child)::after {
@@ -226,35 +242,45 @@ export default {
   width: 0.5px;
   background: #f0f0f0;
 }
-.stat-value { font-size: 18px; font-weight: 700; color: #ff6b35; display: block; }
+.stat-value { font-size: 20px; font-weight: 700; color: #333; display: block; }
 .stat-label { font-size: 11px; color: #999; margin-top: 3px; display: block; }
 .section-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #333;
-  padding: 4px 4px 10px;
+  margin: 18px 2px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.section-title::before {
+  content: "";
+  width: 4px;
+  height: 15px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #ff6b35, #ff8c5a);
 }
 .row-card { padding: 4px 16px; }
 .row-item {
   display: flex;
   align-items: center;
   padding: 13px 0;
-  border-bottom: 0.5px solid #f5f5f5;
+  border-bottom: 0.5px solid #f0f0f0;
 }
 .row-item:last-child { border-bottom: none; }
 .row-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 12px;
+  flex-shrink: 0;
   background: linear-gradient(135deg, #ff8c5a, #ff6b35);
 }
 .row-icon.orange { background: linear-gradient(135deg, #ffb84d, #f09a3e); }
-.row-emoji { font-size: 16px; }
-.row-title { flex: 1; font-size: 14px; color: #333; }
-.row-arrow { color: #c8c8c8; font-size: 18px; }
-.bottom-space { height: 16px; }
+.row-img { width: 16px; height: 16px; }
+.row-title { flex: 1; font-size: 15px; font-weight: 500; color: #333; }
+.row-arrow { width: 12px; height: 12px; flex-shrink: 0; }
 </style>

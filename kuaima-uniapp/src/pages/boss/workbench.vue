@@ -5,17 +5,17 @@
       <view class="status-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
         <text>{{ currentTime }}</text>
         <view class="status-icons">
-          <text class="status-icon">📶</text>
-          <text class="status-icon">📡</text>
-          <text class="status-icon">🔋</text>
+          <image class="status-svg" src="/static/icons/boss-profile/signal.svg" mode="aspectFit" />
+          <image class="status-svg" src="/static/icons/boss-profile/wifi.svg" mode="aspectFit" />
+          <image class="status-svg" src="/static/icons/boss-profile/battery.svg" mode="aspectFit" />
         </view>
       </view>
       <view class="company-nav">
         <text class="company-name">晴时科技</text>
         <view class="wb-capsule">
-          <view class="cap-btn"><text class="cap-ico">⋯</text></view>
+          <view class="cap-btn"><image class="cap-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" /></view>
           <view class="cap-divider"></view>
-          <view class="cap-btn"><text class="cap-ico">○</text></view>
+          <view class="cap-btn"><image class="cap-svg cap-svg-dot" src="/static/icons/boss-publish-info/circle-white.svg" mode="aspectFit" /></view>
         </view>
       </view>
 
@@ -24,12 +24,12 @@
         <view class="entry-card members" @click="navigateTo('members')">
           <text class="entry-name">企业成员</text>
           <text class="entry-desc">内部员工 团队协作</text>
-          <text class="entry-icon">👥</text>
+          <image class="entry-svg" src="/static/icons/boss-workbench/users-white.svg" mode="aspectFit" />
         </view>
         <view class="entry-card projects" @click="navigateTo('projects')">
           <text class="entry-name">项目管理</text>
           <text class="entry-desc">签到考勤 入职离职</text>
-          <text class="entry-icon">📊</text>
+          <image class="entry-svg" src="/static/icons/boss-workbench/diagram-project-white.svg" mode="aspectFit" />
         </view>
       </view>
     </view>
@@ -41,7 +41,7 @@
       <view class="wb-grid">
         <view class="wb-grid-item" @click="navigateTo('resume')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF8C5A, #FF6B35)">
-            <text class="grid-ico">📄</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/file-lines-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">简历库</text>
@@ -50,7 +50,7 @@
         </view>
         <view class="wb-grid-item" @click="navigateTo('position')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)">
-            <text class="grid-ico">💼</text>
+            <image class="grid-svg" src="/static/icons/boss-authorize/briefcase-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">岗位管理</text>
@@ -59,7 +59,7 @@
         </view>
         <view class="wb-grid-item" @click="navigateTo('live-showcase')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF7743, #FF5C33)">
-            <text class="grid-ico">📹</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/video-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">直播橱窗</text>
@@ -68,7 +68,7 @@
         </view>
         <view class="wb-grid-item" @click="navigateTo('talent-list')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FFA94D, #FF8C42)">
-            <text class="grid-ico">✅</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/user-check-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">候选人</text>
@@ -82,7 +82,7 @@
       <view class="wb-grid">
         <view class="wb-grid-item" @click="navigateTo('payroll')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF8C5A, #FF6B35)">
-            <text class="grid-ico">💸</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/money-bill-wave-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">批量发薪</text>
@@ -91,7 +91,7 @@
         </view>
         <view class="wb-grid-item" @click="navigateTo('approve')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)">
-            <text class="grid-ico">📋</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/clipboard-check-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">待我审批</text>
@@ -100,7 +100,7 @@
         </view>
         <view class="wb-grid-item" @click="navigateTo('transfers')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF7743, #FF5C33)">
-            <text class="grid-ico">🔄</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/right-left-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">转账记录</text>
@@ -109,7 +109,7 @@
         </view>
         <view class="wb-grid-item" @click="navigateTo('balance')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FFA94D, #FF8C42)">
-            <text class="grid-ico">👛</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/wallet-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">余额查询</text>
@@ -123,7 +123,7 @@
       <view class="wb-grid">
         <view class="wb-grid-item" @click="navigateTo('payroll-employees')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FF8C5A, #FF6B35)">
-            <text class="grid-ico">👥</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/user-group-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">员工列表</text>
@@ -132,7 +132,7 @@
         </view>
         <view class="wb-grid-item" @click="navigateTo('project-detail')">
           <view class="wb-grid-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)">
-            <text class="grid-ico">⏰</text>
+            <image class="grid-svg" src="/static/icons/boss-workbench/user-clock-white.svg" mode="aspectFit" />
           </view>
           <view class="wb-grid-info">
             <text class="wb-grid-name">考勤打卡</text>
@@ -145,33 +145,23 @@
     <!-- 底部TabBar -->
     <view class="tab-bar">
       <view v-if="canAccess('HOME_VIEW')" class="tab-item" @click="switchTab('home')">
-        <view class="tab-icon-wrap">
-          <text class="tab-ico">🏠</text>
-        </view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/house-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">首页</text>
       </view>
       <view v-if="canAccess('ORDER_VIEW')" class="tab-item" @click="switchTab('order')">
-        <view class="tab-icon-wrap">
-          <text class="tab-ico">📅</text>
-        </view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/calendar-check-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">招工订单</text>
       </view>
       <view v-if="canAccess('WORKBENCH_VIEW')" class="tab-item active">
-        <view class="tab-icon-wrap active">
-          <text class="tab-ico">💼</text>
-        </view>
-        <text class="tab-label active">工作台</text>
+        <view class="tab-icon-wrap active"><image class="tab-svg" src="/static/icons/boss-tabbar/briefcase-white.svg" mode="aspectFit" /></view>
+        <text class="tab-label">工作台</text>
       </view>
       <view v-if="canAccess('MESSAGE_VIEW')" class="tab-item" @click="switchTab('message')">
-        <view class="tab-icon-wrap">
-          <text class="tab-ico">💬</text>
-        </view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/comment-dots-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">消息</text>
       </view>
       <view class="tab-item" @click="switchTab('profile')">
-        <view class="tab-icon-wrap">
-          <text class="tab-ico">😊</text>
-        </view>
+        <view class="tab-icon-wrap"><image class="tab-svg" src="/static/icons/boss-tabbar/face-smile-gray.svg" mode="aspectFit" /></view>
         <text class="tab-label">我的</text>
       </view>
     </view>
@@ -219,15 +209,27 @@ export default {
       }
     },
     switchTab(tab) {
-      const pages = {
+      const tabPages = {
         home: "/pages/boss/home",
         order: "/pages/boss/order",
+        workbench: "/pages/boss/workbench",
         message: "/pages/boss/message",
         profile: "/pages/boss/profile",
       };
-      if (pages[tab]) {
-        uni.reLaunch({ url: pages[tab] });
-      }
+      const target = tabPages[tab];
+      const currentRoute = getCurrentPages().slice(-1)[0]?.route;
+      if (!target || `/${currentRoute}` === target) return;
+      uni.redirectTo({
+        url: target,
+        fail: (error) => {
+          console.error("Boss 主导航跳转失败", error);
+          uni.reLaunch({
+            url: target,
+            fail: () =>
+              uni.showToast({ title: "页面跳转失败，请重试", icon: "none" }),
+          });
+        },
+      });
     },
   },
 };
@@ -270,6 +272,11 @@ export default {
   font-size: 12px;
 }
 
+.status-svg {
+  width: 12px;
+  height: 12px;
+}
+
 .company-nav {
   display: flex;
   align-items: center;
@@ -303,6 +310,16 @@ export default {
 .cap-ico {
   font-size: 16px;
   color: #4a3500;
+}
+
+.cap-svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cap-svg-dot {
+  width: 10px;
+  height: 10px;
 }
 
 .cap-divider {
@@ -366,6 +383,15 @@ export default {
   color: rgba(255, 255, 255, 0.3);
 }
 
+.entry-svg {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  width: 34px;
+  height: 34px;
+  opacity: 0.3;
+}
+
 .scroll-area {
   flex: 1;
   min-height: 0;
@@ -424,6 +450,11 @@ export default {
   font-size: 20px;
 }
 
+.grid-svg {
+  width: 20px;
+  height: 20px;
+}
+
 .wb-grid-info {
   flex: 1;
   min-width: 0;
@@ -445,16 +476,15 @@ export default {
 }
 
 .tab-bar {
+  box-sizing: content-box;
   flex-shrink: 0;
-  height: 83px;
+  height: 63px;
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
   border-top: 0.5px solid rgba(0, 0, 0, 0.05);
   display: flex;
-  padding-bottom: 20px;
+  padding-bottom: env(safe-area-inset-bottom);
   z-index: 50;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .tab-item {
@@ -468,6 +498,16 @@ export default {
 
 .tab-item.active .tab-label {
   color: #FF6B35;
+}
+
+.tab-svg {
+  width: 22px;
+  height: 22px;
+  opacity: 0.55;
+}
+
+.tab-item.active .tab-svg {
+  opacity: 1;
 }
 
 .tab-icon-wrap {

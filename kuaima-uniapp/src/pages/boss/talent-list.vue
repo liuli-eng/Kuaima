@@ -3,18 +3,18 @@
     <!-- 导航栏 -->
     <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="nav-back" @click="goBack">
-        <text>←</text>
+        <image class="nav-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" />
       </view>
       <text class="nav-title">人才库</text>
       <view class="nav-right" @click="openAddSheet">
-        <text>＋</text>
+        <image class="nav-plus-svg" src="/static/icons/boss-location/plus-dark.svg" mode="aspectFit" />
       </view>
     </view>
 
     <!-- 搜索框 -->
     <view class="search-bar">
       <view class="search-input">
-        <text class="search-ico">🔍</text>
+        <image class="search-svg" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />
         <input
           v-model="searchText"
           type="text"
@@ -47,7 +47,9 @@
     >
       <view v-if="loading && !workers.length" class="page-state">人才加载中...</view>
       <view v-else-if="!workers.length" class="empty-state">
-        <text class="empty-ico">📭</text>
+        <view class="empty-icon">
+          <image class="empty-svg" src="/static/icons/boss-talent-list/inbox-gray.svg" mode="aspectFit" />
+        </view>
         <text class="empty-text">暂无数据</text>
       </view>
       <view class="worker-card" v-for="worker in workers" :key="worker.id">
@@ -78,7 +80,9 @@
     <view class="add-sheet" :class="{ show: showAddSheet }">
       <view class="add-head">
         添加零工到人才库
-        <text class="add-close" @click="closeAddSheet">✕</text>
+        <view class="add-close" @click="closeAddSheet">
+          <image class="add-close-svg" src="/static/icons/boss-points/xmark-gray.svg" mode="aspectFit" />
+        </view>
       </view>
       <view class="add-label">自动加入</view>
       <text class="add-text">订单结算后，未差评或未拉黑的零工都将自动加入人才库。</text>
@@ -88,7 +92,8 @@
       <view class="add-qr">
         <text class="add-qr-t">零工扫码加入人才库</text>
         <view class="add-qr-btn" @click="showQrCode">
-          <text class="qr-ico">▦</text>出示二维码
+          <image class="qr-svg" src="/static/icons/boss-talent-list/qrcode-blue.svg" mode="aspectFit" />
+          <text>出示二维码</text>
         </view>
       </view>
       <button class="add-btn" @click="closeAddSheet">确定</button>
@@ -334,8 +339,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  color: #333;
+}
+
+.nav-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .nav-title {
@@ -350,8 +358,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  color: #333;
+}
+
+.nav-plus-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .search-bar {
@@ -370,9 +381,10 @@ export default {
   padding: 8px 14px;
 }
 
-.search-ico {
-  font-size: 13px;
-  color: #999;
+.search-svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
   margin-right: 8px;
 }
 
@@ -429,10 +441,20 @@ export default {
   padding: 60px 40px;
 }
 
-.empty-ico {
-  font-size: 60px;
-  display: block;
-  margin-bottom: 12px;
+.empty-icon {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #F5F0EA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-svg {
+  width: 36px;
+  height: 36px;
 }
 
 .empty-text {
@@ -583,8 +605,16 @@ export default {
   position: absolute;
   right: 0;
   top: -3px;
-  font-size: 16px;
-  color: #333;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-close-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .add-label {
@@ -634,8 +664,10 @@ export default {
   background: #fff;
 }
 
-.qr-ico {
-  font-size: 16px;
+.qr-svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .add-btn {

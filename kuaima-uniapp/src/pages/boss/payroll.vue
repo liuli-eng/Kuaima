@@ -3,11 +3,11 @@
     <!-- 导航栏 -->
     <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
-        <text>←</text>
+        <image class="nav-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" />
       </view>
       <text class="nav-title">发薪</text>
       <view class="nav-right">
-        <text class="nav-dots">⋯</text>
+        <image class="nav-dots-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" />
       </view>
     </view>
 
@@ -25,7 +25,7 @@
       <!-- 已提交的发薪单 -->
       <view class="submitted-row" @click="goApproveRecords">
         <text class="submitted-text">已提交的发薪单</text>
-        <text class="row-arrow">›</text>
+        <image class="row-arrow-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
       </view>
 
       <!-- 发薪单列表 -->
@@ -47,7 +47,7 @@
       </view>
 
       <view v-else class="empty-state">
-        <text class="empty-ico">🔍</text>
+        <view class="empty-icon"><image class="empty-svg" src="/static/icons/boss-workbench/search-empty.svg" mode="aspectFit" /></view>
         <text class="empty-text">暂无数据</text>
       </view>
       <view class="bottom-space" />
@@ -56,10 +56,10 @@
     <!-- 底部Tab -->
     <view class="module-tabs">
       <view class="module-tab active" @click="goPayroll">
-        <text class="tab-ico">💰</text><text class="tab-label">发薪</text>
+        <image class="module-svg" src="/static/icons/boss-reward/money-bill-wave-orange.svg" mode="aspectFit" /><text class="tab-label">发薪</text>
       </view>
       <view class="module-tab" @click="goEmployees">
-        <text class="tab-ico">👥</text><text class="tab-label">员工</text>
+        <image class="module-svg" src="/static/icons/boss-workbench/user-group-gray.svg" mode="aspectFit" /><text class="tab-label">员工</text>
       </view>
     </view>
 
@@ -68,7 +68,7 @@
       <view class="modal-box" @click.stop>
         <view class="modal-header">
           <text class="modal-title">创建发薪单</text>
-          <text class="modal-close" @click="closeCreateModal">✕</text>
+          <view class="modal-close" @click="closeCreateModal"><image class="modal-close-svg" src="/static/icons/boss-points/xmark-gray.svg" mode="aspectFit" /></view>
         </view>
         <view class="modal-body">
           <view class="form-item">
@@ -254,6 +254,7 @@ export default {
   font-size: 18px; color: #333;
 }
 .nav-dots { font-size: 18px; }
+.nav-svg, .nav-dots-svg { width: 16px; height: 16px; }
 .nav-title { font-size: 17px; font-weight: 600; color: #333; }
 .body {
   flex: 1;
@@ -269,7 +270,7 @@ export default {
   padding: 20px 16px;
   text-align: center;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-  width: calc(100% - 32px);
+  width: 100%;
   box-sizing: border-box;
 }
 .pay-hero-title { font-size: 17px; font-weight: 700; color: #333; }
@@ -289,13 +290,14 @@ export default {
   background: #fff; border-radius: 16px; margin-top: 12px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-  width: calc(100% - 32px);
+  width: 100%;
   box-sizing: border-box;
 }
 .submitted-text { font-size: 14px; color: #333; font-weight: 500; }
 .row-arrow { color: #C8C8C8; font-size: 18px; }
+.row-arrow-svg { width: 13px; height: 13px; flex-shrink: 0; }
 
-.order-section { margin-top: 12px; width: calc(100% - 32px); }
+.order-section { margin-top: 12px; width: 100%; }
 .section-title { font-size: 13px; color: #999; margin: 0 0 8px 2px; }
 .order-card {
   background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
@@ -321,8 +323,13 @@ export default {
 .order-line .lab { color: #B0B0B0; }
 .amount { color: #FF6B35; font-weight: 600; }
 
-.empty-state { text-align: center; padding: 60px 0; width: calc(100% - 32px); }
+.empty-state { text-align: center; padding: 60px 0; width: 100%; }
 .empty-ico { font-size: 40px; display: block; margin-bottom: 10px; }
+.empty-icon {
+  width: 84px; height: 84px; margin: 0 auto 12px; border-radius: 50%;
+  background: #F5F0EA; display: flex; align-items: center; justify-content: center;
+}
+.empty-svg { width: 36px; height: 36px; }
 .empty-text { font-size: 13px; color: #999; }
 .bottom-space { height: 20px; }
 
@@ -339,6 +346,7 @@ export default {
 }
 .module-tab.active { color: #ff6b35; background: #fff3ed; }
 .tab-ico { font-size: 18px; }
+.module-svg { width: 20px; height: 20px; }
 .tab-label { font-size: 12px; }
 
 /* 弹窗 */
@@ -348,6 +356,7 @@ export default {
 .modal-header { display: flex; align-items: center; justify-content: center; padding: 16px; border-bottom: 0.5px solid #f0f0f0; position: relative; }
 .modal-title { font-size: 16px; font-weight: 600; color: #333; }
 .modal-close { position: absolute; right: 16px; font-size: 16px; color: #999; }
+.modal-close-svg { width: 14px; height: 14px; }
 .modal-body { padding: 20px 14px; }
 .form-item { margin-bottom: 18px; }
 .form-item:last-child { margin-bottom: 0; }

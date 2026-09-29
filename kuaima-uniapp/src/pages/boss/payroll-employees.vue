@@ -3,18 +3,18 @@
     <!-- 导航栏 -->
     <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
-        <text>←</text>
+        <image class="nav-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" />
       </view>
       <text class="nav-title">员工</text>
       <view class="nav-right">
-        <text class="nav-dots">⋯</text>
+        <image class="nav-dots-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" />
       </view>
     </view>
 
     <scroll-view scroll-y class="body">
       <!-- 搜索 -->
       <view class="search-bar">
-        <text class="search-ico">🔍</text>
+        <image class="search-svg" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />
         <input class="search-input" v-model="keyword" placeholder="请输入员工姓名" @confirm="search" @input="onInput" />
       </view>
 
@@ -39,7 +39,9 @@
       <view class="section-title">员工列表</view>
       <view v-if="loading" class="page-state">加载中...</view>
       <view v-else-if="!employees.length" class="empty-state">
-        <text class="empty-ico">👥</text>
+        <view class="empty-icon">
+          <image class="empty-svg" src="/static/icons/boss-workbench/users-empty.svg" mode="aspectFit" />
+        </view>
         <text class="empty-text">暂无员工数据</text>
       </view>
       <view class="emp-card" v-for="emp in employees" :key="emp.id" @click="goDetail(emp)">
@@ -50,7 +52,7 @@
           <view class="emp-time">添加时间：{{ formatDateTime(emp.addTime) }}</view>
         </view>
         <text class="emp-status" :class="emp.status">{{ getStatusText(emp.status) }}</text>
-        <text class="row-arrow">›</text>
+        <image class="row-arrow-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
       </view>
       <view class="bottom-space" />
     </scroll-view>
@@ -58,10 +60,10 @@
     <!-- 底部Tab -->
     <view class="module-tabs">
       <view class="module-tab" @click="goPayroll">
-        <text class="tab-ico">💰</text><text class="tab-label">发薪</text>
+        <image class="tab-svg-icon" src="/static/icons/boss-workbench/money-bill-wave-gray.svg" mode="aspectFit" /><text class="tab-label">发薪</text>
       </view>
       <view class="module-tab active" @click="goEmployees">
-        <text class="tab-ico">👥</text><text class="tab-label">员工</text>
+        <image class="tab-svg-icon" src="/static/icons/worker-home/users-orange.svg" mode="aspectFit" /><text class="tab-label">员工</text>
       </view>
     </view>
   </view>
@@ -188,7 +190,7 @@ export default {
   box-sizing: border-box;
 }
 .nav-back, .nav-right { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; }
-.nav-dots { font-size: 18px; }
+.nav-svg, .nav-dots-svg { width: 16px; height: 16px; }
 .nav-title { font-size: 17px; font-weight: 600; color: #333; }
 
 .body {
@@ -202,15 +204,15 @@ export default {
 .search-bar {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px;
   background: #fff; border-radius: 22px;
-  width: calc(100% - 32px);
+  width: 100%;
   box-sizing: border-box;
 }
-.search-ico { font-size: 13px; color: #bbb; }
+.search-svg { width: 15px; height: 15px; flex-shrink: 0; }
 .search-input { flex: 1; font-size: 13px; color: #333; }
 
 .section-title { font-size: 12px; color: #999; margin: 14px 0 8px 2px; }
 
-.stat-cards-row { display: flex; gap: 10px; margin-bottom: 4px; width: calc(100% - 32px); }
+.stat-cards-row { display: flex; gap: 10px; margin-bottom: 4px; width: 100%; }
 .stat-card {
   flex: 1; background: #fff; border-radius: 14px; padding: 13px 0;
   text-align: center; box-shadow: 0 1px 6px rgba(0,0,0,0.04);
@@ -221,14 +223,19 @@ export default {
 
 .page-state { padding: 32px 0; color: #999; font-size: 14px; text-align: center; }
 .empty-state { text-align: center; padding: 60px 40px; }
-.empty-ico { font-size: 60px; display: block; margin-bottom: 12px; }
+.empty-icon {
+  width: 84px; height: 84px; border-radius: 50%; background: #F5F0EA;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+}
+.empty-svg { width: 36px; height: 36px; }
 .empty-text { font-size: 13px; color: #999; }
 
 .emp-card {
   background: #fff; border-radius: 14px; padding: 13px 14px; margin-bottom: 10px;
   display: flex; align-items: center; gap: 12px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-  width: calc(100% - 32px);
+  width: 100%;
   box-sizing: border-box;
 }
 .emp-avatar {
@@ -248,7 +255,7 @@ export default {
 .emp-status.temp { background: #FFF1DB; color: #B45309; }
 .emp-status.left { background: #F5F5F5; color: #8C8C8C; }
 
-.row-arrow { color: #C8C8C8; font-size: 18px; flex-shrink: 0; }
+.row-arrow-svg { width: 13px; height: 13px; flex-shrink: 0; }
 .bottom-space { height: 20px; }
 
 .module-tabs {
@@ -263,6 +270,6 @@ export default {
   padding: 8px 0; border-radius: 12px; font-size: 12px; color: #999;
 }
 .module-tab.active { color: #ff6b35; background: #fff3ed; }
-.tab-ico { font-size: 18px; }
+.tab-svg-icon { width: 20px; height: 20px; }
 .tab-label { font-size: 12px; }
 </style>

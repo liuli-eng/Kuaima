@@ -132,6 +132,7 @@
           <el-table-column prop="job" label="申请职位" show-overflow-tooltip />
           <el-table-column prop="applyRole" label="申请角色" show-overflow-tooltip />
           <el-table-column prop="intentProject" label="意向项目" show-overflow-tooltip />
+          <el-table-column prop="applySource" label="申请来源" width="120" show-overflow-tooltip />
           <el-table-column prop="applyTime" label="申请时间" show-overflow-tooltip />
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
@@ -179,8 +180,14 @@
     </div>
 
     <!-- 邀请新成员 -->
-    <el-dialog v-model="inviteVisible" title="邀请新成员" width="520px">
+    <el-dialog v-model="inviteVisible" title="邀请新成员" width="520px" @open="onInviteOpen">
       <el-form :model="inviteForm" label-width="90px">
+        <el-form-item label="所属企业">
+          <el-select v-model="inviteForm.enterpriseId" filterable placeholder="请选择要邀请加入的企业" style="width:100%;" @change="onInviteEnterpriseChange">
+            <el-option v-for="e in enterpriseOptions" :key="e.id" :label="e.companyName" :value="e.id" />
+          </el-select>
+          <p class="invite-tip" style="text-align:left;margin-top:4px;">后台为平台视角，邀请二维码按企业生成，扫码后成员申请加入所选企业</p>
+        </el-form-item>
         <el-form-item label="职位名称"><el-input v-model="inviteForm.job" placeholder="如：项目负责人" /></el-form-item>
         <el-form-item label="角色权限">
           <el-select v-model="inviteForm.role" style="width:100%;">
@@ -188,13 +195,18 @@
             <el-option label="管理员（可管理项目与发薪）" value="admin" />
             <el-option label="超级管理员（拥有全部权限）" value="super" />
           </el-select>
+          <p class="invite-tip" style="text-align:left;margin-top:4px;">扫码入企默认按「员工」登记，具体职位/角色可在申请通过后再调整</p>
         </el-form-item>
         <el-form-item label="邀请链接">
           <div class="invite-link-box">
-            <span>{{ inviteLink }}</span>
+            <span>{{ inviteLink || (inviteForm.enterpriseId ? '链接生成中…' : '请先选择企业') }}</span>
             <button class="btn btn-outline btn-sm" @click="copyLink">复制</button>
           </div>
-          <div class="invite-qrcode"></div>
+          <div class="invite-qrcode-wrap">
+            <img v-if="inviteQr" :src="inviteQr" class="invite-qrcode-img" alt="邀请二维码" />
+            <div v-else class="invite-qrcode-empty">{{ inviteEmptyText }}</div>
+            <button class="btn btn-outline btn-sm invite-qrcode-refresh" :disabled="inviteLoading || !inviteForm.enterpriseId" @click="loadInviteQr(true)">刷新二维码</button>
+          </div>
           <p class="invite-tip">微信扫码 / 点击链接即可申请加入企业，申请后需管理员审批</p>
         </el-form-item>
       </el-form>
@@ -319,7 +331,7 @@ import { ElMessage } from 'element-plus'
 import {
   listEmployees, getEmployee, setEmployeeStatus, deleteEmployee, updateEmployee,
   listRoles, permissionTree, createRole, updateRole, deleteRole,
-  listJoinApplies, approveApply, rejectApply
+  listJoinApplies, approveApply, rejectApply, getInviteQr, listEnterprises
 } from '@/api/employee'
 
 /* ---------- 权限树（结构对齐后端 defaultPermissionTree：组 key + 叶子 key） ---------- */
@@ -500,9 +512,74 @@ const removeEmp = async () => {
 
 /* ---------- 邀请 ---------- */
 const inviteVisible = ref(false)
-const inviteForm = reactive({ job: '', role: 'staff' })
-const inviteLink = computed(() => `https://m.kuaima.com/invite/e/${Math.random().toString(36).slice(2, 10)}?from=console`)
-const copyLink = () => { navigator.clipboard?.writeText(inviteLink.value); ElMessage.success('邀请链接已复制') }
+const inviteForm = reactive({ job: '', role: 'staff', enterpriseId: '' })
+const enterpriseOptions = ref([])
+const inviteQr = ref('')
+const inviteLink = ref('')
+const inviteLoading = ref(false)
+let inviteLoadedFor = null   // 已生成二维码的企业 id，切换企业或点刷新时重新拉取
+const inviteEmptyText = computed(() => {
+  if (!inviteForm.enterpriseId) return '请先选择企业'
+  return inviteLoading.value ? '二维码生成中…' : '二维码暂不可用，请点击刷新重试'
+})
+
+const loadEnterprises = async () => {
+  try {
+    const res = await listEnterprises()
+    enterpriseOptions.value = res.data || []
+  } catch (err) {
+    console.warn('[EmployeeManage] 企业列表加载失败:', err.message)
+    enterpriseOptions.value = []
+  }
+}
+
+const onInviteOpen = async () => {
+  if (!enterpriseOptions.value.length) {
+    await loadEnterprises()
+    // 仅有一家企业时直接选中，避免多一步操作
+    if (!inviteForm.enterpriseId && enterpriseOptions.value.length === 1) {
+      inviteForm.enterpriseId = enterpriseOptions.value[0].id
+    }
+  }
+  if (inviteForm.enterpriseId) loadInviteQr(true)
+}
+
+const onInviteEnterpriseChange = () => {
+  inviteQr.value = ''
+  inviteLink.value = ''
+  inviteLoadedFor = null
+  loadInviteQr(true)
+}
+
+const loadInviteQr = async (force = false) => {
+  if (inviteLoading.value) return
+  const enterpriseId = inviteForm.enterpriseId
+  if (!enterpriseId) {
+    inviteQr.value = ''
+    inviteLink.value = ''
+    inviteLoadedFor = null
+    return
+  }
+  if (!force && inviteLoadedFor === enterpriseId && inviteQr.value) return
+  inviteLoading.value = true
+  try {
+    const res = await getInviteQr(enterpriseId)
+    const data = res?.data || {}
+    inviteQr.value = data.qrImage || ''
+    inviteLink.value = data.link || ''
+    inviteLoadedFor = enterpriseId
+  } catch (err) {
+    // 请求拦截器已统一 ElMessage 提示，这里只记录，避免重复弹窗
+    console.warn('[invite] 获取邀请二维码失败:', err?.message || err)
+  } finally {
+    inviteLoading.value = false
+  }
+}
+const copyLink = () => {
+  if (!inviteLink.value) { ElMessage.warning('邀请链接生成中，请稍后重试'); return }
+  navigator.clipboard?.writeText(inviteLink.value)
+  ElMessage.success('邀请链接已复制')
+}
 const sendInvite = () => { ElMessage.success('邀请已发送'); inviteVisible.value = false }
 
 /* ---------- 权限弹窗 ---------- */
@@ -594,6 +671,9 @@ const normalizeApply = (a) => ({
   applyTime: formatTime(a.applyTime), status: a.status || 'pending',
   salaryExpect: a.salaryExpect || '—', workTime: a.workTime || '—',
   joinDate: a.joinDate || '—', company: a.company || '—',
+  // source 决定审批写回哪张申请表：enterprise_join_apply = 扫码/邀请链接申请
+  source: a.source || 'join_apply',
+  applySource: a.source === 'enterprise_join_apply' ? '邀请二维码' : '后台录入',
 })
 const loadApplies = async () => {
   try {
@@ -614,11 +694,11 @@ const loadApplies = async () => {
 const resetApplyFilters = () => { applyFilters.status = ''; applyFilters.keyword = ''; applyFilters.dateRange = []; loadApplies() }
 const openApplyDetail = (row) => { applyDetail.value = row; applyDetailVisible.value = true }
 const doApproveApply = async (row) => {
-  try { await approveApply(row.id); ElMessage.success('已同意，自动创建员工'); applyDetailVisible.value = false; loadApplies(); loadEmployees() }
+  try { await approveApply(row.id, row.source); ElMessage.success('已同意，自动创建员工'); applyDetailVisible.value = false; loadApplies(); loadEmployees() }
   catch (err) { ElMessage.error('操作失败') }
 }
 const doRejectApply = async (row) => {
-  try { await rejectApply(row.id); ElMessage.success('已拒绝'); applyDetailVisible.value = false; loadApplies() }
+  try { await rejectApply(row.id, row.source); ElMessage.success('已拒绝'); applyDetailVisible.value = false; loadApplies() }
   catch (err) { ElMessage.error('操作失败') }
 }
 
@@ -697,7 +777,10 @@ onMounted(() => { loadEmployees(); loadApplies(); loadTree() })
 .member-pill { font-size: 12px; color: #6B7280; background: #F3F4F6; padding: 2px 8px; border-radius: 10px; }
 
 .invite-link-box { background: var(--bg-page); border: 1px dashed var(--border); border-radius: 8px; padding: 12px; font-size: 13px; color: var(--text-secondary); word-break: break-all; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.invite-qrcode { width: 120px; height: 120px; margin: 16px auto 0; background: repeating-conic-gradient(#1F2937 0% 25%, #fff 0% 50%) 0 0/20px 20px; border: 6px solid #fff; box-shadow: 0 0 0 1px var(--border), 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px; position: relative; }
+.invite-qrcode-wrap { display: flex; flex-direction: column; align-items: center; margin-top: 16px; }
+.invite-qrcode-img { width: 120px; height: 120px; border: 6px solid #fff; box-shadow: 0 0 0 1px var(--border), 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px; object-fit: contain; }
+.invite-qrcode-empty { width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: var(--text-muted); background: var(--bg-page); border: 1px dashed var(--border); border-radius: 8px; padding: 0 8px; box-sizing: border-box; }
+.invite-qrcode-refresh { margin-top: 10px; }
 .invite-tip { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 12px; }
 
 .detail-wrap { padding: 4px 0; }

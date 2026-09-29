@@ -13,37 +13,37 @@
 
     <view class="wb-body">
       <!-- 邀请方式 -->
-      <view class="block-title"><text class="block-ico">📨</text>邀请方式</view>
+      <view class="block-title"><image class="block-ico" src="/static/icons/boss-members/paper-plane-gray.svg" mode="aspectFit" />邀请方式</view>
       <view class="iv-card">
         <view class="iv-item" @click="shareWechat">
-          <view class="iv-icon" style="background: linear-gradient(135deg, #10B981, #059669)"><text class="iv-ico">💬</text></view>
+          <view class="iv-icon" style="background: linear-gradient(135deg, #10B981, #059669)"><image class="iv-ico" src="/static/icons/boss-tabbar/comment-dots-white.svg" mode="aspectFit" /></view>
           <view class="iv-main">
             <text class="iv-name">微信分享邀请</text>
             <text class="iv-desc">生成邀请链接，发送给微信好友或群聊</text>
           </view>
-          <text class="wb-row-arrow">›</text>
+          <image class="wb-row-arrow" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
         </view>
         <view class="iv-item" @click="openQr">
-          <view class="iv-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)"><text class="iv-ico">📱</text></view>
+          <view class="iv-icon" style="background: linear-gradient(135deg, #FFB84D, #F09A3E)"><image class="iv-ico" src="/static/icons/boss-members/mobile-screen-white.svg" mode="aspectFit" /></view>
           <view class="iv-main">
             <text class="iv-name">邀请二维码</text>
             <text class="iv-desc">成员扫码即可申请加入企业</text>
           </view>
-          <text class="wb-row-arrow">›</text>
+          <image class="wb-row-arrow" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
         </view>
       </view>
 
       <!-- 手机号添加 -->
-      <view class="block-title"><text class="block-ico">🔍</text>手机号添加</view>
+      <view class="block-title"><image class="block-ico" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />手机号添加</view>
       <view class="iv-card">
         <view class="iv-phone">
           <input type="tel" v-model="phone" maxlength="11" placeholder="请输入对方手机号" />
-          <view class="iv-add-btn" @click="addByPhone"><text>＋ 添加</text></view>
+          <view class="iv-add-btn" @click="addByPhone"><image class="iv-add-ico" src="/static/icons/boss-reward/plus-white.svg" mode="aspectFit" /><text>添加</text></view>
         </view>
       </view>
 
       <!-- 角色设置 -->
-      <view class="block-title"><text class="block-ico">🛡</text>新成员角色</view>
+      <view class="block-title"><image class="block-ico" src="/static/icons/boss-members/shield-gray.svg" mode="aspectFit" />新成员角色</view>
       <view class="iv-card" style="margin-bottom: 16px">
         <view class="role-opts">
           <view class="role-opt" :class="{ active: inviteRole === 'STAFF' }" @click="inviteRole = 'STAFF'">
@@ -58,11 +58,11 @@
       </view>
 
       <!-- 邀请记录 -->
-      <view class="block-title"><text class="block-ico">🕘</text>邀请记录</view>
+      <view class="block-title"><image class="block-ico" src="/static/icons/worker-classroom/clock-gray.svg" mode="aspectFit" />邀请记录</view>
       <view class="rc-card">
         <view v-if="inviteLoading" class="wb-empty"><text class="wb-empty-text">加载中...</text></view>
         <view v-else-if="!records.length" class="wb-empty">
-          <view class="wb-empty-icon"><text>👤</text></view>
+          <image class="wb-empty-icon" src="/static/icons/boss-projects/user-gray.svg" mode="aspectFit" />
           <text class="wb-empty-text">暂无邀请记录</text>
         </view>
         <view v-for="r in records" :key="r.id" class="rc-row">
@@ -86,7 +86,7 @@
       <view class="wb-modal-box">
         <view class="wb-modal-header">
           <text class="wb-modal-title">邀请二维码</text>
-          <text class="wb-modal-close" @click="closeQr">✕</text>
+          <image class="wb-modal-close-ico" src="/static/icons/boss-points/xmark-gray.svg" mode="aspectFit" @click="closeQr" />
         </view>
         <view class="qr-box">
           <view class="qr-img">
@@ -96,8 +96,14 @@
           <text class="qr-tip">请使用微信「扫一扫」识别二维码\n扫码后填写信息提交入企申请</text>
         </view>
         <view class="wb-modal-footer">
-          <view class="wb-btn-outline" @click="saveQr">💾 保存图片</view>
-          <view class="wb-btn-primary" @click="shareQr">📤 分享</view>
+          <view class="wb-btn-outline wb-btn-row" @click="saveQr">
+            <image class="wb-btn-ico" src="/static/icons/boss-members/download-gray.svg" mode="aspectFit" />
+            <text>保存图片</text>
+          </view>
+          <view class="wb-btn-primary wb-btn-row" @click="shareQr">
+            <image class="wb-btn-ico" src="/static/icons/boss-reward/share-orange.svg" mode="aspectFit" />
+            <text>分享</text>
+          </view>
         </view>
       </view>
     </view>
@@ -322,7 +328,9 @@ export default {
 }
 
 .block-ico {
-  font-size: 14px;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .iv-card {
@@ -356,7 +364,8 @@ export default {
 }
 
 .iv-ico {
-  font-size: 17px;
+  width: 18px;
+  height: 18px;
 }
 
 .iv-main {
@@ -379,8 +388,9 @@ export default {
 }
 
 .wb-row-arrow {
-  font-size: 16px;
-  color: #ccc;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .iv-phone {
@@ -407,6 +417,16 @@ export default {
   padding: 11px 18px;
   border-radius: 9999px;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.iv-add-ico {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .role-opts {
@@ -535,8 +555,8 @@ export default {
 }
 
 .wb-empty-icon {
-  font-size: 34px;
-  color: #ddd;
+  width: 34px;
+  height: 34px;
   margin-bottom: 10px;
 }
 
@@ -579,10 +599,11 @@ export default {
   color: #333;
 }
 
-.wb-modal-close {
-  font-size: 16px;
-  color: #999;
+.wb-modal-close-ico {
+  width: 16px;
+  height: 16px;
   padding: 4px;
+  flex-shrink: 0;
 }
 
 .qr-box {
@@ -636,6 +657,19 @@ export default {
   text-align: center;
   padding: 14px 0;
   font-size: 15px;
+}
+
+.wb-btn-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wb-btn-ico {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .wb-btn-outline {

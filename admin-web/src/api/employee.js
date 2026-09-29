@@ -54,14 +54,26 @@ export function initRoles() {
 }
 
 /* ============ 加入申请 ============ */
+// 列表已合并 join_apply（后台表单）与 enterprise_join_apply（扫码/邀请链接），
+// 审批时需回传该行 source，后端据此写回对应申请表。
 export function listJoinApplies({ status = 'all' } = {}) {
   return request.get('/admin/join-applies', { params: { status } })
 }
 
-export function approveApply(id) {
-  return request.post(`/admin/join-applies/${id}/approve`)
+export function approveApply(id, source) {
+  return request.post(`/admin/join-applies/${id}/approve`, { source })
 }
 
-export function rejectApply(id) {
-  return request.post(`/admin/join-applies/${id}/reject`)
+export function rejectApply(id, source) {
+  return request.post(`/admin/join-applies/${id}/reject`, { source })
+}
+
+/* ============ 邀请二维码 ============ */
+// 后台为平台级账号，没有「当前企业」上下文，需先选择企业再由后端生成真实二维码
+export function listEnterprises() {
+  return request.get('/admin/enterprises')
+}
+
+export function getInviteQr(enterpriseId) {
+  return request.get(`/admin/enterprises/${enterpriseId}/invite-qr`)
 }

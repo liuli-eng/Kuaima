@@ -99,6 +99,10 @@ export default {
     } catch (e) {}
     this.loadApplies();
   },
+  onShow() {
+    // 从「邀请二维码 / 入企申请」返回时刷新，避免缓存页面展示旧列表
+    this.loadApplies();
+  },
   methods: {
     avatarColor,
     roleText(role) {

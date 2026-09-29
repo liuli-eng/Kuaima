@@ -3,7 +3,7 @@
     <BossPageHeader title="岗位管理">
       <template #right>
         <view class="header-icon" @click="goStats">
-          <text class="header-ico">📊</text>
+          <image class="header-svg" src="/static/icons/boss-position/chart-bar-gray.svg" mode="aspectFit" />
         </view>
       </template>
     </BossPageHeader>
@@ -11,7 +11,7 @@
     <scroll-view scroll-y class="body" :style="{ paddingBottom: safeBottom + 70 + 'px' }">
       <!-- 搜索 -->
       <view class="search-bar">
-        <text class="search-icon">🔍</text>
+        <image class="search-svg" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />
         <input
           class="search-input"
           v-model="keyword"
@@ -71,7 +71,7 @@
           @click="goDetail(item)"
         >
           <view class="pos-icon">
-            <text class="pos-ico">💼</text>
+            <image class="pos-svg" src="/static/icons/boss-authorize/briefcase-white.svg" mode="aspectFit" />
           </view>
           <view class="pos-main">
             <view class="pos-name-line">
@@ -82,13 +82,15 @@
             <text class="pos-code">岗位编码：{{ item.code }}</text>
           </view>
           <view class="pos-right">
-            <text class="pos-arrow">›</text>
+            <image class="pos-arrow-svg" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
             <text class="pos-hire"><text class="pos-hire-num">{{ item.applyCount || 0 }}</text> 人投递</text>
           </view>
         </view>
       </view>
       <view v-else class="empty">
-        <text class="empty-ico">💼</text>
+        <view class="empty-icon">
+          <image class="empty-svg" src="/static/icons/boss-position/briefcase-gray.svg" mode="aspectFit" />
+        </view>
         <text class="empty-text">{{ loading ? "加载中…" : "暂无符合条件的岗位" }}</text>
       </view>
       <view class="bottom-space" />
@@ -97,7 +99,7 @@
     <!-- 底部按钮 -->
     <view class="footer">
       <view class="primary-btn" @click="goCreate">
-        <text class="primary-btn-ico">＋</text>新建岗位
+        <image class="primary-btn-svg" src="/static/icons/boss-reward/plus-white.svg" mode="aspectFit" />新建岗位
       </view>
     </view>
   </view>
@@ -202,8 +204,9 @@ export default {
   align-items: center;
   justify-content: center;
 }
-.header-ico {
-  font-size: 18px;
+.header-svg {
+  width: 19px;
+  height: 19px;
 }
 .search-bar {
   display: flex;
@@ -215,9 +218,10 @@ export default {
   margin-bottom: 12px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
-.search-icon {
-  font-size: 14px;
-  color: #bbb;
+.search-svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
   margin-right: 8px;
 }
 .search-input {
@@ -310,8 +314,9 @@ export default {
   align-items: center;
   justify-content: center;
 }
-.pos-ico {
-  font-size: 18px;
+.pos-svg {
+  width: 20px;
+  height: 20px;
 }
 .pos-main {
   flex: 1;
@@ -351,9 +356,9 @@ export default {
   text-align: right;
   flex-shrink: 0;
 }
-.pos-arrow {
-  color: #ddd;
-  font-size: 18px;
+.pos-arrow-svg {
+  width: 13px;
+  height: 13px;
 }
 .pos-hire {
   font-size: 12px;
@@ -368,10 +373,19 @@ export default {
   text-align: center;
   padding: 60px 0;
 }
-.empty-ico {
-  font-size: 40px;
-  display: block;
-  margin-bottom: 10px;
+.empty-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #F5F0EA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
+.empty-svg {
+  width: 36px;
+  height: 36px;
 }
 .empty-text {
   font-size: 13px;
@@ -404,8 +418,9 @@ export default {
   align-items: center;
   justify-content: center;
 }
-.primary-btn-ico {
+.primary-btn-svg {
+  width: 16px;
+  height: 16px;
   margin-right: 6px;
-  font-size: 16px;
 }
 </style>

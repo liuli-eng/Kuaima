@@ -1,7 +1,5 @@
 package com.kuaima.app.controller.enterprise;
 
-import java.io.ByteArrayOutputStream;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,16 +17,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.WriterException;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
-
 import com.kuaima.app.common.BusinessHttpException;
 import com.kuaima.app.common.Result;
+import com.kuaima.app.common.util.QrCodeUtils;
 import com.kuaima.app.domain.enterprise.entity.EnterpriseJoinApply;
 import com.kuaima.app.domain.enterprise.entity.EnterpriseMember;
 import com.kuaima.app.domain.enterprise.repository.EnterpriseJoinApplyRepository;
@@ -196,7 +187,7 @@ public class EnterpriseMemberController {
         var invite = service.createInvite(ctx.enterprise(), ctx.user().getId(),
                 ctx.user().getPhone() != null ? ctx.user().getPhone() : "00000000000", "STAFF");
         String link = "https://kuaima.com/invite?code=" + invite.getInviteCode();
-        String qrImage = generateQrBase64(link, 300);
+        String qrImage = QrCodeUtils.generateBase64Png(link, 300);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("inviteCode", invite.getInviteCode());
@@ -204,22 +195,6 @@ public class EnterpriseMemberController {
         data.put("enterpriseName", ctx.enterprise().getCompanyName());
         data.put("qrImage", qrImage);
         return Result.success(data);
-    }
-
-    /** 生成指定内容的 PNG 二维码，返回 data:image/png;base64,xxx 格式字符串。 */
-    private String generateQrBase64(String content, int size) {
-        try {
-            Map<EncodeHintType, Object> hints = new LinkedHashMap<>();
-            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
-            hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
-            hints.put(EncodeHintType.MARGIN, 1);
-            BitMatrix matrix = new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
-            return "data:image/png;base64," + Base64.getEncoder().encodeToString(out.toByteArray());
-        } catch (WriterException | java.io.IOException e) {
-            return "";
-        }
     }
 
     @GetMapping("/exit-info")

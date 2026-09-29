@@ -3,18 +3,18 @@
     <!-- 导航栏 -->
     <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
-        <text>←</text>
+        <image class="nav-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" />
       </view>
       <text class="nav-title">已审批的记录</text>
       <view class="nav-right">
-        <text class="nav-dots">⋯</text>
+        <image class="nav-dots-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" />
       </view>
     </view>
 
     <scroll-view scroll-y class="body">
       <!-- 搜索 -->
       <view class="search-bar">
-        <text class="search-ico">🔍</text>
+        <image class="search-svg" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />
         <input class="search-input" v-model="keyword" placeholder="请输入发薪单标题" @confirm="search" @input="onInput" />
       </view>
 
@@ -27,7 +27,9 @@
 
       <view v-if="loading" class="page-state">加载中...</view>
       <view v-else-if="!records.length" class="empty-state">
-        <text class="empty-ico">📋</text>
+        <view class="empty-icon">
+          <image class="empty-svg" src="/static/icons/boss-workbench/clipboard-empty.svg" mode="aspectFit" />
+        </view>
         <text class="empty-text">暂无已审批的发薪记录</text>
       </view>
       <view class="record-card" v-for="record in records" :key="record.id" @click="openDetail(record)">
@@ -159,7 +161,7 @@ export default {
   box-sizing: border-box;
 }
 .nav-back, .nav-right { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; }
-.nav-dots { font-size: 18px; }
+.nav-svg, .nav-dots-svg { width: 16px; height: 16px; }
 .nav-title { font-size: 17px; font-weight: 600; color: #333; }
 
 .body {
@@ -173,15 +175,15 @@ export default {
 .search-bar {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin-bottom: 12px;
   background: #fff; border-radius: 22px;
-  width: calc(100% - 32px);
+  width: 100%;
   box-sizing: border-box;
 }
-.search-ico { font-size: 13px; color: #bbb; }
+.search-svg { width: 15px; height: 15px; flex-shrink: 0; }
 .search-input { flex: 1; font-size: 13px; color: #333; }
 
 .filter-tabs {
   display: flex; gap: 8px; margin-bottom: 12px;
-  width: calc(100% - 32px);
+  width: 100%;
 }
 .filter-tab {
   padding: 6px 16px; border-radius: 16px; font-size: 12px; color: #666;
@@ -191,13 +193,18 @@ export default {
 
 .page-state { padding: 32px 0; color: #999; font-size: 14px; text-align: center; }
 .empty-state { text-align: center; padding: 80px 40px; }
-.empty-ico { font-size: 60px; display: block; margin-bottom: 12px; }
+.empty-icon {
+  width: 84px; height: 84px; border-radius: 50%; background: #F5F0EA;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+}
+.empty-svg { width: 36px; height: 36px; }
 .empty-text { font-size: 13px; color: #999; }
 
 .record-card {
   background: #fff; border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-  width: calc(100% - 32px);
+  width: 100%;
   box-sizing: border-box;
 }
 .record-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }

@@ -3,11 +3,11 @@
     <!-- 导航栏 -->
     <view class="nav-bar" :style="{ paddingTop: `${statusBarHeight}px`, height: `${statusBarHeight + 50}px` }">
       <view class="nav-back" @click="goBack">
-        <text>←</text>
+        <image class="nav-back-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" />
       </view>
       <text class="nav-title">余额查询</text>
       <view class="nav-right">
-        <text class="nav-dots">⋯</text>
+        <image class="nav-dots-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" />
       </view>
     </view>
 
@@ -36,7 +36,7 @@
 
         <!-- 提示 -->
         <view class="tip-card">
-          <text class="tip-ico">ℹ️</text>
+          <image class="tip-ico-svg" src="/static/icons/boss-points/circle-info-orange.svg" mode="aspectFit" />
           <text>余额为商户号可用余额，实际到账以银行流水为准；如需充值对公转账后请联系客服处理。</text>
         </view>
       </template>
@@ -54,34 +54,36 @@
         <view class="rb-handle" />
         <view class="rb-header">
           <text class="rb-title">账户充值</text>
-          <text class="rb-close" @click="closeRecharge">✕</text>
+          <text class="rb-close" @click="closeRecharge"><image class="rb-close-svg" src="/static/icons/boss-points/xmark-gray.svg" mode="aspectFit" /></text>
         </view>
         <scroll-view scroll-y class="rb-body">
-          <view class="rb-section-title">选择充值金额</view>
-          <view class="rb-amount-row">
-            <view class="rb-amount-chip" :class="{ active: amount === 500 }" @click="pickAmount(500)">¥500</view>
-            <view class="rb-amount-chip" :class="{ active: amount === 1000 }" @click="pickAmount(1000)">¥1000</view>
-            <view class="rb-amount-chip" :class="{ active: amount === 2000 }" @click="pickAmount(2000)">¥2000</view>
-          </view>
-          <view class="rb-input-amount">
-            <text class="yuan">¥</text>
-            <input
-              type="digit"
-              class="rb-input"
-              placeholder="自定义金额（最低0.01）"
-              v-model="customAmount"
-              @input="onCustomInput"
-            />
-          </view>
-
-          <view class="rb-section-title">支付方式</view>
-          <view class="rb-pay-item active">
-            <view class="rb-pay-icon wechat"><text>💬</text></view>
-            <view class="rb-pay-info">
-              <text class="rb-pay-name">微信支付</text>
-              <text class="rb-pay-desc">推荐 · 实时到账</text>
+          <view class="rb-body-inner">
+            <view class="rb-section-title">选择充值金额</view>
+            <view class="rb-amount-row">
+              <view class="rb-amount-chip" :class="{ active: amount === 500 }" @click="pickAmount(500)">¥500</view>
+              <view class="rb-amount-chip" :class="{ active: amount === 1000 }" @click="pickAmount(1000)">¥1000</view>
+              <view class="rb-amount-chip" :class="{ active: amount === 2000 }" @click="pickAmount(2000)">¥2000</view>
             </view>
-            <view class="rb-pay-radio"><view class="rb-pay-radio-dot" /></view>
+            <view class="rb-input-amount">
+              <text class="yuan">¥</text>
+              <input
+                type="digit"
+                class="rb-input"
+                placeholder="自定义金额（最低0.01）"
+                v-model="customAmount"
+                @input="onCustomInput"
+              />
+            </view>
+
+            <view class="rb-section-title">支付方式</view>
+            <view class="rb-pay-item active">
+              <view class="rb-pay-icon wechat"><image class="rb-pay-svg" src="/static/icons/worker-points-withdraw/weixin-white.svg" mode="aspectFit" /></view>
+              <view class="rb-pay-info">
+                <text class="rb-pay-name">微信支付</text>
+                <text class="rb-pay-desc">推荐 · 实时到账</text>
+              </view>
+              <view class="rb-pay-radio"><view class="rb-pay-radio-dot" /></view>
+            </view>
           </view>
         </scroll-view>
         <view class="rb-footer">
@@ -302,7 +304,8 @@ export default {
   box-sizing: border-box;
 }
 .nav-back, .nav-right { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; }
-.nav-dots { font-size: 18px; }
+.nav-back-svg { width: 18px; height: 18px; }
+.nav-dots-svg { width: 18px; height: 18px; }
 .nav-title { font-size: 17px; font-weight: 600; color: #333; }
 
 .body {
@@ -318,7 +321,7 @@ export default {
 .account-card {
   background: #fff; border-radius: 16px; padding: 20px 18px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-  width: calc(100% - 32px);
+  width: 100%;
   box-sizing: border-box;
 }
 .account-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
@@ -339,12 +342,13 @@ export default {
 .tip-card {
   margin-top: 14px; background: #FFF7E8; border-radius: 12px;
   padding: 12px 14px; font-size: 12px; color: #A0620D; line-height: 1.7;
-  width: calc(100% - 32px);
+  width: 100%;
   box-sizing: border-box;
   display: flex;
   gap: 5px;
 }
 .tip-ico { flex-shrink: 0; }
+.tip-ico-svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
 .bottom-space { height: 20px; }
 
 .footer {
@@ -390,8 +394,10 @@ export default {
   padding: 14px 18px 12px;
 }
 .rb-title { font-size: 16px; font-weight: 600; color: #333; }
-.rb-close { font-size: 16px; color: #999; padding: 4px; }
-.rb-body { flex: 1; min-height: 0; padding: 0 18px 8px; }
+.rb-close { padding: 4px; display: flex; align-items: center; justify-content: center; }
+.rb-close-svg { width: 14px; height: 14px; }
+.rb-body { flex: 1; min-height: 0; width: 100%; box-sizing: border-box; }
+.rb-body-inner { padding: 0 18px 8px; box-sizing: border-box; }
 
 .rb-section-title {
   font-size: 13px; font-weight: 600; color: #666;
@@ -431,6 +437,7 @@ export default {
 }
 .rb-pay-icon.wechat { background: #07C160; }
 .rb-pay-icon.alipay { background: #1677FF; }
+.rb-pay-svg { width: 20px; height: 20px; }
 .rb-pay-info { flex: 1; min-width: 0; }
 .rb-pay-name { font-size: 14px; font-weight: 600; color: #333; display: block; }
 .rb-pay-desc { font-size: 11px; color: #999; margin-top: 2px; display: block; }
