@@ -63,11 +63,12 @@
       <!-- 底部操作 -->
       <div class="footer-actions" v-if="order">
         <template v-if="order.status === 'pending'">
+          <el-button @click="exportStub('PDF')"><i class="fas fa-file-export"></i> 导出明细</el-button>
           <el-button type="success" @click="doApprove"><i class="fas fa-check"></i> 通过</el-button>
           <el-button type="danger" @click="doReject"><i class="fas fa-xmark"></i> 驳回</el-button>
         </template>
         <template v-else>
-          <el-button @click="exportStub('PDF')"><i class="fas fa-file-pdf"></i> 导出 PDF</el-button>
+          <el-button @click="exportStub('PDF')"><i class="fas fa-file-export"></i> 导出明细</el-button>
           <el-button @click="exportStub('Excel')"><i class="fas fa-file-excel"></i> 下载 Excel</el-button>
         </template>
       </div>
@@ -111,13 +112,49 @@ const avatarColor = (seed) => {
 
 const goBack = () => router.push('/admin/project-salary')
 
+// 从对象中按优先级取第一个非空字段
+const pick = (obj, keys, fallback = null) => {
+  for (const k of keys) {
+    if (obj && obj[k] != null && obj[k] !== '') return obj[k]
+  }
+  return fallback
+}
+
+// 时间字段兼容：与列表页 ProjectSalary.vue 保持一致的回退链
+const pickSubmitTime = (o) => pick(o, ['submitTime', 'submit_time', 'commitTime', 'commit_time', 'date', 'createdAt', 'createTime', 'create_time', 'created_at', 'timestamp'])
+const pickReviewTime = (o) => pick(o, ['reviewTime', 'review_time', 'approvedAt', 'approved_at'])
+const pickReviewBy = (o) => pick(o, ['reviewBy', 'review_by', 'reviewer', 'approvedBy', 'approved_by'], '—')
+const pickCreator = (o) => pick(o, ['creator', 'createdBy', 'created_by', 'creatorName'], '—')
+
+const normalizeOrder = (raw) => {
+  if (!raw) return null
+  return {
+    id: pick(raw, ['id']),
+    orderNo: pick(raw, ['orderNo', 'order_no', 'no']),
+    company: pick(raw, ['company'], '—'),
+    title: pick(raw, ['title'], '—'),
+    projectName: pick(raw, ['projectName', 'project_name'], '—'),
+    peopleCount: pick(raw, ['peopleCount', 'people_count', 'memberCount', 'workerCount'], 0),
+    amount: pick(raw, ['amount'], 0),
+    creator: pickCreator(raw),
+    submitTime: formatTime(pickSubmitTime(raw)),
+    reviewBy: pickReviewBy(raw),
+    reviewTime: formatTime(pickReviewTime(raw)),
+    status: pick(raw, ['status'], 'pending'),
+  }
+}
+
 const loadData = async () => {
   loading.value = true
   try {
     const res = await getPayroll(id)
     const d = res.data || {}
-    order.value = d.order || null
-    details.value = Array.isArray(d.details) ? d.details : []
+    // 后端可能返回 { order, details } 或直接返回完整对象
+    const rawOrder = d.order || d
+    order.value = normalizeOrder(rawOrder)
+    // 详情人员明细也兼容两种结构
+    const rawDetails = d.details || rawOrder.details
+    details.value = Array.isArray(rawDetails) ? rawDetails : []
   } catch (err) {
     console.warn('[PayrollDetail] 加载失败:', err.message)
     ElMessage.error('加载薪单详情失败')
@@ -134,7 +171,75 @@ const doReject = async () => {
   try { await rejectPayroll(id); ElMessage.success('已驳回'); loadData() }
   catch (err) { ElMessage.error('驳回失败') }
 }
-const exportStub = (type) => ElMessage.info(`导出 ${type} 功能由后端文件服务支持，演示环境暂不可用`)
+
+/** 把任意字符串包上引号（CSV 安全）。 */
+const csvCell = (v) => {
+  if (v == null || v === '') return '""'
+  const s = String(v).replace(/"/g, '""')
+  return `"${s}"`
+}
+
+/** 通用：二维数组 → CSV Blob 下载。 */
+const downloadCsv = (rows, filename) => {
+  const bom = '\uFEFF' // 防 Excel 中文乱码
+  const content = bom + rows.map(row => row.map(csvCell).join(',')).join('\r\n')
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/** 导出当前薪单明细为 CSV（薪单头部 + 人员明细）。 */
+const exportDetails = () => {
+  if (!order.value) { ElMessage.warning('薪单数据未加载'); return }
+  const o = order.value
+  const now = new Date().toISOString().slice(0, 19).replace('T', '_')
+
+  const rows = [
+    ['薪单标题', o.title],
+    ['发薪单号', o.orderNo || ''],
+    ['所属公司', o.company],
+    ['所属项目', o.projectName],
+    ['转账类型', ({ wage: '工资', advance: '预支', other: '其他' })[o.type] || o.type || ''],
+    ['发薪人数', `${o.peopleCount ?? 0}`],
+    ['应发总金额(元)', fen2yuan(o.amount)],
+    ['制单人员', o.creator],
+    ['提交时间', o.submitTime],
+    ['状态', statusText(o.status)],
+    ['审核人', o.reviewBy],
+    ['审核时间', o.reviewTime],
+    [], // 空行分隔
+    ['姓名', '手机号', '岗位', '出勤天数', '日薪(元)', '应发金额(元)', '状态'],
+  ]
+  for (const d of (details.value || [])) {
+    rows.push([
+      d.name || '',
+      d.phone || '',
+      d.job || '',
+      `${d.attendDays ?? 0}`,
+      fen2yuan(d.dailyWage),
+      fen2yuan(d.amount),
+      detailStatusText(d.status),
+    ])
+  }
+
+  downloadCsv(rows, `发薪明细_${o.orderNo || o.id || now}.csv`)
+  ElMessage.success('导出成功')
+}
+
+/** 下载 Excel（CSV 格式，Excel 可直接打开）。 */
+const exportStub = (type) => {
+  if (type === 'Excel') {
+    exportDetails()
+    return
+  }
+  exportDetails()
+}
 
 onMounted(loadData)
 </script>

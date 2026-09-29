@@ -190,18 +190,24 @@ const formatTime = (t) => {
   return s.length > 10 ? s.substring(0, 10) : s
 }
 
+// 时间字段兼容：列表/详情页统一回退链
+const pickSubmitTime = (o) => pick(o, ['submitTime', 'submit_time', 'commitTime', 'commit_time', 'createdAt', 'createTime', 'create_time', 'created_at'])
+const pickReviewTime = (o) => pick(o, ['reviewTime', 'review_time', 'approvedAt', 'approved_at'])
+const pickReviewBy = (o) => pick(o, ['reviewBy', 'review_by', 'reviewer', 'approvedBy', 'approved_by'], '—')
+const pickCreator = (o) => pick(o, ['creator', 'createdBy', 'created_by', 'creatorName'], '—')
+
 const normalize = (o) => ({
   id: o.id,
-  orderNo: o.orderNo,
+  orderNo: pick(o, ['orderNo', 'order_no', 'no']),
   company: o.company || '—',
   title: o.title || '—',
-  projectName: o.projectName || '—',
+  projectName: pick(o, ['projectName', 'project_name'], '—'),
   amount: o.amount ?? 0,
-  peopleCount: o.peopleCount ?? 0,
-  creator: o.creator || '—',
-  submitTime: formatTime(o.submitTime),
-  reviewBy: o.reviewBy || '—',
-  reviewTime: formatTime(o.reviewTime),
+  peopleCount: pick(o, ['peopleCount', 'people_count', 'memberCount', 'workerCount'], 0),
+  creator: pickCreator(o),
+  submitTime: formatTime(pickSubmitTime(o)),
+  reviewBy: pickReviewBy(o),
+  reviewTime: formatTime(pickReviewTime(o)),
   status: o.status || 'pending',
 })
 
@@ -304,7 +310,49 @@ const doReject = async (row) => {
   try { await rejectPayroll(row.id); ElMessage.success('已驳回'); loadData() }
   catch (err) { ElMessage.error('驳回失败') }
 }
-const exportStub = () => ElMessage.info('导出功能由后端文件服务支持，演示环境暂不可用')
+
+/** 把任意字符串包上引号（CSV 安全）。 */
+const csvCell = (v) => {
+  if (v == null || v === '') return '""'
+  const s = String(v).replace(/"/g, '""')
+  return `"${s}"`
+}
+
+/** 通用：二维数组 → CSV Blob 下载。 */
+const downloadCsv = (rows, filename) => {
+  const bom = '\uFEFF' // 防 Excel 中文乱码
+  const content = bom + rows.map(row => row.map(csvCell).join(',')).join('\r\n')
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/** 导出单条薪单 CSV（列表页"导出"按钮）。 */
+const exportStub = (row) => {
+  if (!row) return
+  const rows = [
+    ['薪单标题', row.title || ''],
+    ['发薪单号', row.orderNo || ''],
+    ['所属公司', row.company || ''],
+    ['所属项目', row.projectName || ''],
+    ['应发人数', `${row.peopleCount ?? 0}`],
+    ['应发金额(元)', fen2yuan(row.amount)],
+    ['制单人员', row.creator || ''],
+    ['提交时间', row.submitTime || ''],
+    ['审核人', row.reviewBy || ''],
+    ['审核时间', row.reviewTime || ''],
+    ['状态', statusText(row.status)],
+  ]
+  const filename = `发薪单_${row.orderNo || row.id}_${row.title || ''}.csv`.replace(/[\\/:*?"<>|]/g, '_')
+  downloadCsv(rows, filename)
+  ElMessage.success('导出成功')
+}
 
 onMounted(() => { loadData(); loadStats() })
 </script>

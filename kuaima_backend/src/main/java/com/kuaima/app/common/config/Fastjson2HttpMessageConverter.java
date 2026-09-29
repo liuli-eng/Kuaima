@@ -12,13 +12,27 @@ import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.util.StreamUtils;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONReader;
+import com.alibaba.fastjson2.JSONWriter;
 
 /**
  * 基于 fastjson2 的 JSON 消息转换器。
- * fastjson2 默认不输出值为 null 的字段，因此 Result 中 page/total
- * 仅在列表分页响应时有值并输出，普通响应自动省略。
+ * <p>
+ * 全局统一配置：
+ * <ul>
+ *   <li>{@code java.util.Date} 序列化为 {@code "yyyy-MM-dd HH:mm:ss"} 字符串
+ *       （fastjson2 默认输出毫秒时间戳 long，前端无法直接展示）</li>
+ *   <li>不输出 null 字段（减少传输体积）</li>
+ *   <li>BigDecimal 保持原始精度</li>
+ * </ul>
  */
 public class Fastjson2HttpMessageConverter extends AbstractHttpMessageConverter<Object> {
+
+    /** 日期格式：让 fastjson2 把 java.util.Date 输出为 "2026-09-29 10:15:33" 而不是毫秒时间戳。 */
+    private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
+    /** 写入 features：不输出 null 值。 */
+    private static final JSONWriter.Feature[] WRITER_FEATURES = { JSONWriter.Feature.WriteNulls };
 
     public Fastjson2HttpMessageConverter() {
         super(MediaType.APPLICATION_JSON, new MediaType("application", "*+json"));
@@ -26,21 +40,14 @@ public class Fastjson2HttpMessageConverter extends AbstractHttpMessageConverter<
 
     @Override
     protected boolean supports(Class<?> clazz) {
-        // 只处理业务接口的响应对象，其他对象（SpringDoc OpenAPI、byte[]、String 等）交给 Jackson
-        // fastjson2 无法正确序列化 OpenAPI 嵌套结构，会导致 Swagger UI 报错
-
-          // 排除 byte[] 和 String（可能是上游预序列化的结果）
+        // 只处理业务接口响应对象，SpringDoc/byte[]/String 交给 Jackson 或原生处理器
         if (clazz == byte[].class || clazz == String.class) {
             return false;
         }
-
         String className = clazz.getName();
-        // 排除 SpringDoc / swagger-core
-        if (className.startsWith("io.swagger.v3.")
-                || className.startsWith("org.springdoc.")) {
+        if (className.startsWith("io.swagger.v3.") || className.startsWith("org.springdoc.")) {
             return false;
         }
-      
         return true;
     }
 
@@ -51,24 +58,23 @@ public class Fastjson2HttpMessageConverter extends AbstractHttpMessageConverter<
         if (text.isEmpty()) {
             return null;
         }
-        return JSON.parseObject(text, clazz);
+        return JSON.parseObject(text, clazz, JSONReader.Feature.UseBigDecimalForDoubles);
     }
 
     @Override
     protected void writeInternal(Object value, HttpOutputMessage outputMessage)
             throws IOException, HttpMessageNotWritableException {
-        // 如果 value 已经是 byte[]（可能是上游 converter 预序列化的结果），直接写入原始字节
-        // 避免 fastjson2 把 byte[] 当作数组对象再次序列化成 [123,34,111,...] 形式
         if (value instanceof byte[]) {
             outputMessage.getBody().write((byte[]) value);
             return;
         }
-        // 如果 value 是 String，直接写入字符串字节
         if (value instanceof String) {
             outputMessage.getBody().write(((String) value).getBytes(StandardCharsets.UTF_8));
             return;
         }
-        byte[] bytes = JSON.toJSONBytes(value);
+        // JSON.toJSONBytes(value, dateFormat, features...) — 第二个参数就是日期格式字符串
+        // 这样 java.util.Date / java.sql.Timestamp 都会被格式化为 "yyyy-MM-dd HH:mm:ss"
+        byte[] bytes = JSON.toJSONBytes(value, DATE_FORMAT, WRITER_FEATURES);
         outputMessage.getBody().write(bytes);
     }
 }

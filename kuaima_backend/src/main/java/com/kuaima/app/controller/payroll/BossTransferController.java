@@ -1,7 +1,6 @@
 package com.kuaima.app.controller.payroll;
 
 import java.time.LocalDate;
-import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 /**
  * 老板端「转账记录」模块：转账记录列表/统计、转账明细、明细汇总与导出。
  * 转账数据来源于已审批通过（approved）的发薪单及其明细。
+ * 金额单位统一为「分」，前端展示时除 100 转元。
  */
 @RestController
 @RequestMapping("/boss/transfers")
@@ -74,7 +74,7 @@ public class BossTransferController {
 
         long count = orders.size();
         long people = orders.stream().mapToLong(o -> o.getPeopleCount() == null ? 0 : o.getPeopleCount()).sum();
-        BigDecimal amount = orders.stream().map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+        long amount = orders.stream().mapToLong(o -> o.getAmount() == null ? 0L : o.getAmount()).sum();
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("records", orders);
@@ -128,11 +128,11 @@ public class BossTransferController {
         Long bossId = requireBossId(authentication);
         List<PayrollOrder> orders = filterOrders(bossId, null, null, null, null, startDate, endDate);
 
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        long totalAmount = 0L;
         long peopleSum = 0;
         Map<Long, List<PayrollOrder>> byProject = new LinkedHashMap<>();
         for (PayrollOrder order : orders) {
-            totalAmount = totalAmount.add(order.getAmount() == null ? BigDecimal.ZERO : order.getAmount());
+            totalAmount += order.getAmount() == null ? 0L : order.getAmount();
             peopleSum += order.getPeopleCount() == null ? 0 : order.getPeopleCount();
             byProject.computeIfAbsent(order.getProjectId(), k -> new ArrayList<>()).add(order);
         }
@@ -140,13 +140,15 @@ public class BossTransferController {
         List<PayrollDetail> allDetails = detailRepository.findByPayrollIdIn(
                 orders.stream().map(PayrollOrder::getId).toList());
 
+        long avgPerPeople = peopleSum == 0 ? 0L : totalAmount / peopleSum;
+
         Map<String, Object> overview = new LinkedHashMap<>();
         overview.put("totalAmount", totalAmount);
         overview.put("totalCount", orders.size());
         overview.put("successCount", allDetails.stream().filter(d -> PayrollConstants.DETAIL_SUCCESS.equals(d.getStatus())).count());
         overview.put("failedCount", allDetails.stream().filter(d -> PayrollConstants.DETAIL_FAILED.equals(d.getStatus())).count());
         overview.put("peopleCount", peopleSum);
-        overview.put("avgPerPeople", peopleSum == 0 ? BigDecimal.ZERO : totalAmount.divide(BigDecimal.valueOf(peopleSum), 2, java.math.RoundingMode.HALF_UP));
+        overview.put("avgPerPeople", avgPerPeople);
         overview.put("projectCount", byProject.size());
         overview.put("activeProjects", byProject.keySet().stream()
                 .map(projectRepository::findById)
@@ -156,7 +158,7 @@ public class BossTransferController {
         List<Map<String, Object>> projects = new ArrayList<>();
         for (Map.Entry<Long, List<PayrollOrder>> entry : byProject.entrySet()) {
             List<PayrollOrder> projectOrders = entry.getValue();
-            BigDecimal projectAmount = projectOrders.stream().map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+            long projectAmount = projectOrders.stream().mapToLong(o -> o.getAmount() == null ? 0L : o.getAmount()).sum();
             long projectPeople = projectOrders.stream().mapToLong(o -> o.getPeopleCount() == null ? 0 : o.getPeopleCount()).sum();
             List<Long> ids = projectOrders.stream().map(PayrollOrder::getId).toList();
             List<PayrollDetail> projectDetails = detailRepository.findByPayrollIdIn(ids);
@@ -174,10 +176,10 @@ public class BossTransferController {
             item.put("orderCount", projectOrders.size());
             item.put("peopleCount", projectPeople);
             item.put("successRate", successRate);
-            item.put("percent", totalAmount.signum() == 0 ? 0 : projectAmount.multiply(BigDecimal.valueOf(100)).divide(totalAmount, 0, java.math.RoundingMode.HALF_UP).intValue());
+            item.put("percent", totalAmount == 0 ? 0 : (int) (projectAmount * 100 / totalAmount));
             projects.add(item);
         }
-        projects.sort((a, b) -> ((BigDecimal) b.get("totalAmount")).compareTo((BigDecimal) a.get("totalAmount")));
+        projects.sort((a, b) -> Long.compare((Long) b.get("totalAmount"), (Long) a.get("totalAmount")));
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("overview", overview);

@@ -1,6 +1,5 @@
 package com.kuaima.app.domain.payroll.service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -70,11 +69,15 @@ public class PayrollService {
         return detailRepository.findByPayrollId(id);
     }
 
-    /** 创建发薪单并写入明细，自动汇总应发金额与人数。 */
+    /** 创建发薪单并写入明细，自动汇总应发金额与人数。金额单位统一为「分」。 */
     @Transactional
     public PayrollOrder createOrder(PayrollOrder order, List<PayrollDetail> details, Long creatorId, String creator) {
         if (order.getStatus() == null) {
             order.setStatus(PayrollConstants.ORDER_PENDING);
+        }
+        // 管理后台创建薪单即视为已提交（待审批），submitTime 若未显式传入则默认为当前时间
+        if (order.getSubmitTime() == null) {
+            order.setSubmitTime(new java.util.Date());
         }
         if (order.getOrderNo() == null) {
             order.setOrderNo("TR" + System.currentTimeMillis());
@@ -85,23 +88,27 @@ public class PayrollService {
         if (creatorId != null) {
             order.setCreatorId(creatorId);
         }
-        order.setAmount(BigDecimal.ZERO);
+        order.setAmount(0L);
         order.setPeopleCount(0);
         PayrollOrder saved = orderRepository.save(order);
 
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        long totalAmount = 0L;
         if (details != null) {
             for (PayrollDetail d : details) {
                 d.setPayrollId(saved.getId());
                 if (d.getStatus() == null) {
                     d.setStatus(PayrollConstants.DETAIL_PENDING);
                 }
-                if (d.getAmount() == null) {
-                    BigDecimal amt = (d.getDailyWage() == null ? BigDecimal.ZERO : d.getDailyWage())
-                            .multiply(BigDecimal.valueOf(d.getAttendDays() == null ? 0 : d.getAttendDays()));
-                    d.setAmount(amt);
+                // 应发金额 = 日薪（分）× 出勤天数
+                // 只要日薪或出勤天数有值，就以日薪×天数为准（覆盖前端显式传的 amount）
+                long dailyWage = d.getDailyWage() == null ? 0L : d.getDailyWage();
+                int attendDays = d.getAttendDays() == null ? 0 : d.getAttendDays();
+                if (dailyWage > 0 || attendDays > 0) {
+                    d.setAmount(dailyWage * attendDays);
+                } else if (d.getAmount() == null) {
+                    d.setAmount(0L);
                 }
-                totalAmount = totalAmount.add(d.getAmount() == null ? BigDecimal.ZERO : d.getAmount());
+                totalAmount += d.getAmount() == null ? 0L : d.getAmount();
                 detailRepository.save(d);
             }
         }
@@ -156,9 +163,9 @@ public class PayrollService {
         List<PayrollOrder> all = orderRepository.findAll();
         long projectTotal = all.stream().map(PayrollOrder::getProjectId).filter(java.util.Objects::nonNull).distinct().count();
         LocalDate now = LocalDate.now();
-        BigDecimal monthAmount = all.stream()
+        long monthAmount = all.stream()
                 .filter(o -> PayrollConstants.ORDER_APPROVED.equals(o.getStatus()) && isThisMonth(o.getSubmitTime(), now))
-                .map(o -> o.getAmount() == null ? BigDecimal.ZERO : o.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                .mapToLong(o -> o.getAmount() == null ? 0L : o.getAmount()).sum();
         long monthCount = all.stream()
                 .filter(o -> PayrollConstants.ORDER_APPROVED.equals(o.getStatus()) && isThisMonth(o.getSubmitTime(), now))
                 .count();
