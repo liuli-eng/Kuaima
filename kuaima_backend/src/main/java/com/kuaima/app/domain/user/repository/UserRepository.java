@@ -64,7 +64,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 后台零工列表：支持注册日期范围筛选。 */
     @Query("""
             select u from User u
-            where u.role = :role
+            where not (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED'
+                       or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
               and (:status is null or u.status = :status)
               and (:startDate is null or u.date >= :startDate)
               and (:endDate is null or u.date <= :endDate)
@@ -77,11 +78,44 @@ public interface UserRepository extends JpaRepository<User, Long> {
                              @Param("endDate") LocalDate endDate,
                              Pageable pageable);
 
+    /** 后台零工在线/离线筛选：由管理端会话管理器提供目标用户 ID 集合。 */
+    @Query("""
+            select u from User u
+            where not (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED'
+                       or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
+              and u.id in :ids
+              and (:startDate is null or u.date >= :startDate)
+              and (:endDate is null or u.date <= :endDate)
+              and ((:keyword is null) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%) or (u.companyName like %:keyword%))
+            """)
+    Page<User> searchWorkersByIds(@Param("role") String role,
+                                  @Param("ids") List<Long> ids,
+                                  @Param("keyword") String keyword,
+                                  @Param("startDate") LocalDate startDate,
+                                  @Param("endDate") LocalDate endDate,
+                                  Pageable pageable);
+
+    @Query("select u.id from User u where not (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED' or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))")
+    List<Long> findWorkerIdentityIds();
+
     long countByRoleAndStatus(String role, String status);
 
     long countByRoleAndDateBetween(String role, LocalDate startDate, LocalDate endDate);
 
+    /** 使用数据库当前日期统计本月新增，避免应用服务器与数据库时区不一致。 */
+    @Query(value = """
+            select count(*) from sys_user u
+            where u.role = :role
+              and u.`date` >= date_format(current_date, '%Y-%m-01')
+              and u.`date` < date_add(date_format(current_date, '%Y-%m-01'), interval 1 month)
+            """, nativeQuery = true)
+    long countCurrentMonthByRole(@Param("role") String role);
+
     long countByRoleAndDateLessThanEqual(String role, LocalDate date);
+
+    /** 按业务身份统计老板：企业认证通过才算老板，兼容历史认证字段。 */
+    @Query("select count(u) from User u where upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED' or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过')")
+    long countBossIdentities();
 
     @Query("select u from User u where (:role is null or u.role = :role) and (:keyword is null or u.username like concat('%', :keyword, '%') or u.nickname like concat('%', :keyword, '%') or u.phone like concat('%', :keyword, '%') or u.companyName like concat('%', :keyword, '%'))")
     Page<User> searchRecipients(@Param("role") String role, @Param("keyword") String keyword, Pageable pageable);
@@ -113,13 +147,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /**
      * 按老板业务身份/状态/企业认证状态/行业/关键词分页查询。
      *
-     * role 是当前登录角色，不等同于业务身份；已完成企业认证的用户即使当前
-     * role 仍为 USER，也必须出现在后台老板列表中。
+     * 老板业务身份以企业认证通过为准，不能仅凭用户当前 role=BOSS 判断；
+     * 同时兼容历史数据中 certType=ENTERPRISE、certStatus=已通过的记录。
      */
     @Query("""
             select u from User u
-            where (u.role = :role
-                   or u.enterpriseStatus = 'APPROVED'
+            where (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED'
                    or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
               and (:status is null or u.status = :status)
               and (:enterpriseStatus is null or u.enterpriseStatus = :enterpriseStatus)

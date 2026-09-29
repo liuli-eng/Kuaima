@@ -49,8 +49,8 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleDetail(row)">查看详情</el-button>
-            <template v-if="row.status === '待审核'">
-              <el-button link type="success" size="small" @click="handleApprove(row)">通过</el-button>
+            <template v-if="isAuditable(row)">
+              <el-button link type="success" size="small" @click="handleApprove(row)">{{ row.status === '审核拒绝' ? '重新审核' : '通过' }}</el-button>
               <el-button link type="danger" size="small" @click="handleReject(row)">拒绝</el-button>
             </template>
           </template>
@@ -76,8 +76,8 @@
     <el-dialog v-model="detailVisible" width="780px" class="audit-detail-dialog" :show-close="true">
       <template #header><div class="audit-dialog-title">招工审核详情 <span v-if="currentItem" :class="['status-badge', currentItem.statusClass]">● {{ currentItem.status }}</span></div></template>
       <div v-if="currentItem">
-        <div v-if="currentItem.status === '待审核'" class="audit-action-bar">
-          <div><div class="action-title">招工审核 <span class="risk-tag">低风险</span></div><div class="action-desc">请仔细审核以下招工信息，确认无误后通过审核</div></div>
+        <div v-if="isAuditable(currentItem)" class="audit-action-bar">
+          <div><div class="action-title">{{ currentItem.status === '审核拒绝' ? '重新审核' : '招工审核' }} <span class="risk-tag">低风险</span></div><div class="action-desc">请仔细审核以下招工信息，确认无误后通过审核</div></div>
           <div class="action-buttons"><button class="btn btn-success" @click="confirmApprove"><i class="fas fa-check-circle"></i> 一键通过</button><button class="btn btn-danger" @click="confirmReject"><i class="fas fa-times-circle"></i> 拒绝</button></div>
         </div>
         <div class="detail-section-title">招工信息预览</div>
@@ -120,7 +120,7 @@
       
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
-        <template v-if="currentItem?.status === '待审核'">
+        <template v-if="isAuditable(currentItem)">
           <el-button type="danger" @click="confirmReject">拒绝</el-button>
           <el-button type="primary" @click="confirmApprove">通过审核</el-button>
         </template>
@@ -193,6 +193,8 @@ const statusClassMap = {
   '已取消': 'default',
   '审核拒绝': 'danger',
 }
+
+const isAuditable = (item) => item?.status === '待审核' || item?.status === '审核拒绝'
 
 const formatTime = (t) => {
   if (!t) return '-'

@@ -46,13 +46,15 @@
       <div class="filter-bar">
         <div class="filter-item"><span>关键词</span><el-input v-model="searchKeyword" placeholder="姓名/手机号/ID" clearable style="width: 220px;" prefix-icon="Search" /></div>
         <div class="filter-item"><span>状态</span><el-select v-model="statusFilter" placeholder="全部" clearable style="width: 120px;">
-          <el-option label="正常" value="正常" />
+          <el-option label="全部" value="" />
+          <el-option label="在线" value="在线" />
+          <el-option label="离线" value="离线" />
           <el-option label="冻结" value="冻结" />
         </el-select></div>
         <div class="filter-item"><span>注册日期</span><div class="date-picker-wrap"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 280px;" /></div></div>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
-        <button class="btn btn-outline btn-sm export-button"><i class="fas fa-download"></i> 导出数据</button>
+        <button class="btn btn-outline btn-sm export-button" :disabled="exporting" @click="handleExport"><i class="fas" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> {{ exporting ? '导出中...' : '导出数据' }}</button>
       </div>
 
       <div class="table-scroll">
@@ -144,6 +146,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const tableData = ref([])
+const exporting = ref(false)
 
 // 统计数据
 const stats = ref({ total: '-', monthNew: '-', online: '-', frozen: '-', changes: {} })
@@ -176,9 +179,15 @@ const loadStats = async () => {
 
 // 后端 Worker 真实字段
 const normalizeWorker = (item) => {
+  const realName = String(item.realName || '').trim()
+  const nickname = String(item.nickname || '').trim()
+  const phone = String(item.phone || '').trim()
+  const username = String(item.username || '').trim()
+  const isWechatIdentifier = /^(wx[_-]|openid[_-]?)/i.test(username)
+  const displayName = realName || nickname || (phone && phone !== username ? phone : '')
   return {
     ...item,
-    name: item.realName || item.nickname || item.username || item.phone,
+    name: displayName || (!isWechatIdentifier && username ? username : `零工${item.id || ''}`),
     nickname: item.nickname || '',
     registerTime: item.date || item.createdAt || item.timestamp,
   }
@@ -247,6 +256,10 @@ const creditLevel = (score) => {
 const creditLabel = (score) => score >= 80 ? '优秀' : score >= 70 ? '良好' : score >= 60 ? '一般' : '较低'
 const formatNumber = (value) => value == null || value === '' ? '-' : Number(value).toLocaleString('zh-CN')
 const formatMoney = (value) => value == null || value === '' ? '-' : `¥${(Number(value) / 100).toFixed(2)}`
+const formatMoneyForExport = (row) => {
+  const value = row.rewardBalance ?? row.rewardAmount ?? row.reward
+  return value == null || value === '' ? '' : (Number(value) / 100).toFixed(2)
+}
 const formatPercent = (value) => value == null || value === '' ? '-' : `${Number(value).toFixed(1).replace('.0', '')}%`
 
 const getAvatarColor = (name) => {
@@ -298,6 +311,83 @@ const handleReset = () => {
   dateRange.value = []
   currentPage.value = 1
   loadData()
+}
+
+const csvCell = (value) => {
+  if (value == null || value === '') return '""'
+  let text = String(value)
+  // 防止 Excel 把普通文本识别为公式。
+  if (/^[=+\-@]/.test(text)) text = `'${text}`
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+const downloadCsv = (rows, filename) => {
+  const content = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\r\n')}`
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+const extractWorkerPage = (result) => {
+  const data = result?.data
+  const rows = Array.isArray(data) ? data : (data?.content || data?.list || [])
+  const count = Number(result?.total ?? data?.totalElements ?? data?.total ?? rows.length)
+  return { rows, count }
+}
+
+const handleExport = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const batchSize = 500
+    const params = {
+      keyword: searchKeyword.value || undefined,
+      status: statusFilter.value || undefined,
+      startDate: dateRange.value?.[0] || undefined,
+      endDate: dateRange.value?.[1] || undefined
+    }
+    const first = extractWorkerPage(await listWorkers({ ...params, page: 0, size: batchSize }))
+    const allWorkers = [...first.rows]
+    const pageCount = Math.ceil(first.count / batchSize)
+    for (let page = 1; page < pageCount; page += 1) {
+      const next = extractWorkerPage(await listWorkers({ ...params, page, size: batchSize }))
+      allWorkers.push(...next.rows)
+    }
+
+    const rows = [[
+      '零工ID', '姓名', '手机号', '实名状态', '性别', '技能标签', '信用分',
+      '奖励金余额（元）', '积分余额', '完成订单', '注册时间', '账户状态'
+    ]]
+    allWorkers.map(normalizeWorker).forEach(row => rows.push([
+      row.id,
+      row.name,
+      row.phone,
+      isPhoneVerified(row) ? '已认证' : formatRealnameStatus(row.realnameStatus || row.certStatus),
+      formatGender(row.gender),
+      normalizeSkills(row.skills).join('、'),
+      row.creditScore ?? '',
+      formatMoneyForExport(row),
+      row.pointsBalance ?? row.pointBalance ?? row.points ?? '',
+      row.completedOrders ?? 0,
+      formatDateTimeFull(row.registerTime),
+      formatStatus(row.status)
+    ]))
+
+    const today = new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' }).replaceAll('/', '-')
+    downloadCsv(rows, `零工数据_${today}.csv`)
+    ElMessage.success(`已导出 ${allWorkers.length} 条零工数据`)
+  } catch (e) {
+    console.warn('[Workers] 导出失败:', e)
+    ElMessage.error('导出失败，请稍后重试')
+  } finally {
+    exporting.value = false
+  }
 }
 
 const onSizeChange = (size) => {

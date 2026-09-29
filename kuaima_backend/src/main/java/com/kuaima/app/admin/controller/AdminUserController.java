@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -132,7 +133,23 @@ public class AdminUserController {
         requireAdmin(authentication);
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         String kw = keyword != null && !keyword.isBlank() ? keyword : null;
-        Page<User> result = userRepository.searchWorkers(UserRole.USER, status, kw, startDate, endDate, pageable);
+        Page<User> result;
+        if ("在线".equals(status) || "离线".equals(status)) {
+            Set<Long> onlineIds = webSocketSessionManager == null
+                    ? Set.of() : webSocketSessionManager.getOnlineWorkerIds();
+            Set<Long> targetIds = new java.util.HashSet<>(onlineIds);
+            if ("离线".equals(status)) {
+                targetIds = new java.util.HashSet<>(userRepository.findWorkerIdentityIds());
+                targetIds.removeAll(onlineIds);
+            }
+            if (targetIds.isEmpty()) {
+                result = new PageImpl<>(List.of(), pageable, 0);
+            } else {
+                result = userRepository.searchWorkersByIds(UserRole.USER, new ArrayList<>(targetIds), kw, startDate, endDate, pageable);
+            }
+        } else {
+            result = userRepository.searchWorkers(UserRole.USER, status, kw, startDate, endDate, pageable);
+        }
 
         // 批量统计零工已完成订单数
         Set<Long> userIds = result.stream().map(User::getId).collect(Collectors.toSet());
@@ -159,8 +176,7 @@ public class AdminUserController {
         YearMonth month = YearMonth.now();
         Map<String, Object> stats = new LinkedHashMap<>();
         long total = userRepository.countByRole(UserRole.USER);
-        long monthNew = userRepository.countByRoleAndDateBetween(
-                UserRole.USER, month.atDay(1), month.atEndOfMonth());
+        long monthNew = userRepository.countCurrentMonthByRole(UserRole.USER);
         long online = webSocketSessionManager == null ? 0L
                 : (long) webSocketSessionManager.getOnlineWorkerIds().size();
         long frozen = userRepository.countByRoleAndStatus(UserRole.USER, "冻结");
@@ -291,6 +307,12 @@ public class AdminUserController {
         result.put("skills", skillList(user.getSkills())); result.put("realnameStatus", text(user.getRealnameStatus())); result.put("status", text(user.getStatus()));
         result.put("createdAt", user.getDate() == null ? "" : user.getDate().toString()); result.put("lastLoginAt", "");
         result.put("creditScore", integerValue(user.getCreditScore()));
+        // 详情页页头资产按 USER 身份返回；reward_account 金额单位为元，积分为整数。
+        result.put("rewardBalance", rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.USER)
+                .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(id))
+                .map(account -> moneyValue(account.getBalance())).orElse(BigDecimal.ZERO));
+        result.put("pointsBalance", pointsAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.USER)
+                .map(account -> (long) integerValue(account.getBalance())).orElse(0L));
         putWorkerStats(result, id);
         result.put("skillDetails", skillDetails(user.getSkills()));
         return Result.success(result);
@@ -307,7 +329,7 @@ public class AdminUserController {
         PageRequest pageable = PageRequest.of(Math.max(page, 0), safeSize(size), Sort.by(Sort.Direction.DESC, "timestamp"));
         Page<PointsFlow> source = pointsFlowRepository.findByUserIdAndRoleOrderByTimestampDesc(id, UserRole.USER, pageable);
         Page<JSONObject> records = source.map(this::workerPointRecord);
-        long balance = pointsAccountRepository.findByUserIdAndRole(id, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L);
+        long balance = pointsAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L);
         Map<String, Object> data = new LinkedHashMap<>(); data.put("records", records.getContent()); data.put("currentBalance", balance);
         data.put("totalEarned", sumPoints(id, true)); data.put("totalConsumed", sumPoints(id, false));
         return Result.success(data, records.getNumber(), records.getTotalElements());
@@ -443,7 +465,7 @@ public class AdminUserController {
         obj.put("rewardBalance", rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(userId, UserRole.USER)
                 .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(userId))
                 .map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO));
-        obj.put("pointsBalance", pointsAccountRepository.findByUserIdAndRole(userId, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L));
+        obj.put("pointsBalance", pointsAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(userId, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L));
         obj.put("completedOrders", completed); obj.put("monthCompletedOrders", monthCompleted); obj.put("totalIncome", totalIncome);
         obj.put("completionRate", completion); obj.put("cancellationRate", cancellation); obj.put("noShowRate", noShow); obj.put("earlyLeaveRate", earlyRate);
     }

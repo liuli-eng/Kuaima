@@ -146,6 +146,7 @@ public class AdminJobController {
                 order.getStartTime(),
                 order.getEndTime(),
                 order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主",
+                null,
                 applyCounts.getOrDefault(order.getId(), 0L),
                 order.getAuditBy(),
                 order.getAuditTime(),
