@@ -1,13 +1,8 @@
 <template>
   <div>
     <div class="page-header">
-      <div class="header-nav">
-        <el-button text @click="router.back()"><i class="fas fa-arrow-left"></i></el-button>
-        <div>
-          <h1 class="page-title">老板详情</h1>
-          <p class="page-desc">雇主基本信息、经营数据、认证资质、积分 / 优惠券 / 奖励金资产</p>
-        </div>
-      </div>
+      <h1 class="page-title">老板详情</h1>
+      <p class="page-desc">雇主基本信息、经营数据、认证资质、积分 / 优惠券 / 奖励金资产</p>
     </div>
 
     <div v-loading="loading" class="detail-page">
@@ -65,12 +60,12 @@
         <div class="operation-grid">
           <div class="operation-stat"><div class="v">{{ detail.creditScore ?? 0 }}</div><div class="l">信用分</div></div>
           <div class="operation-stat"><div class="v">{{ formatNumber(detail.jobsCount) }}<span class="unit">次</span></div><div class="l">累计招工</div></div>
-          <div class="operation-stat accent"><div class="v">{{ formatMoney(detail.balance) }}</div><div class="l">账户余额</div></div>
-          <div class="operation-stat good"><div class="v">{{ formatNumber(detail.points) }}</div><div class="l">积分余额</div></div>
-          <div class="operation-stat"><div class="v">{{ formatMoney(detail.rewardAmount) }}</div><div class="l">奖励金余额</div></div>
-          <div class="operation-stat"><div class="v">{{ couponCounts.available }}<span class="unit">张</span></div><div class="l">可用优惠券</div></div>
-          <div class="operation-stat"><div class="v">{{ enterpriseStatusText }}</div><div class="l">企业认证</div></div>
-          <div class="operation-stat"><div class="v">{{ realnameStatusText }}</div><div class="l">实名认证</div></div>
+          <div class="operation-stat"><div class="v">{{ detail.ongoingOrders ?? detail.inProgressOrders ?? 0 }}<span class="unit">单</span></div><div class="l">进行中订单</div></div>
+          <div class="operation-stat accent"><div class="v">{{ transactionDisplay }}<span class="unit">元</span></div><div class="l">累计交易额</div></div>
+          <div class="operation-stat good"><div class="v">{{ percent(detail.goodRate ?? detail.positiveRate) }}</div><div class="l">好评率</div></div>
+          <div class="operation-stat"><div class="v">{{ percent(detail.onTimeSettlementRate) }}</div><div class="l">准时结算率</div></div>
+          <div class="operation-stat"><div class="v">{{ detail.complaintCount ?? 0 }}<span class="unit">次</span></div><div class="l">投诉次数</div></div>
+          <div class="operation-stat"><div class="v">{{ percent(detail.completionRate) }}</div><div class="l">订单完成率</div></div>
         </div>
       </div>
 
@@ -171,22 +166,14 @@
             <div class="asset-summary"><span class="summary-danger">{{ formatMoney(detail.rewardUsed) }}</span><span class="summary-label">累计消耗 / 提现</span></div>
           </div>
         </div>
-        <el-table :data="rewardRecords" empty-text="暂无奖励金明细">
-          <el-table-column prop="id" label="流水ID" width="100" />
-          <el-table-column prop="type" label="类型" width="100" />
-          <el-table-column label="金额" width="110" align="right">
-            <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
-          </el-table-column>
-          <el-table-column label="变动后余额" width="120" align="right">
-            <template #default="{ row }">{{ formatMoney(row.balanceAfter) }}</template>
-          </el-table-column>
-          <el-table-column label="时间" width="170">
-            <template #default="{ row }">{{ formatDateTime(row.time) }}</template>
-          </el-table-column>
-          <el-table-column label="说明" min-width="220" show-overflow-tooltip>
-            <template #default="{ row }">{{ row.title || row.remark || '-' }}</template>
-          </el-table-column>
-        </el-table>
+        <div v-if="rewardRecords.length" class="flow-list">
+          <div v-for="row in rewardRecords" :key="row.id" class="flow-item">
+            <span class="flow-icon" :class="Number(row.amount) < 0 ? 'gray' : 'green'"><i class="fas" :class="Number(row.amount) < 0 ? 'fa-money-bill-transfer' : 'fa-gift'"></i></span>
+            <div class="flow-info"><div class="flow-title">{{ row.title || row.remark || row.type || '奖励金变动' }}</div><div class="flow-time">{{ formatDateTime(row.time) }}</div></div>
+            <div class="flow-amount" :class="{ expense: row.type === 'EXPENSE' || Number(row.amount) < 0 }">{{ row.type === 'EXPENSE' || Number(row.amount) < 0 ? '-' : '+' }}{{ formatMoney(Math.abs(Number(row.amount || 0))) }}</div>
+          </div>
+        </div>
+        <div v-else class="table-empty">暂无奖励金流水</div>
         <div class="table-pagination">
           <span>共 {{ rewardPagination.total }} 条记录</span>
           <el-pagination
@@ -199,6 +186,31 @@
             @current-change="loadRewardRecords"
           />
         </div>
+      </div>
+
+      <div class="card">
+        <div class="asset-header">
+          <div class="card-title"><i class="fas fa-star star-icon"></i>信用分明细</div>
+          <div class="asset-summary-group">
+            <div class="asset-summary"><span class="summary-primary">{{ detail.creditScore ?? 0 }}</span><span class="summary-label">当前信用分</span></div>
+            <div class="asset-summary"><span class="summary-success">{{ detail.creditAdded ?? '-' }}</span><span class="summary-label">累计加分</span></div>
+            <div class="asset-summary"><span class="summary-danger">{{ detail.creditDeducted ?? '-' }}</span><span class="summary-label">累计扣分</span></div>
+            <div class="asset-summary"><span class="summary-label">信用等级</span><span class="level-excellent">{{ creditLevel }}</span></div>
+          </div>
+        </div>
+        <el-table v-if="creditRecords.length" :data="creditRecords">
+          <el-table-column prop="id" label="明细ID" width="130" />
+          <el-table-column label="类型" width="90"><template #default="{ row }">{{ Number(row.delta) >= 0 ? '加分' : '减分' }}</template></el-table-column>
+          <el-table-column label="分值变动" width="100"><template #default="{ row }"><span :class="Number(row.delta) >= 0 ? 'text-success' : 'text-danger'">{{ Number(row.delta) > 0 ? '+' : '' }}{{ row.delta }}</span></template></el-table-column>
+          <el-table-column prop="reason" label="触发规则" min-width="180" />
+          <el-table-column label="时间" width="180"><template #default="{ row }">{{ formatDateTime(row.timestamp) }}</template></el-table-column>
+        </el-table>
+        <div v-else class="table-empty">暂无信用分明细</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title"><i class="fas fa-comment-dots review-icon"></i>历史评价 · 零工对老板</span><span class="review-count">共 {{ detail.reviewCount ?? 0 }} 条评价</span></div>
+        <div class="table-empty">暂无评价记录</div>
       </div>
 
       <div class="card action-card">
@@ -219,6 +231,7 @@ import {
   getBossCouponRecords,
   getBossPointRecords,
   getBossRewardRecords,
+  getWorkerCreditFlows,
   getUser,
   unfreezeUser
 } from '@/api/user'
@@ -230,6 +243,7 @@ const loading = ref(true)
 const couponTab = ref('available')
 const pointRecords = ref([])
 const rewardRecords = ref([])
+const creditRecords = ref([])
 const couponRecords = ref([])
 const pointPagination = ref({ page: 1, size: 5, total: 0 })
 const rewardPagination = ref({ page: 1, size: 5, total: 0 })
@@ -259,6 +273,15 @@ const certClass = computed(() => {
 })
 const enterpriseStatusText = computed(() => statusText(detail.value.enterpriseStatus))
 const realnameStatusText = computed(() => statusText(detail.value.realnameStatus))
+const transactionDisplay = computed(() => {
+  const value = detail.value.totalPayment ?? detail.value.totalTransactionAmount ?? detail.value.transactionAmount
+  return value == null ? '0.00' : (Number(value) / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+})
+const percent = (value) => value == null || value === '' ? '0%' : `${value}%`
+const creditLevel = computed(() => {
+  const score = Number(detail.value.creditScore ?? 0)
+  return score >= 90 ? '优秀' : score >= 80 ? '良好' : score >= 60 ? '一般' : '较低'
+})
 const assetRows = (result) => {
   const data = result?.data
   return Array.isArray(data) ? data : (data?.content || data?.list || [])
@@ -379,6 +402,15 @@ const loadCouponRecords = async () => {
   }
 }
 
+const loadCreditRecords = async () => {
+  try {
+    const result = await getWorkerCreditFlows(route.params.id, { page: 0, size: 5 })
+    creditRecords.value = assetRows(result)
+  } catch {
+    creditRecords.value = []
+  }
+}
+
 const handleFreeze = async () => {
   try {
     await ElMessageBox.confirm(`确定要冻结雇主「${displayName.value}」吗？`, '提示', { type: 'warning' })
@@ -409,13 +441,13 @@ onMounted(() => {
   loadDetail()
   loadPointRecords()
   loadRewardRecords()
+  loadCreditRecords()
   loadCouponCounts()
   loadCouponRecords()
 })
 </script>
 
 <style scoped>
-.header-nav { display: flex; align-items: center; gap: 12px; }
 .detail-page { min-height: 320px; }
 .detail-header { display: flex; align-items: center; gap: 16px; }
 .detail-avatar { width: 56px; height: 56px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(135deg,#FF8C42,#FF6B35); color: #fff; font-size: 22px; font-weight: 600; }
@@ -440,6 +472,7 @@ onMounted(() => {
 .operation-stat .l { margin-top: 6px; color: #9CA3AF; font-size: 12px; }
 .operation-stat.accent .v { color: var(--primary); }
 .operation-stat.good .v { color: #059669; }
+.operation-stat:hover { box-shadow: 0 2px 8px rgba(17,24,39,.06); }
 .certificate-list { display: flex; flex-direction: column; gap: 10px; }
 .certificate-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid #E5E7EB; border-radius: 8px; }
 .cert-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -449,6 +482,21 @@ onMounted(() => {
 .asset-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .coin-icon { margin-right: 6px; color: #F59E0B; }
 .gift-icon { margin-right: 6px; color: #EA580C; }
+.star-icon { margin-right: 6px; color: #F59E0B; }
+.review-icon { margin-right: 6px; color: #FF6B35; }
+.review-count { color: var(--text-secondary); font-size: 12px; }
+.level-excellent { color: #F59E0B; font-size: 14px; font-weight: 600; }
+.flow-list { display: flex; flex-direction: column; }
+.flow-item { display: flex; align-items: center; gap: 14px; padding: 12px 4px; }
+.flow-item + .flow-item { border-top: 1px solid #F3F4F6; }
+.flow-icon { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: #ECFDF5; color: #059669; }
+.flow-icon.gray { background: #F3F4F6; color: #6B7280; }
+.flow-info { flex: 1; min-width: 0; }
+.flow-title { color: #111827; font-size: 13px; font-weight: 500; }
+.flow-time { margin-top: 3px; color: var(--text-muted); font-size: 12px; }
+.flow-amount { color: #059669; font-size: 15px; font-weight: 700; white-space: nowrap; }
+.flow-amount.expense { color: #DC2626; }
+.table-empty { padding: 28px; color: var(--text-muted); font-size: 13px; text-align: center; }
 .asset-summary { display: flex; align-items: baseline; gap: 6px; }
 .asset-summary-group { display: flex; align-items: center; gap: 20px; }
 .summary-primary { color: var(--primary); font-size: 18px; font-weight: 700; }

@@ -174,6 +174,7 @@ import {
   toggleMessageTemplate,
   deleteMessageTemplate
 } from '@/api/content'
+import { testSendTemplate } from '@/api/system'
 
 const activeTab = ref('template')
 const templatePage = ref(1)
@@ -318,7 +319,12 @@ const handleTestSend = async (row) => {
       inputPattern: /^1\d{10}$/,
       inputErrorMessage: '请输入正确的手机号',
     })
-    // 测试发送：用模板内容作为消息体，发送到输入的手机号
+    await testSendTemplate({
+      type: row.channel === 'sms' ? 'sms' : 'inapp',
+      templateTitle: row.name,
+      receiver: phone,
+      content: row.content || ''
+    })
     ElMessage.success(`测试消息已发送至 ${phone}`)
   } catch {
     // 用户取消

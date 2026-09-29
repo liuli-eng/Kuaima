@@ -45,46 +45,21 @@
         popper-class="notification-popover"
       >
         <template #reference>
-          <div class="icon-btn" title="通知">
+          <div class="icon-btn" title="通知" @click="loadNotifications">
             <i class="fas fa-bell"></i>
-            <span class="badge"></span>
+            <span v-if="unreadCount" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
           </div>
         </template>
         <div class="notification-panel">
           <div class="notification-header">
             <span>最新通知</span>
-            <el-link type="primary" :underline="false">全部已读</el-link>
+            <el-link type="primary" :underline="false" @click="markAllRead">全部已读</el-link>
           </div>
           <div class="notification-list">
-            <div class="notification-item">
-              <div class="notification-icon" style="background: #EFF6FF; color: #2563EB;">
-                <i class="fas fa-id-card"></i>
-              </div>
-              <div class="notification-content">
-                <div class="notification-title">新的认证审核</div>
-                <div class="notification-desc">有 8 条待审核的认证申请</div>
-                <div class="notification-time">2分钟前</div>
-              </div>
-            </div>
-            <div class="notification-item">
-              <div class="notification-icon" style="background: #ECFDF5; color: #10B981;">
-                <i class="fas fa-coins"></i>
-              </div>
-              <div class="notification-content">
-                <div class="notification-title">新的结算申请</div>
-                <div class="notification-desc">有 6 笔日结订单待确认结算</div>
-                <div class="notification-time">15分钟前</div>
-              </div>
-            </div>
-            <div class="notification-item">
-              <div class="notification-icon" style="background: #FFFBEB; color: #F59E0B;">
-                <i class="fas fa-check-circle"></i>
-              </div>
-              <div class="notification-content">
-                <div class="notification-title">招工审核</div>
-                <div class="notification-desc">有 5 个招工信息待审核</div>
-                <div class="notification-time">1小时前</div>
-              </div>
+            <div v-if="!notifications.length" class="notification-empty">暂无未读通知</div>
+            <div v-for="n in notifications" :key="n.id" class="notification-item" @click="readNotification(n)">
+              <div class="notification-icon" :style="noticeStyle(n.type)"><i :class="['fas', noticeIcon(n.type)]"></i></div>
+              <div class="notification-content"><div class="notification-title">{{ n.title }}</div><div class="notification-desc">{{ n.content || '暂无内容' }}</div><div class="notification-time">{{ relativeTime(n.publishTime || n.createTime) }}</div></div>
             </div>
           </div>
           <div class="notification-footer">
@@ -164,6 +139,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { listUnreadNotices, markNoticeRead } from '@/api/content'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 
@@ -174,6 +150,38 @@ const router = useRouter()
 
 const searchKeyword = ref('')
 const logoutVisible = ref(false)
+const notifications = ref([])
+const unreadCount = computed(() => notifications.value.length)
+
+const loadNotifications = async () => {
+  try {
+    const res = await listUnreadNotices()
+    notifications.value = Array.isArray(res?.data) ? res.data : []
+  } catch (e) {
+    notifications.value = []
+  }
+}
+const markAllRead = async () => {
+  await Promise.all(notifications.value.map(n => markNoticeRead(n.id).catch(() => null)))
+  notifications.value = []
+}
+const readNotification = async (notice) => {
+  await markNoticeRead(notice.id).catch(() => null)
+  notifications.value = notifications.value.filter(n => n.id !== notice.id)
+}
+const relativeTime = (value) => {
+  if (!value) return '-'
+  const ms = Date.now() - new Date(value).getTime()
+  if (!Number.isFinite(ms) || ms < 0) return String(value).replace('T', ' ').slice(0, 16)
+  const minutes = Math.floor(ms / 60000)
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes}分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}小时前`
+  return `${Math.floor(hours / 24)}天前`
+}
+const noticeIcon = (type) => ({ 认证: 'fa-id-card', 结算: 'fa-coins', 招工: 'fa-check-circle' }[type] || 'fa-bell')
+const noticeStyle = (type) => type === '认证' ? { background: '#EFF6FF', color: '#2563EB' } : type === '结算' ? { background: '#ECFDF5', color: '#10B981' } : { background: '#FFFBEB', color: '#F59E0B' }
 
 // 角色中文显示（后端存英文枚举）
 const roleTextMap = {
@@ -212,6 +220,8 @@ const doLogout = () => {
   ElMessage.success('已退出登录')
   router.push('/login')
 }
+
+loadNotifications()
 </script>
 
 <style scoped>
@@ -375,6 +385,13 @@ const doLogout = () => {
   .notification-list {
     max-height: 280px;
     overflow-y: auto;
+  }
+
+  .notification-empty {
+    padding: 28px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
   }
   
   .notification-item {

@@ -16,6 +16,9 @@ public interface WalletRespository extends JpaRepository<Wallet, Long> {
     /** 按用户查钱包 */
     Optional<Wallet> findByUserId(Long userId);
     Optional<Wallet> findByUserIdAndRole(Long userId, String role);
+    /** 兼容历史重复数据：按主键倒序取指定身份最新钱包，避免 Optional 单结果查询抛异常。 */
+    Optional<Wallet> findFirstByUserIdAndRoleOrderByIdDesc(Long userId, String role);
+    Optional<Wallet> findFirstByUserIdOrderByIdDesc(Long userId);
 
     List<Wallet> findByUserIdIn(java.util.Collection<Long> userIds);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

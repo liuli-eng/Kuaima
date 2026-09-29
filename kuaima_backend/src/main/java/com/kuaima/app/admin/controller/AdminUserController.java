@@ -154,17 +154,40 @@ public class AdminUserController {
 
     @Operation(summary = "零工管理统计", description = "返回零工总人数、本月新增、当前在线和已冻结人数")
     @GetMapping("/workers/stats")
-    public Result<Map<String, Long>> workerStats(Authentication authentication) {
+    public Result<Map<String, Object>> workerStats(Authentication authentication) {
         requireAdmin(authentication);
         YearMonth month = YearMonth.now();
-        Map<String, Long> stats = new LinkedHashMap<>();
-        stats.put("total", userRepository.countByRole(UserRole.USER));
-        stats.put("monthNew", userRepository.countByRoleAndDateBetween(
-                UserRole.USER, month.atDay(1), month.atEndOfMonth()));
-        stats.put("online", webSocketSessionManager == null ? 0L
-                : (long) webSocketSessionManager.getOnlineWorkerIds().size());
-        stats.put("frozen", userRepository.countByRoleAndStatus(UserRole.USER, "冻结"));
+        Map<String, Object> stats = new LinkedHashMap<>();
+        long total = userRepository.countByRole(UserRole.USER);
+        long monthNew = userRepository.countByRoleAndDateBetween(
+                UserRole.USER, month.atDay(1), month.atEndOfMonth());
+        long online = webSocketSessionManager == null ? 0L
+                : (long) webSocketSessionManager.getOnlineWorkerIds().size();
+        long frozen = userRepository.countByRoleAndStatus(UserRole.USER, "冻结");
+        stats.put("total", total);
+        stats.put("monthNew", monthNew);
+        stats.put("online", online);
+        stats.put("frozen", frozen);
+
+        // 仅返回有可靠历史基准的数据；前端不得自行填充静态百分比。
+        Map<String, Object> changes = new LinkedHashMap<>();
+        long previousTotal = userRepository.countByRoleAndDateLessThanEqual(
+                UserRole.USER, month.minusMonths(1).atEndOfMonth());
+        long previousMonthNew = userRepository.countByRoleAndDateBetween(
+                UserRole.USER, month.minusMonths(1).atDay(1), month.minusMonths(1).atEndOfMonth());
+        changes.put("total", change(previousTotal, total, "较上月"));
+        changes.put("monthNew", change(previousMonthNew, monthNew, "较上月"));
+        changes.put("online", null);
+        changes.put("frozen", null);
+        stats.put("changes", changes);
         return Result.success(stats);
+    }
+
+    private Map<String, Object> change(long previous, long current, String label) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("label", label);
+        value.put("value", previous == 0 ? null : Math.round((current - previous) * 10000.0 / previous) / 100.0);
+        return value;
     }
 
     /** 雇主列表（附加经营与资产字段，使用 fastjson 序列化确保 password 不泄露） */
@@ -227,11 +250,15 @@ public class AdminUserController {
         if (UserRole.BOSS.equals(u.getRole())) {
             bossOrderRepository.countByCreateByIds(Set.of(id))
                     .forEach(row -> obj.put("jobsCount", (Long) row[1]));
-            obj.put("balance", walletRepository.findByUserId(id)
+            // 资产账户按业务身份隔离；不能按 userId 单独查询，否则历史上同一用户存在多角色账户时
+            // Optional 查询会因多行结果直接抛出 NonUniqueResultException。
+            obj.put("balance", walletRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.BOSS)
+                    .or(() -> walletRepository.findFirstByUserIdOrderByIdDesc(id))
                     .map(wallet -> moneyValue(wallet.getBalance())).orElse(BigDecimal.ZERO));
-            obj.put("points", pointsAccountRepository.findByUserIdAndRole(id, UserRole.BOSS)
+            obj.put("points", pointsAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.BOSS)
                     .map(account -> integerValue(account.getBalance())).orElse(0));
-            obj.put("rewardAmount", rewardAccountRepository.findByUserId(id)
+            obj.put("rewardAmount", rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.BOSS)
+                    .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(id))
                     .map(account -> moneyValue(account.getBalance())).orElse(BigDecimal.ZERO));
             obj.put("pointRecords", pointRecords(id));
             obj.put("rewardRecords", rewardRecords(id));
@@ -297,7 +324,9 @@ public class AdminUserController {
         PageRequest pageable = PageRequest.of(Math.max(page, 0), safeSize(size));
         Page<RewardFlow> source = rewardFlowRepository.findByUserIdOrderByCreatedAtDescIdDesc(id, pageable);
         Page<JSONObject> records = source.map(this::workerRewardRecord);
-        BigDecimal balance = rewardAccountRepository.findByUserId(id).map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO);
+        BigDecimal balance = rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.USER)
+                .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(id))
+                .map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO);
         Map<String, Object> data = new LinkedHashMap<>(); data.put("records", records.getContent()); data.put("currentBalance", balance);
         data.put("totalEarned", moneyValue(rewardFlowRepository.sumByUserIdAndType(id, "INCOME")));
         data.put("totalConsumed", moneyValue(rewardFlowRepository.sumByUserIdAndType(id, "EXPENSE")));
@@ -411,7 +440,9 @@ public class AdminUserController {
                 && i.getFinishDate().toLocalDate().getYear() == LocalDate.now().getYear()
                 && i.getFinishDate().toLocalDate().getMonthValue() == LocalDate.now().getMonthValue()).count();
         long totalIncome = walletFlowRepository == null ? 0L : longValue(walletFlowRepository.sumIncomeByUserId(userId));
-        obj.put("rewardBalance", rewardAccountRepository.findByUserId(userId).map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO));
+        obj.put("rewardBalance", rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(userId, UserRole.USER)
+                .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(userId))
+                .map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO));
         obj.put("pointsBalance", pointsAccountRepository.findByUserIdAndRole(userId, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L));
         obj.put("completedOrders", completed); obj.put("monthCompletedOrders", monthCompleted); obj.put("totalIncome", totalIncome);
         obj.put("completionRate", completion); obj.put("cancellationRate", cancellation); obj.put("noShowRate", noShow); obj.put("earlyLeaveRate", earlyRate);

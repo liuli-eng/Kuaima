@@ -71,12 +71,12 @@
         class="boss-table"
         :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }"
       >
-        <el-table-column label="雇主ID" width="100" fixed="left">
+        <el-table-column label="雇主ID" min-width="100" fixed="left">
           <template #default="{ row }">
             <span class="employer-id">{{ employerId(row) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="头像+名称" width="175" fixed="left">
+        <el-table-column label="头像+名称" min-width="175" fixed="left">
           <template #default="{ row }">
             <div class="avatar-cell">
               <span class="mini-avatar" :style="{ background: avatarBackground(row) }">{{ avatarText(row) }}</span>
@@ -87,17 +87,17 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="企业名称" width="195" show-overflow-tooltip>
+        <el-table-column label="企业名称" min-width="195" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="company-name">{{ row.companyName || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="行业类型" width="95">
+        <el-table-column label="行业类型" min-width="95">
           <template #default="{ row }">
             <span class="industry-tag" :class="industryClass(row.industry)">{{ row.industry || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="联系人" width="105">
+        <el-table-column label="联系人" min-width="105">
           <template #default="{ row }">
             <div class="contact-info">
               <span class="contact-name">{{ row.contact || row.nickname || '-' }}</span>
@@ -105,42 +105,42 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="手机号" width="115">
+        <el-table-column label="手机号" min-width="115">
           <template #default="{ row }">{{ maskPhone(row.phone) }}</template>
         </el-table-column>
-        <el-table-column label="招工数" width="85" align="center">
+        <el-table-column label="招工数" min-width="85" align="center">
           <template #default="{ row }">
             <span class="job-count">{{ formatNumber(row.jobsCount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="信用分" width="105" align="center">
+        <el-table-column label="信用分" min-width="105" align="center">
           <template #default="{ row }">
             <span class="credit-tag" :class="creditClass(row.creditScore)">{{ creditText(row.creditScore) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="余额" width="110" align="right">
+        <el-table-column label="余额" min-width="110" align="right">
           <template #default="{ row }">
             <span class="asset-num">{{ formatMoney(row.balance) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="奖励金余额" width="110" align="right">
+        <el-table-column label="奖励金余额" min-width="110" align="right">
           <template #default="{ row }">
             <span class="asset-num">{{ formatMoney(row.rewardAmount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="积分余额" width="90" align="right">
+        <el-table-column label="积分余额" min-width="90" align="right">
           <template #default="{ row }">
             <span class="asset-num points">{{ formatNumber(row.points) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="认证状态" width="105">
+        <el-table-column label="认证状态" min-width="105">
           <template #default="{ row }">
             <span class="status-badge" :class="certClass(row)">
               <i :class="certIcon(row)"></i> {{ formatCertStatus(row) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="190" fixed="right">
+        <el-table-column label="操作" min-width="190" fixed="right">
           <template #default="{ row }">
             <div class="action-btns">
               <el-button link type="primary" size="small" @click="openDetail(row)">查看</el-button>

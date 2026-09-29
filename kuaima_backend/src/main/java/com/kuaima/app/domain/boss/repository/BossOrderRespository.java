@@ -3,6 +3,7 @@ package com.kuaima.app.domain.boss.repository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Date;
+import java.time.LocalDate;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,16 +16,24 @@ import com.kuaima.app.domain.boss.entity.BossOrder;
 
 public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, JpaSpecificationExecutor<BossOrder> {
 
-    /** 按 类型/状态/标题 组合过滤分页查询（参数为空表示不过滤） */
+    /** 按 类型/状态/标题/雇主 组合过滤分页查询（参数为空表示不过滤） */
     @Query("""
             select o from BossOrder o
+              left join User u on u.id = o.createBy
             where (:type is null or o.type = :type)
               and (:status is null or o.orderStatus = :status)
-              and (:title is null or o.orderTitle like concat('%', :title, '%'))
+              and (:startDate is null or o.date >= :startDate)
+              and (:endDate is null or o.date <= :endDate)
+              and (:title is null or lower(coalesce(o.orderTitle, '')) like lower(concat('%', :title, '%'))
+                   or lower(coalesce(u.companyName, '')) like lower(concat('%', :title, '%'))
+                   or lower(coalesce(u.nickname, '')) like lower(concat('%', :title, '%'))
+                   or lower(coalesce(u.username, '')) like lower(concat('%', :title, '%')))
             """)
     Page<BossOrder> search(@Param("type") String type,
                                 @Param("status") String status,
                                 @Param("title") String title,
+                                @Param("startDate") LocalDate startDate,
+                                @Param("endDate") LocalDate endDate,
                                 Pageable pageable);
 
     /** 老板端岗位列表：强制按创建人隔离数据 */

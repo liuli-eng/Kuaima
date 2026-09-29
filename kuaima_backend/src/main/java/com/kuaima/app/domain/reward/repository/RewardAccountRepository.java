@@ -11,6 +11,9 @@ import org.springframework.data.repository.query.Param;
 public interface RewardAccountRepository extends JpaRepository<RewardAccount, Long> {
     Optional<RewardAccount> findByUserId(Long userId);
     Optional<RewardAccount> findByUserIdAndRole(Long userId, String role);
+    /** 兼容历史重复数据：按主键倒序取指定身份最新奖励金账户。 */
+    Optional<RewardAccount> findFirstByUserIdAndRoleOrderByIdDesc(Long userId, String role);
+    Optional<RewardAccount> findFirstByUserIdOrderByIdDesc(Long userId);
     List<RewardAccount> findByUserIdIn(Collection<Long> userIds);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from RewardAccount a where a.userId=:userId")

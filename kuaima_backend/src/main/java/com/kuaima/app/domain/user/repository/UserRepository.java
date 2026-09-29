@@ -81,6 +81,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByRoleAndDateBetween(String role, LocalDate startDate, LocalDate endDate);
 
+    long countByRoleAndDateLessThanEqual(String role, LocalDate date);
+
     @Query("select u from User u where (:role is null or u.role = :role) and (:keyword is null or u.username like concat('%', :keyword, '%') or u.nickname like concat('%', :keyword, '%') or u.phone like concat('%', :keyword, '%') or u.companyName like concat('%', :keyword, '%'))")
     Page<User> searchRecipients(@Param("role") String role, @Param("keyword") String keyword, Pageable pageable);
 

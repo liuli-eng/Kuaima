@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
 import com.kuaima.app.security.model.LoginUser;
 
+import com.kuaima.app.admin.entity.Notice;
+import com.kuaima.app.admin.repository.NoticeRepository;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.message.entity.Message;
 import com.kuaima.app.domain.message.service.MessageService;
@@ -32,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class MessageController {
 
     private final MessageService messageService;
+    private final NoticeRepository noticeRepository;
 
     /** 未读消息数（tab 红点角标） */
     @Operation(summary = "未读消息数", description = "返回当前用户的未读消息数（long），用于 tab 红点角标")
@@ -93,13 +96,22 @@ public class MessageController {
     /** 系统通知列表（按 type=SYSTEM_NOTICE 过滤分页） */
     @Operation(summary = "系统通知列表", description = "按 type=SYSTEM_NOTICE 过滤分页返回 Message 列表")
     @GetMapping("/system")
-    public Result<List<Message>> system(@RequestParam Long userId,
+    public Result<List<?>> system(@RequestParam Long userId,
             @RequestParam(defaultValue = "USER") String role,
             @RequestParam(required = false) Boolean read,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size, Authentication authentication) {
         userId = requireCurrentUser(userId, authentication);
-        Page<Message> result = messageService.listSystem(userId, normalizeRole(role), read, page, size);
+        String normalizedRole = normalizeRole(role);
+        if ("BOSS".equals(normalizedRole)) {
+            Page<Notice> result = noticeRepository.findByStatusAndScopeInOrderByIdDesc(
+                    "已发布", List.of("全部", "雇主", "老板"),
+                    org.springframework.data.domain.PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100)));
+            if (result.getTotalElements() > 0) {
+                return Result.success(result.getContent(), result.getNumber(), result.getTotalElements());
+            }
+        }
+        Page<Message> result = messageService.listSystem(userId, normalizedRole, read, page, size);
         return Result.success(result.getContent(), result.getNumber(), result.getTotalElements());
     }
 

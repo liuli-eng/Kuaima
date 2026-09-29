@@ -96,6 +96,39 @@ class AdminUserControllerCompanyFieldsTests {
     }
 
     @Test
+    void userDetailReadsBossRoleAccountsWithoutSingleResultFailure() {
+        UserRepository users = mock(UserRepository.class);
+        WalletRespository wallets = mock(WalletRespository.class);
+        PointsAccountRepository points = mock(PointsAccountRepository.class);
+        PointsFlowRepository pointFlows = mock(PointsFlowRepository.class);
+        RewardAccountRepository rewards = mock(RewardAccountRepository.class);
+        RewardFlowRepository rewardFlows = mock(RewardFlowRepository.class);
+        User boss = new User(); boss.setId(4L); boss.setRole("BOSS");
+        Wallet wallet = new Wallet(); wallet.setUserId(4L); wallet.setRole("BOSS"); wallet.setBalance(100L);
+        RewardAccount reward = new RewardAccount(); reward.setUserId(4L); reward.setRole("BOSS"); reward.setBalance(25L);
+        when(users.findById(4L)).thenReturn(Optional.of(boss));
+        when(wallets.findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS")).thenReturn(Optional.of(wallet));
+        when(points.findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS")).thenReturn(Optional.empty());
+        when(rewards.findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS")).thenReturn(Optional.of(reward));
+        when(pointFlows.findByUserIdAndRoleOrderByTimestampDesc(any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+        when(rewardFlows.findByUserIdOrderByCreatedAtDescIdDesc(any(), any())).thenReturn(new PageImpl<>(List.of()));
+        when(rewardFlows.sumByUserIdAndType(any(), any())).thenReturn(java.math.BigDecimal.ZERO);
+
+        AdminUserController controller = new AdminUserController(users, mock(BaseOrderItemRespository.class),
+                mock(BossOrderRespository.class), wallets, points, rewards, pointFlows,
+                rewardFlows, mock(UserCouponRepository.class), mock(CouponRepository.class));
+
+        var result = controller.get(4L).getData();
+
+        assertEquals(new java.math.BigDecimal("100"), result.get("balance"));
+        assertEquals(new java.math.BigDecimal("25"), result.get("rewardAmount"));
+        verify(wallets).findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS");
+        verify(points).findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS");
+        verify(rewards).findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS");
+    }
+
+    @Test
     void couponEndpointShouldJoinCouponTemplateAndRejectNonBoss() {
         UserRepository users = mock(UserRepository.class);
         UserCouponRepository userCoupons = mock(UserCouponRepository.class);

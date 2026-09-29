@@ -19,6 +19,22 @@ export function getUser(id) {
   return request.get(`/admin/users/${id}`)
 }
 
+export function getWorkerOverview(id) {
+  return request.get(`/admin/users/${id}/overview`)
+}
+
+export function getWorkerPointFlows(id, { page = 0, size = 5 } = {}) {
+  return request.get(`/admin/users/${id}/points/flows`, { params: { page, size } })
+}
+
+export function getWorkerRewardFlows(id, { page = 0, size = 5 } = {}) {
+  return request.get(`/admin/users/${id}/reward/flows`, { params: { page, size } })
+}
+
+export function getWorkerCreditFlows(id, { page = 0, size = 5 } = {}) {
+  return request.get(`/user/${id}/credit/flows`, { params: { page, size } })
+}
+
 // 老板详情-积分明细
 export function getBossPointRecords(id, { type = 'ALL', page = 0, size = 5 } = {}) {
   return request.get(`/admin/users/${id}/points`, { params: { type, page, size } })

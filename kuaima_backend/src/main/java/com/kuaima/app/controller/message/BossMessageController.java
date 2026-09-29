@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.Result;
 import com.kuaima.app.common.ForbiddenBusinessException;
+import com.kuaima.app.admin.entity.Notice;
+import com.kuaima.app.admin.repository.NoticeRepository;
 import com.kuaima.app.domain.message.constant.MessageType;
 import com.kuaima.app.domain.message.entity.Message;
 import com.kuaima.app.domain.message.model.BossMessageModels.MessagePreview;
@@ -37,13 +39,16 @@ public class BossMessageController {
     private final MessageRepository messageRepository;
     private final CertificationService certificationService;
     private final SettlementRespository settlementRepository;
+    private final NoticeRepository noticeRepository;
 
     public BossMessageController(MessageRepository messageRepository,
                                  CertificationService certificationService,
-                                 SettlementRespository settlementRepository) {
+                                 SettlementRespository settlementRepository,
+                                 NoticeRepository noticeRepository) {
         this.messageRepository = messageRepository;
         this.certificationService = certificationService;
         this.settlementRepository = settlementRepository;
+        this.noticeRepository = noticeRepository;
     }
 
     @GetMapping("/summary")
@@ -56,6 +61,9 @@ public class BossMessageController {
         long signupUnread = messageRepository.countByUserIdAndRoleAndTypeAndReadFlagFalse(bossId, UserRole.BOSS, MessageType.ORDER_APPLY);
         long signupCount = messageRepository.findByUserIdAndRoleAndTypeOrderByIdDesc(bossId, UserRole.BOSS, MessageType.ORDER_APPLY, PageRequest.of(0, 1)).getTotalElements();
         Message system = messageRepository.findFirstByUserIdAndRoleAndTypeOrderByIdDesc(bossId, UserRole.BOSS, "SYSTEM_NOTICE").orElse(null);
+        Notice notice = noticeRepository.findFirstByStatusAndScopeInOrderByIdDesc(
+                "已发布", List.of("全部", "雇主", "老板")).orElse(null);
+        if (notice != null) unread++;
         Message signup = messageRepository.findFirstByUserIdAndRoleAndTypeOrderByIdDesc(bossId, UserRole.BOSS, MessageType.ORDER_APPLY).orElse(null);
         Settlement settlement = settlementRepository.findByBossId(bossId, PageRequest.of(0, 1)).stream().findFirst().orElse(null);
         boolean enterpriseCertUnread = !"APPROVED".equals(enterpriseStatus);
@@ -67,7 +75,10 @@ public class BossMessageController {
                     "PENDING".equals(enterpriseStatus),
                     "PENDING".equals(enterpriseStatus) ? "审核中" : "立即认证", null, null));
         }
-        if (system != null) {
+        if (notice != null) {
+            items.add(new MessageItem("system-notice", "系统通知", notice.getContent(),
+                    "SYSTEM_NOTICE", true, "查看", notice.getId(), noticeTime(notice)));
+        } else if (system != null) {
             items.add(new MessageItem("system-notice", "系统通知", system.getContent(),
                     system.getType(), !Boolean.TRUE.equals(system.getReadFlag()), "查看", system.getBizId(), system.getCreateTime()));
         }
@@ -80,7 +91,7 @@ public class BossMessageController {
                     "SETTLEMENT", false, "查看", settlement.getId(), settlement.getPayTime()));
         }
         return Result.success(new Summary(enterpriseStatus, enterpriseCertUnread, unread,
-                signupUnread, signupCount, preview(system), preview(signup), settlementPreview(settlement), items));
+                signupUnread, signupCount, preview(notice, system), preview(signup), settlementPreview(settlement), items));
     }
 
     @GetMapping("/history")
@@ -106,6 +117,14 @@ public class BossMessageController {
     }
 
     private MessagePreview preview(Message m) { return m == null ? null : new MessagePreview(m.getId(), m.getTitle(), m.getContent(), m.getType(), m.getReadFlag(), m.getCreateTime(), m.getBizId()); }
+    private MessagePreview preview(Notice notice, Message fallback) {
+        if (notice == null) return preview(fallback);
+        return new MessagePreview(notice.getId(), notice.getTitle(), notice.getContent(),
+                "SYSTEM_NOTICE", false, noticeTime(notice), notice.getId());
+    }
+    private java.time.LocalDateTime noticeTime(Notice notice) {
+        return notice.getPublishTime() != null ? notice.getPublishTime() : notice.getCreateTime();
+    }
     private SettlementPreview settlementPreview(Settlement s) { return s == null ? null : new SettlementPreview(s.getId(), s.getStatus(), s.getWage(), s.getTotalAmount(), s.getPayTime(), s.getOrderId(), s.getItemId()); }
     private Long requireBossId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof LoginUser u && UserRole.BOSS.equals(u.role()) && u.id() != null) return u.id();
