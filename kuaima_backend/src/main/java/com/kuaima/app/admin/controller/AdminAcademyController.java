@@ -79,8 +79,8 @@ public class AdminAcademyController {
     public Result<Map<String, Object>> toggleSimulateVideo(@PathVariable Long id,
                                                               @RequestParam(required = false) Boolean enabled,
                                                              Authentication authentication) {
-        requireAdmin(authentication, true);
-        return Result.success(service.toggleSimulateVideo(id, enabled));
+        LoginUser admin = requireAdminToken(authentication, true);
+        return Result.success(service.toggleSimulateVideo(id, enabled, admin.id()));
     }
 
     @GetMapping("/quizzes")
@@ -160,17 +160,22 @@ public class AdminAcademyController {
     }
 
     private LoginUser requireAdmin(Authentication authentication, boolean write) {
+        LoginUser user = requireAdminToken(authentication, write);
+        var admin = adminUsers.findById(user.id())
+                .orElseThrow(() -> new ForbiddenBusinessException("管理员账号不存在"));
+        if ("禁用".equals(admin.getStatus()) || "DISABLED".equalsIgnoreCase(admin.getStatus())) {
+            throw new ForbiddenBusinessException("管理员账号已禁用");
+        }
+        return user;
+    }
+
+    private LoginUser requireAdminToken(Authentication authentication, boolean write) {
         if (authentication == null || !(authentication.getPrincipal() instanceof LoginUser user)
                 || user.id() == null || user.role() == null || !user.role().startsWith("ADMIN_")) {
             throw new ForbiddenBusinessException("仅管理员可访问");
         }
         if (write && "ADMIN_VIEWER".equals(user.role())) {
             throw new ForbiddenBusinessException("当前管理员无学堂管理权限");
-        }
-        var admin = adminUsers.findById(user.id())
-                .orElseThrow(() -> new ForbiddenBusinessException("管理员账号不存在"));
-        if ("禁用".equals(admin.getStatus()) || "DISABLED".equalsIgnoreCase(admin.getStatus())) {
-            throw new ForbiddenBusinessException("管理员账号已禁用");
         }
         return user;
     }

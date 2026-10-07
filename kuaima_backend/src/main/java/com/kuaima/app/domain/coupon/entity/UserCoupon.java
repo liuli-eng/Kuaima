@@ -7,6 +7,7 @@ import com.kuaima.app.domain.base.entity.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +16,8 @@ import lombok.Setter;
  * 用户领取的优惠券：领取时按券面 validDays 计算到期时间，使用后置为已使用。
  */
 @Entity
-@Table(name = "user_coupon")
+@Table(name = "user_coupon", indexes = @Index(name = "idx_user_coupon_user_status_expire",
+        columnList = "user_id, status, expire_at, id"))
 @Getter
 @Setter
 public class UserCoupon extends BaseEntity {

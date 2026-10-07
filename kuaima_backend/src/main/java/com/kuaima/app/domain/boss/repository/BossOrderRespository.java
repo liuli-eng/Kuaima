@@ -53,6 +53,21 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, Jp
     /** 某老板发布的全部订单（最新在前） */
     List<BossOrder> findByCreateByOrderByIdDesc(Long createBy);
 
+    /** 批量读取老板最近发布的岗位，用于后台老板列表展示工种。 */
+    List<BossOrder> findByCreateByInOrderByIdDesc(Collection<Long> createBys);
+
+    /** 根据发布时选择的工种分类或历史岗位文本查找老板。 */
+    @Query(value = """
+            select distinct o.create_by
+            from boss_order o
+            left join job_category j
+              on j.id = o.job_category_id
+              or find_in_set(cast(j.id as char), coalesce(o.job_ids, '')) > 0
+            where lower(coalesce(j.name, '')) like lower(concat('%', :jobType, '%'))
+               or lower(coalesce(o.postion, '')) like lower(concat('%', :jobType, '%'))
+            """, nativeQuery = true)
+    List<Long> findOwnerIdsByJobType(@Param("jobType") String jobType);
+
     List<BossOrder> findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(
             Long createBy, Date startInclusive, Date endExclusive);
 

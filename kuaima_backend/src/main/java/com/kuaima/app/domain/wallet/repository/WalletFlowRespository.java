@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.wallet.repository;
 
 import java.util.List;
+import java.util.Collection;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,4 +28,8 @@ public interface WalletFlowRespository extends JpaRepository<WalletFlow, Long> {
 
     @Query("select coalesce(sum(f.amount),0) from WalletFlow f where f.userId=:userId and f.direction='income'")
     Long sumIncomeByUserId(@Param("userId") Long userId);
+
+    /** 批量统计零工收入，避免后台零工列表逐用户查询。 */
+    @Query("select f.userId, coalesce(sum(f.amount),0) from WalletFlow f where f.userId in :userIds and f.direction='income' group by f.userId")
+    List<Object[]> sumIncomeByUserIds(@Param("userIds") Collection<Long> userIds);
 }

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.social.dto.SocialGroupJoinRequest;
+import com.kuaima.app.domain.social.dto.SocialGroupCreateRequest;
 import com.kuaima.app.domain.social.dto.SocialGroupView;
 import com.kuaima.app.domain.social.service.SocialGroupService;
 import com.kuaima.app.security.model.LoginUser;
@@ -54,6 +55,13 @@ public class SocialGroupController {
                                         @RequestBody SocialGroupJoinRequest request,
                                         Authentication authentication) {
         return Result.success(service.join(id, request, current(authentication)));
+    }
+
+    @Operation(summary = "创建零工社群")
+    @PostMapping
+    public Result<SocialGroupView> create(@RequestBody SocialGroupCreateRequest request,
+                                          Authentication authentication) {
+        return Result.success(service.create(request, current(authentication)));
     }
 
     private LoginUser current(Authentication authentication) {

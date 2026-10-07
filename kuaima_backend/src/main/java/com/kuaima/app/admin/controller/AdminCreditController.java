@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 import java.util.UUID;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -29,8 +30,10 @@ import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.entity.CreditFlow;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.user.repository.AdminCreditDetailRow;
 import com.kuaima.app.domain.user.repository.CreditFlowRepository;
 import com.kuaima.app.domain.user.constant.UserRole;
+import com.kuaima.app.domain.user.constant.UserBusinessCode;
 import com.kuaima.app.domain.user.service.CreditScoreService;
 import com.kuaima.app.security.model.LoginUser;
 
@@ -57,13 +60,15 @@ public class AdminCreditController {
 
     @GetMapping("/users")
     public Result<Page<Map<String, Object>>> users(@RequestParam(required = false) String keyword,
+                                                    @RequestParam(required = false) String id,
                                                     @RequestParam(required = false) String role,
                                                     @RequestParam(required = false) String level,
                                                     @RequestParam(defaultValue = "0") int page,
                                                     @RequestParam(defaultValue = "10") int size,
                                                     Authentication authentication) {
         admin(authentication, false);
-        String kw = keyword == null || keyword.isBlank() ? null : keyword.trim().toLowerCase(Locale.ROOT);
+        String rawKeyword = id != null && !id.isBlank() ? id : keyword;
+        String kw = rawKeyword == null || rawKeyword.isBlank() ? null : rawKeyword.trim().toLowerCase(Locale.ROOT);
         String normalizedRole = normalizeRole(role);
         if (role != null && !role.isBlank() && normalizedRole == null) {
             throw new IllegalArgumentException("role 参数无效");
@@ -75,11 +80,13 @@ public class AdminCreditController {
                 .toList();
         List<Map<String, Object>> rows = new ArrayList<>();
         for (User user : candidates) {
+            boolean boss = UserRole.isBossIdentity(user);
+            String businessId = ensureBusinessId(user, boss);
             String name = firstText(user.getRealName(), user.getNickname(), user.getUsername(), user.getPhone());
-            if (kw != null && !containsAny(kw, user.getId(), name, user.getUsername(), user.getNickname(), user.getPhone())) continue;
-            String scoreType = UserRole.isBossIdentity(user)
+            if (kw != null && !containsAny(kw, businessId, user.getId(), name, user.getUsername(), user.getNickname(), user.getPhone())) continue;
+            String scoreType = boss
                     ? CreditScoreService.BOSS_CREDIT : CreditScoreService.WORKER_STAR;
-            int score = UserRole.isBossIdentity(user) ? value(user.getCreditScore()) : value(user.getStarScore());
+            int score = boss ? value(user.getCreditScore()) : value(user.getStarScore());
             String levelKey = levelKey(score);
             if (level != null && !level.isBlank() && !levelKey.equals(level)) continue;
             List<CreditFlow> history = flows == null ? List.of()
@@ -87,7 +94,7 @@ public class AdminCreditController {
             int added = history.stream().mapToInt(CreditFlow::getDelta).filter(delta -> delta > 0).sum();
             int deducted = history.stream().mapToInt(CreditFlow::getDelta).filter(delta -> delta < 0).map(Math::abs).sum();
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", user.getId()); row.put("role", UserRole.USER.equals(user.getRole()) ? "worker" : "boss");
+            row.put("id", businessId); row.put("userId", user.getId()); row.put("role", boss ? "boss" : "worker");
             row.put("name", name); row.put("phone", user.getPhone()); row.put("score", score);
             row.put("level", levelKey); row.put("addTotal", added); row.put("subTotal", deducted);
             row.put("scoreType", scoreType);
@@ -100,27 +107,69 @@ public class AdminCreditController {
     }
 
     @GetMapping("/{userId}")
-    public Result<Map<String, Object>> detail(@PathVariable Long userId, Authentication authentication) {
+    public Result<Map<String, Object>> detail(@PathVariable String userId, Authentication authentication) {
         admin(authentication, false);
-        User user = users.findById(userId).orElseThrow(() -> new EntityNotFoundException("用户不存在: " + userId));
-        String scoreType = scoreType(user);
+        List<AdminCreditDetailRow> rows = users.findAdminCreditDetail(userId.trim());
+        if (rows.isEmpty()) throw new EntityNotFoundException("用户不存在: " + userId);
+        AdminCreditDetailRow first = rows.get(0);
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("userId", userId);
-        data.put("creditScore", user.getCreditScore() == null ? 0 : user.getCreditScore());
-        data.put("starScore", user.getStarScore() == null ? 0 : user.getStarScore());
-        data.put("scoreType", scoreType);
-        List<CreditFlow> activeFlows = scores.flows(userId, scoreType);
+        data.put("id", first.getBusinessId());
+        data.put("userId", first.getUserId());
+        data.put("creditScore", value(first.getCreditScore()));
+        data.put("starScore", value(first.getStarScore()));
+        data.put("scoreType", first.getScoreType());
+        List<Map<String, Object>> activeFlows = rows.stream()
+                .filter(row -> row.getFlowId() != null)
+                .map(this::flowView)
+                .toList();
         data.put("creditFlows", activeFlows);
         data.put("starFlows", activeFlows);
+        List<CreditFlow> allFlows = flows == null ? List.of()
+                : flows.findByUserIdAndScoreTypeOrderByTimestampDesc(first.getUserId(), first.getScoreType());
+        int addTotal = allFlows.isEmpty()
+                ? activeFlows.stream().mapToInt(flow -> numberOrZero(flow.get("delta"))).filter(delta -> delta > 0).sum()
+                : allFlows.stream().mapToInt(flow -> value(flow.getDelta())).filter(delta -> delta > 0).sum();
+        int subTotal = allFlows.isEmpty()
+                ? activeFlows.stream().mapToInt(flow -> numberOrZero(flow.get("delta"))).filter(delta -> delta < 0).map(Math::abs).sum()
+                : allFlows.stream().mapToInt(flow -> value(flow.getDelta())).filter(delta -> delta < 0).map(Math::abs).sum();
+        data.put("addTotal", addTotal);
+        data.put("subTotal", subTotal);
+        data.put("flowLimit", 50);
         return Result.success(data);
     }
 
+    private int numberOrZero(Object value) {
+        return value instanceof Number number ? number.intValue() : 0;
+    }
+
+    private Map<String, Object> flowView(AdminCreditDetailRow row) {
+        Map<String, Object> flow = new LinkedHashMap<>();
+        String businessId = row.getFlowBizNo() == null ? legacyFlowNo(row) : row.getFlowBizNo();
+        flow.put("id", businessId);
+        flow.put("businessId", businessId);
+        flow.put("delta", row.getDelta());
+        flow.put("beforeScore", row.getBeforeScore());
+        flow.put("afterScore", row.getAfterScore());
+        flow.put("ruleCode", row.getRuleCode());
+        flow.put("bizType", row.getBizType());
+        flow.put("reason", row.getReason());
+        flow.put("timestamp", row.getFlowTimestamp());
+        return flow;
+    }
+
+    private String legacyFlowNo(AdminCreditDetailRow row) {
+        String date = row.getFlowTimestamp() == null ? "00000000"
+                : row.getFlowTimestamp().format(DateTimeFormatter.BASIC_ISO_DATE);
+        return "XF" + date + String.format("%03d", Math.max(0, row.getFlowId() == null ? 0 : row.getFlowId()));
+    }
+
     @PostMapping("/{userId}/adjust")
-    public Result<Map<String, Object>> adjust(@PathVariable Long userId, @RequestBody Map<String, Object> body,
+    public Result<Map<String, Object>> adjust(@PathVariable String userId, @RequestBody Map<String, Object> body,
                                                Authentication authentication) {
         LoginUser operator = admin(authentication, true);
         String type = text(body, "scoreType", CreditScoreService.BOSS_CREDIT);
-        User target = users.findById(userId).orElseThrow(() -> new EntityNotFoundException("用户不存在: " + userId));
+        User target = resolveUser(userId);
+        Long internalUserId = target.getId();
         String expectedType = scoreType(target);
         if (!expectedType.equals(type)) throw new IllegalArgumentException("scoreType 与用户身份不匹配");
         int delta = number(body.get("delta"));
@@ -128,14 +177,42 @@ public class AdminCreditController {
         String reason = text(body, "reason", "管理员人工调整");
         String ruleCode = text(body, "ruleCode", "ADMIN_MANUAL_ADJUST");
         String bizId = text(body, "bizId", String.valueOf(System.currentTimeMillis()));
-        boolean adjusted = scores.adjust(userId, type, delta, ruleCode, "ADMIN",
-                "ADMIN:" + operator.id() + ":" + userId + ":" + bizId + ":" + UUID.randomUUID(), reason);
+        boolean adjusted = scores.adjust(internalUserId, type, delta, ruleCode, "ADMIN",
+                "ADMIN:" + operator.id() + ":" + internalUserId + ":" + bizId + ":" + UUID.randomUUID(), reason);
         if (!adjusted) throw new IllegalStateException("信用分调整未生效");
         return detail(userId, authentication);
     }
 
     private String scoreType(User user) {
         return UserRole.isBossIdentity(user) ? CreditScoreService.BOSS_CREDIT : CreditScoreService.WORKER_STAR;
+    }
+
+    private User resolveUser(String id) {
+        if (id != null && id.matches("(?i)G\\d{7}")) return users.findByWorkerCode(id.toUpperCase(Locale.ROOT))
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
+        if (id != null && id.matches("(?i)B\\d{7}")) return users.findByBossCode(id.toUpperCase(Locale.ROOT))
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
+        try {
+            return users.findById(Long.valueOf(id))
+                    .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("用户ID格式无效");
+        }
+    }
+
+    private String businessId(User user) {
+        boolean boss = UserRole.isBossIdentity(user);
+        return ensureBusinessId(user, boss);
+    }
+
+    /** 兼容尚未执行历史回填脚本的账号，首次读取时补齐并持久化业务编号。 */
+    private String ensureBusinessId(User user, boolean boss) {
+        boolean missingWorkerCode = user.getWorkerCode() == null || user.getWorkerCode().isBlank();
+        boolean missingBossCode = boss && (user.getBossCode() == null || user.getBossCode().isBlank());
+        UserBusinessCode.ensureWorker(user);
+        if (boss) UserBusinessCode.ensureBoss(user);
+        if (missingWorkerCode || missingBossCode) users.save(user);
+        return boss ? user.getBossCode() : user.getWorkerCode();
     }
 
     private LoginUser admin(Authentication authentication, boolean write) {

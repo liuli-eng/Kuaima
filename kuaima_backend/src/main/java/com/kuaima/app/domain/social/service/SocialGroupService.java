@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 
 import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.domain.social.dto.SocialGroupJoinRequest;
+import com.kuaima.app.domain.social.dto.SocialGroupCreateRequest;
 import com.kuaima.app.domain.social.dto.SocialGroupView;
 import com.kuaima.app.domain.social.entity.SocialGroup;
 import com.kuaima.app.domain.social.entity.SocialGroupMember;
@@ -102,6 +103,26 @@ public class SocialGroupService {
             existing.setJoinedAt(LocalDateTime.now());
             members.save(existing);
         }
+        return view(group, current.getId());
+    }
+
+    @Transactional
+    public SocialGroupView create(SocialGroupCreateRequest request, LoginUser login) {
+        User current = currentWorker(login);
+        if (!isRealnameApproved(current)) throw new ForbiddenBusinessException("请先完成实名认证");
+        if (request == null || !StringUtils.hasText(request.name())) throw new IllegalArgumentException("群名称不能为空");
+        String name = request.name().trim();
+        if (name.length() > 100) throw new IllegalArgumentException("群名称不能超过100个字符");
+        String qrcodeUrl = StringUtils.hasText(request.qrcodeUrl()) ? request.qrcodeUrl().trim() : null;
+        if (qrcodeUrl != null && qrcodeUrl.length() > 500) throw new IllegalArgumentException("群二维码地址过长");
+        SocialGroup group = new SocialGroup();
+        group.setName(name); group.setCategory("找活交流"); group.setQrcodeUrl(qrcodeUrl);
+        group.setDescription("零工找活交流群"); group.setRole(WORKER); group.setStatus(ACTIVE);
+        group.setMemberLimit(DEFAULT_MEMBER_LIMIT); group.setMemberCount(1); group.setCreatedAt(LocalDateTime.now());
+        group.setSort(0); group = groups.save(group);
+        SocialGroupMember member = new SocialGroupMember();
+        member.setGroupId(group.getId()); member.setUserId(current.getId()); member.setSource("WORKER_GROUP_CREATE");
+        member.setConfirmed(true); member.setJoinedAt(LocalDateTime.now()); members.save(member);
         return view(group, current.getId());
     }
 

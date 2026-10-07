@@ -10,8 +10,8 @@ export function getWorkerStats() {
 }
 
 // 雇主列表
-export function listBosses({ status, enterpriseStatus, industry, keyword, page = 0, size = 10 } = {}) {
-  return request.get('/admin/users/bosses', { params: { status, enterpriseStatus, industry, keyword, page, size } })
+export function listBosses({ status, enterpriseStatus, industry, jobType, keyword, page = 0, size = 10 } = {}) {
+  return request.get('/admin/users/bosses', { params: { status, enterpriseStatus, industry, jobType, keyword, page, size } })
 }
 
 // 用户详情

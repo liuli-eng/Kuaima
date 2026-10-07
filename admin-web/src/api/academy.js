@@ -48,16 +48,18 @@ export function deleteLessonVideo(key) {
   return request.delete(`/admin/academy/lessons/${key}/video`)
 }
 
-export function toggleLesson(key) {
-  return request.put(`/admin/academy/lessons/${key}/toggle`)
+export function toggleLesson(key, enabled) {
+  return request.put(`/admin/academy/lessons/${key}/toggle`, null, { params: enabled === undefined ? {} : { enabled } })
 }
 
-export function uploadAcademyVideo(file, title, type) {
+export function uploadAcademyVideo(file, title, type, options = {}) {
   const form = new FormData()
   form.append('file', file)
   form.append('title', title)
   form.append('type', type)
   return request.post('/admin/academy/upload', form, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 0,
+    onUploadProgress: options?.onUploadProgress
   })
 }

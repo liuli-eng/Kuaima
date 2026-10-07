@@ -75,6 +75,7 @@ class AdminUserControllerCompanyFieldsTests {
         PointsFlowRepository pointFlows = mock(PointsFlowRepository.class);
         RewardFlowRepository rewardFlows = mock(RewardFlowRepository.class);
         User boss = new User(); boss.setId(59L); boss.setRole("BOSS");
+        boss.setEnterpriseStatus("APPROVED");
         PointsFlow pointFlow = new PointsFlow(); pointFlow.setId(1L); pointFlow.setRole("BOSS");
         pointFlow.setBizType("PURCHASE"); pointFlow.setDelta(100); pointFlow.setBalanceAfter(100);
         RewardFlow rewardFlow = new RewardFlow(); rewardFlow.setId(2L); rewardFlow.setType("INCOME");
@@ -134,13 +135,13 @@ class AdminUserControllerCompanyFieldsTests {
         UserCouponRepository userCoupons = mock(UserCouponRepository.class);
         CouponRepository couponRepository = mock(CouponRepository.class);
         User boss = new User(); boss.setId(59L); boss.setRole("BOSS");
-        UserCoupon record = new UserCoupon(); record.setId(3L); record.setUserId(59L);
-        record.setCouponId(4L); record.setStatus("UNUSED");
-        Coupon coupon = new Coupon(); coupon.setId(4L); coupon.setTitle("招工满减券");
-        coupon.setType("FULL"); coupon.setAmount(new java.math.BigDecimal("50"));
+        boss.setEnterpriseStatus("APPROVED");
+        var row = mock(com.kuaima.app.domain.coupon.repository.AdminCouponRecordRow.class);
+        when(row.getId()).thenReturn(3L); when(row.getStatus()).thenReturn("UNUSED");
+        when(row.getTitle()).thenReturn("招工满减券"); when(row.getType()).thenReturn("FULL");
+        when(row.getAmount()).thenReturn(new java.math.BigDecimal("50")); when(row.getTotalCount()).thenReturn(1L);
         when(users.findById(59L)).thenReturn(Optional.of(boss));
-        when(userCoupons.findAvailableByUserId(any(), any(), any())).thenReturn(new PageImpl<>(List.of(record)));
-        when(couponRepository.findAllById(any())).thenReturn(List.of(coupon));
+        when(userCoupons.findAdminCouponRecords(eq(59L), eq("AVAILABLE"), any(), eq(5), eq(0))).thenReturn(List.of(row));
         var controller = controller(users, mock(PointsFlowRepository.class),
                 mock(RewardFlowRepository.class), userCoupons, couponRepository);
 

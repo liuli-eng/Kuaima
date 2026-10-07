@@ -183,12 +183,6 @@ const rateStats = computed(() => [
 ]);
 const otherMenus = [
   {
-    key: "enterprise-context",
-    label: "企业入口",
-    icon: exchangeIcon,
-    url: "/pages/boss/enterprise-context",
-  },
-  {
     key: "switch",
     label: "切换账号",
     icon: exchangeIcon,

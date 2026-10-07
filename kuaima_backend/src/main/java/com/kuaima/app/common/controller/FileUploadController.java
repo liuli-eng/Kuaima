@@ -1,16 +1,10 @@
 package com.kuaima.app.common.controller;
 
-import java.io.File;
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.kuaima.app.common.Result;
+import com.kuaima.app.common.service.OssStorageService;
 
 /** 文件上传接口 */
 @RestController
@@ -25,8 +20,8 @@ import com.kuaima.app.common.Result;
 @Tag(name = "后台-文件上传", description = "图片文件上传")
 public class FileUploadController {
 
-    @Value("${kuaima.upload.dir:./uploads/}")
-    private String uploadDir;
+    @Autowired
+    private OssStorageService ossStorageService;
 
     /** 上传图片：POST /admin/upload，form-data: file */
     @Operation(summary = "上传图片", description = "form-data 字段 file；仅支持 image/* 类型，单文件不超过 2MB；按日期分目录存储，文件名随机生成；返回可访问 url 与 fileName")
@@ -47,35 +42,11 @@ public class FileUploadController {
             return Result.error("图片大小不能超过 2MB");
         }
 
-        try {
-            // 按日期分目录存储
-            String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-            File dir = new File(uploadDir + datePath);
-            if (!dir.exists() && !dir.mkdirs()) {
-                return Result.error("创建上传目录失败");
-            }
-
-            // 生成唯一文件名
-            String originalName = file.getOriginalFilename();
-            String ext = "";
-            if (originalName != null && originalName.contains(".")) {
-                ext = originalName.substring(originalName.lastIndexOf("."));
-            }
-            String fileName = UUID.randomUUID().toString().replace("-", "") + ext;
-
-            // 保存文件
-            File dest = new File(dir, fileName);
-            file.transferTo(dest);
-
-            // 返回可访问的 URL
-            String url = "/uploads/" + datePath + "/" + fileName;
-            Map<String, String> data = new HashMap<>();
-            data.put("url", url);
-            data.put("fileName", fileName);
-            return Result.success(data);
-
-        } catch (IOException e) {
-            return Result.error("文件上传失败：" + e.getMessage());
+        String originalName = file.getOriginalFilename();
+        String ext = "";
+        if (originalName != null && originalName.contains(".")) {
+            ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase();
         }
+        return Result.success(ossStorageService.upload(file, "admin", ext));
     }
 }

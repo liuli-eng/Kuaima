@@ -23,6 +23,7 @@
         </view>
         <button
           class="apply"
+          :class="{ 'apply-disabled': job.applied }"
           :disabled="job.applied"
           @click.stop="$emit('apply', job)"
         >
@@ -271,7 +272,7 @@ const tags = computed(() => {
   border: 0;
 }
 
-.apply[disabled] {
+.apply-disabled {
   background: #b7b7b7;
 }
 

@@ -3,6 +3,7 @@ package com.kuaima.app.controller.learn;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 
@@ -14,6 +15,15 @@ import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.security.model.LoginUser;
 
 class WorkerClassroomControllerTests {
+    @Test
+    void overviewDoesNotRequireAdministratorAuthentication() {
+        WorkerClassroomService service = mock(WorkerClassroomService.class);
+        when(service.overview()).thenReturn(Map.of("simulateVideos", java.util.List.of()));
+        WorkerClassroomController controller = new WorkerClassroomController(service);
+
+        assertEquals(200, controller.overview().getCode());
+    }
+
     @Test
     void quizRequiresUserRole() {
         WorkerClassroomController controller = new WorkerClassroomController(mock(WorkerClassroomService.class));

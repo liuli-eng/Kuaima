@@ -1576,6 +1576,10 @@ export function listSocialGroups() {
   return request({ url: "/social-groups" });
 }
 
+export function createSocialGroup(data) {
+  return request({ url: "/social-groups", method: "POST", data });
+}
+
 export function listBossContracts(bossId) {
   return request({ url: `/boss/contracts?${query({ bossId })}` });
 }

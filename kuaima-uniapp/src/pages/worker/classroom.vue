@@ -232,11 +232,15 @@ function openTask(task) {
   if (task.key === "exam" && quizQuestions.value.length) {
     return uni.navigateTo({ url: "/pages/worker/quiz" });
   }
+  // 模拟接单是独立的流程训练页，不是普通课程详情页。
+  // 原型对应 course-video.html?type=simulate，正式端使用 uni-app 路由映射。
+  if (task.key === "simulate") {
+    return uni.navigateTo({ url: "/pages/worker/course-video?type=simulate" });
+  }
   if (!task.course?.id) {
     uni.showToast({ title: "后台暂未发布对应内容", icon: "none" });
     return;
   }
-  if (task.key === "simulate") return openCourse(task.course);
   uni.navigateTo({ url: `/pages/worker/quiz?courseId=${task.course.id}` });
 }
 

@@ -16,6 +16,8 @@ public interface CreditFlowRepository extends JpaRepository<CreditFlow, Long> {
 
     boolean existsByIdempotencyKey(String idempotencyKey);
 
+    CreditFlow findTopByBizNoStartingWithOrderByBizNoDesc(String prefix);
+
     Page<CreditFlow> findByUserIdAndScoreTypeOrderByTimestampDesc(Long userId, String scoreType, Pageable pageable);
 
     List<CreditFlow> findByUserIdAndScoreTypeOrderByTimestampDesc(Long userId, String scoreType);

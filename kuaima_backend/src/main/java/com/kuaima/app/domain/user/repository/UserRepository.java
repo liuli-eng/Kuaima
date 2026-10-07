@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.user.repository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import java.time.LocalDate;
 
@@ -19,6 +20,39 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
 
     Optional<User> findByOpenid(String openid);
+
+    Optional<User> findByWorkerCode(String workerCode);
+
+    Optional<User> findByBossCode(String bossCode);
+
+    /** 用户快照与最近信用流水一次查询返回，减少公网数据库串行往返。 */
+    @Query(value = """
+            select u.id as userId,
+                   case when upper(coalesce(u.enterprise_status, '')) = 'APPROVED'
+                              or (upper(coalesce(u.cert_type, '')) = 'ENTERPRISE' and u.cert_status = '已通过')
+                        then u.boss_code else u.worker_code end as businessId,
+                   coalesce(u.credit_score, 0) as creditScore,
+                   coalesce(u.star_score, 0) as starScore,
+                   case when upper(coalesce(u.enterprise_status, '')) = 'APPROVED'
+                              or (upper(coalesce(u.cert_type, '')) = 'ENTERPRISE' and u.cert_status = '已通过')
+                        then 'BOSS_CREDIT' else 'WORKER_STAR' end as scoreType,
+                   f.id as flowId, f.biz_no as flowBizNo, f.delta as delta, f.before_score as beforeScore,
+                   f.after_score as afterScore, f.rule_code as ruleCode, f.biz_type as bizType,
+                   f.reason as reason, f.`timestamp` as flowTimestamp
+            from sys_user u
+            left join credit_flow f
+              on f.user_id = u.id
+             and f.score_type = case
+                   when upper(coalesce(u.enterprise_status, '')) = 'APPROVED'
+                        or (upper(coalesce(u.cert_type, '')) = 'ENTERPRISE' and u.cert_status = '已通过')
+                   then 'BOSS_CREDIT' else 'WORKER_STAR' end
+            where u.worker_code = upper(:identifier)
+               or u.boss_code = upper(:identifier)
+               or u.id = case when :identifier regexp '^[0-9]+$' then cast(:identifier as unsigned) else null end
+            order by f.`timestamp` desc, f.id desc
+            limit 50
+            """, nativeQuery = true)
+    List<AdminCreditDetailRow> findAdminCreditDetail(@Param("identifier") String identifier);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.id=:id")
@@ -165,4 +199,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
                             @Param("industry") String industry,
                             @Param("keyword") String keyword,
                             Pageable pageable);
+
+    /** 在指定老板集合内继续按账号状态、认证状态和关键词分页。 */
+    @Query("""
+            select u from User u
+            where (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED'
+                   or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
+              and u.id in :ids
+              and (:status is null or u.status = :status)
+              and (:enterpriseStatus is null or u.enterpriseStatus = :enterpriseStatus)
+              and ((:keyword is null) or (u.companyCode like %:keyword%) or (u.companyName like %:keyword%) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%))
+            """)
+    Page<User> searchBossesByIds(@Param("ids") Collection<Long> ids,
+                                 @Param("status") String status,
+                                 @Param("enterpriseStatus") String enterpriseStatus,
+                                 @Param("keyword") String keyword,
+                                 Pageable pageable);
 }

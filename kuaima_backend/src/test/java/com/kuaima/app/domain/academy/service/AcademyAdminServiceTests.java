@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import com.kuaima.app.domain.academy.model.AcademyModels.SimulateVideoRequest;
 import com.kuaima.app.domain.academy.repository.AcademyLessonRepository;
 import com.kuaima.app.domain.academy.repository.AcademyQuizRepository;
 import com.kuaima.app.domain.academy.repository.AcademySimulateVideoRepository;
+import com.kuaima.app.common.service.OssStorageService;
 
 class AcademyAdminServiceTests {
     @TempDir
@@ -35,7 +38,7 @@ class AcademyAdminServiceTests {
         var quizzes = mock(AcademyQuizRepository.class);
         var lessons = mock(AcademyLessonRepository.class);
         when(quizzes.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        var service = new AcademyAdminService(videos, quizzes, lessons, uploadDir.toString());
+        var service = new AcademyAdminService(videos, quizzes, lessons, mock(OssStorageService.class));
 
         var result = service.createQuiz(new QuizRequest(null, "MULTI", 15, "题干",
                 List.of("A", "B", "C"), List.of(2, 0), 3));
@@ -50,7 +53,7 @@ class AcademyAdminServiceTests {
         var quizzes = mock(AcademyQuizRepository.class);
         when(quizzes.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         var service = new AcademyAdminService(mock(AcademySimulateVideoRepository.class),
-                quizzes, mock(AcademyLessonRepository.class), uploadDir.toString());
+                quizzes, mock(AcademyLessonRepository.class), mock(OssStorageService.class));
 
         assertThrows(IllegalArgumentException.class, () -> service.createQuiz(
                 new QuizRequest(null, "single", 10, "题干", List.of("A", "B"), List.of(0, 1), 0)));
@@ -61,7 +64,7 @@ class AcademyAdminServiceTests {
         var lessons = mock(AcademyLessonRepository.class);
         when(lessons.findByLessonKey("unknown")).thenReturn(Optional.empty());
         var service = new AcademyAdminService(mock(AcademySimulateVideoRepository.class),
-                mock(AcademyQuizRepository.class), lessons, uploadDir.toString());
+                mock(AcademyQuizRepository.class), lessons, mock(OssStorageService.class));
 
         assertThrows(jakarta.persistence.EntityNotFoundException.class, () ->
                 service.uploadLessonVideo("unknown", new LessonVideoRequest("标题", "/uploads/a.mp4", 10, 100L, "mp4")));
@@ -77,7 +80,9 @@ class AcademyAdminServiceTests {
         lesson.setDescription("筛选岗位");
         when(lessons.findByLessonKey("find")).thenReturn(Optional.of(lesson));
         when(lessons.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        var service = new AcademyAdminService(videos, mock(AcademyQuizRepository.class), lessons, uploadDir.toString());
+        var storage = mock(OssStorageService.class);
+        when(storage.upload(any(), any(), any())).thenReturn(Map.of("url", "https://example.com/demo.mp4"));
+        var service = new AcademyAdminService(videos, mock(AcademyQuizRepository.class), lessons, storage);
         byte[] mp4 = mp4WithDuration(100, 10);
 
         var upload = service.upload(new MockMultipartFile("file", "demo.mp4", "video/mp4", mp4), "测试视频", "lesson");
@@ -95,8 +100,9 @@ class AcademyAdminServiceTests {
         var videos = mock(AcademySimulateVideoRepository.class);
         var lessons = mock(AcademyLessonRepository.class);
         when(lessons.findAllByOrderByIdAsc()).thenReturn(List.of());
-        var service = new AcademyAdminService(videos, mock(AcademyQuizRepository.class),
-                lessons, uploadDir.toString());
+        var storage = mock(OssStorageService.class);
+        when(storage.upload(any(), any(), any())).thenReturn(Map.of("url", "https://example.com/demo.webm"));
+        var service = new AcademyAdminService(videos, mock(AcademyQuizRepository.class), lessons, storage);
         byte[] webm = new byte[]{
                 0x1f, 0x43, (byte) 0xb6, 0x75, 0x01, 0x00, 0x00,
                 0x2a, (byte) 0xd7, (byte) 0xb1, (byte) 0x84, 0x00, 0x0f, 0x42, 0x40,
@@ -113,7 +119,7 @@ class AcademyAdminServiceTests {
     @Test
     void simulateVideoShouldRejectUnsupportedExt() {
         var service = new AcademyAdminService(mock(AcademySimulateVideoRepository.class),
-                mock(AcademyQuizRepository.class), mock(AcademyLessonRepository.class), uploadDir.toString());
+                mock(AcademyQuizRepository.class), mock(AcademyLessonRepository.class), mock(OssStorageService.class));
 
         assertThrows(IllegalArgumentException.class, () -> service.createSimulateVideo(
                 new SimulateVideoRequest(null, "标题", "/uploads/a.avi", 1, 1L, "avi", 1, true, 0L)));
@@ -124,15 +130,33 @@ class AcademyAdminServiceTests {
         var videos = mock(AcademySimulateVideoRepository.class);
         AcademySimulateVideo video = new AcademySimulateVideo();
         video.setId(1L);
-        video.setEnabled(true);
+        video.setEnabled(false);
+        when(videos.setEnabledForActiveAdmin(1L, 9L, false)).thenReturn(1);
         when(videos.findById(1L)).thenReturn(Optional.of(video));
-        when(videos.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         var service = new AcademyAdminService(videos, mock(AcademyQuizRepository.class),
-                mock(AcademyLessonRepository.class), uploadDir.toString());
+                mock(AcademyLessonRepository.class), mock(OssStorageService.class));
 
-        var result = service.toggleSimulateVideo(1L, false);
+        var result = service.toggleSimulateVideo(1L, false, 9L);
 
         assertEquals(false, result.get("enabled"));
+        verify(videos).setEnabledForActiveAdmin(1L, 9L, false);
+    }
+
+    @Test
+    void toggleWithoutTargetStateShouldUseAtomicDatabaseToggle() {
+        var videos = mock(AcademySimulateVideoRepository.class);
+        AcademySimulateVideo video = new AcademySimulateVideo();
+        video.setId(2L);
+        video.setEnabled(true);
+        when(videos.toggleForActiveAdmin(2L, 9L)).thenReturn(1);
+        when(videos.findById(2L)).thenReturn(Optional.of(video));
+        var service = new AcademyAdminService(videos, mock(AcademyQuizRepository.class),
+                mock(AcademyLessonRepository.class), mock(OssStorageService.class));
+
+        var result = service.toggleSimulateVideo(2L, null, 9L);
+
+        assertEquals(true, result.get("enabled"));
+        verify(videos).toggleForActiveAdmin(2L, 9L);
     }
 
     private byte[] mp4WithDuration(long duration, int timescale) {
