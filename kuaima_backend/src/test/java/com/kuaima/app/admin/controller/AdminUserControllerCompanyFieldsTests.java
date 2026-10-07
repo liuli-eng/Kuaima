@@ -23,11 +23,13 @@ import com.kuaima.app.domain.wallet.entity.Wallet;
 import com.kuaima.app.domain.wallet.repository.WalletRespository;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageImpl;
 import com.kuaima.app.common.ForbiddenBusinessException;
+import org.springframework.security.core.Authentication;
 
 class AdminUserControllerCompanyFieldsTests {
     @Test
@@ -105,6 +107,7 @@ class AdminUserControllerCompanyFieldsTests {
         RewardAccountRepository rewards = mock(RewardAccountRepository.class);
         RewardFlowRepository rewardFlows = mock(RewardFlowRepository.class);
         User boss = new User(); boss.setId(4L); boss.setRole("BOSS");
+        boss.setEnterpriseStatus("APPROVED");
         Wallet wallet = new Wallet(); wallet.setUserId(4L); wallet.setRole("BOSS"); wallet.setBalance(100L);
         RewardAccount reward = new RewardAccount(); reward.setUserId(4L); reward.setRole("BOSS"); reward.setBalance(25L);
         when(users.findById(4L)).thenReturn(Optional.of(boss));
@@ -127,6 +130,68 @@ class AdminUserControllerCompanyFieldsTests {
         verify(wallets).findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS");
         verify(points).findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS");
         verify(rewards).findFirstByUserIdAndRoleOrderByIdDesc(4L, "BOSS");
+    }
+
+    @Test
+    void userDetailUsesEnterpriseIdentityInsteadOfStoredRole() {
+        UserRepository users = mock(UserRepository.class);
+        BaseOrderItemRespository items = mock(BaseOrderItemRespository.class);
+        BossOrderRespository orders = mock(BossOrderRespository.class);
+        WalletRespository wallets = mock(WalletRespository.class);
+        PointsAccountRepository points = mock(PointsAccountRepository.class);
+        RewardAccountRepository rewards = mock(RewardAccountRepository.class);
+        PointsFlowRepository pointFlows = mock(PointsFlowRepository.class);
+        RewardFlowRepository rewardFlows = mock(RewardFlowRepository.class);
+        UserCouponRepository userCoupons = mock(UserCouponRepository.class);
+        CouponRepository coupons = mock(CouponRepository.class);
+        User approvedButStoredAsWorker = new User();
+        approvedButStoredAsWorker.setId(7L);
+        approvedButStoredAsWorker.setRole("USER");
+        approvedButStoredAsWorker.setEnterpriseStatus("APPROVED");
+        when(users.findById(7L)).thenReturn(Optional.of(approvedButStoredAsWorker));
+        when(orders.countByCreateByIds(Set.of(7L))).thenReturn(List.of());
+        when(wallets.findFirstByUserIdAndRoleOrderByIdDesc(7L, "BOSS")).thenReturn(Optional.empty());
+        when(points.findFirstByUserIdAndRoleOrderByIdDesc(7L, "BOSS")).thenReturn(Optional.empty());
+        when(rewards.findFirstByUserIdAndRoleOrderByIdDesc(7L, "BOSS")).thenReturn(Optional.empty());
+        when(pointFlows.findByUserIdAndRoleOrderByTimestampDesc(any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+        when(rewardFlows.findByUserIdOrderByCreatedAtDescIdDesc(any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+        when(rewardFlows.sumByUserIdAndType(any(), any())).thenReturn(java.math.BigDecimal.ZERO);
+        when(items.countCompletedByUserIds(Set.of(7L))).thenReturn(List.of());
+
+        AdminUserController controller = new AdminUserController(users, items, orders, wallets, points, rewards,
+                pointFlows, rewardFlows, userCoupons, coupons);
+
+        controller.get(7L);
+
+        verify(wallets).findFirstByUserIdAndRoleOrderByIdDesc(7L, "BOSS");
+        verify(points).findFirstByUserIdAndRoleOrderByIdDesc(7L, "BOSS");
+        verify(rewards).findFirstByUserIdAndRoleOrderByIdDesc(7L, "BOSS");
+    }
+
+    @Test
+    void workerOverviewUsesUnapprovedEnterpriseIdentityEvenWhenStoredAsBoss() {
+        UserRepository users = mock(UserRepository.class);
+        BaseOrderItemRespository items = mock(BaseOrderItemRespository.class);
+        RewardAccountRepository rewards = mock(RewardAccountRepository.class);
+        PointsAccountRepository points = mock(PointsAccountRepository.class);
+        User storedAsBossButUnapproved = new User();
+        storedAsBossButUnapproved.setId(8L);
+        storedAsBossButUnapproved.setRole("BOSS");
+        storedAsBossButUnapproved.setEnterpriseStatus("UNVERIFIED");
+        when(users.findById(8L)).thenReturn(Optional.of(storedAsBossButUnapproved));
+        when(items.findByUserId(8L)).thenReturn(List.of());
+        when(rewards.findFirstByUserIdAndRoleOrderByIdDesc(8L, "USER")).thenReturn(Optional.empty());
+        when(points.findFirstByUserIdAndRoleOrderByIdDesc(8L, "USER")).thenReturn(Optional.empty());
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(
+                new com.kuaima.app.security.model.LoginUser(1L, "admin", "ADMIN_USER"));
+        AdminUserController controller = new AdminUserController(users, items, mock(BossOrderRespository.class),
+                mock(WalletRespository.class), points, rewards, mock(PointsFlowRepository.class),
+                mock(RewardFlowRepository.class), mock(UserCouponRepository.class), mock(CouponRepository.class));
+
+        assertDoesNotThrow(() -> controller.workerOverview(8L, authentication));
     }
 
     @Test

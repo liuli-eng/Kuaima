@@ -339,12 +339,22 @@ public class AdminJobController {
             if (u != null) {
                 m.put("username", u.getUsername());
                 m.put("nickname", u.getNickname());
+                m.put("avatar", u.getAvatar());
                 m.put("phone", u.getPhone());
+                m.put("idCard", maskIdCard(u.getIdCard()));
+                m.put("gender", u.getGender());
+                m.put("age", u.getAge());
                 m.put("certStatus", u.getCertStatus());
             }
             return m;
         }).collect(Collectors.toList());
         return Result.success(result);
+    }
+
+    private String maskIdCard(String value) {
+        if (value == null || value.isBlank()) return value;
+        if (value.length() <= 8) return value;
+        return value.substring(0, 4) + "********" + value.substring(value.length() - 4);
     }
 
     /** 管理员录用报名人员 */

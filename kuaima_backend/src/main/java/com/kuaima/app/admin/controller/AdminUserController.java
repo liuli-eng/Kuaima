@@ -348,7 +348,7 @@ public class AdminUserController {
         obj.remove("password");
         obj.put("companyCode", u.getCompanyCode());
         obj.put("companyName", u.getCompanyName());
-        if (UserRole.BOSS.equals(u.getRole())) {
+        if (UserRole.isBossIdentity(u)) {
             bossOrderRepository.countByCreateByIds(Set.of(id))
                     .forEach(row -> obj.put("jobsCount", (Long) row[1]));
             // 资产账户按业务身份隔离；不能按 userId 单独查询，否则历史上同一用户存在多角色账户时
@@ -384,7 +384,7 @@ public class AdminUserController {
         requireAdmin(authentication);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
-        if (!UserRole.USER.equals(user.getRole())) throw new ForbiddenBusinessException("目标用户不是零工账号");
+        if (!UserRole.isWorkerIdentity(user)) throw new ForbiddenBusinessException("目标用户不是零工账号");
         JSONObject result = new JSONObject();
         result.put("id", id); result.put("realName", text(user.getRealName())); result.put("nickname", text(user.getNickname()));
         result.put("username", text(user.getUsername())); result.put("phone", text(user.getPhone())); result.put("avatar", text(user.getAvatar()));
@@ -501,7 +501,7 @@ public class AdminUserController {
         item.put("id", row.getId());
         String status = row.getStatus();
         if ("UNUSED".equals(status) && row.getExpireAt() != null
-                && row.getExpireAt().toLocalDate().isBefore(LocalDate.now())) status = "EXPIRED";
+                && row.getExpireAt().isBefore(LocalDate.now())) status = "EXPIRED";
         item.put("status", status); item.put("expireAt", row.getExpireAt()); item.put("usedAt", row.getUsedAt());
         item.put("useOrderId", row.getUseOrderId()); item.put("title", row.getTitle()); item.put("type", row.getType());
         item.put("amount", row.getAmount()); item.put("minSpend", row.getMinSpend());
@@ -522,7 +522,7 @@ public class AdminUserController {
 
     private void requireWorker(Long id) {
         User user = userRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
-        if (!UserRole.USER.equals(user.getRole())) throw new ForbiddenBusinessException("目标用户不是零工账号");
+        if (!UserRole.isWorkerIdentity(user)) throw new ForbiddenBusinessException("目标用户不是零工账号");
     }
 
     private void requireAdmin(Authentication authentication) {

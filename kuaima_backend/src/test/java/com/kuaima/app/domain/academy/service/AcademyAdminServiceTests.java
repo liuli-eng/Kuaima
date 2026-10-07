@@ -3,6 +3,7 @@ package com.kuaima.app.domain.academy.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
@@ -27,6 +28,7 @@ import com.kuaima.app.domain.academy.repository.AcademyLessonRepository;
 import com.kuaima.app.domain.academy.repository.AcademyQuizRepository;
 import com.kuaima.app.domain.academy.repository.AcademySimulateVideoRepository;
 import com.kuaima.app.common.service.OssStorageService;
+import com.kuaima.app.common.service.FfmpegVideoTranscoder;
 
 class AcademyAdminServiceTests {
     @TempDir
@@ -81,7 +83,8 @@ class AcademyAdminServiceTests {
         when(lessons.findByLessonKey("find")).thenReturn(Optional.of(lesson));
         when(lessons.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         var storage = mock(OssStorageService.class);
-        when(storage.upload(any(), any(), any())).thenReturn(Map.of("url", "https://example.com/demo.mp4"));
+        when(storage.upload(any(Path.class), any(), any(), any()))
+                .thenReturn(Map.of("url", "https://example.com/demo.mp4"));
         var service = new AcademyAdminService(videos, mock(AcademyQuizRepository.class), lessons, storage);
         byte[] mp4 = mp4WithDuration(100, 10);
 
@@ -101,7 +104,8 @@ class AcademyAdminServiceTests {
         var lessons = mock(AcademyLessonRepository.class);
         when(lessons.findAllByOrderByIdAsc()).thenReturn(List.of());
         var storage = mock(OssStorageService.class);
-        when(storage.upload(any(), any(), any())).thenReturn(Map.of("url", "https://example.com/demo.webm"));
+        when(storage.upload(any(Path.class), any(), any(), any()))
+                .thenReturn(Map.of("url", "https://example.com/demo.webm"));
         var service = new AcademyAdminService(videos, mock(AcademyQuizRepository.class), lessons, storage);
         byte[] webm = new byte[]{
                 0x1f, 0x43, (byte) 0xb6, 0x75, 0x01, 0x00, 0x00,
@@ -114,6 +118,28 @@ class AcademyAdminServiceTests {
 
         assertEquals("webm", upload.ext());
         assertEquals(10, upload.duration());
+    }
+
+    @Test
+    void uploadHevcShouldTranscodeToH264Mp4BeforeStorage() throws Exception {
+        var storage = mock(OssStorageService.class);
+        var transcoder = mock(FfmpegVideoTranscoder.class);
+        Path converted = uploadDir.resolve("converted.mp4");
+        Files.write(converted, mp4WithDuration(100, 10));
+        when(transcoder.transcodeToH264(any(Path.class))).thenReturn(converted);
+        when(storage.upload(eq(converted), eq("video/mp4"), eq("academy/simulate"), eq(".mp4")))
+                .thenReturn(Map.of("url", "https://example.com/converted.mp4"));
+        var service = new AcademyAdminService(mock(AcademySimulateVideoRepository.class),
+                mock(AcademyQuizRepository.class), mock(AcademyLessonRepository.class), storage, transcoder);
+        byte[] hevc = concat(mp4WithDuration(100, 10), new byte[]{'h', 'v', 'c', '1'});
+
+        var upload = service.upload(new MockMultipartFile("file", "hevc.mov", "video/quicktime", hevc),
+                "HEVC视频", "simulate");
+
+        assertEquals("mp4", upload.ext());
+        assertEquals("https://example.com/converted.mp4", upload.url());
+        verify(transcoder).transcodeToH264(any(Path.class));
+        verify(storage).upload(eq(converted), eq("video/mp4"), eq("academy/simulate"), eq(".mp4"));
     }
 
     @Test
@@ -177,6 +203,13 @@ class AcademyAdminServiceTests {
         putUnsignedInt(result, 0, result.length);
         System.arraycopy(type.getBytes(), 0, result, 4, 4);
         System.arraycopy(body, 0, result, 8, body.length);
+        return result;
+    }
+
+    private byte[] concat(byte[] first, byte[] second) {
+        byte[] result = new byte[first.length + second.length];
+        System.arraycopy(first, 0, result, 0, first.length);
+        System.arraycopy(second, 0, result, first.length, second.length);
         return result;
     }
 

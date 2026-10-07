@@ -29,6 +29,7 @@ import com.kuaima.app.domain.academy.repository.AcademyLessonRepository;
 import com.kuaima.app.domain.academy.repository.AcademyQuizRepository;
 import com.kuaima.app.domain.academy.repository.AcademySimulateVideoRepository;
 import com.kuaima.app.common.service.OssStorageService;
+import com.kuaima.app.common.service.FfmpegVideoTranscoder;
 import com.kuaima.app.common.ForbiddenBusinessException;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -44,15 +45,27 @@ public class AcademyAdminService {
     private final AcademyQuizRepository quizzes;
     private final AcademyLessonRepository lessons;
     private final OssStorageService ossStorageService;
+    private final FfmpegVideoTranscoder transcoder;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AcademyAdminService(AcademySimulateVideoRepository videos,
                                AcademyQuizRepository quizzes,
                                AcademyLessonRepository lessons,
-                               OssStorageService ossStorageService) {
+                               OssStorageService ossStorageService,
+                               FfmpegVideoTranscoder transcoder) {
         this.videos = videos;
         this.quizzes = quizzes;
         this.lessons = lessons;
         this.ossStorageService = ossStorageService;
+        this.transcoder = transcoder;
+    }
+
+    /** 保留已有测试和调用方构造方式。 */
+    public AcademyAdminService(AcademySimulateVideoRepository videos,
+                               AcademyQuizRepository quizzes,
+                               AcademyLessonRepository lessons,
+                               OssStorageService ossStorageService) {
+        this(videos, quizzes, lessons, ossStorageService, null);
     }
 
     @Transactional
@@ -178,15 +191,30 @@ public class AcademyAdminService {
             try (var input = file.getInputStream()) {
                 Files.copy(input, temporaryFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
-            if (("mp4".equals(ext) || "mov".equals(ext))
-                    && containsCodec(temporaryFile.toFile(), "hvc1", "hev1")) {
-                throw new IllegalArgumentException("微信小程序暂不支持该 H.265/HEVC 视频，请转为 H.264 后重新上传");
+            boolean hevc = ("mp4".equals(ext) || "mov".equals(ext))
+                    && containsCodec(temporaryFile.toFile(), "hvc1", "hev1");
+            Path uploadFile = temporaryFile;
+            String uploadExt = ext;
+            String contentType = file.getContentType();
+            Path transcodedFile = null;
+            try {
+                if (hevc) {
+                    if (transcoder == null) throw new IllegalStateException("服务器未配置视频转码能力");
+                    transcodedFile = transcoder.transcodeToH264(temporaryFile);
+                    uploadFile = transcodedFile;
+                    uploadExt = "mp4";
+                    contentType = "video/mp4";
+                }
+                int duration = videoDuration(uploadFile.toFile(), uploadExt);
+                Map<String, String> stored = ossStorageService.upload(uploadFile, contentType,
+                        "academy/" + type, "." + uploadExt);
+                long uploadSize = Files.size(uploadFile);
+                // 上传接口返回稳定对象地址供数据库持久化。临时签名只在列表/播放接口响应时生成，
+                // 避免把带 Expires 的 URL 保存后因过期导致小程序无法在线播放。
+                return new UploadResponse(stored.get("url"), original, uploadSize, uploadExt, duration);
+            } finally {
+                if (transcodedFile != null) Files.deleteIfExists(transcodedFile);
             }
-            int duration = videoDuration(temporaryFile.toFile(), ext);
-            Map<String, String> stored = ossStorageService.upload(file, "academy/" + type, "." + ext);
-            // 上传接口返回稳定对象地址供数据库持久化。临时签名只在列表/播放接口响应时生成，
-            // 避免把带 Expires 的 URL 保存后因过期导致小程序无法在线播放。
-            return new UploadResponse(stored.get("url"), original, file.getSize(), ext, duration);
         } catch (IOException e) {
             throw new IllegalStateException("视频上传失败: " + e.getMessage(), e);
         } finally {

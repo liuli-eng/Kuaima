@@ -107,7 +107,19 @@ public class AdminCreditController {
     }
 
     @GetMapping("/{userId}")
-    public Result<Map<String, Object>> detail(@PathVariable String userId, Authentication authentication) {
+    public Result<Map<String, Object>> detail(@PathVariable String userId,
+                                              @RequestParam(defaultValue = "0") int page,
+                                              @RequestParam(defaultValue = "10") int size,
+                                              Authentication authentication) {
+        return detailPage(userId, page, size, authentication);
+    }
+
+    /** 兼容已有内部调用：默认返回第 1 页、每页 10 条。 */
+    public Result<Map<String, Object>> detail(String userId, Authentication authentication) {
+        return detailPage(userId, 0, 10, authentication);
+    }
+
+    private Result<Map<String, Object>> detailPage(String userId, int page, int size, Authentication authentication) {
         admin(authentication, false);
         List<AdminCreditDetailRow> rows = users.findAdminCreditDetail(userId.trim());
         if (rows.isEmpty()) throw new EntityNotFoundException("用户不存在: " + userId);
@@ -118,23 +130,43 @@ public class AdminCreditController {
         data.put("creditScore", value(first.getCreditScore()));
         data.put("starScore", value(first.getStarScore()));
         data.put("scoreType", first.getScoreType());
-        List<Map<String, Object>> activeFlows = rows.stream()
+        List<Map<String, Object>> allFlowViews = rows.stream()
                 .filter(row -> row.getFlowId() != null)
                 .map(this::flowView)
                 .toList();
-        data.put("creditFlows", activeFlows);
-        data.put("starFlows", activeFlows);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Page<CreditFlow> flowPage = flows == null ? null
+                : flows.findByUserIdAndScoreTypeOrderByTimestampDesc(first.getUserId(), first.getScoreType(),
+                        PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "timestamp", "id")));
+        List<Map<String, Object>> currentFlows;
+        long totalFlows;
+        if (flowPage == null) {
+            int from = Math.min(safePage * safeSize, allFlowViews.size());
+            int to = Math.min(from + safeSize, allFlowViews.size());
+            currentFlows = allFlowViews.subList(from, to);
+            totalFlows = allFlowViews.size();
+        } else {
+            currentFlows = flowPage.stream().map(this::flowView).toList();
+            totalFlows = flowPage.getTotalElements();
+        }
+        data.put("creditFlows", currentFlows);
+        data.put("starFlows", currentFlows);
+        data.put("page", safePage);
+        data.put("size", safeSize);
+        data.put("total", totalFlows);
+        data.put("totalPages", totalFlows == 0 ? 0 : (totalFlows + safeSize - 1) / safeSize);
         List<CreditFlow> allFlows = flows == null ? List.of()
                 : flows.findByUserIdAndScoreTypeOrderByTimestampDesc(first.getUserId(), first.getScoreType());
         int addTotal = allFlows.isEmpty()
-                ? activeFlows.stream().mapToInt(flow -> numberOrZero(flow.get("delta"))).filter(delta -> delta > 0).sum()
+                ? allFlowViews.stream().mapToInt(flow -> numberOrZero(flow.get("delta"))).filter(delta -> delta > 0).sum()
                 : allFlows.stream().mapToInt(flow -> value(flow.getDelta())).filter(delta -> delta > 0).sum();
         int subTotal = allFlows.isEmpty()
-                ? activeFlows.stream().mapToInt(flow -> numberOrZero(flow.get("delta"))).filter(delta -> delta < 0).map(Math::abs).sum()
+                ? allFlowViews.stream().mapToInt(flow -> numberOrZero(flow.get("delta"))).filter(delta -> delta < 0).map(Math::abs).sum()
                 : allFlows.stream().mapToInt(flow -> value(flow.getDelta())).filter(delta -> delta < 0).map(Math::abs).sum();
         data.put("addTotal", addTotal);
         data.put("subTotal", subTotal);
-        data.put("flowLimit", 50);
+        data.put("flowLimit", 10);
         return Result.success(data);
     }
 
@@ -155,6 +187,27 @@ public class AdminCreditController {
         flow.put("reason", row.getReason());
         flow.put("timestamp", row.getFlowTimestamp());
         return flow;
+    }
+
+    private Map<String, Object> flowView(CreditFlow row) {
+        Map<String, Object> flow = new LinkedHashMap<>();
+        String businessId = row.getBizNo() == null ? legacyFlowNo(row) : row.getBizNo();
+        flow.put("id", businessId);
+        flow.put("businessId", businessId);
+        flow.put("delta", row.getDelta());
+        flow.put("beforeScore", row.getBeforeScore());
+        flow.put("afterScore", row.getAfterScore());
+        flow.put("ruleCode", row.getRuleCode());
+        flow.put("bizType", row.getBizType());
+        flow.put("reason", row.getReason());
+        flow.put("timestamp", row.getTimestamp());
+        return flow;
+    }
+
+    private String legacyFlowNo(CreditFlow row) {
+        String date = row.getTimestamp() == null ? "00000000"
+                : row.getTimestamp().toLocalDateTime().toLocalDate().format(DateTimeFormatter.BASIC_ISO_DATE);
+        return "XF" + date + String.format("%03d", Math.max(0, row.getId() == null ? 0 : row.getId()));
     }
 
     private String legacyFlowNo(AdminCreditDetailRow row) {
@@ -180,7 +233,7 @@ public class AdminCreditController {
         boolean adjusted = scores.adjust(internalUserId, type, delta, ruleCode, "ADMIN",
                 "ADMIN:" + operator.id() + ":" + internalUserId + ":" + bizId + ":" + UUID.randomUUID(), reason);
         if (!adjusted) throw new IllegalStateException("信用分调整未生效");
-        return detail(userId, authentication);
+        return detailPage(userId, 0, 10, authentication);
     }
 
     private String scoreType(User user) {

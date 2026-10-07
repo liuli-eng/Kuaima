@@ -15,6 +15,8 @@ import java.net.URLEncoder;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -61,6 +63,35 @@ public class OssStorageService {
         } finally {
             client.shutdown();
         }
+    }
+
+    public Map<String, String> upload(Path file, String contentType, String folder, String extension) {
+        if (!StringUtils.hasText(endpoint) || !StringUtils.hasText(bucketName)
+                || !StringUtils.hasText(accessKeyId) || !StringUtils.hasText(accessKeySecret)) {
+            throw new IllegalStateException("OSS 配置不完整，请检查 aliyun.oss 配置或 ALIYUN_OSS_* 环境变量");
+        }
+        String suffix = extension == null ? "" : extension.toLowerCase();
+        String objectKey = folder + "/" + LocalDate.now().format(DATE_FORMAT) + "/"
+                + UUID.randomUUID().toString().replace("-", "") + suffix;
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentType(contentType);
+        try { metadata.setContentLength(Files.size(file)); }
+        catch (IOException e) { throw new IllegalStateException("读取上传文件失败", e); }
+        OSS client = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
+        try (var input = Files.newInputStream(file)) {
+            client.putObject(bucketName, objectKey, input, metadata);
+            Map<String, String> result = new LinkedHashMap<>();
+            result.put("objectKey", objectKey); result.put("url", objectUrl(objectKey));
+            result.put("fileName", objectKey.substring(objectKey.lastIndexOf('/') + 1));
+            return result;
+        } catch (OSSException e) {
+            if ("AccessDenied".equalsIgnoreCase(e.getErrorCode())) {
+                throw new ForbiddenBusinessException("OSS 上传权限不足，请为当前 RAM 用户授予目标目录的 oss:PutObject 权限");
+            }
+            throw new IllegalStateException("上传 OSS 失败，请检查存储配置和服务状态");
+        } catch (IOException e) {
+            throw new IllegalStateException("上传 OSS 失败", e);
+        } finally { client.shutdown(); }
     }
 
     private String objectUrl(String objectKey) {

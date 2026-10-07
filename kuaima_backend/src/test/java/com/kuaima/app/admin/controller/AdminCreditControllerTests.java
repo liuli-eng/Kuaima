@@ -87,13 +87,45 @@ class AdminCreditControllerTests {
         var detail = controller.detail("g0010258", admin());
         assertEquals("G0010258", detail.getData().get("id"));
         assertEquals(7L, detail.getData().get("userId"));
-        assertEquals(50, detail.getData().get("flowLimit"));
+        assertEquals(10, detail.getData().get("flowLimit"));
         verify(users).findAdminCreditDetail("g0010258");
         var creditFlows = (java.util.List<?>) detail.getData().get("creditFlows");
         assertEquals("XF20260908004", ((java.util.Map<?, ?>) creditFlows.get(0)).get("id"));
 
         controller.adjust("G0010258", java.util.Map.of("scoreType", CreditScoreService.WORKER_STAR, "delta", 2), admin());
         verify(scores).adjust(eq(7L), eq(CreditScoreService.WORKER_STAR), eq(2), anyString(), eq("ADMIN"), anyString(), anyString());
+    }
+
+    @Test
+    void detailPaginatesCreditFlowsByTenAndKeepsTotalsAcrossPages() {
+        UserRepository users = mock(UserRepository.class);
+        CreditFlowRepository flows = mock(CreditFlowRepository.class);
+        User worker = user(8L, false); worker.setWorkerCode("G5892580");
+        List<AdminCreditDetailRow> detailRows = java.util.stream.IntStream.rangeClosed(1, 25).mapToObj(i -> {
+                    AdminCreditDetailRow row = mock(AdminCreditDetailRow.class);
+                    when(row.getUserId()).thenReturn(8L);
+                    when(row.getBusinessId()).thenReturn("G5892580");
+                    when(row.getScoreType()).thenReturn(CreditScoreService.WORKER_STAR);
+                    when(row.getFlowId()).thenReturn((long) i);
+                    when(row.getFlowBizNo()).thenReturn("XF202610070" + i);
+                    when(row.getDelta()).thenReturn(i % 2 == 0 ? -2 : 3);
+                    when(row.getAfterScore()).thenReturn(70);
+                    return row;
+                }).toList();
+        when(users.findAdminCreditDetail("G5892580")).thenReturn(detailRows);
+        when(flows.findByUserIdAndScoreTypeOrderByTimestampDesc(8L, CreditScoreService.WORKER_STAR))
+                .thenReturn(List.of());
+
+        var controller = new AdminCreditController(users, mock(CreditScoreService.class), flows);
+        var page = controller.detail("G5892580", 1, 10, admin());
+
+        assertEquals(10, ((List<?>) page.getData().get("creditFlows")).size());
+        assertEquals(25L, page.getData().get("total"));
+        assertEquals(1, page.getData().get("page"));
+        assertEquals(10, page.getData().get("size"));
+        assertEquals(3L, page.getData().get("totalPages"));
+        assertEquals(39, page.getData().get("addTotal"));
+        assertEquals(24, page.getData().get("subTotal"));
     }
 
     @Test

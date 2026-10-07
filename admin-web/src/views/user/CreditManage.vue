@@ -50,6 +50,7 @@
       <template #header><div class="dialog-title"><i class="fas fa-list"></i> 信用分明细 · <span>{{ current?.name || '' }}</span></div></template>
       <div class="detail-stats"><span>当前信用分：<b>{{ current?.score ?? 0 }}</b></span><span>累计加分：<b class="num-in">+{{ current?.addTotal ?? detailStats.add }}</b></span><span>累计扣分：<b class="num-out">-{{ current?.subTotal ?? detailStats.sub }}</b></span><span>明细记录：<em>{{ flows.length }} 条</em></span></div>
       <el-table :data="flows" size="small" class="detail-table"><el-table-column prop="id" label="明细ID" width="105"><template #default="{ row }"><span class="flow-id">{{ row.flowNo || row.no || row.id }}</span></template></el-table-column><el-table-column label="类型" width="75"><template #default="{ row }"><span :class="['flow-type', row.delta >= 0 ? 'in' : 'out']">{{ row.delta >= 0 ? '加分' : '减分' }}</span></template></el-table-column><el-table-column label="分值变动" width="90"><template #default="{ row }"><span :class="row.delta >= 0 ? 'num-in' : 'num-out'">{{ row.delta >= 0 ? '+' : '' }}{{ row.delta }}</span></template></el-table-column><el-table-column prop="afterScore" label="变动后" width="80" /><el-table-column prop="ruleCode" label="触发规则" width="115" /><el-table-column prop="timestamp" label="时间" width="145" /><el-table-column prop="reason" label="备注" min-width="150" /></el-table>
+      <el-pagination v-model:current-page="detailPage" :page-size="detailSize" :total="detailTotal" layout="prev, pager, next" background @current-change="loadDetailPage" />
     </el-dialog>
   </div>
 </template>
@@ -61,7 +62,7 @@ import { adjustCredit, getCreditDetail, listCreditUsers } from '@/api/credit'
 
 const rows = ref([]); const total = ref(0); const page = ref(1); const size = ref(10); const loading = ref(false)
 const filters = reactive({ keyword: '', role: '', level: '' })
-const adjustVisible = ref(false); const detailVisible = ref(false); const saving = ref(false); const current = ref(null); const flows = ref([])
+const adjustVisible = ref(false); const detailVisible = ref(false); const saving = ref(false); const current = ref(null); const flows = ref([]); const detailPage = ref(1); const detailSize = 10; const detailTotal = ref(0)
 const adjust = reactive({ direction: 'in', amount: 5, reason: '' })
 const afterScore = computed(() => Math.max(0, Math.min(100, Number(current.value?.score || 0) + (adjust.direction === 'in' ? 1 : -1) * Number(adjust.amount || 0))))
 const detailStats = computed(() => ({ add: flows.value.filter(f => f.delta > 0).reduce((n, f) => n + f.delta, 0), sub: flows.value.filter(f => f.delta < 0).reduce((n, f) => n + Math.abs(f.delta), 0) }))
@@ -79,7 +80,8 @@ function search () { page.value = 1; load() }
 function reset () { Object.assign(filters, { keyword: '', role: '', level: '' }); search() }
 function openAdjust (row) { current.value = row; Object.assign(adjust, { direction: 'in', amount: 5, reason: '' }); adjustVisible.value = true }
 async function submitAdjust () { if (!current.value || !adjust.amount) return; const reason = adjust.reason.trim(); if (!reason) { ElMessage.warning('请填写调整原因'); return } if (reason.length > 200) { ElMessage.warning('调整原因不能超过 200 字'); return } saving.value = true; try { await adjustCredit(current.value.id, { scoreType: current.value.scoreType, delta: adjust.direction === 'in' ? Math.abs(Number(adjust.amount)) : -Math.abs(Number(adjust.amount)), reason, ruleCode: 'ADMIN_MANUAL_ADJUST' }); ElMessage.success('信用分调整成功'); adjustVisible.value = false; await load() } catch (e) { ElMessage.error(e?.message || '信用分调整失败') } finally { saving.value = false } }
-async function openDetail (row) { current.value = row; try { const result = await getCreditDetail(row.id); const data = result.data || {}; flows.value = data.creditFlows || []; detailVisible.value = true } catch (e) { ElMessage.error('信用分明细加载失败') } }
+async function loadDetailPage () { if (!current.value) return; try { const result = await getCreditDetail(current.value.id, { page: detailPage.value - 1, size: detailSize }); const data = result.data || {}; flows.value = data.creditFlows || []; detailTotal.value = Number(data.total ?? result.total ?? flows.value.length) } catch (e) { flows.value = []; detailTotal.value = 0; ElMessage.error('信用分明细加载失败') } }
+async function openDetail (row) { current.value = row; detailPage.value = 1; detailTotal.value = 0; await loadDetailPage(); detailVisible.value = true }
 onMounted(load)
 </script>
 

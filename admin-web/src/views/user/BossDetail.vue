@@ -261,11 +261,10 @@ const couponTab = ref('available')
 const pointRecords = ref([])
 const rewardRecords = ref([])
 const creditRecords = ref([])
-const allCreditRecords = ref([])
 const couponRecords = ref([])
 const pointPagination = ref({ page: 1, size: 5, total: 0 })
 const rewardPagination = ref({ page: 1, size: 5, total: 0 })
-const creditPagination = ref({ page: 1, size: 5, total: 0 })
+const creditPagination = ref({ page: 1, size: 10, total: 0 })
 const couponPagination = ref({ page: 1, size: 5, total: 0 })
 const couponCounts = ref({ available: 0, history: 0 })
 
@@ -429,21 +428,19 @@ const loadCouponRecords = async () => {
 
 const loadCreditRecords = async () => {
   try {
-    if (!allCreditRecords.value.length && creditPagination.value.page === 1) {
-      const result = await getCreditDetail(route.params.id)
-      const data = result?.data || {}
-      allCreditRecords.value = Array.isArray(data.creditFlows) ? data.creditFlows : []
-      creditTotals.value = {
-        added: Number(data.addTotal ?? data.creditAdded ?? 0),
-        deducted: Number(data.subTotal ?? data.creditDeducted ?? 0)
-      }
+    const result = await getCreditDetail(route.params.id, {
+      page: creditPagination.value.page - 1,
+      size: creditPagination.value.size
+    })
+    const data = result?.data || {}
+    creditRecords.value = Array.isArray(data.creditFlows) ? data.creditFlows : []
+    creditTotals.value = {
+      added: Number(data.addTotal ?? data.creditAdded ?? 0),
+      deducted: Number(data.subTotal ?? data.creditDeducted ?? 0)
     }
-    const start = (creditPagination.value.page - 1) * creditPagination.value.size
-    creditRecords.value = allCreditRecords.value.slice(start, start + creditPagination.value.size)
-    creditPagination.value.total = allCreditRecords.value.length
+    creditPagination.value.total = Number(data.total ?? result?.total ?? creditRecords.value.length)
   } catch {
     creditRecords.value = []
-    allCreditRecords.value = []
     creditTotals.value = { added: 0, deducted: 0 }
     creditPagination.value.total = 0
   }
