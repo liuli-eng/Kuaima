@@ -421,6 +421,16 @@ export function uploadExpenseFile(filePath) {
   return uploadFile({ url: "/files/upload", filePath, name: "file" });
 }
 
+/** 上传企业认证营业执照，后端保存到 OSS enterprise/license 目录。 */
+export function uploadEnterpriseLicense(filePath) {
+  return uploadFile({
+    url: "/boss/enterprise-cert/license-upload",
+    filePath,
+    name: "file",
+    skipUserIdHeader: true,
+  });
+}
+
 export function getWallet(userId) {
   return request({ url: `/wallet/${userId}` });
 }

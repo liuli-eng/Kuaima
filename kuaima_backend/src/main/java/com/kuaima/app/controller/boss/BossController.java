@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.kuaima.app.common.Result;
@@ -48,6 +49,8 @@ import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.constant.BossStatus;
 import com.kuaima.app.domain.enterprise.service.EnterpriseContextService;
+import com.kuaima.app.common.service.OssStorageService;
+import com.kuaima.app.common.service.OssUploadResult;
 
 @RestController
 @RequestMapping("/boss")
@@ -65,6 +68,7 @@ public class BossController {
     private final BaseOrderItemRespository itemRepository;
     private final BossProfileService bossProfileService;
     private final EnterpriseContextService enterpriseContexts;
+    private final OssStorageService ossStorageService;
 
     @Autowired
     public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService,
@@ -72,7 +76,7 @@ public class BossController {
                           PointsAccountRepository pointsAccountRepository, UserCouponRepository userCouponRepository,
                           InviteRelationRepository inviteRelationRepository, BossOrderRespository orderRepository,
                           BaseOrderItemRespository itemRepository, BossProfileService bossProfileService,
-                          EnterpriseContextService enterpriseContexts) {
+                          EnterpriseContextService enterpriseContexts, OssStorageService ossStorageService) {
         this.bossOrderService = bossOrderService;
         this.jobCategoryService = jobCategoryService;
         this.certificationService = certificationService;
@@ -84,12 +88,13 @@ public class BossController {
         this.itemRepository = itemRepository;
         this.bossProfileService = bossProfileService;
         this.enterpriseContexts = enterpriseContexts;
+        this.ossStorageService = ossStorageService;
     }
 
     /** 兼容既有单元测试及其他直接构造调用。 */
     public BossController(BossOrderService bossOrderService, JobCategoryService jobCategoryService,
                           CertificationService certificationService) {
-        this(bossOrderService, jobCategoryService, certificationService, null, null, null, null, null, null, null, null);
+        this(bossOrderService, jobCategoryService, certificationService, null, null, null, null, null, null, null, null, null);
     }
 
     @Operation(summary = "招工订单运营统计", description = "按订单工作日期及零工报名状态统计当前老板可见订单；跨天订单按开始日期归属")
@@ -409,13 +414,37 @@ public class BossController {
     // ==================== 企业认证 ====================
 
     /** 提交企业认证：POST /boss/enterprise-cert */
-    @Operation(summary = "提交企业认证", description = "请求体含 userId、companyName、industry、licenseNo、legalRep。设置 User.certType=ENTERPRISE、certStatus=待审核")
+    @Operation(summary = "提交企业认证", description = "请求体含 companyName、industry、licenseNo、legalRep、licenseImageUrl。设置 User.certType=ENTERPRISE、certStatus=待审核")
     @PostMapping("/enterprise-cert")
     public Result<User> submitEnterpriseCert(@RequestBody Map<String, String> body, Authentication authentication) {
         Long userId = requireCurrentBossId(authentication);
         return Result.success(certificationService.submitEnterprise(userId,
                 body.get("companyName"), body.get("industry"),
-                body.get("licenseNo"), body.get("legalRep")));
+                body.get("licenseNo"), body.get("legalRep"), body.get("licenseImageUrl")));
+    }
+
+    /** 上传企业营业执照到 OSS：POST /boss/enterprise-cert/license-upload */
+    @Operation(summary = "上传营业执照", description = "仅支持 JPG、JPEG、PNG，文件大小不超过 5MB，保存到 enterprise/license 目录")
+    @PostMapping("/enterprise-cert/license-upload")
+    public Result<OssUploadResult> uploadEnterpriseLicense(@RequestParam("file") MultipartFile file,
+                                                             Authentication authentication) {
+        requireCurrentBossId(authentication);
+        if (ossStorageService == null) throw new IllegalStateException("OSS 上传服务未配置");
+        if (file == null || file.isEmpty()) throw new IllegalArgumentException("上传文件不能为空");
+        if (file.getSize() > 5L * 1024 * 1024) throw new IllegalArgumentException("营业执照图片不能超过5MB");
+        String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(java.util.Locale.ROOT);
+        String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+        String extension = extension(original);
+        if (!(java.util.Set.of("jpg", "jpeg", "png").contains(extension))
+                || !(java.util.Set.of("image/jpeg", "image/png").contains(contentType))) {
+            throw new IllegalArgumentException("仅支持 JPG、JPEG、PNG 图片");
+        }
+        return Result.success(ossStorageService.uploadResult(file, "enterprise/license", "." + extension));
+    }
+
+    private String extension(String name) {
+        int dot = name.lastIndexOf('.');
+        return dot < 0 ? "" : name.substring(dot + 1).toLowerCase(java.util.Locale.ROOT);
     }
 
     /** 从 JWT 认证主体提取老板 ID。 */

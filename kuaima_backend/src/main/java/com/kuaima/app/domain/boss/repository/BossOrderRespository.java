@@ -68,6 +68,15 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, Jp
             """, nativeQuery = true)
     List<Long> findOwnerIdsByJobType(@Param("jobType") String jobType);
 
+    /** 按岗位最近发布时选择的行业名称筛选老板。 */
+    @Query(value = """
+            select distinct o.create_by
+            from boss_order o
+            left join job_industry i on i.id = o.industry_id
+            where lower(coalesce(i.name, '')) like lower(concat('%', :industry, '%'))
+            """, nativeQuery = true)
+    List<Long> findOwnerIdsByIndustry(@Param("industry") String industry);
+
     List<BossOrder> findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(
             Long createBy, Date startInclusive, Date endExclusive);
 

@@ -133,6 +133,10 @@ public class User extends BaseEntity {
     @Column(length = 50)
     private String licenseNo;
 
+    /** 营业执照图片在 OSS 中的对象地址（企业认证） */
+    @Column(length = 500)
+    private String licenseImageUrl;
+
     /** 法人代表（企业认证） */
     @Column(length = 50)
     private String legalRep;

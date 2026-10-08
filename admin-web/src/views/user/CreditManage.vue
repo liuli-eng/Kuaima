@@ -39,8 +39,8 @@
       <div v-if="current" class="adjust-form">
         <div class="adjust-row"><span class="adjust-label">对象</span><div class="target-line"><b>{{ current.name }}</b><span>{{ current.id }}</span></div></div>
         <div class="adjust-row"><span class="adjust-label">当前信用分</span><strong class="current-score">{{ current.score }}</strong></div>
-        <div class="adjust-row"><span class="adjust-label">调整方向</span><div class="score-toggle"><button type="button" class="minus" :class="{ active: adjust.direction === 'out' }" @click="adjust.direction = 'out'"><i class="fas fa-minus"></i> 减分</button><button type="button" class="plus" :class="{ active: adjust.direction === 'in' }" @click="adjust.direction = 'in'"><i class="fas fa-plus"></i> 加分</button></div></div>
-        <div class="adjust-row"><span class="adjust-label">调整分值</span><el-input-number v-model="adjust.amount" :min="1" :max="100" controls-position="right" class="score-input" /><span class="after-score">调整后：<b :class="adjust.direction === 'in' ? 'num-in' : 'num-out'">{{ afterScore }}</b> 分</span></div>
+        <div class="adjust-row"><span class="adjust-label">调整方向</span><div class="score-toggle"><button type="button" class="minus" :disabled="Number(current.score || 0) <= 0" :class="{ active: adjust.direction === 'out' }" @click="adjust.direction = 'out'"><i class="fas fa-minus"></i> 减分</button><button type="button" class="plus" :class="{ active: adjust.direction === 'in' }" @click="adjust.direction = 'in'"><i class="fas fa-plus"></i> 加分</button></div></div>
+        <div class="adjust-row"><span class="adjust-label">调整分值</span><el-input-number v-model="adjust.amount" :min="1" :max="adjust.direction === 'out' ? Number(current.score || 0) : undefined" controls-position="right" class="score-input" /><span class="after-score">调整后：<b :class="adjust.direction === 'in' ? 'num-in' : 'num-out'">{{ afterScore }}</b> 分</span></div>
         <div class="adjust-row reason-row"><span class="adjust-label">调整原因</span><el-input v-model="adjust.reason" type="textarea" :rows="3" maxlength="200" show-word-limit resize="none" placeholder="选择或填写调整原因（将记录到信用分明细）" /></div>
       </div>
       <template #footer><el-button @click="adjustVisible = false">取消</el-button><el-button type="primary" :loading="saving" @click="submitAdjust">确认调整</el-button></template>
@@ -64,7 +64,7 @@ const rows = ref([]); const total = ref(0); const page = ref(1); const size = re
 const filters = reactive({ keyword: '', role: '', level: '' })
 const adjustVisible = ref(false); const detailVisible = ref(false); const saving = ref(false); const current = ref(null); const flows = ref([]); const detailPage = ref(1); const detailSize = 10; const detailTotal = ref(0)
 const adjust = reactive({ direction: 'in', amount: 5, reason: '' })
-const afterScore = computed(() => Math.max(0, Math.min(100, Number(current.value?.score || 0) + (adjust.direction === 'in' ? 1 : -1) * Number(adjust.amount || 0))))
+const afterScore = computed(() => Math.max(0, Number(current.value?.score || 0) + (adjust.direction === 'in' ? 1 : -1) * Number(adjust.amount || 0)))
 const detailStats = computed(() => ({ add: flows.value.filter(f => f.delta > 0).reduce((n, f) => n + f.delta, 0), sub: flows.value.filter(f => f.delta < 0).reduce((n, f) => n + Math.abs(f.delta), 0) }))
 const levelText = key => ({ excellent: '优秀', good: '良好', medium: '一般', low: '较差' }[key] || '-')
 const avatarText = name => String(name || '?').trim().charAt(0) || '?'
@@ -79,7 +79,21 @@ async function load () { loading.value = true; try { const result = await listCr
 function search () { page.value = 1; load() }
 function reset () { Object.assign(filters, { keyword: '', role: '', level: '' }); search() }
 function openAdjust (row) { current.value = row; Object.assign(adjust, { direction: 'in', amount: 5, reason: '' }); adjustVisible.value = true }
-async function submitAdjust () { if (!current.value || !adjust.amount) return; const reason = adjust.reason.trim(); if (!reason) { ElMessage.warning('请填写调整原因'); return } if (reason.length > 200) { ElMessage.warning('调整原因不能超过 200 字'); return } saving.value = true; try { await adjustCredit(current.value.id, { scoreType: current.value.scoreType, delta: adjust.direction === 'in' ? Math.abs(Number(adjust.amount)) : -Math.abs(Number(adjust.amount)), reason, ruleCode: 'ADMIN_MANUAL_ADJUST' }); ElMessage.success('信用分调整成功'); adjustVisible.value = false; await load() } catch (e) { ElMessage.error(e?.message || '信用分调整失败') } finally { saving.value = false } }
+async function submitAdjust () {
+  if (!current.value || !adjust.amount) return
+  const score = Number(current.value.score || 0)
+  const amount = Number(adjust.amount)
+  if (!Number.isInteger(amount) || amount < 1) { ElMessage.warning('调整分值必须是大于0的整数'); return }
+  if (adjust.direction === 'out' && (score <= 0 || amount > score)) { ElMessage.warning(score <= 0 ? '当前信用分为0，不支持扣分' : '扣分不能超过当前信用分'); return }
+  const reason = adjust.reason.trim()
+  if (!reason) { ElMessage.warning('请填写调整原因'); return }
+  if (reason.length > 200) { ElMessage.warning('调整原因不能超过 200 字'); return }
+  saving.value = true
+  try {
+    await adjustCredit(current.value.id, { scoreType: current.value.scoreType, delta: adjust.direction === 'in' ? amount : -amount, reason, ruleCode: 'ADMIN_MANUAL_ADJUST' })
+    ElMessage.success('信用分调整成功'); adjustVisible.value = false; await load()
+  } catch (e) { ElMessage.error(e?.message || '信用分调整失败') } finally { saving.value = false }
+}
 async function loadDetailPage () { if (!current.value) return; try { const result = await getCreditDetail(current.value.id, { page: detailPage.value - 1, size: detailSize }); const data = result.data || {}; flows.value = data.creditFlows || []; detailTotal.value = Number(data.total ?? result.total ?? flows.value.length) } catch (e) { flows.value = []; detailTotal.value = 0; ElMessage.error('信用分明细加载失败') } }
 async function openDetail (row) { current.value = row; detailPage.value = 1; detailTotal.value = 0; await loadDetailPage(); detailVisible.value = true }
 onMounted(load)

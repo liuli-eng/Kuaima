@@ -1,6 +1,7 @@
 package com.kuaima.app.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -156,6 +157,42 @@ class AdminCreditControllerTests {
 
         assertEquals(1, controller.users("G0010027", null, "worker", null, 0, 10, admin()).getData().getContent().size());
         assertEquals(1, controller.users(null, "27", "worker", null, 0, 10, admin()).getData().getContent().size());
+    }
+
+    @Test
+    void adjustmentCannotDeductBelowZeroButHasNoUpperLimit() {
+        UserRepository users = mock(UserRepository.class);
+        CreditScoreService scores = mock(CreditScoreService.class);
+        User worker = user(31L, false); worker.setWorkerCode("G0010031"); worker.setStarScore(3);
+        when(users.findByWorkerCode("G0010031")).thenReturn(Optional.of(worker));
+        when(scores.adjust(eq(31L), eq(CreditScoreService.WORKER_STAR), eq(500), anyString(),
+                eq("ADMIN"), anyString(), anyString())).thenReturn(false);
+        AdminCreditController controller = new AdminCreditController(users, scores, mock(CreditFlowRepository.class));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> controller.adjust("G0010031", java.util.Map.of(
+                        "scoreType", CreditScoreService.WORKER_STAR, "delta", -4), admin()));
+        assertEquals("扣分不能超过当前信用分", error.getMessage());
+
+        assertThrows(IllegalStateException.class,
+                () -> controller.adjust("G0010031", java.util.Map.of(
+                        "scoreType", CreditScoreService.WORKER_STAR, "delta", 500), admin()));
+        verify(scores).adjust(eq(31L), eq(CreditScoreService.WORKER_STAR), eq(500), anyString(),
+                eq("ADMIN"), anyString(), anyString());
+    }
+
+    @Test
+    void zeroBalanceCannotBeDeducted() {
+        UserRepository users = mock(UserRepository.class);
+        User worker = user(32L, false); worker.setWorkerCode("G0010032"); worker.setStarScore(0);
+        when(users.findByWorkerCode("G0010032")).thenReturn(Optional.of(worker));
+        AdminCreditController controller = new AdminCreditController(users, mock(CreditScoreService.class), mock(CreditFlowRepository.class));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> controller.adjust("G0010032", java.util.Map.of(
+                        "scoreType", CreditScoreService.WORKER_STAR, "delta", -1), admin()));
+
+        assertEquals("当前信用分为0，不支持扣分", error.getMessage());
     }
 
     private User user(Long id, boolean boss) {

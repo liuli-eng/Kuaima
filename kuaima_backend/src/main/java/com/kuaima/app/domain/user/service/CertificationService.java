@@ -68,17 +68,24 @@ public class CertificationService {
     @Transactional
     public User submitEnterprise(Long userId, String companyName, String industry,
                                  String licenseNo, String legalRep) {
+        return submitEnterprise(userId, companyName, industry, licenseNo, legalRep, null);
+    }
+
+    @Transactional
+    public User submitEnterprise(Long userId, String companyName, String industry,
+                                 String licenseNo, String legalRep, String licenseImageUrl) {
         User user = getUser(userId);
         if (!StringUtils.hasText(companyName)) throw new IllegalArgumentException("企业名称不能为空");
         if (!StringUtils.hasText(licenseNo)) throw new IllegalArgumentException("营业执照号不能为空");
         user.setCompanyName(companyName.trim());
         user.setIndustry(StringUtils.hasText(industry) ? industry.trim() : user.getIndustry());
         user.setLicenseNo(licenseNo.trim());
+        if (StringUtils.hasText(licenseImageUrl)) user.setLicenseImageUrl(licenseImageUrl.trim());
         user.setLegalRep(StringUtils.hasText(legalRep) ? legalRep.trim() : user.getLegalRep());
         user.setEnterpriseStatus(CertificationStatus.PENDING);
         user.setCertType(ENTERPRISE);
         user.setCertStatus("待审核");
-        saveRecord(user, ENTERPRISE, companyName, user.getContactPhone() != null ? user.getContactPhone() : user.getPhone());
+        saveRecord(user, ENTERPRISE, companyName, user.getContactPhone() != null ? user.getContactPhone() : user.getPhone(), user.getLicenseImageUrl());
         return userRepository.save(user);
     }
 
@@ -157,11 +164,16 @@ public class CertificationService {
     }
 
     private void saveRecord(User user, String type, String applicantName, String phone) {
+        saveRecord(user, type, applicantName, phone, null);
+    }
+
+    private void saveRecord(User user, String type, String applicantName, String phone, String licenseImageUrl) {
         Certification record = new Certification();
         record.setUserId(user.getId());
         record.setType(type);
         record.setApplicantName(applicantName);
         record.setContactPhone(phone);
+        record.setLicenseImageUrl(licenseImageUrl);
         record.setStatus("待审核");
         record.setApplyTime(LocalDateTime.now());
         record.setCreateTime(LocalDateTime.now());

@@ -147,7 +147,7 @@ export function request({
 }
 
 /** 跨端上传文件，沿用 request 的鉴权和后端地址配置。 */
-export function uploadFile({ url, filePath, name = "file", formData = {}, header = {} }) {
+export function uploadFile({ url, filePath, name = "file", formData = {}, header = {}, skipUserIdHeader = false }) {
   const token = uni.getStorageSync("token");
   const userId = uni.getStorageSync("userId") || "2001";
   const realUrl = resolveBackendUrl(url, userId, formData);
@@ -160,7 +160,7 @@ export function uploadFile({ url, filePath, name = "file", formData = {}, header
       header: {
         ...header,
         Authorization: token ? `Bearer ${token}` : "",
-        "X-User-Id": userId,
+        ...(skipUserIdHeader ? {} : { "X-User-Id": userId }),
       },
       success(response) {
         let payload = response.data;

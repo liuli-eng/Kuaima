@@ -85,7 +85,11 @@
             />
           </view>
           <text class="upload-text">{{
-            licensePath ? "已选择营业执照" : "点击上传营业执照"
+          licenseUploading
+            ? "营业执照上传中..."
+            : licenseImageUrl
+              ? "营业执照已上传"
+              : "点击上传营业执照"
           }}</text>
           <text class="upload-hint"
             >请上传原件或加盖公章的复印件，支持JPG/PNG格式，不超过5M</text
@@ -130,7 +134,11 @@
 </template>
 
 <script>
-import { getBossProfile, submitEnterpriseCertification } from "@/api/backend";
+import {
+  getBossProfile,
+  submitEnterpriseCertification,
+  uploadEnterpriseLicense,
+} from "@/api/backend";
 
 export default {
   data() {
@@ -142,6 +150,8 @@ export default {
       legalPerson: "",
       contactPhone: "",
       licensePath: "",
+      licenseImageUrl: "",
+      licenseUploading: false,
       agreed: false,
       submitting: false,
     };
@@ -165,6 +175,7 @@ export default {
         this.companyName = profile.companyName || "";
         this.legalPerson = profile.legalRep || profile.realName || "";
         this.contactPhone = profile.contactPhone || profile.phone || "";
+        this.licenseImageUrl = profile.licenseImageUrl || "";
       } catch (_) {
         // 未登录或接口不可用时保留空表单，不用演示数据覆盖用户输入。
       }
@@ -176,13 +187,33 @@ export default {
       this.agreed = !this.agreed;
     },
     uploadLicense() {
+      if (this.licenseUploading) return;
       uni.chooseImage({
         count: 1,
         sizeType: ["compressed"],
         sourceType: ["album", "camera"],
-        success: (res) => {
-          this.licensePath = res.tempFilePaths?.[0] || "selected";
-          uni.showToast({ title: "已选择营业执照", icon: "success" });
+        success: async (res) => {
+          const path = res.tempFilePaths?.[0];
+          if (!path) return;
+          const selected = (res.tempFiles || []).find((file) => file.path === path) || res.tempFiles?.[0];
+          if (selected?.size > 5 * 1024 * 1024) {
+            uni.showToast({ title: "营业执照图片不能超过5MB", icon: "none" });
+            return;
+          }
+          this.licensePath = path;
+          this.licenseUploading = true;
+          try {
+            const uploaded = await uploadEnterpriseLicense(path);
+            this.licenseImageUrl = uploaded?.url || uploaded?.objectKey || "";
+            if (!this.licenseImageUrl) throw new Error("上传结果缺少文件地址");
+            uni.showToast({ title: "营业执照上传成功", icon: "success" });
+          } catch (error) {
+            this.licensePath = "";
+            this.licenseImageUrl = "";
+            uni.showToast({ title: error.message || "营业执照上传失败", icon: "none" });
+          } finally {
+            this.licenseUploading = false;
+          }
         },
       });
     },
@@ -218,6 +249,10 @@ export default {
         uni.showToast({ title: "请输入正确的联系电话", icon: "none" });
         return;
       }
+      if (!this.licenseImageUrl) {
+        uni.showToast({ title: "请先上传营业执照", icon: "none" });
+        return;
+      }
       this.submitting = true;
       try {
         await submitEnterpriseCertification({
@@ -227,6 +262,7 @@ export default {
           licenseNo: creditCode,
           legalRep: this.legalPerson.trim(),
           contactPhone: this.contactPhone.trim(),
+          licenseImageUrl: this.licenseImageUrl,
         });
         uni.showToast({ title: "提交成功，请等待审核", icon: "success" });
         setTimeout(() => uni.navigateBack(), 900);

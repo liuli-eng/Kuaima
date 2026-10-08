@@ -36,7 +36,7 @@ public class BossRewardService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> overview(Long bossId) {
-        requireBossExists(bossId);
+        requireUserExists(bossId);
         BigDecimal balance = accounts.findByUserIdAndRole(bossId, UserRole.BOSS).map(a -> value(a.getBalance())).orElse(BigDecimal.ZERO);
         BigDecimal income = value(flows.sumByUserIdAndRoleAndType(bossId, UserRole.BOSS, "INCOME"));
         BigDecimal expense = value(flows.sumByUserIdAndRoleAndType(bossId, UserRole.BOSS, "EXPENSE"));
@@ -46,7 +46,7 @@ public class BossRewardService {
 
     @Transactional(readOnly = true)
     public Page<Map<String, Object>> records(Long bossId, String type, Pageable pageable) {
-        requireBossExists(bossId);
+        requireUserExists(bossId);
         String normalized = type == null ? "ALL" : type.trim().toUpperCase();
         if (!Set.of("ALL", "INCOME", "EXPENSE").contains(normalized))
             throw new IllegalArgumentException("type 只能是 ALL、INCOME 或 EXPENSE");
@@ -63,7 +63,7 @@ public class BossRewardService {
         if (amountFen <= 0) throw new IllegalArgumentException("amount 必须大于0");
         String key = normalizeKey(bossId, idempotencyKey);
         users.findById(bossId).filter(UserRole::isBossIdentity)
-                .orElseThrow(() -> new EntityNotFoundException("老板账号不存在: " + bossId));
+                .orElseThrow(() -> new com.kuaima.app.common.ForbiddenBusinessException("当前账号尚未完成企业认证，暂不可提现奖励金"));
         RewardWithdrawal existing = withdrawalProcessor.existing(bossId, amountFen, "WECHAT", key, UserRole.BOSS).orElse(null);
         if (existing != null) return withdrawalView(existing);
         RewardWithdrawal submitted;
@@ -89,13 +89,12 @@ public class BossRewardService {
 
     @Transactional(readOnly = true)
     public Page<Map<String, Object>> withdrawals(Long bossId, Pageable pageable) {
-        requireBossExists(bossId);
+        requireUserExists(bossId);
         return withdrawals.findByUserIdAndRoleOrderByAppliedAtDescIdDesc(bossId, UserRole.BOSS, pageable).map(this::withdrawalView);
     }
 
-    private void requireBossExists(Long bossId) {
-        users.findById(bossId).filter(UserRole::isBossIdentity)
-                .orElseThrow(() -> new EntityNotFoundException("老板账号不存在: " + bossId));
+    private void requireUserExists(Long userId) {
+        users.findById(userId).orElseThrow(() -> new EntityNotFoundException("用户不存在: " + userId));
     }
     private Map<String, Object> flowView(RewardFlow flow) {
         Map<String, Object> result = new LinkedHashMap<>(); result.put("id", flow.getId()); result.put("type", flow.getType());

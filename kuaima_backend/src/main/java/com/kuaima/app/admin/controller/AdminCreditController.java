@@ -227,6 +227,9 @@ public class AdminCreditController {
         if (!expectedType.equals(type)) throw new IllegalArgumentException("scoreType 与用户身份不匹配");
         int delta = number(body.get("delta"));
         if (delta == 0) throw new IllegalArgumentException("delta 不能为0");
+        int currentScore = type.equals(CreditScoreService.WORKER_STAR) ? value(target.getStarScore()) : value(target.getCreditScore());
+        if (delta < 0 && currentScore == 0) throw new IllegalArgumentException("当前信用分为0，不支持扣分");
+        if (delta < 0 && -((long) delta) > currentScore) throw new IllegalArgumentException("扣分不能超过当前信用分");
         String reason = text(body, "reason", "管理员人工调整");
         String ruleCode = text(body, "ruleCode", "ADMIN_MANUAL_ADJUST");
         String bizId = text(body, "bizId", String.valueOf(System.currentTimeMillis()));

@@ -37,6 +37,8 @@ import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.entity.BossOrder;
 import com.kuaima.app.domain.jobcategory.entity.JobCategory;
 import com.kuaima.app.domain.jobcategory.repository.JobCategoryRepository;
+import com.kuaima.app.domain.jobcategory.repository.JobIndustryRepository;
+import com.kuaima.app.domain.jobcategory.entity.JobIndustry;
 import com.kuaima.app.domain.points.entity.PointsAccount;
 import com.kuaima.app.domain.points.entity.PointsFlow;
 import com.kuaima.app.domain.points.repository.PointsAccountRepository;
@@ -75,6 +77,7 @@ public class AdminUserController {
     private final BaseOrderItemRespository orderItemRepository;
     private final BossOrderRespository bossOrderRepository;
     private final JobCategoryRepository jobCategoryRepository;
+    private final JobIndustryRepository jobIndustryRepository;
     private final WalletRespository walletRepository;
     private final PointsAccountRepository pointsAccountRepository;
     private final RewardAccountRepository rewardAccountRepository;
@@ -96,7 +99,7 @@ public class AdminUserController {
                                UserCouponRepository userCouponRepository,
                                CouponRepository couponRepository) {
         this(userRepository, orderItemRepository, bossOrderRepository, walletRepository, pointsAccountRepository,
-                rewardAccountRepository, pointsFlowRepository, rewardFlowRepository, userCouponRepository, couponRepository, null, null, null);
+                rewardAccountRepository, pointsFlowRepository, rewardFlowRepository, userCouponRepository, couponRepository, null, null, null, null);
     }
 
     public AdminUserController(UserRepository userRepository,
@@ -113,7 +116,7 @@ public class AdminUserController {
                                WebSocketSessionManager webSocketSessionManager) {
         this(userRepository, orderItemRepository, bossOrderRepository, walletRepository, pointsAccountRepository,
                 rewardAccountRepository, pointsFlowRepository, rewardFlowRepository, userCouponRepository, couponRepository,
-                walletFlowRepository, webSocketSessionManager, null);
+                walletFlowRepository, webSocketSessionManager, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -129,7 +132,8 @@ public class AdminUserController {
                                CouponRepository couponRepository,
                                WalletFlowRespository walletFlowRepository,
                                WebSocketSessionManager webSocketSessionManager,
-                               JobCategoryRepository jobCategoryRepository) {
+                               JobCategoryRepository jobCategoryRepository,
+                               JobIndustryRepository jobIndustryRepository) {
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
         this.bossOrderRepository = bossOrderRepository;
@@ -143,6 +147,7 @@ public class AdminUserController {
         this.walletFlowRepository = walletFlowRepository;
         this.webSocketSessionManager = webSocketSessionManager;
         this.jobCategoryRepository = jobCategoryRepository;
+        this.jobIndustryRepository = jobIndustryRepository;
     }
 
     /** 零工列表（附加 completedOrders 已完成订单数） */
@@ -276,10 +281,12 @@ public class AdminUserController {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         String kw = keyword != null && !keyword.isBlank() ? keyword : null;
         String es = enterpriseStatus != null && !enterpriseStatus.isBlank() ? enterpriseStatus : null;
-        String industryCondition = industry != null && !industry.isBlank() && !"全部".equals(industry) ? industry : null;
+        String industryCondition = industry != null && !industry.isBlank() && !"全部".equals(industry) ? industry.trim() : null;
+        String requestedIndustry = industryCondition != null ? industryCondition
+                : (jobType != null && !jobType.isBlank() ? jobType.trim() : null);
         Page<User> result;
-        if (jobType != null && !jobType.isBlank()) {
-            List<Long> ownerIds = bossOrderRepository.findOwnerIdsByJobType(jobType.trim());
+        if (requestedIndustry != null) {
+            List<Long> ownerIds = bossOrderRepository.findOwnerIdsByIndustry(requestedIndustry);
             result = ownerIds.isEmpty() ? new PageImpl<>(List.of(), pageable, 0)
                     : userRepository.searchBossesByIds(ownerIds, status, es, kw, pageable);
         } else {
@@ -292,6 +299,7 @@ public class AdminUserController {
         Map<Long, Long> pointsMap = new HashMap<>();
         Map<Long, BigDecimal> rewardMap = new HashMap<>();
         Map<Long, String> jobTypeMap = new HashMap<>();
+        Map<Long, String> industryMap = new HashMap<>();
         if (!bossIds.isEmpty()) {
             bossOrderRepository.countByCreateByIds(bossIds)
                     .forEach(row -> jobsMap.put((Long) row[0], (Long) row[1]));
@@ -302,9 +310,20 @@ public class AdminUserController {
                             account.getBalance() == null ? 0L : account.getBalance().longValue()));
             rewardAccountRepository.findByUserIdIn(bossIds)
                     .forEach(account -> rewardMap.put(account.getUserId(), moneyValue(account.getBalance())));
+            List<BossOrder> orders = bossOrderRepository.findByCreateByInOrderByIdDesc(bossIds);
+            if (jobIndustryRepository != null) {
+                Map<Long, String> industryNames = new HashMap<>();
+                Set<Long> industryIds = orders.stream().map(BossOrder::getIndustryId)
+                        .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+                jobIndustryRepository.findAllById(industryIds)
+                        .forEach(item -> industryNames.put(item.getId(), item.getName()));
+                for (BossOrder order : orders) {
+                    String name = industryNames.get(order.getIndustryId());
+                    if (name != null && !name.isBlank()) industryMap.putIfAbsent(order.getCreateBy(), name);
+                }
+            }
             if (jobCategoryRepository != null) {
                 Map<Long, String> categoryNames = new HashMap<>();
-                List<BossOrder> orders = bossOrderRepository.findByCreateByInOrderByIdDesc(bossIds);
                 Set<Long> categoryIds = orders.stream()
                         .flatMap(order -> jobCategoryIds(order).stream())
                         .collect(Collectors.toSet());
@@ -328,6 +347,7 @@ public class AdminUserController {
             obj.put("companyCode", u.getCompanyCode());
             obj.put("companyName", u.getCompanyName());
             obj.put("jobType", jobTypeMap.getOrDefault(u.getId(), ""));
+            obj.put("industry", industryMap.getOrDefault(u.getId(), ""));
             obj.put("jobsCount", jobsMap.getOrDefault(u.getId(), 0L));
             obj.put("creditScore", integerValue(u.getCreditScore()));
             obj.put("balance", walletMap.getOrDefault(u.getId(), BigDecimal.ZERO));

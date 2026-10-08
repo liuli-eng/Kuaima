@@ -42,23 +42,22 @@
 
     <div class="card">
       <div class="filter-bar">
-        <el-input
+        <div class="filter-item"><span>关键词</span><el-input
           v-model="searchKeyword"
           placeholder="企业名称/联系人/ID"
           clearable
           style="width: 220px"
-          prefix-icon="Search"
           @keyup.enter="handleSearch"
-        />
-        <el-select v-model="certFilter" placeholder="认证状态" clearable style="width: 120px">
+        ><template #prefix><i class="fas fa-search"></i></template></el-input></div>
+        <div class="filter-item"><span>认证状态</span><el-select v-model="certFilter" placeholder="全部" clearable style="width: 120px">
           <el-option label="已认证" value="APPROVED" />
           <el-option label="待审核" value="PENDING" />
           <el-option label="未认证" value="UNVERIFIED" />
           <el-option label="已拒绝" value="REJECTED" />
-        </el-select>
-        <el-select v-model="typeFilter" filterable allow-create default-first-option placeholder="工种类型" clearable style="width: 140px">
+        </el-select></div>
+        <div class="filter-item"><span>企业类型</span><el-select v-model="typeFilter" filterable allow-create default-first-option placeholder="全部" clearable style="width: 140px">
           <el-option v-for="item in industryOptions" :key="item" :label="item" :value="item" />
-        </el-select>
+        </el-select></div>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
         <div class="filter-space"></div>
@@ -92,9 +91,9 @@
             <span class="company-name">{{ row.companyName || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="工种类型" min-width="130">
+        <el-table-column label="行业类型" min-width="130">
           <template #default="{ row }">
-            <span class="industry-tag" :class="industryClass(row.jobType)">{{ row.jobType || '-' }}</span>
+            <span class="industry-tag" :class="industryClass(row.industry)">{{ row.industry || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="联系人" min-width="105">
@@ -235,7 +234,7 @@ const loadData = async () => {
     const result = await listBosses({
       keyword: searchKeyword.value || undefined,
       enterpriseStatus: certFilter.value || undefined,
-      jobType: typeFilter.value || undefined,
+      industry: typeFilter.value || undefined,
       page: currentPage.value - 1,
       size: pageSize.value
     })
@@ -393,7 +392,7 @@ const handleExport = async () => {
     const params = {
       keyword: searchKeyword.value || undefined,
       enterpriseStatus: certFilter.value || undefined,
-      jobType: typeFilter.value || undefined
+      industry: typeFilter.value || undefined
     }
     const first = await listBosses({ ...params, page: 0, size: batchSize })
     const allBosses = [...rows(first)]
@@ -404,7 +403,7 @@ const handleExport = async () => {
     }
 
     const exportRows = [[
-      '雇主ID', '名称', '企业名称', '联系人', '手机号', '工种类型', '招工数', '信用分',
+      '雇主ID', '名称', '企业名称', '联系人', '手机号', '行业类型', '招工数', '信用分',
       '余额（元）', '奖励金余额（元）', '积分余额', '认证状态'
     ]]
     allBosses.map(normalizeBoss).forEach(row => exportRows.push([
@@ -413,7 +412,7 @@ const handleExport = async () => {
       row.companyName || '',
       row.contact || row.nickname || '',
       maskPhone(row.phone),
-      row.jobType || '',
+      row.industry || '',
       row.jobsCount ?? 0,
       row.creditScore ?? 0,
       (Number(row.balance ?? 0) / 100).toFixed(2),
@@ -476,6 +475,8 @@ onMounted(() => {
 
 <style scoped>
 .filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-item { display: flex; align-items: center; gap: 6px; }
+.filter-item > span { color: var(--text-secondary); font-size: 13px; white-space: nowrap; }
 .filter-space { flex: 1; }
 .boss-table :deep(.el-table__row) { height: 56px; }
 .employer-id { font-family: monospace; color: var(--primary); }

@@ -37,6 +37,10 @@ public class Certification {
     @Column(length = 50)
     private String contactPhone;
 
+    /** 企业认证营业执照图片在 OSS 中的对象地址 */
+    @Column(length = 500)
+    private String licenseImageUrl;
+
     /** 状态：待审核 / 已通过 / 已拒绝 */
     @Column(length = 20)
     private String status = "待审核";
