@@ -1,13 +1,8 @@
 <template>
   <view class="container">
     <view class="wb-header" :style="{ paddingTop: statusBarHeight + 8 + 'px' }">
-      <view class="wb-back" @click="goBack"><text class="back-ico">‹</text></view>
+      <view class="wb-back" @click="goBack"><image class="back-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" /></view>
       <text class="wb-title">简历详情</text>
-      <view class="wb-capsule">
-        <view class="cap-btn" @click="toggleFav"><text class="cap-ico fav" :class="{ on: favorite }">★</text></view>
-        <view class="cap-divider"></view>
-        <view class="cap-btn"><text class="cap-ico">○</text></view>
-      </view>
     </view>
 
     <view class="wb-body has-footer">
@@ -27,7 +22,7 @@
               <text>{{ resume.gender || '—' }}</text>
               <text>{{ resume.age || '—' }}岁</text>
             </text>
-            <text class="salary-line">💰 期望薪资：{{ resume.expectedSalary || '—' }}</text>
+            <view class="salary-line"><image class="salary-svg" src="/static/icons/worker-profile/coins-orange.svg" mode="aspectFit" /><text>期望薪资：{{ resume.expectedSalary || '—' }}</text></view>
           </view>
         </view>
 
@@ -39,7 +34,7 @@
         <view class="info-panel">
           <!-- 基本信息 -->
           <view v-if="currentInfoTab === 'basic'">
-            <view class="info-block-title">🪪 基本信息</view>
+            <view class="info-block-title"><image class="block-svg" src="/static/icons/worker-profile/id-card-dark.svg" mode="aspectFit" />基本信息</view>
             <view class="info-line"><text class="info-key">姓名</text><text class="info-val">{{ resume.name }}</text></view>
             <view class="info-line"><text class="info-key">性别</text><text class="info-val">{{ resume.gender || '—' }}</text></view>
             <view class="info-line"><text class="info-key">年龄</text><text class="info-val">{{ resume.age || '—' }}岁</text></view>
@@ -47,15 +42,26 @@
             <view class="info-line"><text class="info-key">邮箱</text><text class="info-val">{{ resume.email || '—' }}</text></view>
             <view class="info-line"><text class="info-key">居住地</text><text class="info-val">{{ resume.city || '—' }}</text></view>
             <view class="info-line"><text class="info-key">身份证</text><text class="info-val mono">{{ resume.idCard || '—' }}</text></view>
-            <view class="info-block-title">🎯 求职意向</view>
+            <view class="info-block-title"><image class="block-svg" src="/static/icons/boss-location/crosshairs-orange.svg" mode="aspectFit" />求职意向</view>
             <view class="info-line"><text class="info-key">意向岗位</text><text class="info-val">{{ resume.position || '—' }}</text></view>
             <view class="info-line"><text class="info-key">期望薪资</text><text class="info-val">{{ resume.expectedSalary || '—' }}</text></view>
             <view class="info-line"><text class="info-key">工作地点</text><text class="info-val">{{ resume.workLocation || '—' }}</text></view>
+            <template v-if="filePreviewUrl">
+              <view class="info-block-title"><image class="block-svg" src="/static/icons/worker-job-detail/file-alt-orange.svg" mode="aspectFit" />原始简历</view>
+              <view v-if="filePreviewIsImage" class="resume-preview" @click="openResumeFile">
+                <image class="resume-preview-img" :src="filePreviewUrl" mode="widthFix" />
+                <text class="resume-preview-tip">点击查看大图</text>
+              </view>
+              <view v-else class="info-line file-line" @click="openResumeFile">
+                <text class="info-key">文件</text>
+                <text class="info-val file-val">点击查看原件</text>
+              </view>
+            </template>
           </view>
 
           <!-- 教育经历 -->
           <view v-if="currentInfoTab === 'edu'">
-            <view class="info-block-title">🎓 教育经历</view>
+            <view class="info-block-title"><image class="block-svg" src="/static/icons/worker-home/graduation-cap-brown.svg" mode="aspectFit" />教育经历</view>
             <view v-if="!edu.length" class="wb-empty-sm">暂无教育经历</view>
             <view v-for="e in edu" :key="e.id" class="exp-item">
               <view class="exp-top">
@@ -74,7 +80,7 @@
 
           <!-- 工作经历 -->
           <view v-if="currentInfoTab === 'work'">
-            <view class="info-block-title">💼 工作经历</view>
+            <view class="info-block-title"><image class="block-svg" src="/static/icons/worker-home/briefcase-orange.svg" mode="aspectFit" />工作经历</view>
             <view v-if="!work.length" class="wb-empty-sm">暂无工作经历</view>
             <view v-for="w in work" :key="w.id" class="exp-item">
               <view class="exp-top">
@@ -93,7 +99,7 @@
 
           <!-- 项目经验 -->
           <view v-if="currentInfoTab === 'project'">
-            <view class="info-block-title">🗂 项目经验</view>
+            <view class="info-block-title"><image class="block-svg" src="/static/icons/boss-resume/diagram-project-orange.svg" mode="aspectFit" />项目经验</view>
             <view v-if="!project.length" class="wb-empty-sm">暂无项目经验</view>
             <view v-for="p in project" :key="p.id" class="exp-item">
               <view class="exp-top">
@@ -115,8 +121,13 @@
 
     <!-- 底部操作条 -->
     <view class="wb-footer">
-      <view class="wb-btn-outline-full" @click="callResume">📞 联系TA</view>
-      <view class="wb-btn-primary-full" @click="sendResume">📤 安排投递</view>
+      <!-- 收藏：原在头部自绘胶囊里，会与微信原生胶囊重叠；移到页面内保留功能 -->
+      <view class="wb-btn-fav" :class="{ active: favorite }" @click="toggleFav">
+        <image class="footer-svg" :src="favorite ? '/static/icons/worker-orders/star-active.svg' : '/static/icons/worker-orders/star-inactive.svg'" mode="aspectFit" />
+        <text>{{ favorite ? '已收藏' : '收藏' }}</text>
+      </view>
+      <view class="wb-btn-outline-full" @click="callResume"><image class="footer-svg" src="/static/icons/boss-recruit-settings/phone.svg" mode="aspectFit" /><text>联系TA</text></view>
+      <view class="wb-btn-primary-full" @click="sendResume"><image class="footer-svg footer-svg-white" src="/static/icons/boss-resume/paper-plane-white.svg" mode="aspectFit" /><text>安排投递</text></view>
     </view>
   </view>
 </template>
@@ -136,6 +147,8 @@ export default {
       work: [],
       project: [],
       favorite: false,
+      filePreviewUrl: "",
+      filePreviewIsImage: false,
       currentInfoTab: "basic",
       infoTabs: [
         { key: "basic", label: "基本信息" },
@@ -157,6 +170,35 @@ export default {
     avatarColor,
     statusText: (s) => RESUME_STATUS_TEXT[s] || s,
     statusCls: (s) => RESUME_STATUS_CLS[s] || "gray",
+    /** 打开导入的原始简历：预览图（图片）直接放大看；其他类型先下载再用 openDocument 打开。 */
+    openResumeFile() {
+      const url = this.filePreviewUrl;
+      if (!url) return;
+      if (this.filePreviewIsImage) {
+        uni.previewImage({ urls: [url] });
+        return;
+      }
+      uni.showLoading({ title: "打开中...", mask: true });
+      uni.downloadFile({
+        url,
+        success: (res) => {
+          uni.hideLoading();
+          if (res.statusCode !== 200) {
+            uni.showToast({ title: "文件下载失败", icon: "none" });
+            return;
+          }
+          uni.openDocument({
+            filePath: res.tempFilePath,
+            showMenu: true,
+            fail: () => uni.showToast({ title: "该文件类型暂不支持预览", icon: "none" }),
+          });
+        },
+        fail: () => {
+          uni.hideLoading();
+          uni.showToast({ title: "文件下载失败", icon: "none" });
+        },
+      });
+    },
     splitTags(str) {
       return (str || "").split(",").map((s) => s.trim()).filter(Boolean);
     },
@@ -170,6 +212,9 @@ export default {
         this.work = data?.work || [];
         this.project = data?.project || [];
         this.favorite = !!this.resume?.favorite;
+        // 导入来源的简历带原始文件；PDF 由后端渲染首页为预览图，私有 Bucket 会返回签名地址
+        this.filePreviewUrl = data?.filePreviewUrl || this.resume?.fileUrl || "";
+        this.filePreviewIsImage = !!data?.filePreviewIsImage;
         // 自动标记已查看
         if (this.resume && this.resume.status !== "VIEWED" && this.resume.status !== "SENT") {
           updateResumeStatus(this.resumeId, "VIEWED").catch(() => {});
@@ -225,61 +270,32 @@ export default {
   align-items: center;
   gap: 10px;
   background: #fff;
-  padding: 6px 16px 12px;
+  padding: 8px 16px 12px;
   flex-shrink: 0;
 }
 
 .wb-back {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.back-ico {
-  font-size: 22px;
-  color: #333;
+.back-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .wb-title {
   flex: 1;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #333;
-}
-
-.wb-capsule {
-  display: flex;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 17px;
-  padding: 0 6px;
-  height: 32px;
-}
-
-.cap-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cap-ico {
-  font-size: 14px;
-  color: #ddd;
-}
-
-.cap-ico.fav.on {
-  color: #ffb020;
-}
-
-.cap-divider {
-  width: 1px;
-  height: 16px;
-  background: rgba(0, 0, 0, 0.15);
-  margin: 0 2px;
+  color: #1a1a1a;
 }
 
 .wb-body {
@@ -348,7 +364,14 @@ export default {
   color: #ff6b35;
   margin-top: 6px;
   font-weight: 600;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.salary-svg {
+  width: 13px;
+  height: 13px;
 }
 
 .wb-tag {
@@ -432,6 +455,11 @@ export default {
   gap: 6px;
 }
 
+.block-svg {
+  width: 13px;
+  height: 13px;
+}
+
 .info-line {
   display: flex;
   padding: 10px 0;
@@ -453,6 +481,36 @@ export default {
   flex: 1;
   color: #333;
   word-break: break-all;
+}
+
+/* 原始简历入口 */
+.file-line {
+  align-items: center;
+}
+
+.file-val {
+  color: #ff6b35;
+  font-weight: 500;
+}
+
+/* 原始简历预览图（PDF 首页渲染） */
+.resume-preview {
+  margin-top: 4px;
+}
+
+.resume-preview-img {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  background: #fafafa;
+}
+
+.resume-preview-tip {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
 }
 
 .info-val.mono {
@@ -550,20 +608,43 @@ export default {
   border-top: 0.5px solid rgba(0, 0, 0, 0.05);
 }
 
+/* 收藏按钮：原在头部自绘胶囊内，移到页面内避免与微信原生胶囊重叠；宽度比两个主按钮窄以免挤压 */
+.wb-btn-fav {
+  flex: 0 0 auto;
+  width: 62px;
+  padding: 12px 0;
+  border: 1px solid #e5e5e5;
+  border-radius: 24px;
+  font-size: 11px;
+  color: #666;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.wb-btn-fav.active {
+  color: #ff6b35;
+  border-color: #ffd2c0;
+}
+
 .wb-btn-outline-full {
   flex: 1;
-  text-align: center;
   padding: 12px 0;
   border: 1px solid #e5e5e5;
   color: #666;
   border-radius: 24px;
   font-size: 14px;
   background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 
 .wb-btn-primary-full {
   flex: 1.4;
-  text-align: center;
   padding: 12px 0;
   border-radius: 24px;
   font-size: 14px;
@@ -571,5 +652,14 @@ export default {
   background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: #fff;
   box-shadow: 0 3px 8px rgba(255, 107, 53, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.footer-svg {
+  width: 15px;
+  height: 15px;
 }
 </style>

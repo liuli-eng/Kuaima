@@ -352,6 +352,18 @@ export default {
   font-size: 15px;
   font-weight: 600;
   color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: #ff6b35;
+  border-radius: 2px;
+  margin-right: 6px;
 }
 
 .section-more {

@@ -1,4 +1,4 @@
-import { request } from "@/api/http";
+import { request, uploadFile } from "@/api/http";
 
 function query(params) {
   return Object.entries(params || {})
@@ -50,9 +50,18 @@ export function batchResumeAction(ids, action) {
   return request({ url: "/boss/resumes/batch", method: "POST", data: { ids, action } });
 }
 
-/** 新增导入记录 */
-export function createResumeImport(data) {
-  return request({ url: "/boss/resumes/imports", method: "POST", data });
+/**
+ * 导入简历文件：真实上传文件（multipart），后端存 OSS 并创建一条 IMPORT 来源的简历草稿。
+ * 返回的导入记录带 resumeId，可直接跳简历详情。
+ */
+export function createResumeImport(filePath, fileName) {
+  return uploadFile({
+    url: "/boss/resumes/imports",
+    filePath,
+    name: "file",
+    formData: fileName ? { fileName } : {},
+    skipUserIdHeader: true,
+  });
 }
 
 /** 导入记录列表 */

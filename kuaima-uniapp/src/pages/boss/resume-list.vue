@@ -2,24 +2,19 @@
   <view class="container">
     <!-- 顶部导航 -->
     <view class="wb-header" :style="{ paddingTop: statusBarHeight + 8 + 'px' }">
-      <view class="wb-back" @click="goBack"><text class="back-ico">‹</text></view>
+      <view class="wb-back" @click="goBack"><image class="back-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" /></view>
       <text class="wb-title">简历库</text>
-      <view class="wb-capsule">
-        <view class="cap-btn" @click="switchBatch"><text class="cap-ico">{{ batchMode ? '✕' : '⋯' }}</text></view>
-        <view class="cap-divider"></view>
-        <view class="cap-btn"><text class="cap-ico">○</text></view>
-      </view>
     </view>
 
     <view class="wb-body" :class="{ 'has-footer': batchMode }">
       <!-- 搜索 + 筛选 -->
       <view class="search-row">
         <view class="wb-search flex">
-          <text class="search-ico">🔍</text>
+          <image class="search-svg" src="/static/icons/boss-points/search-gray.svg" mode="aspectFit" />
           <input type="text" v-model="keyword" placeholder="搜索姓名、职位、技能等" @confirm="loadList" />
         </view>
         <view class="filter-btn" @click="openFilter">
-          <text class="filter-ico">⚙️</text>
+          <image class="filter-svg" src="/static/icons/boss-resume/sliders-gray.svg" mode="aspectFit" />
         </view>
       </view>
 
@@ -31,26 +26,37 @@
       </view>
       <view class="list-meta">
         <text>{{ totalText }}</text>
-        <view class="filter-entry" @click="openFilter">⚙️ 筛选</view>
+        <view class="filter-entry" @click="openFilter"><image class="filter-entry-svg" src="/static/icons/boss-resume/sliders-gray.svg" mode="aspectFit" /><text>筛选</text></view>
       </view>
 
       <!-- 列表 -->
       <view v-if="loading" class="wb-empty"><text class="wb-empty-text">加载中...</text></view>
       <view v-else-if="!list.length" class="wb-empty">
-        <view class="wb-empty-icon"><text>📄</text></view>
+        <view class="wb-empty-icon"><image class="empty-svg" src="/static/icons/boss-resume/file-lines-gray.svg" mode="aspectFit" /></view>
         <text class="wb-empty-text">暂无符合条件的简历</text>
       </view>
 
-      <view v-for="r in list" :key="r.id" class="rs-card" :class="{ 'batch-mode': batchMode }" @click="onCardClick(r)">
+      <view
+        v-for="r in list"
+        :key="r.id"
+        class="rs-card"
+        :class="{ 'batch-mode': batchMode }"
+        @click="onCardClick(r)"
+        @touchstart="onCardTouchStart"
+        @touchend="onCardTouchEnd"
+        @touchcancel="onCardTouchEnd"
+      >
         <view v-if="batchMode" class="rs-check" :class="{ on: selected[r.id] }" @click.stop="toggleSel(r.id)">
-          <text v-if="selected[r.id]">✓</text>
+          <image v-if="selected[r.id]" class="check-svg" src="/static/icons/boss-location/check-white.svg" mode="aspectFit" />
         </view>
         <view class="rs-avatar" :style="{ background: avatarColor(r.name) }">{{ (r.name || '人').charAt(0) }}</view>
         <view class="rs-info">
           <view class="rs-name-line">
             <text class="rs-name">{{ r.name }}</text>
             <text class="rs-pos">{{ r.position || '' }}</text>
-            <text class="fav-star" :class="{ on: r.favorite }" @click.stop="toggleFav(r)">★</text>
+            <view class="fav-star" :class="{ on: r.favorite }" @click.stop="toggleFav(r)">
+              <image class="fav-svg" :src="r.favorite ? '/static/icons/worker-orders/star-active.svg' : '/static/icons/worker-orders/star-inactive.svg'" mode="aspectFit" />
+            </view>
           </view>
           <text class="rs-sub">{{ r.education || '不限' }} · {{ r.experience || '—' }} · {{ r.age || '—' }}岁</text>
         </view>
@@ -64,10 +70,10 @@
     <!-- 批量操作底部条 -->
     <view class="batch-bar" v-if="batchMode">
       <text class="b-info">已选择 <text class="b-num">{{ Object.keys(selected).length }}</text> 份简历</text>
-      <view class="b-btn" @click="batchAction('read')">✓ 已读</view>
-      <view class="b-btn" @click="batchAction('fav')">★ 收藏</view>
-      <view class="b-btn danger" @click="batchAction('del')">🗑 删除</view>
-      <view class="b-btn primary" @click="batchAction('process')">📨 批量处理</view>
+      <view class="b-btn" @click="batchAction('read')"><image class="b-svg" src="/static/icons/boss-resume/check-double-gray.svg" mode="aspectFit" /><text>已读</text></view>
+      <view class="b-btn" @click="batchAction('fav')"><image class="b-svg" src="/static/icons/worker-orders/star-inactive.svg" mode="aspectFit" /><text>收藏</text></view>
+      <view class="b-btn danger" @click="batchAction('del')"><image class="b-svg" src="/static/icons/boss-location/trash-red.svg" mode="aspectFit" /><text>删除</text></view>
+      <view class="b-btn primary" @click="batchAction('process')"><image class="b-svg" src="/static/icons/boss-resume/paper-plane-white.svg" mode="aspectFit" /><text>批量处理</text></view>
     </view>
 
     <!-- 筛选弹层 -->
@@ -75,31 +81,37 @@
       <view class="filter-sheet">
         <view class="filter-head">
           <text class="filter-title">简历筛选</text>
-          <text class="filter-close" @click="closeFilter">✕</text>
+          <view class="filter-close" @click="closeFilter"><image class="close-svg" src="/static/icons/boss-points/xmark-gray.svg" mode="aspectFit" /></view>
         </view>
         <scroll-view scroll-y class="filter-body">
           <view class="filter-group">
             <text class="filter-group-title">职位类型</text>
             <view class="filter-opts">
-              <view v-for="o in jobCategoryOpts" :key="o" class="filter-opt" :class="{ active: filter.jobCategory === o }" @click="filter.jobCategory = o">{{ o }}</view>
+              <view v-for="o in jobCategoryOpts" :key="o" class="filter-opt" :class="{ active: filterDraft.jobCategory === o }" @click="filterDraft.jobCategory = o">{{ o }}</view>
             </view>
           </view>
           <view class="filter-group">
             <text class="filter-group-title">工作经验</text>
             <view class="filter-opts">
-              <view v-for="o in experienceOpts" :key="o" class="filter-opt" :class="{ active: filter.experience === o }" @click="filter.experience = o">{{ o }}</view>
+              <view v-for="o in experienceOpts" :key="o" class="filter-opt" :class="{ active: filterDraft.experience === o }" @click="filterDraft.experience = o">{{ o }}</view>
             </view>
           </view>
           <view class="filter-group">
             <text class="filter-group-title">学历要求</text>
             <view class="filter-opts">
-              <view v-for="o in educationOpts" :key="o" class="filter-opt" :class="{ active: filter.education === o }" @click="filter.education = o">{{ o }}</view>
+              <view v-for="o in educationOpts" :key="o" class="filter-opt" :class="{ active: filterDraft.education === o }" @click="filterDraft.education = o">{{ o }}</view>
             </view>
           </view>
           <view class="filter-group">
             <text class="filter-group-title">期望薪资</text>
             <view class="filter-opts">
-              <view v-for="o in salaryOpts" :key="o" class="filter-opt" :class="{ active: filter.expectedSalary === o }" @click="filter.expectedSalary = o">{{ o }}</view>
+              <view v-for="o in salaryOpts" :key="o" class="filter-opt" :class="{ active: filterDraft.expectedSalary === o }" @click="filterDraft.expectedSalary = o">{{ o }}</view>
+            </view>
+          </view>
+          <view class="filter-group">
+            <text class="filter-group-title">求职状态</text>
+            <view class="filter-opts">
+              <view v-for="o in statusOpts" :key="o.value" class="filter-opt" :class="{ active: filterDraft.status === o.value }" @click="filterDraft.status = o.value">{{ o.label }}</view>
             </view>
           </view>
         </scroll-view>
@@ -116,7 +128,7 @@
 import { getResumes, toggleResumeFavorite, batchResumeAction, RESUME_STATUS_TEXT, RESUME_STATUS_CLS } from "@/api/resume";
 import { avatarColor } from "@/api/project";
 
-const EMPTY_FILTER = () => ({ jobCategory: "", experience: "", education: "", expectedSalary: "" });
+const EMPTY_FILTER = () => ({ jobCategory: "", experience: "", education: "", expectedSalary: "", status: "" });
 
 export default {
   data() {
@@ -139,10 +151,18 @@ export default {
       loading: false,
       batchMode: false,
       selected: {},
+      pressTimer: null,
       jobCategoryOpts: ["全部", "分拣打包", "搬运装卸", "餐饮服务", "仓储理货", "生产制造", "物流快递", "其他"],
       experienceOpts: ["全部", "无经验可做", "1个月以内", "1-3个月", "3-6个月", "6个月以上"],
       educationOpts: ["全部", "初中及以上", "高中/中专", "大专及以上"],
       salaryOpts: ["全部", "150元以下", "150-200元/天", "200-300元/天", "300元以上"],
+      // 求职状态：值与后端 status 查询参数一致（空表示全部）
+      statusOpts: [
+        { label: "全部", value: "" },
+        { label: "待处理", value: "pending" },
+        { label: "已查看", value: "viewed" },
+        { label: "已投递", value: "sent" },
+      ],
     };
   },
   computed: {
@@ -200,8 +220,25 @@ export default {
       else this.selected[id] = true;
       this.$forceUpdate();
     },
-    switchBatch() {
-      this.batchMode = !this.batchMode;
+    // 长按卡片 600ms 进入批量模式（与原型 pressTimer 一致）
+    onCardTouchStart() {
+      this.clearPressTimer();
+      this.pressTimer = setTimeout(() => {
+        this.enterBatchMode();
+      }, 600);
+    },
+    onCardTouchEnd() {
+      this.clearPressTimer();
+    },
+    clearPressTimer() {
+      if (this.pressTimer) {
+        clearTimeout(this.pressTimer);
+        this.pressTimer = null;
+      }
+    },
+    enterBatchMode() {
+      if (this.batchMode) return;
+      this.batchMode = true;
       this.selected = {};
     },
     async batchAction(action) {
@@ -261,57 +298,32 @@ export default {
   align-items: center;
   gap: 10px;
   background: #fff;
-  padding: 6px 16px 12px;
+  padding: 8px 16px 12px;
   flex-shrink: 0;
 }
 
 .wb-back {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.back-ico {
-  font-size: 22px;
-  color: #333;
+.back-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .wb-title {
   flex: 1;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #333;
-}
-
-.wb-capsule {
-  display: flex;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 17px;
-  padding: 0 6px;
-  height: 32px;
-}
-
-.cap-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cap-ico {
-  font-size: 14px;
-  color: #666;
-}
-
-.cap-divider {
-  width: 1px;
-  height: 16px;
-  background: rgba(0, 0, 0, 0.15);
-  margin: 0 2px;
+  color: #1a1a1a;
 }
 
 .wb-body {
@@ -344,8 +356,10 @@ export default {
   flex: 1;
 }
 
-.search-ico {
-  font-size: 14px;
+.search-svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .wb-search input {
@@ -365,8 +379,9 @@ export default {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
-.filter-ico {
-  font-size: 15px;
+.filter-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .rs-tabs {
@@ -424,6 +439,11 @@ export default {
   gap: 4px;
 }
 
+.filter-entry-svg {
+  width: 13px;
+  height: 13px;
+}
+
 .rs-card {
   background: #fff;
   border-radius: 14px;
@@ -455,6 +475,11 @@ export default {
 .rs-check.on {
   background: #ff6b35;
   border-color: #ff6b35;
+}
+
+.check-svg {
+  width: 11px;
+  height: 11px;
 }
 
 .rs-avatar {
@@ -500,14 +525,15 @@ export default {
 }
 
 .fav-star {
-  color: #ddd;
-  font-size: 15px;
   margin-left: auto;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
-.fav-star.on {
-  color: #ffb020;
+.fav-svg {
+  width: 15px;
+  height: 15px;
 }
 
 .rs-right {
@@ -557,9 +583,12 @@ export default {
 }
 
 .wb-empty-icon {
-  font-size: 34px;
-  color: #ddd;
   margin-bottom: 10px;
+}
+
+.empty-svg {
+  width: 34px;
+  height: 34px;
 }
 
 .wb-empty-text {
@@ -598,6 +627,14 @@ export default {
   font-size: 12px;
   background: #f5f6f8;
   color: #555;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.b-svg {
+  width: 13px;
+  height: 13px;
 }
 
 .b-btn.danger {
@@ -650,9 +687,15 @@ export default {
 }
 
 .filter-close {
-  font-size: 17px;
-  color: #999;
   padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .filter-body {

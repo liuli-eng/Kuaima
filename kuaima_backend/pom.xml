@@ -131,6 +131,20 @@
 			<artifactId>poi-ooxml</artifactId>
 			<version>5.4.1</version>
 		</dependency>
+		<!-- POI scratchpad：解析老版 .doc（HWPFDocument），poi-ooxml 不含此类 -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-scratchpad</artifactId>
+			<version>5.4.1</version>
+		</dependency>
+		<!-- 图片简历 OCR 走服务器已安装的 tesseract 命令行（Ubuntu: apt install tesseract-ocr tesseract-ocr-chi-sim），
+			 不用 Tess4J：避免 JNA 加载 libtesseract.so 的 soname 摩擦，链路已在服务器实测通过 -->
+		<!-- PDFBox：把 PDF 简历首页渲染成 PNG 预览图（小程序侧直接当图片看，避免依赖 downloadFile 域名白名单） -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.3</version>
+		</dependency>
 		<!-- ZXing 二维码生成，企业成员邀请二维码接口使用 -->
 		<dependency>
 			<groupId>com.google.zxing</groupId>

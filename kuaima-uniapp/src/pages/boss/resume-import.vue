@@ -1,14 +1,14 @@
 <template>
   <view class="container">
     <view class="wb-header" :style="{ paddingTop: statusBarHeight + 8 + 'px' }">
-      <view class="wb-back" @click="goBack"><text class="back-ico">‹</text></view>
+      <view class="wb-back" @click="goBack"><image class="back-svg" src="/static/icons/boss-recruit-settings/chevron-left.svg" mode="aspectFit" /></view>
       <text class="wb-title">简历导入</text>
       <!-- 微信小程序原生胶囊已占右上角，自绘胶囊会与其重叠，仅在非小程序端保留 -->
       <!-- #ifndef MP-WEIXIN -->
       <view class="wb-capsule">
-        <view class="cap-btn"><text class="cap-ico">⋯</text></view>
+        <view class="cap-btn"><image class="cap-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" /></view>
         <view class="cap-divider"></view>
-        <view class="cap-btn"><text class="cap-ico">○</text></view>
+        <view class="cap-btn"><image class="cap-svg cap-svg-dot" src="/static/icons/boss-profile/dot.svg" mode="aspectFit" /></view>
       </view>
       <!-- #endif -->
     </view>
@@ -16,10 +16,13 @@
     <view class="wb-body">
       <!-- 上传区 -->
       <view class="upload-card">
-        <view class="upload-icon">☁️</view>
+        <view class="upload-icon"><image class="upload-icon-svg" src="/static/icons/enterprise-cert-form/cloud-arrow-up.svg" mode="aspectFit" /></view>
         <text class="upload-title">支持多种方式导入简历</text>
         <text class="upload-desc">上传简历文件后系统将自动解析入库\n便于统一筛选与管理</text>
-        <view class="upload-btn" @click="chooseFile">📤 上传简历</view>
+        <view class="upload-btn" @click="chooseUpload">
+          <image class="upload-btn-svg" src="/static/icons/boss-resume/upload-white.svg" mode="aspectFit" />
+          <text>上传简历</text>
+        </view>
         <view class="format-tags">
           <text class="format-tag">PDF</text>
           <text class="format-tag">DOC</text>
@@ -33,17 +36,17 @@
       <view class="section-title">导入记录</view>
       <view v-if="loading" class="wb-empty"><text class="wb-empty-text">加载中...</text></view>
       <view v-else-if="!records.length" class="wb-empty">
-        <view class="wb-empty-icon"><text>📋</text></view>
+        <view class="wb-empty-icon"><image class="empty-svg" src="/static/icons/boss-resume/file-lines-gray.svg" mode="aspectFit" /></view>
         <text class="wb-empty-text">暂无导入记录</text>
       </view>
       <view v-for="r in records" :key="r.id" class="record-item">
-        <view class="file-icon" :class="r.status === 'FAILED' ? 'fail' : r.status === 'SUCCESS' ? 'ok' : ''">📄</view>
+        <view class="file-icon" :class="r.status === 'FAILED' ? 'fail' : r.status === 'SUCCESS' ? 'ok' : ''"><image class="file-svg" src="/static/icons/worker-job-detail/file-alt-orange.svg" mode="aspectFit" /></view>
         <view class="file-main">
           <text class="file-name">{{ r.fileName }}</text>
           <text class="file-time">{{ r.timestamp || '' }}</text>
         </view>
         <text class="file-status" :class="r.status === 'FAILED' ? 'fail' : 'ok'">{{ r.status === 'FAILED' ? '解析失败' : '导入成功' }}</text>
-        <text class="file-view" @click="openResume(r)">查看</text>
+        <text class="file-view" @click="onRecordAction(r)">{{ r.status === 'FAILED' ? '重传' : '查看' }}</text>
       </view>
     </view>
   </view>
@@ -78,36 +81,85 @@ export default {
         this.loading = false;
       }
     },
+    /** 统一导入流程：上传文件 → 刷新导入记录 */
+    async doImport(filePath, fileName) {
+      if (!filePath) return;
+      uni.showLoading({ title: "上传中...", mask: true });
+      try {
+        // 真实上传文件到后端（后端存 OSS 并创建一条 IMPORT 来源的简历草稿）
+        await createResumeImport(filePath, fileName);
+        uni.hideLoading();
+        uni.showToast({ title: "导入成功，已加入简历库", icon: "none" });
+        this.loadRecords();
+      } catch (e) {
+        uni.hideLoading();
+        uni.showToast({ title: e?.message || "上传失败", icon: "none" });
+      }
+    },
+    /** 上传入口：弹出 ActionSheet 选择来源，两种来源能力均保留 */
+    chooseUpload() {
+      uni.showActionSheet({
+        itemList: ["从微信聊天选择文件", "从相册/拍照选择图片"],
+        success: (res) => {
+          if (res.tapIndex === 0) this.chooseFile();
+          else if (res.tapIndex === 1) this.chooseImage();
+        },
+        fail: () => {},
+      });
+    },
+    /** 从微信聊天选择文件（PDF / Word / 图片） */
     chooseFile() {
       uni.chooseMessageFile({
         count: 1,
         type: "file",
         extension: ["pdf", "doc", "docx", "jpg", "jpeg", "png"],
-        success: async (res) => {
+        success: (res) => {
           const file = res.tempFiles?.[0];
-          if (!file) return;
-          uni.showLoading({ title: "上传中..." });
-          try {
-            // 调用后端新增导入记录（真实文件解析需后端对接文件服务，前端这里先 mock 一个成功的记录）
-            await createResumeImport({
-              fileName: file.name,
-              fileUrl: file.path,
-              success: true,
-            });
-            uni.hideLoading();
-            uni.showToast({ title: "上传成功", icon: "none" });
-            this.loadRecords();
-          } catch (e) {
-            uni.hideLoading();
-            uni.showToast({ title: e.message || "上传失败", icon: "none" });
+          if (file) this.doImport(file.path, file.name);
+        },
+        fail: (err) => {
+          if (!/cancel/i.test(err?.errMsg || "")) {
+            uni.showToast({ title: "选择文件失败", icon: "none" });
           }
         },
-        fail: () => uni.showToast({ title: "已取消选择", icon: "none" }),
       });
     },
+    /**
+     * 从相册/拍照选择图片简历（jpg / png）。
+     * 相册里的照片无法通过 chooseMessageFile 选到，必须走 chooseImage。
+     */
+    chooseImage() {
+      uni.chooseImage({
+        count: 1,
+        sizeType: ["original", "compressed"],
+        sourceType: ["album", "camera"],
+        success: (res) => {
+          const path = res.tempFilePaths?.[0];
+          if (!path) return;
+          // chooseImage 不返回原始文件名，按临时路径后缀推扩展名，兜底 jpg
+          const matched = /\.([A-Za-z0-9]+)$/.exec(path.split("?")[0]);
+          const ext = matched ? matched[1].toLowerCase() : "jpg";
+          this.doImport(path, `图片简历.${ext}`);
+        },
+        fail: (err) => {
+          if (!/cancel/i.test(err?.errMsg || "")) {
+            uni.showToast({ title: "无法打开相册，请检查相册/相机授权", icon: "none" });
+          }
+        },
+      });
+    },
+    /** 记录操作：失败记录「重传」（重新走选择流程），成功记录「查看」跳详情 */
+    onRecordAction(r) {
+      if (r.status === "FAILED") this.chooseUpload();
+      else this.openResume(r);
+    },
     openResume(r) {
-      if (r.resumeId) uni.navigateTo({ url: `/pages/boss/resume-detail?id=${r.resumeId}` });
-      else uni.showToast({ title: "简历尚未解析完成", icon: "none" });
+      if (r.resumeId) {
+        uni.navigateTo({ url: `/pages/boss/resume-detail?id=${r.resumeId}` });
+      } else {
+        // 仅在历史脏数据（导入记录未关联简历）时出现，新导入均有 resumeId
+        uni.showToast({ title: "该记录未关联简历，请重新导入", icon: "none" });
+      }
     },
     goBack() {
       uni.navigateBack({ fail: () => uni.reLaunch({ url: "/pages/boss/resume" }) });
@@ -129,28 +181,32 @@ export default {
   align-items: center;
   gap: 10px;
   background: #fff;
-  padding: 6px 16px 12px;
+  padding: 8px 16px 12px;
   flex-shrink: 0;
 }
 
 .wb-back {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.back-ico {
-  font-size: 22px;
-  color: #333;
+.back-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .wb-title {
   flex: 1;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #333;
+  color: #1a1a1a;
 }
 
 .wb-capsule {
@@ -170,9 +226,14 @@ export default {
   justify-content: center;
 }
 
-.cap-ico {
-  font-size: 14px;
-  color: #666;
+.cap-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cap-svg-dot {
+  width: 9px;
+  height: 9px;
 }
 
 .cap-divider {
@@ -206,7 +267,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
+}
+
+.upload-icon-svg {
+  width: 34px;
+  height: 34px;
 }
 
 .upload-title {
@@ -226,7 +291,10 @@ export default {
 }
 
 .upload-btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   margin-top: 18px;
   background: linear-gradient(135deg, #ff6b35, #ff8c5a);
   color: #fff;
@@ -235,6 +303,11 @@ export default {
   font-size: 15px;
   font-weight: 600;
   box-shadow: 0 6px 16px rgba(255, 107, 53, 0.3);
+}
+
+.upload-btn-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .upload-btn:active {
@@ -259,9 +332,21 @@ export default {
 
 .section-title {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: #333;
   margin: 4px 0 10px;
+  display: flex;
+  align-items: center;
+}
+
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: #ff6b35;
+  border-radius: 2px;
+  margin-right: 6px;
 }
 
 .record-item {
@@ -284,8 +369,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ff6b35;
-  font-size: 17px;
+}
+
+.file-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .file-icon.fail {
@@ -346,9 +434,12 @@ export default {
 }
 
 .wb-empty-icon {
-  font-size: 34px;
-  color: #ddd;
   margin-bottom: 10px;
+}
+
+.empty-svg {
+  width: 34px;
+  height: 34px;
 }
 
 .wb-empty-text {

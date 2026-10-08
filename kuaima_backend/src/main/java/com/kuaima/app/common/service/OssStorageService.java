@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.PreDestroy;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.net.URI;
@@ -21,6 +22,7 @@ import java.nio.file.Files;
 import java.util.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +52,7 @@ public class OssStorageService {
         String objectKey = folder + "/" + LocalDate.now().format(DATE_FORMAT) + "/"
                 + UUID.randomUUID().toString().replace("-", "") + suffix;
         ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentType(file.getContentType());
+        metadata.setContentType(resolveContentType(file.getContentType(), suffix));
         metadata.setContentLength(file.getSize());
         try {
             getClient().putObject(bucketName, objectKey, file.getInputStream(), metadata);
@@ -91,6 +93,80 @@ public class OssStorageService {
             throw new IllegalStateException("上传 OSS 失败，请检查存储配置和服务状态");
         } catch (IOException e) {
             throw new IllegalStateException("上传 OSS 失败", e);
+        }
+    }
+
+    /**
+     * 上传内存中的字节内容（如 PDF 渲染出的预览图），返回 {objectKey, url, fileName}。
+     */
+    public Map<String, String> upload(byte[] content, String contentType, String folder, String extension) {
+        if (!StringUtils.hasText(endpoint) || !StringUtils.hasText(bucketName)
+                || !StringUtils.hasText(accessKeyId) || !StringUtils.hasText(accessKeySecret)) {
+            throw new IllegalStateException("OSS 配置不完整，请检查 aliyun.oss 配置或 ALIYUN_OSS_* 环境变量");
+        }
+        if (content == null || content.length == 0) {
+            throw new IllegalArgumentException("上传内容为空");
+        }
+        String suffix = extension == null ? "" : extension.toLowerCase();
+        String objectKey = folder + "/" + LocalDate.now().format(DATE_FORMAT) + "/"
+                + UUID.randomUUID().toString().replace("-", "") + suffix;
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentType(contentType);
+        metadata.setContentLength(content.length);
+        OSS client = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
+        try {
+            client.putObject(bucketName, objectKey, new ByteArrayInputStream(content), metadata);
+            Map<String, String> result = new LinkedHashMap<>();
+            result.put("objectKey", objectKey);
+            result.put("url", objectUrl(objectKey));
+            result.put("fileName", objectKey.substring(objectKey.lastIndexOf('/') + 1));
+            return result;
+        } catch (OSSException e) {
+            if ("AccessDenied".equalsIgnoreCase(e.getErrorCode())) {
+                throw new ForbiddenBusinessException("OSS 上传权限不足，请为当前 RAM 用户授予目标目录的 oss:PutObject 权限");
+            }
+            throw new IllegalStateException("上传 OSS 失败，请检查存储配置和服务状态");
+        } finally {
+            client.shutdown();
+        }
+    }
+
+    /**
+     * 纠正上传对象的 Content-Type。
+     *
+     * <p>小程序 uni.uploadFile 发出的分片通常不带具体 Content-Type，Spring 解析出来是
+     * application/octet-stream 或 null；直接透传给 OSS 会导致图片/PDF 等对象类型错误
+     * （小程序 &lt;image&gt; 渲染、浏览器内联预览都会受影响）。这里按扩展名兜底推断。
+     */
+    private static String resolveContentType(String clientType, String suffix) {
+        if (StringUtils.hasText(clientType) && !"application/octet-stream".equalsIgnoreCase(clientType)) {
+            return clientType;
+        }
+        switch (suffix == null ? "" : suffix) {
+            case ".jpg":
+            case ".jpeg":
+            case ".jpe":
+                return "image/jpeg";
+            case ".png":
+                return "image/png";
+            case ".gif":
+                return "image/gif";
+            case ".webp":
+                return "image/webp";
+            case ".bmp":
+                return "image/bmp";
+            case ".pdf":
+                return "application/pdf";
+            case ".doc":
+                return "application/msword";
+            case ".docx":
+                return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case ".xls":
+                return "application/vnd.ms-excel";
+            case ".xlsx":
+                return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            default:
+                return StringUtils.hasText(clientType) ? clientType : "application/octet-stream";
         }
     }
 

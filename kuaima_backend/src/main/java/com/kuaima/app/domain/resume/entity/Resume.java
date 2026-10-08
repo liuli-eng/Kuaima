@@ -84,4 +84,8 @@ public class Resume extends BaseEntity {
 
     @Column(name = "file_url", length = 500)
     private String fileUrl;
+
+    /** 原始文件的可视化预览图（PDF 首页渲染出的 PNG），非 PDF 或渲染失败时为空 */
+    @Column(name = "preview_url", length = 500)
+    private String previewUrl;
 }
