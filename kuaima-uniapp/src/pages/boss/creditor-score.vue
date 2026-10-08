@@ -207,7 +207,7 @@ export default {
       uni.navigateTo({ url: '/pages/boss/score-detail' })
     },
     showRules() {
-      uni.showToast({ title: '查看规则', icon: 'none' })
+      uni.navigateTo({ url: '/pages/boss/score-rule' })
     },
     showHowToImprove() {
       uni.showToast({ title: '如何提升', icon: 'none' })

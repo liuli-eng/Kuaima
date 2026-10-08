@@ -1,8 +1,12 @@
 import request from './request'
 
 // 招工列表（admin 全量）
-export function listJobs({ type, status, title, page = 0, size = 10 } = {}) {
-  return request.get('/admin/jobs', { params: { type, status, title, page, size } })
+export function listJobs({ type, status, title, startDate, endDate, page = 0, size = 10 } = {}) {
+  return request.get('/admin/jobs', { params: { type, status, title, startDate, endDate, page, size } })
+}
+
+export function exportJobs({ type, status, title, startDate, endDate } = {}) {
+  return request.get('/admin/jobs/export', { params: { type, status, title, startDate, endDate }, responseType: 'blob' })
 }
 
 // 招工详情

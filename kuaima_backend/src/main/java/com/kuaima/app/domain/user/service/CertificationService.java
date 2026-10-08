@@ -18,6 +18,7 @@ import com.kuaima.app.domain.enterprise.repository.EnterpriseMemberRepository;
 import com.kuaima.app.domain.enterprise.repository.EnterpriseRepository;
 import com.kuaima.app.domain.user.constant.CertificationStatus;
 import com.kuaima.app.domain.user.constant.EnterpriseCode;
+import com.kuaima.app.domain.user.constant.UserBusinessCode;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 
@@ -118,6 +119,7 @@ public class CertificationService {
         } else if (ENTERPRISE.equalsIgnoreCase(type) || "企业认证".equals(type)) {
             user.setEnterpriseStatus(approved ? CertificationStatus.APPROVED : CertificationStatus.REJECTED);
             if (approved) {
+                UserBusinessCode.ensureBoss(user);
                 EnterpriseCode.ensure(user);
                 ensureOwnerMembership(user);
             }

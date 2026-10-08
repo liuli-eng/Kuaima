@@ -56,13 +56,13 @@
           <el-option label="未认证" value="UNVERIFIED" />
           <el-option label="已拒绝" value="REJECTED" />
         </el-select>
-        <el-select v-model="typeFilter" placeholder="企业类型" clearable style="width: 120px">
+        <el-select v-model="typeFilter" filterable allow-create default-first-option placeholder="工种类型" clearable style="width: 140px">
           <el-option v-for="item in industryOptions" :key="item" :label="item" :value="item" />
         </el-select>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
         <div class="filter-space"></div>
-        <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出数据</button>
+        <button class="btn btn-outline btn-sm export-button" :disabled="exporting" @click="handleExport"><i class="fas" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> {{ exporting ? '导出中...' : '导出数据' }}</button>
       </div>
 
       <el-table
@@ -71,12 +71,12 @@
         class="boss-table"
         :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }"
       >
-        <el-table-column label="雇主ID" width="100" fixed="left">
+        <el-table-column label="雇主ID" min-width="100" fixed="left">
           <template #default="{ row }">
             <span class="employer-id">{{ employerId(row) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="头像+名称" width="175" fixed="left">
+        <el-table-column label="头像+名称" min-width="175" fixed="left">
           <template #default="{ row }">
             <div class="avatar-cell">
               <span class="mini-avatar" :style="{ background: avatarBackground(row) }">{{ avatarText(row) }}</span>
@@ -87,17 +87,17 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="企业名称" width="195" show-overflow-tooltip>
+        <el-table-column label="企业名称" min-width="195" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="company-name">{{ row.companyName || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="行业类型" width="95">
+        <el-table-column label="工种类型" min-width="130">
           <template #default="{ row }">
-            <span class="industry-tag" :class="industryClass(row.industry)">{{ row.industry || '-' }}</span>
+            <span class="industry-tag" :class="industryClass(row.jobType)">{{ row.jobType || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="联系人" width="105">
+        <el-table-column label="联系人" min-width="105">
           <template #default="{ row }">
             <div class="contact-info">
               <span class="contact-name">{{ row.contact || row.nickname || '-' }}</span>
@@ -105,42 +105,42 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="手机号" width="115">
+        <el-table-column label="手机号" min-width="115">
           <template #default="{ row }">{{ maskPhone(row.phone) }}</template>
         </el-table-column>
-        <el-table-column label="招工数" width="85" align="center">
+        <el-table-column label="招工数" min-width="85" align="center">
           <template #default="{ row }">
             <span class="job-count">{{ formatNumber(row.jobsCount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="信用分" width="105" align="center">
+        <el-table-column label="信用分" min-width="105" align="center">
           <template #default="{ row }">
             <span class="credit-tag" :class="creditClass(row.creditScore)">{{ creditText(row.creditScore) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="余额" width="110" align="right">
+        <el-table-column label="余额" min-width="110" align="right">
           <template #default="{ row }">
             <span class="asset-num">{{ formatMoney(row.balance) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="奖励金余额" width="110" align="right">
+        <el-table-column label="奖励金余额" min-width="110" align="right">
           <template #default="{ row }">
             <span class="asset-num">{{ formatMoney(row.rewardAmount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="积分余额" width="90" align="right">
+        <el-table-column label="积分余额" min-width="90" align="right">
           <template #default="{ row }">
             <span class="asset-num points">{{ formatNumber(row.points) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="认证状态" width="105">
+        <el-table-column label="认证状态" min-width="105">
           <template #default="{ row }">
             <span class="status-badge" :class="certClass(row)">
               <i :class="certIcon(row)"></i> {{ formatCertStatus(row) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="190" fixed="right">
+        <el-table-column label="操作" min-width="190" fixed="right">
           <template #default="{ row }">
             <div class="action-btns">
               <el-button link type="primary" size="small" @click="openDetail(row)">查看</el-button>
@@ -185,6 +185,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const tableData = ref([])
+const exporting = ref(false)
 const stats = ref({ total: 0, certified: 0, monthAdded: 0, pendingReview: 0 })
 
 const certifiedRate = computed(() => {
@@ -234,7 +235,7 @@ const loadData = async () => {
     const result = await listBosses({
       keyword: searchKeyword.value || undefined,
       enterpriseStatus: certFilter.value || undefined,
-      industry: typeFilter.value || undefined,
+      jobType: typeFilter.value || undefined,
       page: currentPage.value - 1,
       size: pageSize.value
     })
@@ -362,6 +363,76 @@ const handleReset = () => {
   currentPage.value = 1
   loadData()
 }
+
+const csvCell = (value) => {
+  if (value == null || value === '') return '""'
+  let text = String(value)
+  // 防止 Excel 将普通文本识别为公式。
+  if (/^[=+\-@]/.test(text)) text = `'${text}`
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+const downloadCsv = (rows, filename) => {
+  const content = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\r\n')}`
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+const handleExport = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const batchSize = 500
+    const params = {
+      keyword: searchKeyword.value || undefined,
+      enterpriseStatus: certFilter.value || undefined,
+      jobType: typeFilter.value || undefined
+    }
+    const first = await listBosses({ ...params, page: 0, size: batchSize })
+    const allBosses = [...rows(first)]
+    const pageCount = Math.ceil(totalOf(first) / batchSize)
+    for (let page = 1; page < pageCount; page += 1) {
+      const next = await listBosses({ ...params, page, size: batchSize })
+      allBosses.push(...rows(next))
+    }
+
+    const exportRows = [[
+      '雇主ID', '名称', '企业名称', '联系人', '手机号', '工种类型', '招工数', '信用分',
+      '余额（元）', '奖励金余额（元）', '积分余额', '认证状态'
+    ]]
+    allBosses.map(normalizeBoss).forEach(row => exportRows.push([
+      employerId(row),
+      row.displayName || '',
+      row.companyName || '',
+      row.contact || row.nickname || '',
+      maskPhone(row.phone),
+      row.jobType || '',
+      row.jobsCount ?? 0,
+      row.creditScore ?? 0,
+      (Number(row.balance ?? 0) / 100).toFixed(2),
+      (Number(row.rewardAmount ?? 0) / 100).toFixed(2),
+      row.points ?? 0,
+      formatCertStatus(row)
+    ]))
+
+    const today = new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' }).replaceAll('/', '-')
+    downloadCsv(exportRows, `老板数据_${today}.csv`)
+    ElMessage.success(`已导出 ${allBosses.length} 条老板数据`)
+  } catch (e) {
+    console.warn('[Bosses] 导出失败:', e)
+    ElMessage.error('导出失败，请稍后重试')
+  } finally {
+    exporting.value = false
+  }
+}
+
 const onSizeChange = (size) => {
   pageSize.value = size
   currentPage.value = 1

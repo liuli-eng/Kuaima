@@ -14,6 +14,8 @@ public interface PointsAccountRepository extends JpaRepository<PointsAccount, Lo
 
     /** 按用户 + 身份查积分账户。 */
     Optional<PointsAccount> findByUserIdAndRole(Long userId, String role);
+    /** 兼容历史重复数据：按主键倒序取指定身份最新积分账户。 */
+    Optional<PointsAccount> findFirstByUserIdAndRoleOrderByIdDesc(Long userId, String role);
 
     List<PointsAccount> findByUserIdInAndRole(Collection<Long> userIds, String role);
 

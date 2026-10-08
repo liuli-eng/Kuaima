@@ -1,13 +1,8 @@
 <template>
   <div>
     <div class="page-header">
-      <div class="header-nav">
-        <el-button text @click="router.back()"><i class="fas fa-arrow-left"></i></el-button>
-        <div>
-          <h1 class="page-title">老板详情</h1>
-          <p class="page-desc">雇主基本信息、经营数据、认证资质、积分 / 优惠券 / 奖励金资产</p>
-        </div>
-      </div>
+      <h1 class="page-title">老板详情</h1>
+      <p class="page-desc">雇主基本信息、经营数据、认证资质、积分 / 优惠券 / 奖励金资产</p>
     </div>
 
     <div v-loading="loading" class="detail-page">
@@ -65,12 +60,12 @@
         <div class="operation-grid">
           <div class="operation-stat"><div class="v">{{ detail.creditScore ?? 0 }}</div><div class="l">信用分</div></div>
           <div class="operation-stat"><div class="v">{{ formatNumber(detail.jobsCount) }}<span class="unit">次</span></div><div class="l">累计招工</div></div>
-          <div class="operation-stat accent"><div class="v">{{ formatMoney(detail.balance) }}</div><div class="l">账户余额</div></div>
-          <div class="operation-stat good"><div class="v">{{ formatNumber(detail.points) }}</div><div class="l">积分余额</div></div>
-          <div class="operation-stat"><div class="v">{{ formatMoney(detail.rewardAmount) }}</div><div class="l">奖励金余额</div></div>
-          <div class="operation-stat"><div class="v">{{ couponCounts.available }}<span class="unit">张</span></div><div class="l">可用优惠券</div></div>
-          <div class="operation-stat"><div class="v">{{ enterpriseStatusText }}</div><div class="l">企业认证</div></div>
-          <div class="operation-stat"><div class="v">{{ realnameStatusText }}</div><div class="l">实名认证</div></div>
+          <div class="operation-stat"><div class="v">{{ detail.ongoingOrders ?? detail.inProgressOrders ?? 0 }}<span class="unit">单</span></div><div class="l">进行中订单</div></div>
+          <div class="operation-stat accent"><div class="v">{{ transactionDisplay }}<span class="unit">元</span></div><div class="l">累计交易额</div></div>
+          <div class="operation-stat good"><div class="v">{{ percent(detail.goodRate ?? detail.positiveRate) }}</div><div class="l">好评率</div></div>
+          <div class="operation-stat"><div class="v">{{ percent(detail.onTimeSettlementRate) }}</div><div class="l">准时结算率</div></div>
+          <div class="operation-stat"><div class="v">{{ detail.complaintCount ?? 0 }}<span class="unit">次</span></div><div class="l">投诉次数</div></div>
+          <div class="operation-stat"><div class="v">{{ percent(detail.completionRate) }}</div><div class="l">订单完成率</div></div>
         </div>
       </div>
 
@@ -135,7 +130,7 @@
           </button>
         </div>
         <div v-if="couponRecords.length" class="coupon-list">
-          <div v-for="coupon in couponRecords" :key="coupon.id" class="coupon-item">
+          <div v-for="coupon in couponRecords" :key="coupon.id" class="coupon-item" :class="{ history: couponTab === 'history' }">
             <div class="coupon-amount">
               <div class="num">{{ couponText(coupon) }}</div>
               <div class="cond">{{ couponCondition(coupon) }}</div>
@@ -171,22 +166,14 @@
             <div class="asset-summary"><span class="summary-danger">{{ formatMoney(detail.rewardUsed) }}</span><span class="summary-label">累计消耗 / 提现</span></div>
           </div>
         </div>
-        <el-table :data="rewardRecords" empty-text="暂无奖励金明细">
-          <el-table-column prop="id" label="流水ID" width="100" />
-          <el-table-column prop="type" label="类型" width="100" />
-          <el-table-column label="金额" width="110" align="right">
-            <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
-          </el-table-column>
-          <el-table-column label="变动后余额" width="120" align="right">
-            <template #default="{ row }">{{ formatMoney(row.balanceAfter) }}</template>
-          </el-table-column>
-          <el-table-column label="时间" width="170">
-            <template #default="{ row }">{{ formatDateTime(row.time) }}</template>
-          </el-table-column>
-          <el-table-column label="说明" min-width="220" show-overflow-tooltip>
-            <template #default="{ row }">{{ row.title || row.remark || '-' }}</template>
-          </el-table-column>
-        </el-table>
+        <div v-if="rewardRecords.length" class="flow-list">
+          <div v-for="row in rewardRecords" :key="row.id" class="flow-item">
+            <span class="flow-icon" :class="Number(row.amount) < 0 ? 'gray' : 'green'"><i class="fas" :class="Number(row.amount) < 0 ? 'fa-money-bill-transfer' : 'fa-gift'"></i></span>
+            <div class="flow-info"><div class="flow-title">{{ row.title || row.remark || row.type || '奖励金变动' }}</div><div class="flow-time">{{ formatDateTime(row.time) }}</div></div>
+            <div class="flow-amount" :class="{ expense: row.type === 'EXPENSE' || Number(row.amount) < 0 }">{{ row.type === 'EXPENSE' || Number(row.amount) < 0 ? '-' : '+' }}{{ formatMoney(Math.abs(Number(row.amount || 0))) }}</div>
+          </div>
+        </div>
+        <div v-else class="table-empty">暂无奖励金流水</div>
         <div class="table-pagination">
           <span>共 {{ rewardPagination.total }} 条记录</span>
           <el-pagination
@@ -199,6 +186,48 @@
             @current-change="loadRewardRecords"
           />
         </div>
+      </div>
+
+      <div class="card">
+        <div class="asset-header credit-asset-header">
+          <div class="card-title"><i class="fas fa-star star-icon"></i>信用分明细</div>
+          <div class="asset-summary-group">
+            <div class="asset-summary"><span class="summary-primary">{{ detail.creditScore ?? 0 }}</span><span class="summary-label">当前信用分</span></div>
+            <span class="summary-divider"></span>
+            <div class="asset-summary"><span class="summary-success">+{{ creditTotals.added }}</span><span class="summary-label">累计加分</span></div>
+            <span class="summary-divider"></span>
+            <div class="asset-summary"><span class="summary-danger">-{{ creditTotals.deducted }}</span><span class="summary-label">累计扣分</span></div>
+            <span class="summary-divider"></span>
+            <div class="asset-summary"><span class="summary-label">信用等级</span><span class="level-excellent">{{ creditLevel }}</span></div>
+          </div>
+        </div>
+        <el-table v-if="creditRecords.length" :data="creditRecords">
+          <el-table-column label="明细ID" width="150"><template #default="{ row }"><span class="credit-flow-id">{{ row.bizNo || row.businessId || row.id || '-' }}</span></template></el-table-column>
+          <el-table-column label="类型" width="90"><template #default="{ row }"><span class="credit-flow-type" :class="Number(row.delta) >= 0 ? 'in' : 'out'"><i class="fas fa-circle"></i>{{ Number(row.delta) >= 0 ? '加分' : '减分' }}</span></template></el-table-column>
+          <el-table-column label="分值变动" width="100"><template #default="{ row }"><span :class="Number(row.delta) >= 0 ? 'text-success' : 'text-danger'">{{ Number(row.delta) > 0 ? '+' : '' }}{{ row.delta }}</span></template></el-table-column>
+          <el-table-column prop="afterScore" label="变动后信用分" width="110" />
+          <el-table-column label="触发规则" width="150"><template #default="{ row }">{{ row.ruleCode || row.bizType || row.reason || '-' }}</template></el-table-column>
+          <el-table-column label="时间" width="180"><template #default="{ row }">{{ formatDateTime(row.timestamp) }}</template></el-table-column>
+          <el-table-column label="备注" min-width="180" show-overflow-tooltip><template #default="{ row }">{{ row.reason || '-' }}</template></el-table-column>
+        </el-table>
+        <div v-else class="table-empty">暂无信用分明细</div>
+        <div class="table-pagination">
+          <span>共 {{ creditPagination.total }} 条记录</span>
+          <el-pagination
+            v-model:current-page="creditPagination.page"
+            v-model:page-size="creditPagination.size"
+            layout="prev, pager, next"
+            :page-size="creditPagination.size"
+            :total="creditPagination.total"
+            background
+            @current-change="loadCreditRecords"
+          />
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title"><i class="fas fa-comment-dots review-icon"></i>历史评价 · 零工对老板</span><span class="review-count">共 {{ detail.reviewCount ?? 0 }} 条评价</span></div>
+        <div class="table-empty">暂无评价记录</div>
       </div>
 
       <div class="card action-card">
@@ -222,6 +251,7 @@ import {
   getUser,
   unfreezeUser
 } from '@/api/user'
+import { getCreditDetail } from '@/api/credit'
 
 const route = useRoute()
 const router = useRouter()
@@ -230,9 +260,11 @@ const loading = ref(true)
 const couponTab = ref('available')
 const pointRecords = ref([])
 const rewardRecords = ref([])
+const creditRecords = ref([])
 const couponRecords = ref([])
 const pointPagination = ref({ page: 1, size: 5, total: 0 })
 const rewardPagination = ref({ page: 1, size: 5, total: 0 })
+const creditPagination = ref({ page: 1, size: 10, total: 0 })
 const couponPagination = ref({ page: 1, size: 5, total: 0 })
 const couponCounts = ref({ available: 0, history: 0 })
 
@@ -259,6 +291,16 @@ const certClass = computed(() => {
 })
 const enterpriseStatusText = computed(() => statusText(detail.value.enterpriseStatus))
 const realnameStatusText = computed(() => statusText(detail.value.realnameStatus))
+const transactionDisplay = computed(() => {
+  const value = detail.value.totalPayment ?? detail.value.totalTransactionAmount ?? detail.value.transactionAmount
+  return value == null ? '0.00' : (Number(value) / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+})
+const percent = (value) => value == null || value === '' ? '0%' : `${value}%`
+const creditLevel = computed(() => {
+  const score = Number(detail.value.creditScore ?? 0)
+  return score >= 90 ? '优秀' : score >= 80 ? '良好' : score >= 60 ? '一般' : '较低'
+})
+const creditTotals = ref({ added: 0, deducted: 0 })
 const assetRows = (result) => {
   const data = result?.data
   return Array.isArray(data) ? data : (data?.content || data?.list || [])
@@ -298,8 +340,13 @@ const pointTypeText = (type) => {
 const couponText = (coupon) => (coupon.type === 'DISCOUNT' ? `${coupon.discount || '-'}折` : `¥${coupon.amount || '0'}`)
 const couponCondition = (coupon) => (coupon.type === 'DISCOUNT' ? `封顶优惠¥${coupon.cap || '-'}` : `满¥${coupon.minSpend || '0'}元可用`)
 const couponStatus = (coupon) => ({ UNUSED: '可使用', USED: '已使用', EXPIRED: '已过期' })[coupon.status] || coupon.status || '-'
-const couponClass = (coupon) => (coupon.status === 'UNUSED' ? 'success' : 'default')
-const couponMeta = (coupon) => (coupon.status === 'USED' && coupon.usedAt ? `使用时间 ${formatDateTime(coupon.usedAt)}` : `有效期至 ${formatDate(coupon.expireAt)}`)
+const couponClass = (coupon) => (coupon.status === 'UNUSED' || coupon.status === 'USED' ? 'success' : 'default')
+const couponMeta = (coupon) => {
+  const validity = `有效期至 ${formatDate(coupon.expireAt)}`
+  if (coupon.status === 'USED') return `${validity}${coupon.useOrderId ? ` · 已用于订单 ${coupon.useOrderId}` : ' · 已使用'}`
+  if (coupon.status === 'EXPIRED') return `${validity} · 已过期未使用`
+  return validity
+}
 const formatStatus = (status) => {
   if (status === '正常' || status === 'NORMAL') return '正常'
   if (status === '冻结' || status === 'FROZEN') return '冻结'
@@ -379,6 +426,26 @@ const loadCouponRecords = async () => {
   }
 }
 
+const loadCreditRecords = async () => {
+  try {
+    const result = await getCreditDetail(route.params.id, {
+      page: creditPagination.value.page - 1,
+      size: creditPagination.value.size
+    })
+    const data = result?.data || {}
+    creditRecords.value = Array.isArray(data.creditFlows) ? data.creditFlows : []
+    creditTotals.value = {
+      added: Number(data.addTotal ?? data.creditAdded ?? 0),
+      deducted: Number(data.subTotal ?? data.creditDeducted ?? 0)
+    }
+    creditPagination.value.total = Number(data.total ?? result?.total ?? creditRecords.value.length)
+  } catch {
+    creditRecords.value = []
+    creditTotals.value = { added: 0, deducted: 0 }
+    creditPagination.value.total = 0
+  }
+}
+
 const handleFreeze = async () => {
   try {
     await ElMessageBox.confirm(`确定要冻结雇主「${displayName.value}」吗？`, '提示', { type: 'warning' })
@@ -409,13 +476,13 @@ onMounted(() => {
   loadDetail()
   loadPointRecords()
   loadRewardRecords()
+  loadCreditRecords()
   loadCouponCounts()
   loadCouponRecords()
 })
 </script>
 
 <style scoped>
-.header-nav { display: flex; align-items: center; gap: 12px; }
 .detail-page { min-height: 320px; }
 .detail-header { display: flex; align-items: center; gap: 16px; }
 .detail-avatar { width: 56px; height: 56px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(135deg,#FF8C42,#FF6B35); color: #fff; font-size: 22px; font-weight: 600; }
@@ -440,6 +507,7 @@ onMounted(() => {
 .operation-stat .l { margin-top: 6px; color: #9CA3AF; font-size: 12px; }
 .operation-stat.accent .v { color: var(--primary); }
 .operation-stat.good .v { color: #059669; }
+.operation-stat:hover { box-shadow: 0 2px 8px rgba(17,24,39,.06); }
 .certificate-list { display: flex; flex-direction: column; gap: 10px; }
 .certificate-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid #E5E7EB; border-radius: 8px; }
 .cert-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -447,28 +515,53 @@ onMounted(() => {
 .cert-name { color: #111827; font-size: 13px; font-weight: 600; }
 .cert-time { margin-top: 2px; overflow: hidden; color: #9CA3AF; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .asset-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.credit-asset-header { align-items: center; }
 .coin-icon { margin-right: 6px; color: #F59E0B; }
 .gift-icon { margin-right: 6px; color: #EA580C; }
+.star-icon { margin-right: 6px; color: #F59E0B; }
+.review-icon { margin-right: 6px; color: #FF6B35; }
+.review-count { color: var(--text-secondary); font-size: 12px; }
+.level-excellent { color: #F59E0B; font-size: 14px; font-weight: 600; }
+.flow-list { display: flex; flex-direction: column; }
+.flow-item { display: flex; align-items: center; gap: 14px; padding: 12px 4px; }
+.flow-item + .flow-item { border-top: 1px solid #F3F4F6; }
+.flow-icon { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: #ECFDF5; color: #059669; }
+.flow-icon.gray { background: #F3F4F6; color: #6B7280; }
+.flow-info { flex: 1; min-width: 0; }
+.flow-title { color: #111827; font-size: 13px; font-weight: 500; }
+.flow-time { margin-top: 3px; color: var(--text-muted); font-size: 12px; }
+.flow-amount { color: #059669; font-size: 15px; font-weight: 700; white-space: nowrap; }
+.flow-amount.expense { color: #DC2626; }
+.table-empty { padding: 28px; color: var(--text-muted); font-size: 13px; text-align: center; }
 .asset-summary { display: flex; align-items: baseline; gap: 6px; }
 .asset-summary-group { display: flex; align-items: center; gap: 20px; }
+.summary-divider { width: 1px; height: 14px; background: #E5E7EB; }
 .summary-primary { color: var(--primary); font-size: 18px; font-weight: 700; }
 .summary-success { color: #059669; font-size: 18px; font-weight: 700; }
 .summary-danger { color: var(--danger,#DC2626); font-size: 18px; font-weight: 700; }
 .summary-label { color: var(--text-secondary,#4B5563); font-size: 12px; }
+.credit-flow-id { color: var(--primary); font-family: monospace; }
+.credit-flow-type { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 14px; font-size: 12px; font-weight: 600; }
+.credit-flow-type i { font-size: 6px; }
+.credit-flow-type.in { color: #059669; background: #ECFDF5; }
+.credit-flow-type.out { color: #DC2626; background: #FEF2F2; }
 .tabs-bar { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #E5E7EB; }
 .tab-btn { padding: 10px 18px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary,#4B5563); font-size: 14px; cursor: pointer; }
 .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
 .tab-count { margin-left: 5px; padding: 0 7px; border-radius: 10px; background: #F3F4F6; color: #9CA3AF; font-size: 12px; }
 .tab-btn.active .tab-count { background: #FFF0EB; color: var(--primary); }
 .coupon-list { display: flex; flex-direction: column; gap: 10px; }
-.coupon-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid #E5E7EB; border-radius: 8px; }
-.coupon-amount { width: 110px; flex-shrink: 0; color: var(--primary); font-weight: 700; }
+.coupon-item { display: flex; align-items: stretch; border: 1px solid #F1D0C2; border-radius: 10px; overflow: hidden; background: linear-gradient(90deg, #FFF6F1 0%, #FFF 42%); }
+.coupon-item.history { border-color: #ECEEF2; background: #FAFAFB; opacity: .75; }
+.coupon-amount { width: 126px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--primary); border-right: 1px dashed #F1D0C2; font-weight: 700; }
+.coupon-item.history .coupon-amount { color: #9CA3AF; border-right-color: #E5E7EB; }
 .coupon-amount .num { font-size: 20px; line-height: 1.2; }
 .coupon-amount .cond { margin-top: 3px; color: #9CA3AF; font-size: 11px; font-weight: 400; }
-.coupon-info { flex: 1; min-width: 0; }
+.coupon-info { flex: 1; min-width: 0; padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 5px; }
 .coupon-name { color: #111827; font-size: 14px; font-weight: 600; }
+.coupon-item.history .coupon-name { color: #6B7280; }
 .coupon-meta { margin-top: 3px; color: #9CA3AF; font-size: 12px; }
-.coupon-status { flex-shrink: 0; }
+.coupon-status { display: flex; align-items: center; padding: 0 18px; flex-shrink: 0; }
 .table-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding-top: 12px; color: var(--text-secondary,#4B5563); font-size: 12px; }
 .status-badge { display: inline-flex; align-items: center; gap: 4px; }
 .status-badge.success { color: #059669; }

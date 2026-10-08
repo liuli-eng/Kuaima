@@ -18,7 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kuaima.app.admin.dto.BossOrderView;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.boss.entity.BossOrder;
+import com.kuaima.app.domain.boss.entity.BaseOrderItem;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
+import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
@@ -34,24 +36,28 @@ public class AdminDashboardController {
     private final UserRepository userRepository;
     private final BossOrderRespository orderRepository;
     private final SettlementRespository settlementRepository;
+    private final BaseOrderItemRespository orderItemRepository;
 
     public AdminDashboardController(UserRepository userRepository,
                                     BossOrderRespository orderRepository,
-                                    SettlementRespository settlementRepository) {
+                                    SettlementRespository settlementRepository,
+                                    BaseOrderItemRespository orderItemRepository) {
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
         this.settlementRepository = settlementRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     /** 基础统计 */
-    @Operation(summary = "Dashboard 基础统计", description = "返回 workerTotal(零工总数)、bossTotal(雇主总数)、orderTotal(订单总数)、settledTotal(结算单条数)、pendingAudit(待审核订单数)")
+    @Operation(summary = "Dashboard 基础统计", description = "返回 workerTotal(零工总数)、bossTotal(雇主总数)、orderTotal(今日订单数)、settledTotal(结算单条数)、pendingAudit(待审核订单数)")
     @GetMapping("/stats")
     public Result<Map<String, Object>> stats() {
         Map<String, Object> data = new HashMap<>();
 
         long workerCount = userRepository.countByRole(UserRole.USER);
-        long bossCount = userRepository.countByRole(UserRole.BOSS);
-        long orderTotal = orderRepository.count();
+        long bossCount = userRepository.countBossIdentities();
+        List<BossOrder> allOrders = orderRepository.findAll();
+        long orderTotal = countOrdersOnDate(allOrders, new Date());
         long settledTotal = settlementRepository.count();
 
         data.put("workerTotal", workerCount);
@@ -60,11 +66,27 @@ public class AdminDashboardController {
         data.put("settledTotal", settledTotal);
 
         // 待审核订单数
-        long pendingAudit = orderRepository.findAll().stream()
+        long pendingAudit = allOrders.stream()
                 .filter(o -> "待审核".equals(o.getOrderStatus())).count();
         data.put("pendingAudit", pendingAudit);
 
         return Result.success(data);
+    }
+
+    private long countOrdersOnDate(List<BossOrder> orders, Date date) {
+        Calendar start = Calendar.getInstance();
+        start.setTime(date);
+        start.set(Calendar.HOUR_OF_DAY, 0);
+        start.set(Calendar.MINUTE, 0);
+        start.set(Calendar.SECOND, 0);
+        start.set(Calendar.MILLISECOND, 0);
+        Calendar end = (Calendar) start.clone();
+        end.add(Calendar.DAY_OF_MONTH, 1);
+        return orders.stream()
+                .map(BossOrder::getTimestamp)
+                .filter(Objects::nonNull)
+                .filter(ts -> !ts.before(start.getTime()) && ts.before(end.getTime()))
+                .count();
     }
 
     /** 订单趋势（近7天每日订单数） */
@@ -140,7 +162,7 @@ public class AdminDashboardController {
     }
 
     /** 最近订单（最新8条，含雇主名称） */
-    @Operation(summary = "最近订单", description = "返回最新 8 条订单（含 employerName 雇主名称），按 id 倒序。返回 BossOrderView")
+    @Operation(summary = "最近订单", description = "返回最新 8 条订单（含雇主、零工名称），优先使用报名记录状态，与后台订单管理页保持一致")
     @GetMapping("/recent-orders")
     public Result<List<BossOrderView>> recentOrders() {
         PageRequest pageable = PageRequest.of(0, 8, Sort.by(Sort.Direction.DESC, "id"));
@@ -161,6 +183,23 @@ public class AdminDashboardController {
             });
         }
 
+        List<Long> orderIds = orders.getContent().stream().map(BossOrder::getId).toList();
+        Map<Long, BaseOrderItem> workerItems = new HashMap<>();
+        if (!orderIds.isEmpty()) {
+            orderItemRepository.findByOrderIdIn(orderIds).stream()
+                    .sorted(Comparator.comparing(BaseOrderItem::getId).reversed())
+                    .forEach(item -> workerItems.putIfAbsent(item.getOrderId(), item));
+        }
+        Set<Long> workerIds = workerItems.values().stream().map(BaseOrderItem::getUserId)
+                .filter(id -> id != null && id > 0).collect(Collectors.toSet());
+        Map<Long, String> workerNames = new HashMap<>();
+        userRepository.findAllById(workerIds).forEach(user -> {
+            String name = user.getRealName();
+            if (name == null || name.isBlank()) name = user.getNickname();
+            if (name == null || name.isBlank()) name = user.getUsername();
+            workerNames.put(user.getId(), name);
+        });
+
         List<BossOrderView> views = orders.getContent().stream()
                 .map(order -> new BossOrderView(
                         order.getId(),
@@ -168,7 +207,10 @@ public class AdminDashboardController {
                         order.getOrderContent(),
                         null,
                         order.getOrderNum(),
-                        order.getOrderStatus(),
+                        Optional.ofNullable(workerItems.get(order.getId()))
+                                .map(BaseOrderItem::getStatus)
+                                .filter(status -> status != null && !status.isBlank())
+                                .orElse(order.getOrderStatus()),
                         order.getType(),
                         order.getPostion(),
                         order.getDuration(),
@@ -182,6 +224,8 @@ public class AdminDashboardController {
                         order.getStartTime(),
                         order.getEndTime(),
                         order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主",
+                        Optional.ofNullable(workerItems.get(order.getId())).map(BaseOrderItem::getUserId)
+                                .map(workerNames::get).orElse(null),
                         0L,
                         order.getAuditBy(),
                         order.getAuditTime(),

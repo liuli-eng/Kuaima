@@ -229,8 +229,8 @@ public class AuthController {
             newUser.setRole(role);
             newUser.setOpenid(info.openid());
             String rawNickname = info.nickname() != null ? info.nickname() : dto.getNickname();
-            // 昵称可沿用注册页选择的展示称呼，但实际权限身份仍由企业认证决定。
-            newUser.setNickname(StringUtils.hasText(rawNickname) ? rawNickname : nextDefaultNickname(role));
+            // 新用户尚未完成企业认证，业务身份统一按零工处理；登录端 role 只代表本次会话端。
+            newUser.setNickname(StringUtils.hasText(rawNickname) ? rawNickname : nextDefaultNickname());
             newUser.setAvatar(info.avatar() != null ? info.avatar() : dto.getAvatar());
             newUser.setPhone(phone);
             user = userRepository.save(newUser);
@@ -260,10 +260,10 @@ public class AuthController {
         return candidates.isEmpty() ? null : candidates.get(0);
     }
 
-    /** 为未提供昵称的新用户生成按身份递增的默认昵称。 */
-    private synchronized String nextDefaultNickname(String role) {
-        String prefix = UserRole.BOSS.equals(role) ? "老板" : "零工";
-        int max = userRepository.findByRole(role).stream()
+    /** 为尚未完成企业认证的新用户生成零工默认昵称，不能按登录端 role 生成老板昵称。 */
+    private synchronized String nextDefaultNickname() {
+        String prefix = "零工";
+        int max = userRepository.findByRole(UserRole.USER).stream()
                 .map(User::getNickname)
                 .filter(StringUtils::hasText)
                 .filter(n -> n.startsWith(prefix))

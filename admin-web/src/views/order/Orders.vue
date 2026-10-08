@@ -155,6 +155,13 @@ const formatTime = (t) => {
   const date = new Date(t)
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleTimeString('zh-CN', { hour12: false })
 }
+const formatDateTime = (t) => {
+  if (!t) return '-'
+  const date = new Date(t)
+  if (Number.isNaN(date.getTime())) return '-'
+  const pad = value => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 const formatTimelineTime = (value) => {
   if (!value) return '暂无记录'
   const raw = String(value)
@@ -208,18 +215,19 @@ const orderTimeline = computed(() => {
 })
 
 const normalizeOrder = (item) => ({
-  id: item.id,
+  id: item.orderNumber || item.parentOrderId || item.orderId || item.id,
+  itemId: item.id,
   orderId: item.orderId,
   employer: item.employerName || '-',
   worker: item.workerName || '-',
   workerId: item.userId,
-  job: item.jobTitle || item.postion || item.jobType || '-',
-  type: item.jobType || '-',
+  job: item.jobTitle || item.postion || '-',
+  type: item.industryName || item.jobCategoryName || '-',
   amount: item.amount ?? item.salary ?? '-',
   status: item.status || '-',
   statusClass: statusClassMap[item.status] ?? 'default',
-  startTime: formatTime(item.startTime),
-  endTime: formatTime(item.endTime),
+  startTime: formatDateTime(item.startTime),
+  endTime: formatDateTime(item.endTime),
   applyAt: item.applyDate,
   hireAt: item.hireDate,
   workAt: item.workDate,
@@ -299,7 +307,7 @@ const handleCancel = async (row) => {
   if (isCanceled(row)) return
   try {
     const result = await ElMessageBox.prompt('请输入取消原因（可选）', '取消订单', { inputPlaceholder: '例如：后台管理员取消', confirmButtonText: '确认取消', cancelButtonText: '返回' })
-    await cancelOrder(row.id, result.value)
+    await cancelOrder(row.itemId, result.value)
     ElMessage.success('订单已取消')
     await loadOrders()
   } catch (e) {

@@ -5,9 +5,13 @@ import java.time.LocalDate;
 
 import com.alibaba.fastjson2.annotation.JSONField;
 import com.kuaima.app.domain.base.entity.BaseEntity;
+import com.kuaima.app.domain.user.constant.CertificationStatus;
+import com.kuaima.app.domain.user.constant.UserBusinessCode;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import lombok.Getter;
@@ -18,6 +22,14 @@ import lombok.Setter;
 @Getter
 @Setter
 public class User extends BaseEntity {
+
+    /** 零工对外业务编号，如 G0010258；与数据库主键无关。 */
+    @Column(name = "worker_code", unique = true, length = 8)
+    private String workerCode;
+
+    /** 老板对外业务编号，如 B0020156；企业认证通过后生成。 */
+    @Column(name = "boss_code", unique = true, length = 8)
+    private String bossCode;
 
     @Column(nullable = false, unique = true, length = 50)
     private String username;
@@ -152,4 +164,14 @@ public class User extends BaseEntity {
     /** 个人简介（零工个人资料） */
     @Column(length = 500)
     private String introduction;
+
+    @PrePersist
+    @PreUpdate
+    private void ensureBusinessCodes() {
+        UserBusinessCode.ensureWorker(this);
+        if (CertificationStatus.APPROVED.equalsIgnoreCase(enterpriseStatus)
+                || ("ENTERPRISE".equalsIgnoreCase(certType) && "已通过".equals(certStatus))) {
+            UserBusinessCode.ensureBoss(this);
+        }
+    }
 }

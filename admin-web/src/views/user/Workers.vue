@@ -13,7 +13,7 @@
           <div class="stat-card-icon"><i class="fas fa-user-friends"></i></div>
         </div>
         <div class="stat-card-value">{{ stats.total }}</div>
-        <div class="stat-card-change"><span class="text-muted">全部零工用户</span></div>
+        <div :class="['stat-card-change', changeClass('total')]"><i :class="['fas', changeIcon('total')]"></i><span>{{ changeText('total') }}</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
@@ -21,7 +21,7 @@
           <div class="stat-card-icon blue"><i class="fas fa-user-plus"></i></div>
         </div>
         <div class="stat-card-value">{{ stats.monthNew }}</div>
-        <div class="stat-card-change"><span class="text-muted">本月注册用户</span></div>
+        <div :class="['stat-card-change', changeClass('monthNew')]"><i :class="['fas', changeIcon('monthNew')]"></i><span>{{ changeText('monthNew') }}</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
@@ -29,7 +29,7 @@
           <div class="stat-card-icon green"><i class="fas fa-signal"></i></div>
         </div>
         <div class="stat-card-value">{{ stats.online }}</div>
-        <div class="stat-card-change"><span class="text-muted">当前在线零工</span></div>
+        <div :class="['stat-card-change', changeClass('online')]"><i :class="['fas', changeIcon('online')]"></i><span>{{ changeText('online') }}</span></div>
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
@@ -37,7 +37,7 @@
           <div class="stat-card-icon red"><i class="fas fa-user-lock"></i></div>
         </div>
         <div class="stat-card-value">{{ stats.frozen }}</div>
-        <div class="stat-card-change"><span class="text-muted">冻结状态</span></div>
+        <div :class="['stat-card-change', changeClass('frozen')]"><i :class="['fas', changeIcon('frozen')]"></i><span>{{ changeText('frozen') }}</span></div>
       </div>
     </div>
 
@@ -46,19 +46,21 @@
       <div class="filter-bar">
         <div class="filter-item"><span>关键词</span><el-input v-model="searchKeyword" placeholder="姓名/手机号/ID" clearable style="width: 220px;" prefix-icon="Search" /></div>
         <div class="filter-item"><span>状态</span><el-select v-model="statusFilter" placeholder="全部" clearable style="width: 120px;">
-          <el-option label="正常" value="正常" />
+          <el-option label="全部" value="" />
+          <el-option label="在线" value="在线" />
+          <el-option label="离线" value="离线" />
           <el-option label="冻结" value="冻结" />
         </el-select></div>
         <div class="filter-item"><span>注册日期</span><div class="date-picker-wrap"><el-date-picker v-model="dateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 280px;" /></div></div>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
-        <button class="btn btn-outline btn-sm export-button"><i class="fas fa-download"></i> 导出数据</button>
+        <button class="btn btn-outline btn-sm export-button" :disabled="exporting" @click="handleExport"><i class="fas" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> {{ exporting ? '导出中...' : '导出数据' }}</button>
       </div>
 
       <div class="table-scroll">
-      <el-table class="workers-table" :data="tableData" :fit="false" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column prop="id" label="零工ID" width="110" show-overflow-tooltip />
-        <el-table-column label="头像+姓名" width="185" show-overflow-tooltip>
+      <el-table class="workers-table" :data="tableData" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
+        <el-table-column prop="id" label="零工ID" min-width="110" show-overflow-tooltip />
+        <el-table-column label="头像+姓名" min-width="185" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="user-cell">
               <span class="mini-avatar" :style="{ background: row.avatarColor || getAvatarColor(row.name) }">{{ getAvatarLetter(row.name) }}</span>
@@ -69,40 +71,40 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="phone" label="手机号" width="130" show-overflow-tooltip />
-        <el-table-column prop="certStatus" label="实名状态" width="105" show-overflow-tooltip>
+        <el-table-column prop="phone" label="手机号" min-width="130" show-overflow-tooltip />
+        <el-table-column prop="certStatus" label="实名状态" min-width="105" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="['realname-status', isPhoneVerified(row) ? 'verified' : 'unverified']"><i :class="['fas', isPhoneVerified(row) ? 'fa-check-circle' : 'fa-clock']"></i>{{ isPhoneVerified(row) ? '已认证' : '未认证' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="技能标签" width="170" show-overflow-tooltip>
+        <el-table-column label="技能标签" min-width="170" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="skill-tags"><span v-for="(skill, idx) in normalizeSkills(row.skills)" :key="idx" class="worker-tag" :class="`worker-tag-${idx % 4}`">{{ skill }}</span><span v-if="!normalizeSkills(row.skills).length" class="text-muted">-</span></div>
           </template>
         </el-table-column>
-        <el-table-column label="信用分" width="95" show-overflow-tooltip>
+        <el-table-column label="信用分" min-width="95" show-overflow-tooltip>
           <template #default="{ row }"><span v-if="row.creditScore != null" :class="['credit-tag', creditLevel(row.creditScore)]">{{ row.creditScore }} {{ creditLabel(row.creditScore) }}</span><span v-else>-</span></template>
         </el-table-column>
-        <el-table-column label="奖励金余额" width="110" show-overflow-tooltip>
+        <el-table-column label="奖励金余额" min-width="110" show-overflow-tooltip>
           <template #default="{ row }"><span class="asset-num">{{ formatMoney(row.rewardBalance ?? row.rewardAmount ?? row.reward ?? null) }}</span></template>
         </el-table-column>
-        <el-table-column label="积分余额" width="90" show-overflow-tooltip>
+        <el-table-column label="积分余额" min-width="90" show-overflow-tooltip>
           <template #default="{ row }"><span class="asset-num points">{{ formatNumber(row.pointsBalance ?? row.pointBalance ?? row.points ?? null) }}</span></template>
         </el-table-column>
-        <el-table-column prop="orders" label="完成订单" width="95" show-overflow-tooltip>
+        <el-table-column prop="orders" label="完成订单" min-width="95" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.completedOrders ?? 0 }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="registerTime" label="注册时间" width="115" show-overflow-tooltip>
+        <el-table-column prop="registerTime" label="注册时间" min-width="115" show-overflow-tooltip>
           <template #default="{ row }">{{ formatDateTime(row.registerTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="195" fixed="right">
+        <el-table-column label="操作" min-width="195">
           <template #default="{ row }">
             <div class="action-cell">
-              <el-button link type="primary" size="small" @click="handleDetail(row)">查看</el-button>
-              <el-button link type="warning" size="small" v-if="isNormal(row.status)" @click="handleFreeze(row)">冻结</el-button>
-              <el-button link type="success" size="small" v-else @click="handleUnfreeze(row)">解冻</el-button>
+              <button class="btn btn-outline btn-sm" @click="handleDetail(row)">查看</button>
+              <button class="btn btn-danger btn-sm" v-if="isNormal(row.status)" @click="handleFreeze(row)">冻结</button>
+              <button class="btn btn-primary btn-sm" v-else @click="handleUnfreeze(row)">解冻</button>
             </div>
           </template>
         </el-table-column>
@@ -144,9 +146,26 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const tableData = ref([])
+const exporting = ref(false)
 
 // 统计数据
-const stats = ref({ total: '-', monthNew: '-', online: '-', frozen: '-' })
+const stats = ref({ total: '-', monthNew: '-', online: '-', frozen: '-', changes: {} })
+
+const changeValue = (key) => stats.value.changes?.[key]
+const changeClass = (key) => {
+  const value = changeValue(key)?.value
+  return typeof value === 'number' ? (value >= 0 ? 'up' : 'down') : 'muted'
+}
+const changeIcon = (key) => {
+  const value = changeValue(key)?.value
+  return typeof value === 'number' ? (value >= 0 ? 'fa-arrow-up' : 'fa-arrow-down') : 'fa-minus'
+}
+const changeText = (key) => {
+  const change = changeValue(key)
+  if (!change || typeof change.value !== 'number') return '暂无对比数据'
+  const sign = change.value > 0 ? '+' : ''
+  return `${change.label || '较上期'} ${sign}${change.value}%`
+}
 
 // 加载统计
 const loadStats = async () => {
@@ -160,9 +179,15 @@ const loadStats = async () => {
 
 // 后端 Worker 真实字段
 const normalizeWorker = (item) => {
+  const realName = String(item.realName || '').trim()
+  const nickname = String(item.nickname || '').trim()
+  const phone = String(item.phone || '').trim()
+  const username = String(item.username || '').trim()
+  const isWechatIdentifier = /^(wx[_-]|openid[_-]?)/i.test(username)
+  const displayName = realName || nickname || (phone && phone !== username ? phone : '')
   return {
     ...item,
-    name: item.realName || item.nickname || item.username || item.phone,
+    name: displayName || (!isWechatIdentifier && username ? username : `零工${item.id || ''}`),
     nickname: item.nickname || '',
     registerTime: item.date || item.createdAt || item.timestamp,
   }
@@ -231,6 +256,10 @@ const creditLevel = (score) => {
 const creditLabel = (score) => score >= 80 ? '优秀' : score >= 70 ? '良好' : score >= 60 ? '一般' : '较低'
 const formatNumber = (value) => value == null || value === '' ? '-' : Number(value).toLocaleString('zh-CN')
 const formatMoney = (value) => value == null || value === '' ? '-' : `¥${(Number(value) / 100).toFixed(2)}`
+const formatMoneyForExport = (row) => {
+  const value = row.rewardBalance ?? row.rewardAmount ?? row.reward
+  return value == null || value === '' ? '' : (Number(value) / 100).toFixed(2)
+}
 const formatPercent = (value) => value == null || value === '' ? '-' : `${Number(value).toFixed(1).replace('.0', '')}%`
 
 const getAvatarColor = (name) => {
@@ -282,6 +311,83 @@ const handleReset = () => {
   dateRange.value = []
   currentPage.value = 1
   loadData()
+}
+
+const csvCell = (value) => {
+  if (value == null || value === '') return '""'
+  let text = String(value)
+  // 防止 Excel 把普通文本识别为公式。
+  if (/^[=+\-@]/.test(text)) text = `'${text}`
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+const downloadCsv = (rows, filename) => {
+  const content = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\r\n')}`
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+const extractWorkerPage = (result) => {
+  const data = result?.data
+  const rows = Array.isArray(data) ? data : (data?.content || data?.list || [])
+  const count = Number(result?.total ?? data?.totalElements ?? data?.total ?? rows.length)
+  return { rows, count }
+}
+
+const handleExport = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const batchSize = 500
+    const params = {
+      keyword: searchKeyword.value || undefined,
+      status: statusFilter.value || undefined,
+      startDate: dateRange.value?.[0] || undefined,
+      endDate: dateRange.value?.[1] || undefined
+    }
+    const first = extractWorkerPage(await listWorkers({ ...params, page: 0, size: batchSize }))
+    const allWorkers = [...first.rows]
+    const pageCount = Math.ceil(first.count / batchSize)
+    for (let page = 1; page < pageCount; page += 1) {
+      const next = extractWorkerPage(await listWorkers({ ...params, page, size: batchSize }))
+      allWorkers.push(...next.rows)
+    }
+
+    const rows = [[
+      '零工ID', '姓名', '手机号', '实名状态', '性别', '技能标签', '信用分',
+      '奖励金余额（元）', '积分余额', '完成订单', '注册时间', '账户状态'
+    ]]
+    allWorkers.map(normalizeWorker).forEach(row => rows.push([
+      row.id,
+      row.name,
+      row.phone,
+      isPhoneVerified(row) ? '已认证' : formatRealnameStatus(row.realnameStatus || row.certStatus),
+      formatGender(row.gender),
+      normalizeSkills(row.skills).join('、'),
+      row.creditScore ?? '',
+      formatMoneyForExport(row),
+      row.pointsBalance ?? row.pointBalance ?? row.points ?? '',
+      row.completedOrders ?? 0,
+      formatDateTimeFull(row.registerTime),
+      formatStatus(row.status)
+    ]))
+
+    const today = new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' }).replaceAll('/', '-')
+    downloadCsv(rows, `零工数据_${today}.csv`)
+    ElMessage.success(`已导出 ${allWorkers.length} 条零工数据`)
+  } catch (e) {
+    console.warn('[Workers] 导出失败:', e)
+    ElMessage.error('导出失败，请稍后重试')
+  } finally {
+    exporting.value = false
+  }
 }
 
 const onSizeChange = (size) => {
@@ -359,9 +465,10 @@ onMounted(() => {
 }
 .date-picker-wrap { display: flex; align-items: center; }
 .export-button { margin-left: auto; }
-.workers-table :deep(.el-table__header),
-.workers-table :deep(.el-table__body) { min-width: 1400px; }
+.stat-card-change.muted { color: var(--text-muted); }
 
+/* 表格始终填满卡片；窗口较窄时才允许横向滚动，避免宽屏右侧出现大片空白。 */
+.workers-table { width: 100% !important; min-width: 980px; }
 .table-scroll { width: 100%; overflow-x: auto; }
 
 .workers-table :deep(.el-table__header th) {
@@ -376,6 +483,11 @@ onMounted(() => {
   color: var(--text-primary);
   font-size: 13px;
 }
+.workers-table :deep(.el-table__body td:first-child .cell) {
+  color: var(--primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.workers-table :deep(.el-table__body tr:hover > td) { background: #FAFAFA; }
 .workers-table :deep(.el-table__inner-wrapper::before) { display: none; }
 
 .user-cell {
@@ -407,6 +519,7 @@ onMounted(() => {
 .action-cell {
   display: flex;
   align-items: center;
+  gap: 6px;
   flex-wrap: nowrap;
   white-space: nowrap;
 }
@@ -414,6 +527,12 @@ onMounted(() => {
   margin-left: 0;
   margin-right: 8px;
   padding: 0;
+}
+.action-cell .btn {
+  min-width: 46px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
 }
 .action-cell .el-button:last-child {
   margin-right: 0;

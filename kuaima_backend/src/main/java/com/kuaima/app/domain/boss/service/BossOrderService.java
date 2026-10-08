@@ -170,8 +170,9 @@ public class BossOrderService {
     @Transactional
     public BossOrder auditPass(Long id) {
         BossOrder order = getOrderOrThrow(id);
-        if (!BossStatus.ORDER_PENDING_AUDIT.equals(order.getOrderStatus())) {
-            throw new IllegalStateException("仅待审核的订单可以审核通过");
+        if (!BossStatus.ORDER_PENDING_AUDIT.equals(order.getOrderStatus())
+                && !BossStatus.ORDER_AUDIT_REJECT.equals(order.getOrderStatus())) {
+            throw new IllegalStateException("仅待审核或审核拒绝的订单可以重新审核通过");
         }
         order.setOrderStatus(BossStatus.ORDER_RECRUITING);
         BossOrder saved = orderRepository.save(order);
@@ -186,8 +187,9 @@ public class BossOrderService {
     @Transactional
     public BossOrder auditReject(Long id, String reason) {
         BossOrder order = getOrderOrThrow(id);
-        if (!BossStatus.ORDER_PENDING_AUDIT.equals(order.getOrderStatus())) {
-            throw new IllegalStateException("仅待审核的订单可以审核拒绝");
+        if (!BossStatus.ORDER_PENDING_AUDIT.equals(order.getOrderStatus())
+                && !BossStatus.ORDER_AUDIT_REJECT.equals(order.getOrderStatus())) {
+            throw new IllegalStateException("仅待审核或审核拒绝的订单可以审核拒绝");
         }
         order.setOrderStatus(BossStatus.ORDER_AUDIT_REJECT);
         order.setOrderRemark(StringUtils.hasText(reason) ? ("[审核拒绝] " + reason) : order.getOrderRemark());

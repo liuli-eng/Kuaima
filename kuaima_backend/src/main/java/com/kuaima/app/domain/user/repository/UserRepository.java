@@ -1,6 +1,7 @@
 package com.kuaima.app.domain.user.repository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import java.time.LocalDate;
 
@@ -19,6 +20,39 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
 
     Optional<User> findByOpenid(String openid);
+
+    Optional<User> findByWorkerCode(String workerCode);
+
+    Optional<User> findByBossCode(String bossCode);
+
+    /** 用户快照与最近信用流水一次查询返回，减少公网数据库串行往返。 */
+    @Query(value = """
+            select u.id as userId,
+                   case when upper(coalesce(u.enterprise_status, '')) = 'APPROVED'
+                              or (upper(coalesce(u.cert_type, '')) = 'ENTERPRISE' and u.cert_status = '已通过')
+                        then u.boss_code else u.worker_code end as businessId,
+                   coalesce(u.credit_score, 0) as creditScore,
+                   coalesce(u.star_score, 0) as starScore,
+                   case when upper(coalesce(u.enterprise_status, '')) = 'APPROVED'
+                              or (upper(coalesce(u.cert_type, '')) = 'ENTERPRISE' and u.cert_status = '已通过')
+                        then 'BOSS_CREDIT' else 'WORKER_STAR' end as scoreType,
+                   f.id as flowId, f.biz_no as flowBizNo, f.delta as delta, f.before_score as beforeScore,
+                   f.after_score as afterScore, f.rule_code as ruleCode, f.biz_type as bizType,
+                   f.reason as reason, f.`timestamp` as flowTimestamp
+            from sys_user u
+            left join credit_flow f
+              on f.user_id = u.id
+             and f.score_type = case
+                   when upper(coalesce(u.enterprise_status, '')) = 'APPROVED'
+                        or (upper(coalesce(u.cert_type, '')) = 'ENTERPRISE' and u.cert_status = '已通过')
+                   then 'BOSS_CREDIT' else 'WORKER_STAR' end
+            where u.worker_code = upper(:identifier)
+               or u.boss_code = upper(:identifier)
+               or u.id = case when :identifier regexp '^[0-9]+$' then cast(:identifier as unsigned) else null end
+            order by f.`timestamp` desc, f.id desc
+            limit 50
+            """, nativeQuery = true)
+    List<AdminCreditDetailRow> findAdminCreditDetail(@Param("identifier") String identifier);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.id=:id")
@@ -64,7 +98,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 后台零工列表：支持注册日期范围筛选。 */
     @Query("""
             select u from User u
-            where u.role = :role
+            where not (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED'
+                       or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
               and (:status is null or u.status = :status)
               and (:startDate is null or u.date >= :startDate)
               and (:endDate is null or u.date <= :endDate)
@@ -77,9 +112,44 @@ public interface UserRepository extends JpaRepository<User, Long> {
                              @Param("endDate") LocalDate endDate,
                              Pageable pageable);
 
+    /** 后台零工在线/离线筛选：由管理端会话管理器提供目标用户 ID 集合。 */
+    @Query("""
+            select u from User u
+            where not (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED'
+                       or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
+              and u.id in :ids
+              and (:startDate is null or u.date >= :startDate)
+              and (:endDate is null or u.date <= :endDate)
+              and ((:keyword is null) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%) or (u.companyName like %:keyword%))
+            """)
+    Page<User> searchWorkersByIds(@Param("role") String role,
+                                  @Param("ids") List<Long> ids,
+                                  @Param("keyword") String keyword,
+                                  @Param("startDate") LocalDate startDate,
+                                  @Param("endDate") LocalDate endDate,
+                                  Pageable pageable);
+
+    @Query("select u.id from User u where not (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED' or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))")
+    List<Long> findWorkerIdentityIds();
+
     long countByRoleAndStatus(String role, String status);
 
     long countByRoleAndDateBetween(String role, LocalDate startDate, LocalDate endDate);
+
+    /** 使用数据库当前日期统计本月新增，避免应用服务器与数据库时区不一致。 */
+    @Query(value = """
+            select count(*) from sys_user u
+            where u.role = :role
+              and u.`date` >= date_format(current_date, '%Y-%m-01')
+              and u.`date` < date_add(date_format(current_date, '%Y-%m-01'), interval 1 month)
+            """, nativeQuery = true)
+    long countCurrentMonthByRole(@Param("role") String role);
+
+    long countByRoleAndDateLessThanEqual(String role, LocalDate date);
+
+    /** 按业务身份统计老板：企业认证通过才算老板，兼容历史认证字段。 */
+    @Query("select count(u) from User u where upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED' or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过')")
+    long countBossIdentities();
 
     @Query("select u from User u where (:role is null or u.role = :role) and (:keyword is null or u.username like concat('%', :keyword, '%') or u.nickname like concat('%', :keyword, '%') or u.phone like concat('%', :keyword, '%') or u.companyName like concat('%', :keyword, '%'))")
     Page<User> searchRecipients(@Param("role") String role, @Param("keyword") String keyword, Pageable pageable);
@@ -111,13 +181,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /**
      * 按老板业务身份/状态/企业认证状态/行业/关键词分页查询。
      *
-     * role 是当前登录角色，不等同于业务身份；已完成企业认证的用户即使当前
-     * role 仍为 USER，也必须出现在后台老板列表中。
+     * 老板业务身份以企业认证通过为准，不能仅凭用户当前 role=BOSS 判断；
+     * 同时兼容历史数据中 certType=ENTERPRISE、certStatus=已通过的记录。
      */
     @Query("""
             select u from User u
-            where (u.role = :role
-                   or u.enterpriseStatus = 'APPROVED'
+            where (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED'
                    or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
               and (:status is null or u.status = :status)
               and (:enterpriseStatus is null or u.enterpriseStatus = :enterpriseStatus)
@@ -130,4 +199,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
                             @Param("industry") String industry,
                             @Param("keyword") String keyword,
                             Pageable pageable);
+
+    /** 在指定老板集合内继续按账号状态、认证状态和关键词分页。 */
+    @Query("""
+            select u from User u
+            where (upper(coalesce(u.enterpriseStatus, '')) = 'APPROVED'
+                   or (upper(coalesce(u.certType, '')) = 'ENTERPRISE' and u.certStatus = '已通过'))
+              and u.id in :ids
+              and (:status is null or u.status = :status)
+              and (:enterpriseStatus is null or u.enterpriseStatus = :enterpriseStatus)
+              and ((:keyword is null) or (u.companyCode like %:keyword%) or (u.companyName like %:keyword%) or (u.username like %:keyword%) or (u.nickname like %:keyword%) or (u.phone like %:keyword%))
+            """)
+    Page<User> searchBossesByIds(@Param("ids") Collection<Long> ids,
+                                 @Param("status") String status,
+                                 @Param("enterpriseStatus") String enterpriseStatus,
+                                 @Param("keyword") String keyword,
+                                 Pageable pageable);
 }

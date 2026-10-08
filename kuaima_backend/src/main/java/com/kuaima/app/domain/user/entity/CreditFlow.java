@@ -4,15 +4,21 @@ import com.kuaima.app.domain.base.entity.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "credit_flow")
+@Table(name = "credit_flow", indexes = @Index(name = "idx_credit_flow_user_score_type",
+        columnList = "user_id, score_type, timestamp"))
 @Getter
 @Setter
 public class CreditFlow extends BaseEntity {
+    /** 面向后台和用户端展示的信用流水业务编号，例如 XF20260908004。 */
+    @Column(name = "biz_no", length = 20, unique = true)
+    private String bizNo;
+
     @Column(nullable = false)
     private Long userId;
     @Column(nullable = false)

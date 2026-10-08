@@ -136,7 +136,7 @@
 
       <!-- 分页 -->
       <div class="pagination">
-        <div class="pagination-info">共 1,856 条订单记录</div>
+        <div class="pagination-info">共 {{ recentOrdersTotal }} 条订单记录</div>
         <el-pagination
           background
           layout="prev, pager, next"
@@ -151,7 +151,8 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
-import { getStats, getTrend, getDistribution, getRecentOrders, getEmployeeStats, getPayrollStats } from '@/api/dashboard'
+import { getStats, getTrend, getDistribution, getEmployeeStats, getPayrollStats } from '@/api/dashboard'
+import { listOrders } from '@/api/order'
 
 // statCards：后端接口填充 value，其余字段保留原展示元数据
 // 后端 Dashboard 字段：workerTotal, bossTotal, orderTotal, settledTotal, pendingAudit
@@ -202,6 +203,7 @@ const jobTypeData = ref([
   { name: '其他', value: 0, color: '#F59E0B' }
 ])
 const recentOrders = ref([])
+const recentOrdersTotal = ref(0)
 
 const trendRange = ref('7d')
 const trendChart = ref(null)
@@ -255,25 +257,29 @@ const loadDistribution = async () => {
 // 加载最近订单
 const loadRecentOrders = async () => {
   try {
-    const result = await getRecentOrders()
+    const result = await listOrders({ page: 0, size: 8 })
     const d = result.data || []
+    const list = Array.isArray(d) ? d : (d?.content || d?.list || [])
+    recentOrdersTotal.value = result.total ?? d?.totalElements ?? d?.total ?? list.length
     const palette = ['#FF6B35', '#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#64748B']
-    recentOrders.value = (Array.isArray(d) ? d : []).map((o, i) => {
+    recentOrders.value = list.map((o, i) => {
       const employer = o.employerName || '未知'
+      const worker = o.workerName || '-'
       const job = o.orderTitle || o.postion || '-'
-      const amount = o.salary ? `¥${o.salary}` : '-'
-      const status = o.orderStatus || '-'
-      const statusClass = status === '已完成' ? 'success' : status === '招工中' ? 'info' : status === '待审核' ? 'warning' : 'danger'
-      const ts = o.timestamp
-      const time = ts ? new Date(ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
-      const letter = employer.charAt(0) || '?'
+      const amountValue = o.amount ?? o.salary
+      const amount = amountValue != null ? `¥${Number(amountValue).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'
+      const status = o.status || o.orderStatus || '-'
+      const statusLabel = { 待结算: '已完工', 取消招工: '已取消', 取消报名: '已取消' }[status] || status
+      const statusClass = { '已完成': 'success', '已报名': 'default', '已录用': 'purple', '已到岗': 'info', '待结算': 'warning', '已结算': 'teal', '招工中': 'info', '待审核': 'warning', '审核拒绝': 'danger', '取消招工': 'default', '取消报名': 'default' }[status] || 'danger'
+      const time = formatDateTimeSeconds(o.timestamp || o.applyDate)
+      const letter = worker.charAt(0) || '?'
       return {
-        id: `KM${o.id || ''}`,
+        id: o.orderNumber || o.parentOrderId || o.orderId || o.id || '-',
         employer,
         job,
-        worker: '-',
+        worker,
         amount,
-        status,
+        status: statusLabel,
         statusClass,
         time,
         avatarColor: `linear-gradient(135deg, ${palette[i % palette.length]}, ${palette[(i+1) % palette.length]})`,
@@ -288,6 +294,15 @@ const loadRecentOrders = async () => {
 const formatNumber = (n) => {
   if (n == null || n === undefined || Number.isNaN(Number(n))) return '-'
   return Number(n).toLocaleString()
+}
+
+// 实时订单时间统一显示完整的年月日时分秒。
+const formatDateTimeSeconds = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const pad = (number) => String(number).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
 const initTrendChart = () => {

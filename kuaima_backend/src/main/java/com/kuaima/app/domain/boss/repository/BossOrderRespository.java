@@ -3,6 +3,7 @@ package com.kuaima.app.domain.boss.repository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Date;
+import java.time.LocalDate;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,16 +16,24 @@ import com.kuaima.app.domain.boss.entity.BossOrder;
 
 public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, JpaSpecificationExecutor<BossOrder> {
 
-    /** 按 类型/状态/标题 组合过滤分页查询（参数为空表示不过滤） */
+    /** 按 类型/状态/标题/雇主 组合过滤分页查询（参数为空表示不过滤） */
     @Query("""
             select o from BossOrder o
+              left join User u on u.id = o.createBy
             where (:type is null or o.type = :type)
               and (:status is null or o.orderStatus = :status)
-              and (:title is null or o.orderTitle like concat('%', :title, '%'))
+              and (:startDate is null or o.date >= :startDate)
+              and (:endDate is null or o.date <= :endDate)
+              and (:title is null or lower(coalesce(o.orderTitle, '')) like lower(concat('%', :title, '%'))
+                   or lower(coalesce(u.companyName, '')) like lower(concat('%', :title, '%'))
+                   or lower(coalesce(u.nickname, '')) like lower(concat('%', :title, '%'))
+                   or lower(coalesce(u.username, '')) like lower(concat('%', :title, '%')))
             """)
     Page<BossOrder> search(@Param("type") String type,
                                 @Param("status") String status,
                                 @Param("title") String title,
+                                @Param("startDate") LocalDate startDate,
+                                @Param("endDate") LocalDate endDate,
                                 Pageable pageable);
 
     /** 老板端岗位列表：强制按创建人隔离数据 */
@@ -43,6 +52,21 @@ public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, Jp
 
     /** 某老板发布的全部订单（最新在前） */
     List<BossOrder> findByCreateByOrderByIdDesc(Long createBy);
+
+    /** 批量读取老板最近发布的岗位，用于后台老板列表展示工种。 */
+    List<BossOrder> findByCreateByInOrderByIdDesc(Collection<Long> createBys);
+
+    /** 根据发布时选择的工种分类或历史岗位文本查找老板。 */
+    @Query(value = """
+            select distinct o.create_by
+            from boss_order o
+            left join job_category j
+              on j.id = o.job_category_id
+              or find_in_set(cast(j.id as char), coalesce(o.job_ids, '')) > 0
+            where lower(coalesce(j.name, '')) like lower(concat('%', :jobType, '%'))
+               or lower(coalesce(o.postion, '')) like lower(concat('%', :jobType, '%'))
+            """, nativeQuery = true)
+    List<Long> findOwnerIdsByJobType(@Param("jobType") String jobType);
 
     List<BossOrder> findByCreateByAndStartTimeGreaterThanEqualAndStartTimeLessThanOrderByIdDesc(
             Long createBy, Date startInclusive, Date endExclusive);

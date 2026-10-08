@@ -14,6 +14,33 @@ import com.kuaima.app.domain.coupon.entity.UserCoupon;
 
 public interface UserCouponRepository extends JpaRepository<UserCoupon, Long> {
 
+    /** 老板优惠券列表一次 JOIN 用户、用户券和券模板，减少远程数据库往返。 */
+    @Query(value = """
+            select uc.id as id, uc.status as status, uc.expire_at as expireAt,
+                   uc.used_at as usedAt, uc.use_order_id as useOrderId,
+                   coalesce(c.title, c.name, '优惠券') as title, c.type as type,
+                   c.amount as amount, c.min_spend as minSpend, c.discount as discount,
+                   c.cap as cap, count(*) over() as totalCount
+            from user_coupon uc
+            left join coupon c on c.id = uc.coupon_id
+            join sys_user u on u.id = uc.user_id
+             and (upper(coalesce(u.enterprise_status, '')) = 'APPROVED'
+                  or (upper(coalesce(u.cert_type, '')) = 'ENTERPRISE' and u.cert_status = '已通过'))
+            where uc.user_id = :userId
+              and (:status = 'ALL'
+                   or (:status = 'AVAILABLE' and uc.status = 'UNUSED'
+                       and (uc.expire_at is null or uc.expire_at >= :today))
+                   or (:status = 'HISTORY' and (uc.status <> 'UNUSED'
+                       or (uc.expire_at is not null and uc.expire_at < :today))))
+            order by uc.id desc
+            limit :limitValue offset :offsetValue
+            """, nativeQuery = true)
+    List<AdminCouponRecordRow> findAdminCouponRecords(@Param("userId") Long userId,
+                                                       @Param("status") String status,
+                                                       @Param("today") Date today,
+                                                       @Param("limitValue") int limitValue,
+                                                       @Param("offsetValue") int offsetValue);
+
     /** 按用户查优惠券 */
     List<UserCoupon> findByUserId(Long userId);
 

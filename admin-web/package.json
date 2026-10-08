@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.41"
+    "vue": "^3.5.41",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@element-plus/icons-vue": "^2.3.2",

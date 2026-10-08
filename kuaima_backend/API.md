@@ -386,6 +386,8 @@ GET /boss/order?type=daily&status=%E6%8B%9B%E5%B7%A5%E4%B8%AD&page=0&size=10
 
 **User（表 `sys_user`）**：`username`、`password`（不返回）、`role`（`BOSS` 老板 / `USER` 员工，登录时按所选身份切换）、`openid`、`nickname`、`avatar`、`phone`、`email`、`status`（`正常` / `冻结`）、`remark`、`age`、`gender`、`balance`（`@Transient`，不落库）；admin 管理扩展字段：`certStatus`（`未认证`/`待审核`/`已通过`/`已拒绝`）、`creditScore`（0~100）、`certType`（`REALNAME` 零工实名 / `ENTERPRISE` 企业认证）、`skills`（技能标签，逗号分隔）、`companyName`（仅 BOSS）、`industry`（仅 BOSS）、`contact`（仅 BOSS）、`contactPhone`（仅 BOSS）
 
+后台用户展示使用独立业务编号：零工 `workerCode` 为 `G` + 7 位数字，老板 `bossCode` 为 `B` + 7 位数字；两者均持久化且唯一，不向管理端展示数据库主键。后台信用分列表的 `id` 为该业务编号，`userId` 仅用于兼容内部关联。
+
 **BossOrder（表 `boss_order`）**：`orderTitle`、`orderStatus`、`type`、`orderContent`、`orderRemark`、`postion`、`orderNum`、`duration`、`address`、`tags`、`startTime`、`endTime`、`salary`、`trialDuration`
 
 **BaseOrderItem（表 `boss_order_item`）**：`orderId`、`userId`、`status`、`trialRequested`、`remark`、`applyDate`、`hireDate`、`workDate`、`finishDate`、`cancelDate`、`cancelReason`
@@ -940,6 +942,11 @@ KV 存储（表 `admin_setting`），`AdminSetting` 字段：`settingKey`（主�
 `GET /user/{id}/credit`
 
 返回：`{ "creditScore": 85, "flows": [...] }`（flows 为最近 10 条 `CreditFlow`）
+
+后台信用分管理接口 `GET /admin/credit/users` 返回的 `id` 为零工/老板业务编号（`G`/`B` + 7 位数字）；详情和调分接口 `/admin/credit/{id}`、`/admin/credit/{id}/adjust` 支持该业务编号，也兼容历史数据库数字主键。
+详情接口仅返回对应信用类型最近 50 条流水（响应字段 `flowLimit=50`），完整历史通过信用流水分页接口查询，避免大流水账号一次性加载导致超时。
+
+学堂视频上传使用 OSS `academy/*` 目录。当前 RAM 子用户必须具备 `oss:PutObject` 权限；最小权限策略见 `src/main/resources/db/aliyun_oss_upload_policy.json`。权限不足时接口返回 403，不再回传阿里云完整诊断信息。
 
 ### 6. 信用分明细分页
 

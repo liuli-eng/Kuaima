@@ -11,7 +11,11 @@ import com.kuaima.app.domain.course.repository.CourseVideoRepository;
 import com.kuaima.app.domain.course.repository.ExamQuestionRepository;
 import com.kuaima.app.domain.course.repository.ExamRepository;
 import com.kuaima.app.domain.academy.entity.AcademyQuiz;
+import com.kuaima.app.domain.academy.entity.AcademySimulateVideo;
 import com.kuaima.app.domain.academy.repository.AcademyQuizRepository;
+import com.kuaima.app.domain.academy.repository.AcademySimulateVideoRepository;
+import com.kuaima.app.domain.academy.repository.AcademyLessonRepository;
+import com.kuaima.app.common.service.OssStorageService;
 import com.alibaba.fastjson2.JSONArray;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,20 +32,42 @@ public class WorkerClassroomService {
     private final ExamQuestionRepository questions;
     private final RulesRepository rules;
     private final AcademyQuizRepository academyQuizzes;
+    private final AcademySimulateVideoRepository academyVideos;
+    private final AcademyLessonRepository academyLessons;
+    private final OssStorageService ossStorageService;
 
     @Autowired
     public WorkerClassroomService(CourseRepository courses, CourseVideoRepository videos,
                                   ExamRepository exams, ExamQuestionRepository questions,
-                                  RulesRepository rules, AcademyQuizRepository academyQuizzes) {
+                                  RulesRepository rules, AcademyQuizRepository academyQuizzes,
+                                  AcademySimulateVideoRepository academyVideos, AcademyLessonRepository academyLessons,
+                                  OssStorageService ossStorageService) {
         this.courses = courses; this.videos = videos; this.exams = exams;
         this.questions = questions; this.rules = rules; this.academyQuizzes = academyQuizzes;
+        this.academyVideos = academyVideos; this.academyLessons = academyLessons; this.ossStorageService = ossStorageService;
+    }
+
+    /** 保留已有测试和调用方的八参数构造方式。 */
+    public WorkerClassroomService(CourseRepository courses, CourseVideoRepository videos,
+                                  ExamRepository exams, ExamQuestionRepository questions,
+                                  RulesRepository rules, AcademyQuizRepository academyQuizzes,
+                                  AcademySimulateVideoRepository academyVideos,
+                                  OssStorageService ossStorageService) {
+        this(courses, videos, exams, questions, rules, academyQuizzes, academyVideos, null, ossStorageService);
+    }
+
+    /** 保留已有测试和调用方的六参数构造方式。 */
+    public WorkerClassroomService(CourseRepository courses, CourseVideoRepository videos,
+                                  ExamRepository exams, ExamQuestionRepository questions,
+                                  RulesRepository rules, AcademyQuizRepository academyQuizzes) {
+        this(courses, videos, exams, questions, rules, academyQuizzes, null, null, null);
     }
 
     /** 保留旧测试/调用方构造方式；生产 Bean 使用包含题库仓库的构造器。 */
     public WorkerClassroomService(CourseRepository courses, CourseVideoRepository videos,
                                   ExamRepository exams, ExamQuestionRepository questions,
                                   RulesRepository rules) {
-        this(courses, videos, exams, questions, rules, null);
+        this(courses, videos, exams, questions, rules, null, null, null, null);
     }
 
     public Map<String, Object> overview() {
@@ -60,6 +86,7 @@ public class WorkerClassroomService {
         List<Rules> publishedRules = rules.findByStatusIn(PUBLISHED);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("simulateOrder", selectCourses(courseRows, "simulate", "模拟", "体验"));
+        data.put("simulateVideos", simulateVideos());
         data.put("learningRules", selectRules(publishedRules, "学习规则", "平台规则"));
         List<AcademyQuiz> quizRows = academyQuizRows();
         Map<String, Object> quiz = new LinkedHashMap<>();
@@ -67,7 +94,10 @@ public class WorkerClassroomService {
         quiz.put("passScore", DEFAULT_PASS_SCORE);
         quiz.put("exams", examViews);
         data.put("quiz", quiz);
-        data.put("howToOrder", selectRules(publishedRules, "如何接单", "接单"));
+        List<Map<String, Object>> lessons = howToOrderLessons();
+        data.put("howToOrder", lessons.isEmpty()
+                ? selectRules(publishedRules, "如何接单", "接单")
+                : lessons);
         data.put("platformRules", selectRules(publishedRules, "平台规则", "交易规则"));
         data.put("courses", courseRows);
         return data;
@@ -111,6 +141,53 @@ public class WorkerClassroomService {
 
     private List<AcademyQuiz> academyQuizRows() {
         return academyQuizzes == null ? List.of() : academyQuizzes.findAllByOrderBySortAscIdAsc();
+    }
+
+    private List<Map<String, Object>> howToOrderLessons() {
+        if (academyLessons == null) return List.of();
+        return academyLessons.findAllByOrderByIdAsc().stream()
+                .filter(lesson -> Boolean.TRUE.equals(lesson.getEnabled()))
+                .map(lesson -> {
+                    Map<String, Object> view = new LinkedHashMap<>();
+                    String videoUrl = playableUrl(lesson.getVideo());
+                    view.put("id", lesson.getId());
+                    view.put("key", lesson.getLessonKey());
+                    view.put("title", lesson.getTitle());
+                    view.put("description", lesson.getDescription());
+                    view.put("video", videoUrl);
+                    view.put("url", videoUrl);
+                    view.put("duration", lesson.getDuration());
+                    view.put("learners", lesson.getLearners());
+                    return view;
+                }).toList();
+    }
+
+    private List<Map<String, Object>> simulateVideos() {
+        if (academyVideos == null) return List.of();
+        return academyVideos.findByEnabledTrueOrderBySortAscIdAsc().stream()
+                .filter(video -> Boolean.TRUE.equals(video.getEnabled()))
+                .sorted(Comparator.comparing(AcademySimulateVideo::getSort,
+                                Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(AcademySimulateVideo::getId,
+                                Comparator.nullsLast(Long::compareTo)))
+                .map(this::simulateVideoView)
+                .toList();
+    }
+
+    private Map<String, Object> simulateVideoView(AcademySimulateVideo video) {
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("id", video.getId());
+        view.put("title", video.getTitle());
+        view.put("url", playableUrl(video.getUrl()));
+        view.put("duration", video.getDuration());
+        view.put("learners", video.getLearners());
+        return view;
+    }
+
+    private String playableUrl(String value) {
+        if (ossStorageService == null) return value;
+        String playable = ossStorageService.playableUrl(value);
+        return StringUtils.hasText(playable) ? playable : value;
     }
 
     private boolean matchesAnswer(AcademyQuiz question, Object submitted) {

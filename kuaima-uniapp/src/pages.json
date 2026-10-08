@@ -569,6 +569,12 @@
           }
         },
         {
+          "path": "score-rule",
+          "style": {
+            "navigationStyle": "custom"
+          }
+        },
+        {
           "path": "download-app",
           "style": {
             "navigationStyle": "custom"

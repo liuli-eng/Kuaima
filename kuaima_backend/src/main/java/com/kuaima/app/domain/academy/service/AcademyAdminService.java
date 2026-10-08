@@ -5,14 +5,11 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,6 +28,9 @@ import com.kuaima.app.domain.academy.model.AcademyModels.UploadResponse;
 import com.kuaima.app.domain.academy.repository.AcademyLessonRepository;
 import com.kuaima.app.domain.academy.repository.AcademyQuizRepository;
 import com.kuaima.app.domain.academy.repository.AcademySimulateVideoRepository;
+import com.kuaima.app.common.service.OssStorageService;
+import com.kuaima.app.common.service.FfmpegVideoTranscoder;
+import com.kuaima.app.common.ForbiddenBusinessException;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -44,16 +44,28 @@ public class AcademyAdminService {
     private final AcademySimulateVideoRepository videos;
     private final AcademyQuizRepository quizzes;
     private final AcademyLessonRepository lessons;
-    private final Path uploadRoot;
+    private final OssStorageService ossStorageService;
+    private final FfmpegVideoTranscoder transcoder;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AcademyAdminService(AcademySimulateVideoRepository videos,
                                AcademyQuizRepository quizzes,
                                AcademyLessonRepository lessons,
-                               @Value("${kuaima.upload.dir:./uploads/}") String uploadDir) {
+                               OssStorageService ossStorageService,
+                               FfmpegVideoTranscoder transcoder) {
         this.videos = videos;
         this.quizzes = quizzes;
         this.lessons = lessons;
-        this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
+        this.ossStorageService = ossStorageService;
+        this.transcoder = transcoder;
+    }
+
+    /** 保留已有测试和调用方构造方式。 */
+    public AcademyAdminService(AcademySimulateVideoRepository videos,
+                               AcademyQuizRepository quizzes,
+                               AcademyLessonRepository lessons,
+                               OssStorageService ossStorageService) {
+        this(videos, quizzes, lessons, ossStorageService, null);
     }
 
     @Transactional
@@ -84,11 +96,15 @@ public class AcademyAdminService {
     }
 
     @Transactional
-    public Map<String, Object> toggleSimulateVideo(Long id, Boolean enabled) {
-        AcademySimulateVideo entity = requireVideo(id);
-        entity.setEnabled(enabled == null ? !Boolean.TRUE.equals(entity.getEnabled()) : enabled);
-        entity.setUpdatedAt(LocalDateTime.now());
-        return simulateView(videos.save(entity));
+    public Map<String, Object> toggleSimulateVideo(Long id, Boolean enabled, Long adminId) {
+        int updated = enabled == null
+                ? videos.toggleForActiveAdmin(id, adminId)
+                : videos.setEnabledForActiveAdmin(id, adminId, enabled);
+        if (updated == 0) {
+            if (!videos.existsById(id)) throw new EntityNotFoundException("模拟接单视频不存在: " + id);
+            throw new ForbiddenBusinessException("管理员账号不存在或已禁用");
+        }
+        return simulateView(requireVideo(id));
     }
 
     @Transactional
@@ -165,22 +181,46 @@ public class AcademyAdminService {
         if (!StringUtils.hasText(title)) throw new IllegalArgumentException("视频标题不能为空");
         if (!Set.of("simulate", "lesson").contains(type)) throw new IllegalArgumentException("type 只能是 simulate 或 lesson");
         if (file.getSize() > MAX_VIDEO_SIZE) throw new IllegalArgumentException("视频大小不能超过 200MB");
-        String original = Paths.get(file.getOriginalFilename() == null ? "" : file.getOriginalFilename()).getFileName().toString();
+        String original = Path.of(file.getOriginalFilename() == null ? "" : file.getOriginalFilename()).getFileName().toString();
         String ext = extension(original);
         if (!VIDEO_EXTS.contains(ext)) throw new IllegalArgumentException("仅支持 MP4、MOV、WebM 视频格式");
 
-        String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-        Path directory = uploadRoot.resolve("academy").resolve(datePath).normalize();
-        if (!directory.startsWith(uploadRoot)) throw new IllegalArgumentException("上传路径无效");
+        Path temporaryFile = null;
         try {
-            Files.createDirectories(directory);
-            Path destination = directory.resolve(UUID.randomUUID().toString().replace("-", "") + "." + ext);
-            file.transferTo(destination);
-            int duration = videoDuration(destination.toFile(), ext);
-            return new UploadResponse("/uploads/academy/" + datePath + "/" + destination.getFileName(),
-                    original, file.getSize(), ext, duration);
+            temporaryFile = Files.createTempFile("kuaima-academy-", "." + ext);
+            try (var input = file.getInputStream()) {
+                Files.copy(input, temporaryFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            boolean hevc = ("mp4".equals(ext) || "mov".equals(ext))
+                    && containsCodec(temporaryFile.toFile(), "hvc1", "hev1");
+            Path uploadFile = temporaryFile;
+            String uploadExt = ext;
+            String contentType = file.getContentType();
+            Path transcodedFile = null;
+            try {
+                if (hevc) {
+                    if (transcoder == null) throw new IllegalStateException("服务器未配置视频转码能力");
+                    transcodedFile = transcoder.transcodeToH264(temporaryFile);
+                    uploadFile = transcodedFile;
+                    uploadExt = "mp4";
+                    contentType = "video/mp4";
+                }
+                int duration = videoDuration(uploadFile.toFile(), uploadExt);
+                Map<String, String> stored = ossStorageService.upload(uploadFile, contentType,
+                        "academy/" + type, "." + uploadExt);
+                long uploadSize = Files.size(uploadFile);
+                // 上传接口返回稳定对象地址供数据库持久化。临时签名只在列表/播放接口响应时生成，
+                // 避免把带 Expires 的 URL 保存后因过期导致小程序无法在线播放。
+                return new UploadResponse(stored.get("url"), original, uploadSize, uploadExt, duration);
+            } finally {
+                if (transcodedFile != null) Files.deleteIfExists(transcodedFile);
+            }
         } catch (IOException e) {
             throw new IllegalStateException("视频上传失败: " + e.getMessage(), e);
+        } finally {
+            if (temporaryFile != null) {
+                try { Files.deleteIfExists(temporaryFile); } catch (IOException ignored) { }
+            }
         }
     }
 
@@ -219,7 +259,7 @@ public class AcademyAdminService {
             List<Integer> answer = request.answer();
             String type = entity.getType();
             int expectedSize = "multi".equals(type) ? 2 : 1;
-            if (answer == null || answer.size() != expectedSize) {
+            if (answer == null || answer.size() < expectedSize || (!"multi".equals(type) && answer.size() != expectedSize)) {
                 throw new IllegalArgumentException("正确答案数量无效");
             }
             int optionSize = JSONArray.parseArray(entity.getOptions()).size();
@@ -236,7 +276,7 @@ public class AcademyAdminService {
         Map<String, Object> view = new LinkedHashMap<>();
         view.put("id", entity.getId());
         view.put("title", entity.getTitle());
-        view.put("url", entity.getUrl());
+        view.put("url", playableUrl(entity.getUrl()));
         view.put("duration", entity.getDuration());
         view.put("size", entity.getSize());
         view.put("ext", entity.getExt());
@@ -267,7 +307,7 @@ public class AcademyAdminService {
         view.put("key", entity.getLessonKey());
         view.put("title", entity.getTitle());
         view.put("desc", entity.getDescription());
-        view.put("video", entity.getVideo());
+        view.put("video", playableUrl(entity.getVideo()));
         view.put("duration", entity.getDuration());
         view.put("size", entity.getSize());
         view.put("ext", entity.getExt());
@@ -288,6 +328,11 @@ public class AcademyAdminService {
     private AcademyLesson requireLesson(String key) {
         return lessons.findByLessonKey(key)
                 .orElseThrow(() -> new EntityNotFoundException("新手课程不存在: " + key));
+    }
+
+    private String playableUrl(String value) {
+        String signed = ossStorageService.playableUrl(value);
+        return StringUtils.hasText(signed) ? signed : value;
     }
 
     private String normalizeQuizType(String value) {
@@ -334,6 +379,32 @@ public class AcademyAdminService {
         } catch (Exception ignored) {
             return 0;
         }
+    }
+
+    /** MP4/MOV 的 sample entry 中 hvc1/hev1 表示 HEVC；分块扫描避免一次读取 200MB 文件。 */
+    private boolean containsCodec(java.io.File file, String... codecs) throws IOException {
+        byte[][] patterns = java.util.Arrays.stream(codecs)
+                .map(codec -> codec.getBytes(java.nio.charset.StandardCharsets.US_ASCII))
+                .toArray(byte[][]::new);
+        int longest = java.util.Arrays.stream(patterns).mapToInt(pattern -> pattern.length).max().orElse(0);
+        byte[] buffer = new byte[64 * 1024 + Math.max(0, longest - 1)];
+        int carry = 0;
+        try (var input = new java.io.BufferedInputStream(new java.io.FileInputStream(file))) {
+            int count;
+            while ((count = input.read(buffer, carry, buffer.length - carry)) != -1) {
+                int length = carry + count;
+                for (byte[] pattern : patterns) {
+                    for (int offset = 0; offset <= length - pattern.length; offset++) {
+                        int index = 0;
+                        while (index < pattern.length && buffer[offset + index] == pattern[index]) index++;
+                        if (index == pattern.length) return true;
+                    }
+                }
+                carry = Math.min(longest - 1, length);
+                if (carry > 0) System.arraycopy(buffer, length - carry, buffer, 0, carry);
+            }
+        }
+        return false;
     }
 
     private int mp4Duration(RandomAccessFile input) throws IOException {

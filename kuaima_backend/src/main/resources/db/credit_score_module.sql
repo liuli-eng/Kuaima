@@ -55,6 +55,33 @@ BEGIN
     ALTER TABLE `credit_flow` ADD COLUMN `rule_code` VARCHAR(80);
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'credit_flow' AND COLUMN_NAME = 'biz_no'
+  ) THEN
+    ALTER TABLE `credit_flow` ADD COLUMN `biz_no` VARCHAR(20);
+  END IF;
+
+  UPDATE `credit_flow` f
+  JOIN (
+    SELECT id,
+           CONCAT('XF', DATE_FORMAT(`timestamp`, '%Y%m%d'),
+                  LPAD(ROW_NUMBER() OVER (PARTITION BY DATE(`timestamp`) ORDER BY `timestamp`, id), 3, '0')) AS generated_no
+    FROM `credit_flow`
+    WHERE `biz_no` IS NULL
+  ) x ON x.id = f.id
+  SET f.biz_no = x.generated_no
+  WHERE f.biz_no IS NULL;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'credit_flow'
+      AND INDEX_NAME = 'uk_credit_flow_biz_no'
+  ) THEN
+    ALTER TABLE `credit_flow`
+      ADD UNIQUE KEY `uk_credit_flow_biz_no` (`biz_no`);
+  END IF;
+
   UPDATE `sys_user` SET `star_score` = 0 WHERE `star_score` IS NULL;
   UPDATE `sys_user` SET `credit_score` = 0 WHERE `credit_score` IS NULL;
 

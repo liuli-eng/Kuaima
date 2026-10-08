@@ -1,199 +1,31 @@
 <template>
-  <div>
-    <div class="page-header">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <el-button text @click="router.back()"><i class="fas fa-arrow-left"></i></el-button>
-        <div>
-          <h1 class="page-title">报名人员管理</h1>
-          <p class="page-desc">招工ID：{{ route.params.id }} - 查看和管理报名零工</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <el-tabs v-model="activeTab" @tab-change="onTabChange">
-        <el-tab-pane label="待确认" name="pending" />
-        <el-tab-pane label="已录用" name="hired" />
-        <el-tab-pane label="已到岗" name="working" />
-        <el-tab-pane label="已完成" name="finished" />
-        <el-tab-pane label="已拒绝" name="rejected" />
-        <el-tab-pane label="全部" name="all" />
-      </el-tabs>
-
-      <el-table :data="filteredList" stripe :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }">
-        <el-table-column label="用户" show-overflow-tooltip>
-          <template #default="{ row }">
-            <div class="user-cell">
-              <span class="mini-avatar">{{ (row.nickname || row.username || '?').charAt(0) }}</span>
-              <div>
-                <div style="font-weight: 500;">{{ row.nickname || row.username || '-' }}</div>
-                <div class="text-muted" style="font-size: 12px;">{{ row.phone || '-' }}</div>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="实名认证" width="120">
-          <template #default="{ row }">
-            <el-tag v-if="row.certStatus === '已通过' || row.certStatus === '已认证'" type="success" effect="light">手机号已验证</el-tag>
-            <el-tag v-else type="info" effect="light">手机号未验证</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="报名状态" width="100">
-          <template #default="{ row }">
-            <span :class="['status-badge', statusClass(row.status)]">{{ formatStatus(row.status) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="remark" label="报名备注" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.remark || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="报名时间" width="120" show-overflow-tooltip>
-          <template #default="{ row }">{{ formatDate(row.applyDate) }}</template>
-        </el-table-column>
-        <el-table-column label="录用时间" width="120" show-overflow-tooltip>
-          <template #default="{ row }">{{ formatDate(row.hireDate) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="{ row }">
-            <template v-if="row.status === '已报名'">
-              <el-button link type="success" size="small" @click="handleHire(row)">录用</el-button>
-              <el-button link type="danger" size="small" @click="handleReject(row)">拒绝</el-button>
-            </template>
-            <span v-else class="text-muted">-</span>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination">
-        <div class="pagination-info">共 {{ filteredList.length }} 条记录</div>
-      </div>
-    </div>
+  <div class="applicants-page">
+    <div class="back-row"><el-button text @click="router.back()"><i class="fas fa-arrow-left"></i> 返回招工列表</el-button></div>
+    <section class="job-detail-header" v-if="job">
+      <div class="job-detail-top"><div class="job-detail-title"><h2>{{ job.postion || job.orderTitle || '招工详情' }}</h2><span :class="['status-badge', jobStatusClass]">{{ jobStatusText }}</span></div><router-link :to="`/admin/jobs/edit/${route.params.id}`"><el-button plain><i class="fas fa-edit"></i> 编辑信息</el-button></router-link></div>
+      <div class="job-detail-info"><div class="info-item"><span class="label">招工ID</span><span class="value job-id">{{ job.id || route.params.id }}</span></div><div class="info-item"><span class="label">雇主</span><span class="value">{{ job.employerName || '-' }}</span></div><div class="info-item"><span class="label">工种</span><span class="value">{{ job.jobCategoryName || job.postion || '-' }}</span></div><div class="info-item"><span class="label">工价</span><span class="value accent">{{ job.salary ? `¥${job.salary}/天` : '-' }}</span></div><div class="info-item"><span class="label">工作地点</span><span class="value"><i class="fas fa-map-marker-alt muted-icon"></i>{{ job.address || '-' }}</span></div><div class="info-item"><span class="label">需求人数</span><span class="value">{{ job.orderNum || 0 }} 人</span></div><div class="info-item"><span class="label">发布时间</span><span class="value">{{ formatDate(job.timestamp) }}</span></div><div class="info-item"><span class="label">报名统计</span><span class="value accent">共 {{ allApplicants.length }} 人</span></div></div>
+    </section>
+    <section class="applicant-card">
+      <div class="applicant-tabs"><button v-for="tab in tabs" :key="tab.name" :class="['applicant-tab', { active: activeTab === tab.name }]" @click="activeTab = tab.name">{{ tab.label }} <span class="count">{{ tabCount(tab.name) }}</span></button></div>
+      <div class="applicant-filter"><div class="filter-left"><label>搜索:</label><el-input v-model="searchText" clearable placeholder="姓名/手机号/身份证号" style="width:220px" /><label>排序:</label><el-select v-model="sortBy" style="width:150px"><el-option label="报名时间 ↓" value="time_desc" /><el-option label="报名时间 ↑" value="time_asc" /><el-option label="按姓名排序" value="name" /></el-select></div><el-button plain @click="exportList"><i class="fas fa-download"></i> 导出名单</el-button></div>
+      <el-table v-loading="loading" :data="filteredList" class="applicant-table" stripe><el-table-column width="48"><template #default="{ row }"><el-checkbox v-model="selected" :label="row.id"><span /></el-checkbox></template></el-table-column><el-table-column label="报名者" min-width="190"><template #default="{ row }"><div class="applicant-info"><span class="applicant-avatar" :style="{ background: avatarColor(row) }">{{ avatarText(row) }}</span><div class="applicant-meta"><span class="applicant-name">{{ row.nickname || row.username || '-' }}</span><span class="applicant-id">ID: {{ row.userId || '-' }}</span></div></div></template></el-table-column><el-table-column label="联系电话" width="140"><template #default="{ row }">{{ maskPhone(row.phone) }}</template></el-table-column><el-table-column label="身份证号" width="170"><template #default="{ row }"><span class="mono">{{ row.idCard || '-' }}</span></template></el-table-column><el-table-column prop="gender" label="性别" width="70" /><el-table-column prop="age" label="年龄" width="70" /><el-table-column label="报名时间" width="155"><template #default="{ row }">{{ formatDate(row.applyDate) }}</template></el-table-column><el-table-column label="状态" width="95"><template #default="{ row }"><span :class="['status-badge', statusClass(row.status)]">{{ formatStatus(row.status) }}</span></template></el-table-column><el-table-column label="操作" width="190" fixed="right"><template #default="{ row }"><div class="row-actions"><el-button link type="primary" @click="viewApplicant(row)">查看</el-button><template v-if="row.status === '已报名'"><el-button link type="success" @click="handleHire(row)">通过</el-button><el-button link type="danger" @click="handleReject(row)">拒绝</el-button></template><el-button v-else link type="danger" @click="handleReject(row)">{{ row.status === '取消报名' ? '删除' : '拒绝' }}</el-button></div></template></el-table-column></el-table>
+      <div class="table-footer"><span>共 {{ filteredList.length }} 条记录，当前显示 {{ filteredList.length ? `1-${filteredList.length}` : 0 }} 条</span><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredList.length" layout="prev, pager, next" background /></div>
+    </section>
+    <el-dialog v-model="detailVisible" title="报名者详情" width="500px"><div v-if="currentApplicant" class="applicant-detail"><div class="detail-profile"><span class="applicant-avatar large" :style="{ background: avatarColor(currentApplicant) }">{{ avatarText(currentApplicant) }}</span><div><h3>{{ currentApplicant.nickname || currentApplicant.username || '-' }}</h3><p>{{ currentApplicant.phone || '-' }}</p></div></div><div class="detail-grid"><div><span>用户ID</span><b>{{ currentApplicant.userId || '-' }}</b></div><div><span>性别</span><b>{{ currentApplicant.gender || '-' }}</b></div><div><span>年龄</span><b>{{ currentApplicant.age || '-' }}</b></div><div><span>身份证号</span><b>{{ currentApplicant.idCard || '-' }}</b></div><div><span>报名时间</span><b>{{ formatDate(currentApplicant.applyDate) }}</b></div><div><span>报名状态</span><b>{{ formatStatus(currentApplicant.status) }}</b></div><div class="full"><span>报名备注</span><b>{{ currentApplicant.remark || '-' }}</b></div></div></div></el-dialog>
   </div>
 </template>
-
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listApplicants, hireApplicant, rejectApplicant } from '@/api/job'
-
-const router = useRouter()
-const route = useRoute()
-const activeTab = ref('pending')
-const allApplicants = ref([])
-
-const statusMap = {
-  'pending': '已报名',
-  'hired': '已录用',
-  'working': '已到岗',
-  'finished': '已完成',
-  'rejected': '取消报名',
-}
-
-const filteredList = computed(() => {
-  if (activeTab.value === 'all') return allApplicants.value
-  const target = statusMap[activeTab.value]
-  return allApplicants.value.filter(a => a.status === target)
-})
-
-const formatStatus = (s) => {
-  if (s === '已报名') return '待确认'
-  if (s === '已录用') return '已录用'
-  if (s === '已到岗') return '已到岗'
-  if (s === '已完成') return '已完成'
-  if (s === '取消报名') return '已拒绝'
-  return s || '-'
-}
-
-const statusClass = (s) => {
-  if (s === '已报名') return 'warning'
-  if (s === '已录用') return 'success'
-  if (s === '已到岗') return 'info'
-  if (s === '已完成') return 'success'
-  if (s === '取消报名') return 'default'
-  return 'default'
-}
-
-const formatDate = (d) => {
-  if (!d) return '-'
-  const s = String(d).replace('T', ' ')
-  return s.length > 10 ? s.substring(0, 10) : s
-}
-
-const loadData = async () => {
-  try {
-    const res = await listApplicants(route.params.id)
-    allApplicants.value = res.data || []
-  } catch (err) {
-    console.warn('[JobApplicants] 加载失败:', err.message)
-    allApplicants.value = []
-    ElMessage.error('加载报名人员失败')
-  }
-}
-
-const onTabChange = () => {}
-
-const handleHire = async (row) => {
-  try {
-    await ElMessageBox.confirm(`确定录用「${row.nickname || row.username || row.userId}」吗？`, '录用确认', { type: 'warning' })
-    await hireApplicant(row.id)
-    ElMessage.success('已录用')
-    loadData()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
-  }
-}
-
-const handleReject = async (row) => {
-  try {
-    const { value } = await ElMessageBox.prompt('请输入拒绝原因（可选）', '拒绝报名', {
-      type: 'warning',
-      inputPlaceholder: '拒绝原因',
-      inputValidator: () => true,
-    })
-    await rejectApplicant(row.id, value)
-    ElMessage.success('已拒绝')
-    loadData()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
-  }
-}
-
-onMounted(loadData)
+import { getJob, listApplicants, hireApplicant, rejectApplicant } from '@/api/job'
+const router = useRouter(); const route = useRoute(); const job = ref(null); const allApplicants = ref([]); const loading = ref(false); const activeTab = ref('all'); const searchText = ref(''); const sortBy = ref('time_desc'); const selected = ref([]); const detailVisible = ref(false); const currentApplicant = ref(null); const page = ref(1); const pageSize = ref(10)
+const tabs = [{ name: 'all', label: '全部' }, { name: 'pending', label: '待处理' }, { name: 'approved', label: '已通过' }, { name: 'rejected', label: '已拒绝' }]
+const statusKey = s => s === '已报名' ? 'pending' : ['已录用', '已到岗', '已完成'].includes(s) ? 'approved' : s === '取消报名' ? 'rejected' : 'pending'; const tabsApplicants = computed(() => allApplicants.value.filter(a => activeTab.value === 'all' || statusKey(a.status) === activeTab.value)); const filteredList = computed(() => { const q = searchText.value.trim().toLowerCase(); const data = tabsApplicants.value.filter(a => !q || [a.nickname, a.username, a.phone, a.idCard].some(v => String(v || '').toLowerCase().includes(q))); return [...data].sort((a, b) => sortBy.value === 'name' ? String(a.nickname || a.username).localeCompare(String(b.nickname || b.username), 'zh') : sortBy.value === 'time_asc' ? String(a.applyDate || '').localeCompare(String(b.applyDate || '')) : String(b.applyDate || '').localeCompare(String(a.applyDate || '')))}); const tabCount = name => allApplicants.value.filter(a => name === 'all' ? true : statusKey(a.status) === name).length
+const jobStatusText = computed(() => ({ 招工中: '招聘中', 招工结束: '已招满', 取消招工: '已关闭' }[job.value?.orderStatus] || job.value?.orderStatus || '-')); const jobStatusClass = computed(() => job.value?.orderStatus === '招工中' ? 'success' : job.value?.orderStatus === '取消招工' ? 'default' : 'info'); const formatDate = d => d ? String(d).replace('T', ' ').slice(0, 16) : '-'; const formatStatus = s => ({ 已报名: '待处理', 已录用: '已通过', 已到岗: '已到岗', 已完成: '已完成', 取消报名: '已拒绝' }[s] || s || '-'); const statusClass = s => s === '已报名' ? 'warning' : ['已录用', '已到岗', '已完成'].includes(s) ? 'success' : 'default'; const maskPhone = p => { const s = String(p || ''); return s.length >= 7 ? `${s.slice(0, 3)}****${s.slice(-4)}` : s || '-' }; const avatarText = r => String(r?.nickname || r?.username || '?').charAt(0); const avatarColor = r => ['#3B82F6', '#EC4899', '#10B981', '#8B5CF6', '#F59E0B'][Number(r?.userId || 0) % 5]
+const loadData = async () => { loading.value = true; try { const [jobRes, applicantRes] = await Promise.all([getJob(route.params.id), listApplicants(route.params.id)]); job.value = jobRes.data || {}; allApplicants.value = applicantRes.data || [] } catch (e) { ElMessage.error('加载报名人员失败') } finally { loading.value = false } }; const viewApplicant = row => { currentApplicant.value = row; detailVisible.value = true }; const handleHire = async row => { try { await ElMessageBox.confirm(`确定通过「${row.nickname || row.username || row.userId}」吗？`, '录用确认', { type: 'warning' }); await hireApplicant(row.id); ElMessage.success('已通过'); loadData() } catch (e) { if (e !== 'cancel') ElMessage.error('操作失败') } }; const handleReject = async row => { try { const { value } = await ElMessageBox.prompt('请输入拒绝原因（可选）', '拒绝报名', { type: 'warning', inputPlaceholder: '拒绝原因', inputValidator: () => true }); await rejectApplicant(row.id, value); ElMessage.success('已拒绝'); loadData() } catch (e) { if (e !== 'cancel') ElMessage.error('操作失败') } }
+const exportList = () => { const headers = ['报名者', '联系电话', '身份证号', '性别', '年龄', '报名时间', '状态']; const rows = filteredList.value.map(r => [r.nickname || r.username || '', r.phone || '', r.idCard || '', r.gender || '', r.age || '', formatDate(r.applyDate), formatStatus(r.status)]); const csv = '\ufeff' + [headers, ...rows].map(r => r.map(v => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `报名名单-${route.params.id}.csv`; a.click(); URL.revokeObjectURL(a.href) }; onMounted(loadData)
 </script>
-
 <style scoped>
-.user-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.mini-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #FF8C42, #FF6B35);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 16px;
-  .pagination-info {
-    font-size: 13px;
-    color: var(--text-secondary);
-  }
-}
-
-.text-muted {
-  color: var(--text-muted, #9CA3AF);
-}
+.applicants-page{padding-bottom:24px}.back-row{margin-bottom:12px}.job-detail-header,.applicant-card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.04)}.job-detail-header{padding:20px 24px;margin-bottom:16px}.job-detail-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.job-detail-title{display:flex;align-items:center;gap:12px}.job-detail-title h2{margin:0;font-size:20px;font-weight:600;color:#111827}.job-detail-info{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding-top:16px;border-top:1px solid #e5e7eb}.info-item{display:flex;flex-direction:column;gap:4px}.label{font-size:12px;color:#9ca3af}.value{font-size:14px;color:#111827;font-weight:500}.job-id,.accent{color:var(--primary)}.muted-icon{margin-right:4px;color:#9ca3af}.applicant-card{overflow:hidden}.applicant-tabs{display:flex;padding:0 24px;border-bottom:1px solid #e5e7eb}.applicant-tab{padding:14px 16px;border:0;border-bottom:2px solid transparent;background:none;color:#6b7280;font-size:14px;cursor:pointer}.applicant-tab.active{color:var(--primary);border-bottom-color:var(--primary)}.count{display:inline-flex;min-width:20px;justify-content:center;margin-left:5px;padding:2px 6px;border-radius:10px;background:#f3f4f6;font-size:12px}.active .count{background:#fff0e9;color:var(--primary)}.applicant-filter{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid #e5e7eb}.filter-left{display:flex;align-items:center;gap:12px;color:#6b7280;font-size:13px}.applicant-info,.detail-profile{display:flex;align-items:center;gap:12px}.applicant-avatar{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;color:#fff;font-size:16px;font-weight:600}.applicant-avatar.large{width:56px;height:56px;font-size:22px}.applicant-meta{display:flex;flex-direction:column;gap:2px}.applicant-name{font-weight:500}.applicant-id,.mono{font-family:monospace;font-size:12px;color:#9ca3af}.row-actions{display:flex;gap:4px}.table-footer{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:13px}.applicant-detail{padding:4px 8px 12px}.detail-profile{padding-bottom:18px;border-bottom:1px solid #e5e7eb}.detail-profile h3{margin:0 0 4px;font-size:18px}.detail-profile p{margin:0;color:#9ca3af}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:18px}.detail-grid div{display:flex;flex-direction:column;gap:4px}.detail-grid span{font-size:12px;color:#9ca3af}.detail-grid b{font-size:14px;font-weight:500}.detail-grid .full{grid-column:1/-1}@media(max-width:900px){.job-detail-info{grid-template-columns:repeat(2,1fr)}.applicant-filter{align-items:flex-start;gap:12px;flex-direction:column}.filter-left{flex-wrap:wrap}}
 </style>

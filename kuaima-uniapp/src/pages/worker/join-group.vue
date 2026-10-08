@@ -1,32 +1,41 @@
 <template>
-  <WorkerFeaturePage
-    title="添加找活管家"
-    icon="群"
-    headline="加入找活交流群"
-    description="群内每日发布优质日结岗位"
-    :items="items"
-    button-text="保存二维码"
-  />
+  <view class="page">
+    <view class="top-nav" :style="{ paddingTop: `${statusBarHeight}px` }">
+      <view class="nav-inner">
+        <view class="nav-back" @click="goBack"><image src="/static/icons/worker-rule/chevron-left-gray.svg" mode="aspectFit" /></view>
+        <text class="nav-title">进找活群</text><view class="nav-placeholder" />
+      </view>
+    </view>
+    <scroll-view scroll-y class="content">
+      <view class="banner"><text class="banner-title">加入找活群，抢单更快一步</text><text class="banner-desc">群主每日发布优质日结岗位，第一时间推送好单
+群满 200 人自动建新群，名额有限</text></view>
+      <view class="section-head"><text class="section-title">可加入的群</text><view class="create-entry" @click="openCreate"><image src="/static/icons/boss-recruit-address/plus-dark.svg" mode="aspectFit" /><text>新建群</text></view></view>
+      <view v-if="loading" class="state">社群加载中...</view>
+      <view v-else-if="error" class="state error" @click="loadGroups">{{ error }}，点击重试</view>
+      <view v-else-if="!groups.length" class="state">暂无可加入的群</view>
+      <view v-else>
+        <view v-for="group in groups" :key="group.id || group.name" class="group-card">
+          <view class="group-header"><view class="group-info"><text class="group-name">{{ group.name || '找活交流群' }}</text><text class="group-meta">{{ group.createdAt ? `新建时间：${formatDate(group.createdAt)}` : (group.category || '找活交流') }}</text><view class="group-members"><view class="member-avatars"><image v-for="(avatar, index) in group.avatarUrls.slice(0, 5)" :key="`${avatar}-${index}`" :src="avatar" mode="aspectFill" /><image v-if="!group.avatarUrls.length" src="/static/icons/worker-profile/users-dark.svg" mode="aspectFit" /></view><text class="member-count">{{ group.memberCount || 0 }}人{{ group.memberLimit ? ` / ${group.memberLimit}` : '' }}</text></view></view><button class="join-btn" :class="{ joined: group.joined, full: group.full }" :disabled="group.full" @click="openQr(group)">{{ group.full ? '已满员' : (group.joined ? '已加入' : '加入') }}</button></view>
+        </view>
+      </view>
+      <view class="tip"><image src="/static/icons/worker-credit/circle-info-orange.svg" mode="aspectFit" /><text>加入群聊前需完成实名认证，每个群人数上限 200 人，满员自动开启下一群。</text></view><view class="bottom-space" />
+    </scroll-view>
+    <view v-if="qrVisible" class="mask" @click="closeQr"><view class="qr-close" @click="closeQr">×</view><view class="qr-sheet" @click.stop><view class="qr-group"><view class="qr-avatar"><image src="/static/icons/worker-profile/users-dark.svg" mode="aspectFit" /></view><view><text class="qr-name">{{ selectedGroup.name }}</text><text class="qr-meta">{{ selectedGroup.memberCount || 0 }} 人 · 扫码入群</text></view></view><view class="divider" /><view class="qr-box"><image v-if="selectedGroup.qrcodeUrl" class="qr-image" :src="selectedGroup.qrcodeUrl" mode="aspectFit" /><view v-else class="qr-empty"><image src="/static/icons/worker-profile/users-dark.svg" mode="aspectFit" /><text>暂无群二维码</text></view><text class="qr-tip">截图保存二维码，使用微信扫一扫
+<text v-if="selectedGroup.qrcodeUrl">扫码后即可进群，<text class="highlight">24 小时内有效</text></text></text></view><view class="qr-actions"><button class="cancel-btn" @click="closeQr">取消</button><button class="confirm-btn" :disabled="!selectedGroup.qrcodeUrl || selectedGroup.joined" @click="confirmJoin">{{ selectedGroup.joined ? '已加入' : '我已扫码，加入群聊' }}</button></view></view></view>
+    <view v-if="createVisible" class="mask" @click="closeCreate"><view class="create-sheet" @click.stop><view class="sheet-head"><text>新建群</text><text class="sheet-close" @click="closeCreate">×</text></view><view class="create-body"><text class="field-label">群名 <text class="required">*</text></text><input v-model="createName" maxlength="20" placeholder="请输入群名称，如：浦东日结交流群" /><text class="field-label second">群二维码 <text class="optional">（选填）</text></text><view class="upload-box" @click="chooseQr"><image v-if="createQr" :src="createQr" mode="aspectFit" /><template v-else><image src="/static/icons/worker-profile/users-dark.svg" mode="aspectFit" /><text>点击上传二维码</text><text class="upload-hint">支持 JPG / PNG，建议不超过 2MB</text></template></view></view><view class="create-actions"><button class="cancel-btn" @click="closeCreate">取消</button><button class="confirm-btn" @click="submitCreate">提交</button></view></view></view>
+  </view>
 </template>
+
 <script setup>
-import { onMounted, ref } from "vue";
-import WorkerFeaturePage from "@/components/WorkerFeaturePage.vue";
-import { listSocialGroups } from "@/api/backend";
-const items = ref([]);
-onMounted(async () => {
-  try {
-    const result = await listSocialGroups();
-    const rows = Array.isArray(result)
-      ? result
-      : result?.records || result?.content || [];
-    items.value = rows.map((item) => ({
-      title: item.name,
-      desc: `${item.category || "找活交流"}${item.memberCount ? ` · ${item.memberCount}人` : ""}`,
-      icon: item.qrcodeUrl || "▦",
-      arrow: false,
-    }));
-  } catch (error) {
-    uni.showToast({ title: error.message || "社群加载失败", icon: "none" });
-  }
-});
+import { ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
+import { createSocialGroup, listSocialGroups, uploadExpenseFile } from "@/api/backend";
+const statusBarHeight=ref(0),groups=ref([]),loading=ref(false),error=ref(""),qrVisible=ref(false),selectedGroup=ref({}),createVisible=ref(false),createName=ref(""),createQr=ref("");
+onLoad(()=>{try{statusBarHeight.value=Number((typeof uni.getWindowInfo==="function"?uni.getWindowInfo():uni.getSystemInfoSync()).statusBarHeight||0)}catch(_){}loadGroups()});
+async function loadGroups(){loading.value=true;error.value="";try{const result=await listSocialGroups();const rows=Array.isArray(result)?result:result?.data||result?.records||result?.content||[];groups.value=(Array.isArray(rows)?rows:[]).map((item,index)=>({...item,id:item.id||`group-${index}`,avatarUrls:Array.isArray(item.avatarUrls)?item.avatarUrls:[],memberLimit:item.memberLimit||200,full:item.full===true||Number(item.memberCount||0)>=Number(item.memberLimit||200),joined:item.joined===true}))}catch(err){error.value=err?.message||"社群加载失败"}finally{loading.value=false}}
+function openQr(group){if(!group.full){selectedGroup.value=group;qrVisible.value=true}}function closeQr(){qrVisible.value=false;selectedGroup.value={}}function confirmJoin(){if(!selectedGroup.value.qrcodeUrl)return uni.showToast({title:"暂无群二维码",icon:"none"});selectedGroup.value.joined=true;const index=groups.value.findIndex(item=>item.id===selectedGroup.value.id);if(index>=0)groups.value[index].joined=true;uni.showToast({title:"已记录入群",icon:"success"});closeQr()}function openCreate(){createVisible.value=true}function closeCreate(){createVisible.value=false;createName.value="";createQr.value=""}function chooseQr(){uni.chooseImage({count:1,sizeType:["compressed"],success:res=>{createQr.value=res.tempFilePaths?.[0]||""}})}async function submitCreate(){if(!createName.value.trim())return uni.showToast({title:"请输入群名称",icon:"none"});try{uni.showLoading({title:"提交中..."});let qrcodeUrl="";if(createQr.value){const uploaded=await uploadExpenseFile(createQr.value);qrcodeUrl=uploaded?.url||uploaded?.fileUrl||uploaded?.path||"";if(!qrcodeUrl)throw new Error("二维码上传失败")}await createSocialGroup({name:createName.value.trim(),qrcodeUrl});uni.hideLoading();uni.showToast({title:"提交成功",icon:"success"});closeCreate();await loadGroups()}catch(err){uni.hideLoading();uni.showToast({title:err?.message||"创建失败，请重试",icon:"none"})}}function formatDate(value){return String(value).replace("T"," ").slice(0,10)}function goBack(){const pages=getCurrentPages();if(pages.length>1)uni.navigateBack();else uni.switchTab({url:"/pages/worker/profile"})}
 </script>
+
+<style scoped>
+.page{height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#f7f7f7}.top-nav{flex-shrink:0;background:#fff;border-bottom:1rpx solid #f0f0f0}.nav-inner{position:relative;height:104rpx;padding:0 32rpx;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box}.nav-back,.nav-placeholder{width:64rpx;height:64rpx;display:flex;align-items:center;justify-content:center}.nav-back image{width:22rpx;height:32rpx}.nav-title{position:absolute;left:50%;color:#333;font-size:34rpx;font-weight:600;transform:translateX(-50%)}.content{flex:1;min-height:0}.banner{margin:24rpx 32rpx;padding:40rpx 36rpx;border-radius:28rpx;color:#fff;background:linear-gradient(135deg,#ff6b35,#ff8c5a)}.banner-title{display:block;font-size:36rpx;font-weight:700}.banner-desc{display:block;margin-top:12rpx;color:rgba(255,255,255,.9);font-size:26rpx;line-height:1.7;white-space:pre-line}.section-head{display:flex;align-items:center;justify-content:space-between;margin:36rpx 32rpx 20rpx}.section-title{font-size:30rpx;font-weight:600}.create-entry{display:flex;align-items:center;gap:8rpx;padding:12rpx 22rpx;border-radius:32rpx;color:#ff6b35;background:#fff3ec;font-size:26rpx}.create-entry image{width:24rpx;height:24rpx}.group-card{margin:0 32rpx 20rpx;padding:28rpx 32rpx;border-radius:24rpx;background:#fff;box-shadow:0 2rpx 10rpx rgba(0,0,0,.04)}.group-header{display:flex;align-items:center}.group-info{flex:1;min-width:0}.group-name{display:block;color:#333;font-size:30rpx;font-weight:600}.group-meta{display:block;margin-top:10rpx;overflow:hidden;color:#999;font-size:24rpx;text-overflow:ellipsis;white-space:nowrap}.group-members{display:flex;align-items:center;margin-top:18rpx}.member-avatars{display:flex}.member-avatars image{width:48rpx;height:48rpx;margin-left:-12rpx;border:4rpx solid #fff;border-radius:50%;background:#fff}.member-avatars image:first-child{margin-left:0}.member-count{margin-left:10rpx;color:#666;font-size:24rpx}.join-btn{flex-shrink:0;margin-left:20rpx;padding:14rpx 30rpx;border:0;border-radius:34rpx;color:#fff;background:linear-gradient(135deg,#ff6b35,#ff8c5a);font-size:26rpx;line-height:1}.join-btn::after{border:0}.join-btn.joined,.join-btn.full{color:#999;background:#f5f5f5}.state{padding:140rpx 32rpx;color:#999;font-size:28rpx;text-align:center}.state.error{color:#ff6b35}.tip{display:flex;align-items:flex-start;margin:16rpx 32rpx;padding:22rpx 26rpx;border-radius:20rpx;color:#666;background:#fff8f0;font-size:24rpx;line-height:1.7}.tip image{flex-shrink:0;width:28rpx;height:28rpx;margin:4rpx 12rpx 0 0}.bottom-space{height:30rpx}.mask{position:fixed;z-index:20;inset:0;display:flex;align-items:center;justify-content:center;padding:32rpx;background:rgba(0,0,0,.55)}.qr-close{position:absolute;top:120rpx;right:48rpx;color:#fff;font-size:48rpx}.qr-sheet,.create-sheet{width:100%;max-width:620rpx;border-radius:32rpx;background:#fff;overflow:hidden}.qr-sheet{padding:36rpx;box-sizing:border-box}.qr-group{display:flex;align-items:center;gap:20rpx}.qr-avatar{display:flex;align-items:center;justify-content:center;width:84rpx;height:84rpx;border-radius:20rpx;background:linear-gradient(135deg,#ffe989,#ffd96f)}.qr-avatar image{width:48rpx;height:48rpx}.qr-name{display:block;font-size:30rpx;font-weight:600}.qr-meta{display:block;margin-top:6rpx;color:#999;font-size:24rpx}.divider{height:1rpx;margin:28rpx 0;background:#eee}.qr-box{text-align:center}.qr-image{width:380rpx;height:380rpx;padding:20rpx;border:1rpx solid #eee;border-radius:16rpx}.qr-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;width:380rpx;height:380rpx;margin:auto;border:1rpx solid #eee;border-radius:16rpx;color:#999;font-size:24rpx}.qr-empty image{width:70rpx;height:70rpx;margin-bottom:18rpx}.qr-tip{display:block;margin-top:20rpx;color:#999;font-size:23rpx;line-height:1.7;white-space:pre-line}.highlight{color:#ff6b35}.qr-actions,.create-actions{display:flex;gap:20rpx;margin-top:28rpx}.cancel-btn,.confirm-btn{flex:1;height:82rpx;margin:0;border:0;border-radius:42rpx;font-size:27rpx;line-height:82rpx}.cancel-btn::after,.confirm-btn::after{border:0}.cancel-btn{color:#666;background:#f5f5f5}.confirm-btn{color:#fff;background:linear-gradient(135deg,#ff6b35,#ff8c5a)}.confirm-btn[disabled]{opacity:.5}.sheet-head{display:flex;justify-content:space-between;padding:30rpx 36rpx;border-bottom:1rpx solid #eee;font-size:32rpx;font-weight:700}.sheet-close{color:#999;font-size:38rpx;font-weight:400}.create-body{padding:34rpx 36rpx}.field-label{display:block;margin-bottom:14rpx;font-size:26rpx;font-weight:500}.field-label.second{margin-top:30rpx}.required{color:#ff6b35}.optional{color:#999;font-weight:400}.create-body input{height:80rpx;padding:0 24rpx;border:1rpx solid #e5e5e5;border-radius:20rpx;font-size:26rpx}.upload-box{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240rpx;border:2rpx dashed #d0d0d0;border-radius:24rpx;background:#fafafa;color:#666;font-size:25rpx}.upload-box image{width:76rpx;height:76rpx;margin-bottom:14rpx}.upload-hint{margin-top:10rpx;color:#999;font-size:21rpx}.create-actions{padding:0 36rpx 36rpx;margin-top:0}
+</style>

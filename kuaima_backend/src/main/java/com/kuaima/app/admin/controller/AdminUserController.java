@@ -11,11 +11,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +34,9 @@ import com.kuaima.app.common.ForbiddenBusinessException;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
+import com.kuaima.app.domain.boss.entity.BossOrder;
+import com.kuaima.app.domain.jobcategory.entity.JobCategory;
+import com.kuaima.app.domain.jobcategory.repository.JobCategoryRepository;
 import com.kuaima.app.domain.points.entity.PointsAccount;
 import com.kuaima.app.domain.points.entity.PointsFlow;
 import com.kuaima.app.domain.points.repository.PointsAccountRepository;
@@ -39,6 +44,7 @@ import com.kuaima.app.domain.points.repository.PointsFlowRepository;
 import com.kuaima.app.domain.coupon.entity.Coupon;
 import com.kuaima.app.domain.coupon.entity.UserCoupon;
 import com.kuaima.app.domain.coupon.repository.CouponRepository;
+import com.kuaima.app.domain.coupon.repository.AdminCouponRecordRow;
 import com.kuaima.app.domain.coupon.repository.UserCouponRepository;
 import com.kuaima.app.domain.reward.entity.RewardAccount;
 import com.kuaima.app.domain.reward.entity.RewardFlow;
@@ -68,6 +74,7 @@ public class AdminUserController {
     private final UserRepository userRepository;
     private final BaseOrderItemRespository orderItemRepository;
     private final BossOrderRespository bossOrderRepository;
+    private final JobCategoryRepository jobCategoryRepository;
     private final WalletRespository walletRepository;
     private final PointsAccountRepository pointsAccountRepository;
     private final RewardAccountRepository rewardAccountRepository;
@@ -89,7 +96,24 @@ public class AdminUserController {
                                UserCouponRepository userCouponRepository,
                                CouponRepository couponRepository) {
         this(userRepository, orderItemRepository, bossOrderRepository, walletRepository, pointsAccountRepository,
-                rewardAccountRepository, pointsFlowRepository, rewardFlowRepository, userCouponRepository, couponRepository, null, null);
+                rewardAccountRepository, pointsFlowRepository, rewardFlowRepository, userCouponRepository, couponRepository, null, null, null);
+    }
+
+    public AdminUserController(UserRepository userRepository,
+                               BaseOrderItemRespository orderItemRepository,
+                               BossOrderRespository bossOrderRepository,
+                               WalletRespository walletRepository,
+                               PointsAccountRepository pointsAccountRepository,
+                               RewardAccountRepository rewardAccountRepository,
+                               PointsFlowRepository pointsFlowRepository,
+                               RewardFlowRepository rewardFlowRepository,
+                               UserCouponRepository userCouponRepository,
+                               CouponRepository couponRepository,
+                               WalletFlowRespository walletFlowRepository,
+                               WebSocketSessionManager webSocketSessionManager) {
+        this(userRepository, orderItemRepository, bossOrderRepository, walletRepository, pointsAccountRepository,
+                rewardAccountRepository, pointsFlowRepository, rewardFlowRepository, userCouponRepository, couponRepository,
+                walletFlowRepository, webSocketSessionManager, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -104,7 +128,8 @@ public class AdminUserController {
                                UserCouponRepository userCouponRepository,
                                CouponRepository couponRepository,
                                WalletFlowRespository walletFlowRepository,
-                               WebSocketSessionManager webSocketSessionManager) {
+                               WebSocketSessionManager webSocketSessionManager,
+                               JobCategoryRepository jobCategoryRepository) {
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
         this.bossOrderRepository = bossOrderRepository;
@@ -117,6 +142,7 @@ public class AdminUserController {
         this.couponRepository = couponRepository;
         this.walletFlowRepository = walletFlowRepository;
         this.webSocketSessionManager = webSocketSessionManager;
+        this.jobCategoryRepository = jobCategoryRepository;
     }
 
     /** 零工列表（附加 completedOrders 已完成订单数） */
@@ -132,7 +158,23 @@ public class AdminUserController {
         requireAdmin(authentication);
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         String kw = keyword != null && !keyword.isBlank() ? keyword : null;
-        Page<User> result = userRepository.searchWorkers(UserRole.USER, status, kw, startDate, endDate, pageable);
+        Page<User> result;
+        if ("在线".equals(status) || "离线".equals(status)) {
+            Set<Long> onlineIds = webSocketSessionManager == null
+                    ? Set.of() : webSocketSessionManager.getOnlineWorkerIds();
+            Set<Long> targetIds = new java.util.HashSet<>(onlineIds);
+            if ("离线".equals(status)) {
+                targetIds = new java.util.HashSet<>(userRepository.findWorkerIdentityIds());
+                targetIds.removeAll(onlineIds);
+            }
+            if (targetIds.isEmpty()) {
+                result = new PageImpl<>(List.of(), pageable, 0);
+            } else {
+                result = userRepository.searchWorkersByIds(UserRole.USER, new ArrayList<>(targetIds), kw, startDate, endDate, pageable);
+            }
+        } else {
+            result = userRepository.searchWorkers(UserRole.USER, status, kw, startDate, endDate, pageable);
+        }
 
         // 批量统计零工已完成订单数
         Set<Long> userIds = result.stream().map(User::getId).collect(Collectors.toSet());
@@ -142,11 +184,38 @@ public class AdminUserController {
                     .forEach(row -> completedMap.put((Long) row[0], (Long) row[1]));
         }
 
+        Map<Long, List<com.kuaima.app.domain.boss.entity.BaseOrderItem>> itemsByUser = new HashMap<>();
+        Map<Long, Long> incomeMap = new HashMap<>();
+        Map<Long, BigDecimal> rewardBalanceMap = new HashMap<>();
+        Map<Long, Long> pointsBalanceMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            orderItemRepository.findByUserIdIn(userIds)
+                    .forEach(item -> itemsByUser.computeIfAbsent(item.getUserId(), ignored -> new ArrayList<>()).add(item));
+            if (walletFlowRepository != null) {
+                walletFlowRepository.sumIncomeByUserIds(userIds)
+                        .forEach(row -> incomeMap.put((Long) row[0], ((Number) row[1]).longValue()));
+            }
+            rewardAccountRepository.findByUserIdIn(userIds)
+                    .forEach(account -> {
+                        if (UserRole.USER.equals(account.getRole())) {
+                            rewardBalanceMap.put(account.getUserId(), moneyValue(account.getBalance()));
+                        } else {
+                            rewardBalanceMap.putIfAbsent(account.getUserId(), moneyValue(account.getBalance()));
+                        }
+                    });
+            pointsAccountRepository.findByUserIdInAndRole(userIds, UserRole.USER)
+                    .forEach(account -> pointsBalanceMap.merge(account.getUserId(), (long) integerValue(account.getBalance()), Math::max));
+        }
+
         Page<JSONObject> views = result.map(u -> {
             JSONObject obj = (JSONObject) JSON.toJSON(u);
             removeSensitive(obj);
+            // 管理端零工列表沿用 creditScore 字段展示信用分，零工实际维护的是星级分 starScore。
+            obj.put("creditScore", integerValue(u.getStarScore()));
             obj.put("completedOrders", completedMap.getOrDefault(u.getId(), 0L));
-            putWorkerStats(obj, u.getId());
+            putWorkerStats(obj, itemsByUser.getOrDefault(u.getId(), Collections.emptyList()),
+                    incomeMap.getOrDefault(u.getId(), 0L), rewardBalanceMap.getOrDefault(u.getId(), BigDecimal.ZERO),
+                    pointsBalanceMap.getOrDefault(u.getId(), 0L));
             return obj;
         });
         return Result.success(views, page, result.getTotalElements());
@@ -154,25 +223,53 @@ public class AdminUserController {
 
     @Operation(summary = "零工管理统计", description = "返回零工总人数、本月新增、当前在线和已冻结人数")
     @GetMapping("/workers/stats")
-    public Result<Map<String, Long>> workerStats(Authentication authentication) {
+    public Result<Map<String, Object>> workerStats(Authentication authentication) {
         requireAdmin(authentication);
         YearMonth month = YearMonth.now();
-        Map<String, Long> stats = new LinkedHashMap<>();
-        stats.put("total", userRepository.countByRole(UserRole.USER));
-        stats.put("monthNew", userRepository.countByRoleAndDateBetween(
-                UserRole.USER, month.atDay(1), month.atEndOfMonth()));
-        stats.put("online", webSocketSessionManager == null ? 0L
-                : (long) webSocketSessionManager.getOnlineWorkerIds().size());
-        stats.put("frozen", userRepository.countByRoleAndStatus(UserRole.USER, "冻结"));
+        Map<String, Object> stats = new LinkedHashMap<>();
+        long total = userRepository.countByRole(UserRole.USER);
+        long monthNew = userRepository.countCurrentMonthByRole(UserRole.USER);
+        long online = webSocketSessionManager == null ? 0L
+                : (long) webSocketSessionManager.getOnlineWorkerIds().size();
+        long frozen = userRepository.countByRoleAndStatus(UserRole.USER, "冻结");
+        stats.put("total", total);
+        stats.put("monthNew", monthNew);
+        stats.put("online", online);
+        stats.put("frozen", frozen);
+
+        // 仅返回有可靠历史基准的数据；前端不得自行填充静态百分比。
+        Map<String, Object> changes = new LinkedHashMap<>();
+        long previousTotal = userRepository.countByRoleAndDateLessThanEqual(
+                UserRole.USER, month.minusMonths(1).atEndOfMonth());
+        long previousMonthNew = userRepository.countByRoleAndDateBetween(
+                UserRole.USER, month.minusMonths(1).atDay(1), month.minusMonths(1).atEndOfMonth());
+        changes.put("total", change(previousTotal, total, "较上月"));
+        changes.put("monthNew", change(previousMonthNew, monthNew, "较上月"));
+        changes.put("online", null);
+        changes.put("frozen", null);
+        stats.put("changes", changes);
         return Result.success(stats);
     }
 
+    private Map<String, Object> change(long previous, long current, String label) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("label", label);
+        value.put("value", previous == 0 ? null : Math.round((current - previous) * 10000.0 / previous) / 100.0);
+        return value;
+    }
+
     /** 雇主列表（附加经营与资产字段，使用 fastjson 序列化确保 password 不泄露） */
-    @Operation(summary = "雇主列表分页", description = "参数：status(正常/冻结)、enterpriseStatus(UNVERIFIED/PENDING/APPROVED/REJECTED)、industry、keyword、page、size。返回公司信息、招工数、信用分、余额、奖励金和老板身份积分")
+    public Result<Page<JSONObject>> bosses(String status, String enterpriseStatus, String industry,
+                                            String keyword, int page, int size) {
+        return bosses(status, enterpriseStatus, industry, null, keyword, page, size);
+    }
+
+    @Operation(summary = "雇主列表分页", description = "参数：status(正常/冻结)、enterpriseStatus、jobType(发布岗位工种)、keyword、page、size。返回公司信息、招工数、信用分、余额、奖励金和老板身份积分")
     @GetMapping("/bosses")
     public Result<Page<JSONObject>> bosses(@RequestParam(required = false) String status,
                                      @RequestParam(required = false) String enterpriseStatus,
                                      @RequestParam(required = false) String industry,
+                                     @RequestParam(required = false) String jobType,
                                      @RequestParam(required = false) String keyword,
                                      @RequestParam(defaultValue = "0") int page,
                                      @RequestParam(defaultValue = "10") int size) {
@@ -180,13 +277,21 @@ public class AdminUserController {
         String kw = keyword != null && !keyword.isBlank() ? keyword : null;
         String es = enterpriseStatus != null && !enterpriseStatus.isBlank() ? enterpriseStatus : null;
         String industryCondition = industry != null && !industry.isBlank() && !"全部".equals(industry) ? industry : null;
-        Page<User> result = userRepository.searchBosses(UserRole.BOSS, status, es, industryCondition, kw, pageable);
+        Page<User> result;
+        if (jobType != null && !jobType.isBlank()) {
+            List<Long> ownerIds = bossOrderRepository.findOwnerIdsByJobType(jobType.trim());
+            result = ownerIds.isEmpty() ? new PageImpl<>(List.of(), pageable, 0)
+                    : userRepository.searchBossesByIds(ownerIds, status, es, kw, pageable);
+        } else {
+            result = userRepository.searchBosses(UserRole.BOSS, status, es, industryCondition, kw, pageable);
+        }
 
         Set<Long> bossIds = result.stream().map(User::getId).collect(Collectors.toSet());
         Map<Long, Long> jobsMap = new HashMap<>();
         Map<Long, BigDecimal> walletMap = new HashMap<>();
         Map<Long, Long> pointsMap = new HashMap<>();
         Map<Long, BigDecimal> rewardMap = new HashMap<>();
+        Map<Long, String> jobTypeMap = new HashMap<>();
         if (!bossIds.isEmpty()) {
             bossOrderRepository.countByCreateByIds(bossIds)
                     .forEach(row -> jobsMap.put((Long) row[0], (Long) row[1]));
@@ -197,6 +302,24 @@ public class AdminUserController {
                             account.getBalance() == null ? 0L : account.getBalance().longValue()));
             rewardAccountRepository.findByUserIdIn(bossIds)
                     .forEach(account -> rewardMap.put(account.getUserId(), moneyValue(account.getBalance())));
+            if (jobCategoryRepository != null) {
+                Map<Long, String> categoryNames = new HashMap<>();
+                List<BossOrder> orders = bossOrderRepository.findByCreateByInOrderByIdDesc(bossIds);
+                Set<Long> categoryIds = orders.stream()
+                        .flatMap(order -> jobCategoryIds(order).stream())
+                        .collect(Collectors.toSet());
+                jobCategoryRepository.findAllById(categoryIds)
+                        .forEach(category -> categoryNames.put(category.getId(), category.getName()));
+                for (BossOrder order : orders) {
+                    String names = jobCategoryIds(order).stream()
+                            .map(categoryNames::get)
+                            .filter(name -> name != null && !name.isBlank())
+                            .distinct()
+                            .collect(Collectors.joining("、"));
+                    if (names.isBlank()) names = order.getPostion();
+                    if (names != null && !names.isBlank()) jobTypeMap.putIfAbsent(order.getCreateBy(), names);
+                }
+            }
         }
 
         Page<JSONObject> views = result.map(u -> {
@@ -204,6 +327,7 @@ public class AdminUserController {
             // 企业字段属于老板列表固定契约；未认证用户也必须明确返回 null，不能由序列化器省略。
             obj.put("companyCode", u.getCompanyCode());
             obj.put("companyName", u.getCompanyName());
+            obj.put("jobType", jobTypeMap.getOrDefault(u.getId(), ""));
             obj.put("jobsCount", jobsMap.getOrDefault(u.getId(), 0L));
             obj.put("creditScore", integerValue(u.getCreditScore()));
             obj.put("balance", walletMap.getOrDefault(u.getId(), BigDecimal.ZERO));
@@ -224,14 +348,18 @@ public class AdminUserController {
         obj.remove("password");
         obj.put("companyCode", u.getCompanyCode());
         obj.put("companyName", u.getCompanyName());
-        if (UserRole.BOSS.equals(u.getRole())) {
+        if (UserRole.isBossIdentity(u)) {
             bossOrderRepository.countByCreateByIds(Set.of(id))
                     .forEach(row -> obj.put("jobsCount", (Long) row[1]));
-            obj.put("balance", walletRepository.findByUserId(id)
+            // 资产账户按业务身份隔离；不能按 userId 单独查询，否则历史上同一用户存在多角色账户时
+            // Optional 查询会因多行结果直接抛出 NonUniqueResultException。
+            obj.put("balance", walletRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.BOSS)
+                    .or(() -> walletRepository.findFirstByUserIdOrderByIdDesc(id))
                     .map(wallet -> moneyValue(wallet.getBalance())).orElse(BigDecimal.ZERO));
-            obj.put("points", pointsAccountRepository.findByUserIdAndRole(id, UserRole.BOSS)
+            obj.put("points", pointsAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.BOSS)
                     .map(account -> integerValue(account.getBalance())).orElse(0));
-            obj.put("rewardAmount", rewardAccountRepository.findByUserId(id)
+            obj.put("rewardAmount", rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.BOSS)
+                    .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(id))
                     .map(account -> moneyValue(account.getBalance())).orElse(BigDecimal.ZERO));
             obj.put("pointRecords", pointRecords(id));
             obj.put("rewardRecords", rewardRecords(id));
@@ -256,7 +384,7 @@ public class AdminUserController {
         requireAdmin(authentication);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
-        if (!UserRole.USER.equals(user.getRole())) throw new ForbiddenBusinessException("目标用户不是零工账号");
+        if (!UserRole.isWorkerIdentity(user)) throw new ForbiddenBusinessException("目标用户不是零工账号");
         JSONObject result = new JSONObject();
         result.put("id", id); result.put("realName", text(user.getRealName())); result.put("nickname", text(user.getNickname()));
         result.put("username", text(user.getUsername())); result.put("phone", text(user.getPhone())); result.put("avatar", text(user.getAvatar()));
@@ -264,6 +392,12 @@ public class AdminUserController {
         result.put("skills", skillList(user.getSkills())); result.put("realnameStatus", text(user.getRealnameStatus())); result.put("status", text(user.getStatus()));
         result.put("createdAt", user.getDate() == null ? "" : user.getDate().toString()); result.put("lastLoginAt", "");
         result.put("creditScore", integerValue(user.getCreditScore()));
+        // 详情页页头资产按 USER 身份返回；reward_account 金额单位为元，积分为整数。
+        result.put("rewardBalance", rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.USER)
+                .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(id))
+                .map(account -> moneyValue(account.getBalance())).orElse(BigDecimal.ZERO));
+        result.put("pointsBalance", pointsAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.USER)
+                .map(account -> (long) integerValue(account.getBalance())).orElse(0L));
         putWorkerStats(result, id);
         result.put("skillDetails", skillDetails(user.getSkills()));
         return Result.success(result);
@@ -280,7 +414,7 @@ public class AdminUserController {
         PageRequest pageable = PageRequest.of(Math.max(page, 0), safeSize(size), Sort.by(Sort.Direction.DESC, "timestamp"));
         Page<PointsFlow> source = pointsFlowRepository.findByUserIdAndRoleOrderByTimestampDesc(id, UserRole.USER, pageable);
         Page<JSONObject> records = source.map(this::workerPointRecord);
-        long balance = pointsAccountRepository.findByUserIdAndRole(id, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L);
+        long balance = pointsAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L);
         Map<String, Object> data = new LinkedHashMap<>(); data.put("records", records.getContent()); data.put("currentBalance", balance);
         data.put("totalEarned", sumPoints(id, true)); data.put("totalConsumed", sumPoints(id, false));
         return Result.success(data, records.getNumber(), records.getTotalElements());
@@ -297,7 +431,9 @@ public class AdminUserController {
         PageRequest pageable = PageRequest.of(Math.max(page, 0), safeSize(size));
         Page<RewardFlow> source = rewardFlowRepository.findByUserIdOrderByCreatedAtDescIdDesc(id, pageable);
         Page<JSONObject> records = source.map(this::workerRewardRecord);
-        BigDecimal balance = rewardAccountRepository.findByUserId(id).map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO);
+        BigDecimal balance = rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(id, UserRole.USER)
+                .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(id))
+                .map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO);
         Map<String, Object> data = new LinkedHashMap<>(); data.put("records", records.getContent()); data.put("currentBalance", balance);
         data.put("totalEarned", moneyValue(rewardFlowRepository.sumByUserIdAndType(id, "INCOME")));
         data.put("totalConsumed", moneyValue(rewardFlowRepository.sumByUserIdAndType(id, "EXPENSE")));
@@ -345,20 +481,32 @@ public class AdminUserController {
                                                   @RequestParam(defaultValue = "ALL") String status,
                                                   @RequestParam(defaultValue = "0") int page,
                                                   @RequestParam(defaultValue = "5") int size) {
-        requireBoss(id);
         String normalizedStatus = normalizeType(status, Set.of("ALL", "AVAILABLE", "HISTORY"), "status");
-        PageRequest pageable = PageRequest.of(Math.max(page, 0), safeSize(size));
+        int safePage = Math.max(page, 0);
+        int safePageSize = safeSize(size);
         java.sql.Date today = java.sql.Date.valueOf(LocalDate.now());
-        Page<UserCoupon> records = switch (normalizedStatus) {
-            case "AVAILABLE" -> userCouponRepository.findAvailableByUserId(id, today, pageable);
-            case "HISTORY" -> userCouponRepository.findHistoryByUserId(id, today, pageable);
-            default -> userCouponRepository.findByUserIdOrderByIdDesc(id, pageable);
-        };
-        Map<Long, Coupon> couponMap = couponRepository.findAllById(records.stream()
-                .map(UserCoupon::getCouponId).filter(java.util.Objects::nonNull).toList())
-                .stream().collect(Collectors.toMap(Coupon::getId, coupon -> coupon));
-        Page<JSONObject> result = records.map(record -> couponRecord(record, couponMap.get(record.getCouponId())));
+        List<AdminCouponRecordRow> rows = userCouponRepository.findAdminCouponRecords(id, normalizedStatus, today,
+                safePageSize, Math.multiplyExact(safePage, safePageSize));
+        if (rows.isEmpty()) {
+            requireBoss(id);
+        }
+        long total = rows.isEmpty() ? 0L : rows.get(0).getTotalCount();
+        List<JSONObject> views = rows.stream().map(this::couponRecord).toList();
+        Page<JSONObject> result = new PageImpl<>(views, PageRequest.of(safePage, safePageSize), total);
         return Result.success(result, result.getNumber(), result.getTotalElements());
+    }
+
+    private JSONObject couponRecord(AdminCouponRecordRow row) {
+        JSONObject item = new JSONObject();
+        item.put("id", row.getId());
+        String status = row.getStatus();
+        if ("UNUSED".equals(status) && row.getExpireAt() != null
+                && row.getExpireAt().isBefore(LocalDate.now())) status = "EXPIRED";
+        item.put("status", status); item.put("expireAt", row.getExpireAt()); item.put("usedAt", row.getUsedAt());
+        item.put("useOrderId", row.getUseOrderId()); item.put("title", row.getTitle()); item.put("type", row.getType());
+        item.put("amount", row.getAmount()); item.put("minSpend", row.getMinSpend());
+        item.put("discount", row.getDiscount()); item.put("cap", row.getCap());
+        return item;
     }
 
     private Long longValue(Long value) {
@@ -374,7 +522,7 @@ public class AdminUserController {
 
     private void requireWorker(Long id) {
         User user = userRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
-        if (!UserRole.USER.equals(user.getRole())) throw new ForbiddenBusinessException("目标用户不是零工账号");
+        if (!UserRole.isWorkerIdentity(user)) throw new ForbiddenBusinessException("目标用户不是零工账号");
     }
 
     private void requireAdmin(Authentication authentication) {
@@ -390,6 +538,18 @@ public class AdminUserController {
                 .map(String::trim).filter(s -> !s.isBlank()).toList();
     }
 
+    private List<Long> jobCategoryIds(BossOrder order) {
+        if (order == null) return List.of();
+        List<Long> ids = new ArrayList<>();
+        if (order.getJobIds() != null && !order.getJobIds().isBlank()) {
+            for (String value : order.getJobIds().split(",")) {
+                try { ids.add(Long.valueOf(value.trim())); } catch (NumberFormatException ignored) { }
+            }
+        }
+        if (ids.isEmpty() && order.getJobCategoryId() != null) ids.add(order.getJobCategoryId());
+        return ids.stream().distinct().toList();
+    }
+
     private List<JSONObject> skillDetails(String value) {
         return skillList(value).stream().map(skill -> {
             JSONObject item = new JSONObject(); item.put("name", skill); item.put("verified", false); return item;
@@ -398,6 +558,20 @@ public class AdminUserController {
 
     private void putWorkerStats(JSONObject obj, Long userId) {
         List<com.kuaima.app.domain.boss.entity.BaseOrderItem> items = orderItemRepository.findByUserId(userId);
+        long totalIncome = walletFlowRepository == null ? 0L : longValue(walletFlowRepository.sumIncomeByUserId(userId));
+        BigDecimal rewardBalance = rewardAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(userId, UserRole.USER)
+                .or(() -> rewardAccountRepository.findFirstByUserIdOrderByIdDesc(userId))
+                .map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO);
+        long pointsBalance = pointsAccountRepository.findFirstByUserIdAndRoleOrderByIdDesc(userId, UserRole.USER)
+                .map(a -> (long) integerValue(a.getBalance())).orElse(0L);
+        putWorkerStats(obj, items, totalIncome, rewardBalance, pointsBalance);
+    }
+
+    private void putWorkerStats(JSONObject obj,
+                                List<com.kuaima.app.domain.boss.entity.BaseOrderItem> items,
+                                long totalIncome,
+                                BigDecimal rewardBalance,
+                                long pointsBalance) {
         long total = items.size();
         long completed = items.stream().filter(i -> "已完成".equals(i.getStatus())).count();
         long canceled = items.stream().filter(i -> "取消报名".equals(i.getStatus()) || "已取消".equals(i.getStatus())).count();
@@ -410,9 +584,8 @@ public class AdminUserController {
         long monthCompleted = items.stream().filter(i -> "已完成".equals(i.getStatus()) && i.getFinishDate() != null
                 && i.getFinishDate().toLocalDate().getYear() == LocalDate.now().getYear()
                 && i.getFinishDate().toLocalDate().getMonthValue() == LocalDate.now().getMonthValue()).count();
-        long totalIncome = walletFlowRepository == null ? 0L : longValue(walletFlowRepository.sumIncomeByUserId(userId));
-        obj.put("rewardBalance", rewardAccountRepository.findByUserId(userId).map(a -> moneyValue(a.getBalance())).orElse(BigDecimal.ZERO));
-        obj.put("pointsBalance", pointsAccountRepository.findByUserIdAndRole(userId, UserRole.USER).map(a -> (long) integerValue(a.getBalance())).orElse(0L));
+        obj.put("rewardBalance", rewardBalance);
+        obj.put("pointsBalance", pointsBalance);
         obj.put("completedOrders", completed); obj.put("monthCompletedOrders", monthCompleted); obj.put("totalIncome", totalIncome);
         obj.put("completionRate", completion); obj.put("cancellationRate", cancellation); obj.put("noShowRate", noShow); obj.put("earlyLeaveRate", earlyRate);
     }
@@ -491,9 +664,15 @@ public class AdminUserController {
     private JSONObject couponRecord(UserCoupon record, Coupon coupon) {
         JSONObject item = new JSONObject();
         item.put("id", record.getId());
-        item.put("status", record.getStatus());
+        String status = record.getStatus();
+        if ("UNUSED".equals(status) && record.getExpireAt() != null
+                && record.getExpireAt().toLocalDate().isBefore(LocalDate.now())) {
+            status = "EXPIRED";
+        }
+        item.put("status", status);
         item.put("expireAt", record.getExpireAt());
         item.put("usedAt", record.getUsedAt());
+        item.put("useOrderId", record.getUseOrderId());
         item.put("title", coupon == null ? "优惠券" : firstText(coupon.getTitle(), coupon.getName()));
         item.put("type", coupon == null ? null : coupon.getType());
         item.put("amount", coupon == null ? null : coupon.getAmount());
@@ -510,7 +689,7 @@ public class AdminUserController {
     private User requireBoss(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + id));
-        if (!UserRole.BOSS.equals(user.getRole())) {
+        if (!UserRole.isBossIdentity(user)) {
             throw new ForbiddenBusinessException("目标用户不是老板账号");
         }
         return user;
@@ -583,6 +762,7 @@ public class AdminUserController {
         u.setEnterpriseStatus(CertificationStatus.APPROVED);
         u.setCertStatus("已通过");
         u.setCertType("ENTERPRISE");
+        com.kuaima.app.domain.user.constant.UserBusinessCode.ensureBoss(u);
         EnterpriseCode.ensure(u);
         return Result.success(userRepository.save(u));
     }

@@ -12,7 +12,7 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/home/Home.vue'),
+    redirect: '/login',
     meta: { title: '快马日结管理后台', public: true }
   },
   {

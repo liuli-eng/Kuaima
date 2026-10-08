@@ -105,13 +105,13 @@
         class="settlement-table"
         :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }"
       >
-        <el-table-column label="结算单号" width="110" fixed="left">
+        <el-table-column label="结算单号" min-width="110" fixed="left">
           <template #default="{ row }"><span class="settle-id-cell">{{ settlementNo(row) }}</span></template>
         </el-table-column>
-        <el-table-column label="订单号" width="110">
+        <el-table-column label="订单号" min-width="110">
           <template #default="{ row }"><span class="settle-id-cell">{{ orderNo(row) }}</span></template>
         </el-table-column>
-        <el-table-column label="雇主" width="180" show-overflow-tooltip>
+        <el-table-column label="雇主" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="employer-cell">
               <span class="employer-logo" :style="{ background: avatarBackground(row.id, row.employerName) }">{{ avatarText(row.employerName) }}</span>
@@ -119,7 +119,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="零工" width="150" show-overflow-tooltip>
+        <el-table-column label="零工" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="worker-cell">
               <span class="worker-avatar" :style="{ background: avatarBackground(row.workerId, row.workerName) }">{{ avatarText(row.workerName) }}</span>
@@ -127,13 +127,13 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="结算金额" width="110" align="right">
+        <el-table-column label="结算金额" min-width="110" align="right">
           <template #default="{ row }"><span class="money-cell primary">¥{{ formatMoney(row.amount) }}</span></template>
         </el-table-column>
-        <el-table-column label="平台费" width="100" align="right">
+        <el-table-column label="平台费" min-width="100" align="right">
           <template #default="{ row }"><span class="money-cell danger">¥{{ formatMoney(row.platformFee) }}</span></template>
         </el-table-column>
-        <el-table-column label="优惠券抵扣金额" width="140" align="right">
+        <el-table-column label="优惠券抵扣金额" min-width="140" align="right">
           <template #default="{ row }">
             <div class="coupon-cell">
               <span class="money-cell success">-¥{{ formatMoney(row.couponAmount) }}</span>
@@ -141,16 +141,16 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="实付金额" width="110" align="right">
+        <el-table-column label="实付金额" min-width="110" align="right">
           <template #default="{ row }"><span class="money-cell success">¥{{ formatMoney(row.actualAmount) }}</span></template>
         </el-table-column>
-        <el-table-column label="结算状态" width="100">
+        <el-table-column label="结算状态" min-width="100">
           <template #default="{ row }"><span class="status-badge" :class="row.statusClass">{{ row.status }}</span></template>
         </el-table-column>
-        <el-table-column label="结算时间" width="170">
+        <el-table-column label="结算时间" min-width="170">
           <template #default="{ row }">{{ formatDateTime(row.time) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" min-width="140" fixed="right">
           <template #default="{ row }">
             <div class="action-btns">
               <el-button link type="primary" size="small" @click="openDetail(row)">详情</el-button>

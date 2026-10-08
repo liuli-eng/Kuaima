@@ -3,6 +3,7 @@ package com.kuaima.app.admin.service;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Async;
 
 import com.kuaima.app.admin.entity.AdminLog;
 import com.kuaima.app.admin.repository.AdminLogRepository;
@@ -36,6 +37,12 @@ public class AdminLogService {
             // 日志写入失败不影响主流程
             System.err.println("[AdminLog] 记录日志失败: " + e.getMessage());
         }
+    }
+
+    /** 后台通用操作日志不阻塞业务响应；登录等显式调用仍可使用同步 record。 */
+    @Async
+    public void recordAsync(String operator, Long operatorId, String type, String target, String ip, String result, String detail) {
+        record(operator, operatorId, type, target, ip, result, detail);
     }
 
     private String truncate(String s, int max) {

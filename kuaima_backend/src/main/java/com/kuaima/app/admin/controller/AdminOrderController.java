@@ -31,6 +31,8 @@ import com.kuaima.app.domain.boss.repository.BaseOrderItemRespository;
 import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.domain.jobcategory.repository.JobCategoryRepository;
+import com.kuaima.app.domain.jobcategory.repository.JobIndustryRepository;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 import com.kuaima.app.domain.review.entity.BossReview;
@@ -53,23 +55,29 @@ public class AdminOrderController {
     private final SettlementRespository settlementRepository;
     private final BossReviewRepository bossReviewRepository;
     private final WorkerReviewRepository workerReviewRepository;
+    private final JobCategoryRepository jobCategoryRepository;
+    private final JobIndustryRepository jobIndustryRepository;
 
     public AdminOrderController(BaseOrderItemRespository itemRepository,
                                 BossOrderRespository orderRepository,
                                 UserRepository userRepository,
                                 SettlementRespository settlementRepository,
                                 BossReviewRepository bossReviewRepository,
-                                WorkerReviewRepository workerReviewRepository) {
+                                WorkerReviewRepository workerReviewRepository,
+                                JobCategoryRepository jobCategoryRepository,
+                                JobIndustryRepository jobIndustryRepository) {
         this.itemRepository = itemRepository;
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.settlementRepository = settlementRepository;
         this.bossReviewRepository = bossReviewRepository;
         this.workerReviewRepository = workerReviewRepository;
+        this.jobCategoryRepository = jobCategoryRepository;
+        this.jobIndustryRepository = jobIndustryRepository;
     }
 
     /** 订单/报名列表（admin 全量视图，关联雇主名称、零工名称、工种、金额、时间） */
-    @Operation(summary = "全部报名记录列表", description = "admin 全量视图，支持按 status 过滤 + keyword 搜索（雇主/零工/订单号）+ 分页，按 id 倒序。返回 enriched JSON")
+    @Operation(summary = "订单零工明细列表", description = "以一条招工订单和一条零工报名记录的组合为一行，支持状态筛选和分页；父订单号用于展示，报名记录 ID 用于操作")
     @GetMapping
     public Result<Page<JSONObject>> list(@RequestParam(required = false) String status,
                                          @RequestParam(required = false) String keyword,
@@ -97,6 +105,15 @@ public class AdminOrderController {
             userRepository.findAllById(userIds).forEach(u -> userMap.put(u.getId(), u));
         }
 
+        Set<Long> categoryIds = orderMap.values().stream().map(BossOrder::getJobCategoryId)
+                .filter(id -> id != null && id > 0).collect(Collectors.toSet());
+        Map<Long, String> categoryNames = new HashMap<>();
+        jobCategoryRepository.findAllById(categoryIds).forEach(c -> categoryNames.put(c.getId(), c.getName()));
+        Set<Long> industryIds = orderMap.values().stream().map(BossOrder::getIndustryId)
+                .filter(id -> id != null && id > 0).collect(Collectors.toSet());
+        Map<Long, String> industryNames = new HashMap<>();
+        jobIndustryRepository.findAllById(industryIds).forEach(i -> industryNames.put(i.getId(), i.getName()));
+
         Map<Long, Settlement> settlementMap = new HashMap<>();
         Map<Long, BossReview> bossReviewMap = new HashMap<>();
         Map<Long, WorkerReview> workerReviewMap = new HashMap<>();
@@ -114,8 +131,13 @@ public class AdminOrderController {
             // 关联招工订单信息
             BossOrder order = orderMap.get(item.getOrderId());
             if (order != null) {
+                // 列表按“招工订单 + 零工报名记录”展示：父订单号用于展示，报名记录 ID 用于操作。
+                obj.put("parentOrderId", order.getId());
+                obj.put("orderNumber", order.getId());
                 obj.put("jobTitle", order.getOrderTitle());
                 obj.put("jobType", order.getType());
+                obj.put("jobCategoryName", categoryNames.get(order.getJobCategoryId()));
+                obj.put("industryName", industryNames.get(order.getIndustryId()));
                 obj.put("postion", order.getPostion());
                 obj.put("amount", order.getSalary());
                 obj.put("startTime", order.getStartTime());
@@ -137,10 +159,11 @@ public class AdminOrderController {
             // 零工名称
             User worker = userMap.get(item.getUserId());
             if (worker != null) {
-                obj.put("workerName",
-                        (worker.getNickname() != null && !worker.getNickname().isBlank())
-                                ? worker.getNickname()
-                                : worker.getUsername());
+                String workerName = worker.getRealName();
+                if (workerName == null || workerName.isBlank()) workerName = worker.getNickname();
+                if (workerName == null || workerName.isBlank()) workerName = worker.getPhone();
+                if (workerName == null || workerName.isBlank()) workerName = "零工" + worker.getId();
+                obj.put("workerName", workerName);
             } else {
                 obj.put("workerName", "未知零工");
             }
@@ -198,7 +221,7 @@ public class AdminOrderController {
         if ("已完成".equals(item.getStatus()) || "已结算".equals(item.getStatus())) {
             throw new IllegalArgumentException("已完成或已结算订单不可取消");
         }
-        item.setStatus("取消招工");
+        item.setStatus("取消报名");
         item.setCancelReason(body == null || body.get("reason") == null ? "管理员取消" : String.valueOf(body.get("reason")));
         item.setCancelDate(new java.sql.Date(System.currentTimeMillis()));
         BaseOrderItem saved = itemRepository.save(item);

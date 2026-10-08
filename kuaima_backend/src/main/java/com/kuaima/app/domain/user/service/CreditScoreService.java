@@ -3,6 +3,9 @@ package com.kuaima.app.domain.user.service;
 import java.util.List;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +25,9 @@ public class CreditScoreService {
 
     private final UserRepository users;
     private final CreditFlowRepository flows;
+    private static final Object FLOW_NO_LOCK = new Object();
+    private static final DateTimeFormatter FLOW_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Shanghai");
 
     public CreditScoreService(UserRepository users, CreditFlowRepository flows) {
         this.users = users;
@@ -38,11 +44,14 @@ public class CreditScoreService {
         int after = Math.max(0, before + delta);
         if (scoreType.equals(WORKER_STAR)) user.setStarScore(after); else user.setCreditScore(after);
         users.save(user);
-        CreditFlow flow = new CreditFlow();
-        flow.setUserId(userId); flow.setDelta(after - before); flow.setReason(reason); flow.setBizType(bizType);
-        flow.setScoreType(scoreType); flow.setIdempotencyKey(idempotencyKey); flow.setBeforeScore(before);
-        flow.setAfterScore(after); flow.setRuleCode(ruleCode);
-        flows.save(flow);
+        synchronized (FLOW_NO_LOCK) {
+            CreditFlow flow = new CreditFlow();
+            flow.setBizNo(nextBizNo());
+            flow.setUserId(userId); flow.setDelta(after - before); flow.setReason(reason); flow.setBizType(bizType);
+            flow.setScoreType(scoreType); flow.setIdempotencyKey(idempotencyKey); flow.setBeforeScore(before);
+            flow.setAfterScore(after); flow.setRuleCode(ruleCode);
+            flows.save(flow);
+        }
         return true;
     }
 
@@ -64,4 +73,15 @@ public class CreditScoreService {
     }
 
     private int value(Integer v) { return v == null ? 0 : v; }
+
+    private String nextBizNo() {
+        String prefix = "XF" + LocalDate.now(BUSINESS_ZONE).format(FLOW_DATE);
+        CreditFlow latest = flows.findTopByBizNoStartingWithOrderByBizNoDesc(prefix);
+        int next = 1;
+        if (latest != null && latest.getBizNo() != null && latest.getBizNo().length() >= prefix.length() + 3) {
+            try { next = Integer.parseInt(latest.getBizNo().substring(prefix.length())) + 1; }
+            catch (NumberFormatException ignored) { }
+        }
+        return prefix + String.format("%03d", next);
+    }
 }

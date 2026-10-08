@@ -174,16 +174,16 @@ class AuthControllerWechatLoginTests {
     }
 
     @Test
-    void newBossWithoutNickname_shouldReceiveIndependentDefaultNickname() {
+    void newBossLoginWithoutNickname_shouldStillReceiveWorkerDefaultNickname() {
         when(wechatService.loginByCode("login-code")).thenReturn(new WechatUserInfo("openid-boss", null, null, null));
         when(userRepository.findByOpenid("openid-boss")).thenReturn(Optional.empty());
-        when(userRepository.findByRole(UserRole.BOSS)).thenReturn(java.util.List.of(userWithNickname(5L, UserRole.BOSS, "老板02")));
+        when(userRepository.findByRole(UserRole.USER)).thenReturn(java.util.List.of(userWithNickname(5L, UserRole.USER, "零工02")));
         when(wechatService.getPhoneNumber("phone-code")).thenReturn("13900000000");
         when(passwordEncoder.encode(any())).thenReturn("encoded-password");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         WechatLoginDto dto = dto("phone-code"); dto.setRole(UserRole.BOSS);
         controller.wechatLogin(dto);
-        verify(userRepository).save(argThat(u -> "老板03".equals(u.getNickname())));
+        verify(userRepository).save(argThat(u -> "零工03".equals(u.getNickname())));
     }
 
     @Test

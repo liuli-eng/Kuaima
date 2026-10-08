@@ -106,7 +106,7 @@ public class AdminLogInterceptor implements HandlerInterceptor {
                 + (safeBody != null && !safeBody.isBlank() ? " | body=" + safeBody : "")
                 + (ex != null ? " | ex=" + ex.getMessage() : "");
 
-        logService.record(operator, operatorId, type, target, ip, result, detail);
+        logService.recordAsync(operator, operatorId, type, target, ip, result, detail);
     }
 
     /** 解析 URI 对应的菜单中文名称（一级/二级菜单） */
@@ -200,8 +200,8 @@ public class AdminLogInterceptor implements HandlerInterceptor {
         if (lower.endsWith("/unfreeze") || lower.endsWith("/unfreeze/batch")) return "启用";
         if (lower.endsWith("/freeze") || lower.endsWith("/freeze/batch")) return "禁用";
         if (lower.endsWith("/toggle")) {
-            // 通知模板启停：toggle 后库中为新状态，查库确定方向
-            String id = extractId(uri);
+            // 只有通知模板需要读取切换后的状态；其他模块不得误查通知模板表。
+            String id = lower.startsWith("/admin/message-templates/") ? extractId(uri) : null;
             if (id != null) {
                 try {
                     return templateRepository.findById(Long.valueOf(id))

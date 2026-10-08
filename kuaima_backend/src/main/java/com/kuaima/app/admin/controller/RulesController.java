@@ -35,14 +35,24 @@ public class RulesController {
 
     public RulesController(RulesRepository repo) { this.repo = repo; }
 
-    /** 列表（分页，按 id 倒序） */
-    @Operation(summary = "规则列表分页", description = "按 id 倒序分页返回 Rules 列表")
+    /** 列表（分页，按 id 倒序）；type/category 条件按 OR 组合，status 独立过滤。 */
+    @Operation(summary = "规则列表分页", description = "支持 type、category、status 过滤；type 与 category 同时传入时按 OR 组合")
     @GetMapping
     public Result<List<Rules>> list(@RequestParam(defaultValue = "0") int page,
-                                   @RequestParam(defaultValue = "10") int size) {
+                                   @RequestParam(defaultValue = "10") int size,
+                                   @RequestParam(required = false) String type,
+                                   @RequestParam(required = false) String category,
+                                   @RequestParam(required = false) String status) {
+        if (page < 0 || size < 1 || size > 200) {
+            throw new IllegalArgumentException("page 或 size 参数无效");
+        }
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        Page<Rules> result = repo.findAll(pageable);
+        Page<Rules> result = repo.search(normalize(type), normalize(category), normalize(status), pageable);
         return Result.success(result.getContent(), page, result.getTotalElements());
+    }
+
+    private String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     @Operation(summary = "平台规则列表", description = "返回平台规则，并兼容未设置 rule_type 的历史数据")

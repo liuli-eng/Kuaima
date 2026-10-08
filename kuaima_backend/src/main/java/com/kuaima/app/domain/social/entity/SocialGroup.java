@@ -1,5 +1,7 @@
 package com.kuaima.app.domain.social.entity;
 
+import java.time.LocalDateTime;
+
 import com.kuaima.app.domain.base.entity.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -27,5 +29,26 @@ public class SocialGroup extends BaseEntity {
     private String qrcodeUrl;
 
     @Column(comment = "成员数")
-    private Integer memberCount;
+    private Integer memberCount = 0;
+
+    @Column(length = 500, comment = "群简介")
+    private String description;
+
+    @Column(length = 20, comment = "可见角色: WORKER/BOSS")
+    private String role = "WORKER";
+
+    @Column(length = 20, comment = "群状态: ACTIVE/FULL/DISABLED")
+    private String status = "ACTIVE";
+
+    @Column(comment = "人数上限")
+    private Integer memberLimit = 200;
+
+    @Column(comment = "建群时间")
+    private LocalDateTime createdAt;
+
+    @Column(comment = "展示排序")
+    private Integer sort = 0;
+
+    @Column(nullable = false, comment = "是否已删除")
+    private Boolean deleted = false;
 }

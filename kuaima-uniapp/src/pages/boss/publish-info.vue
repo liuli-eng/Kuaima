@@ -38,10 +38,8 @@
           <text class="form-value" :class="{ placeholder: !workContent && !taskDetail }">{{ taskSummary }}</text>
           <image class="form-arrow" src="/static/icons/boss-points/chevron-right-gray.svg" mode="aspectFit" />
         </view>
-        <view v-if="taskTags.length" class="task-tags">
-          <view class="task-tag-box">
-            <text v-for="tag in taskTags" :key="tag" class="task-tag-pill">{{ tag }}</text>
-          </view>
+        <view v-if="taskDetail" class="task-detail-preview">
+          <text class="task-detail-text">{{ taskDetail }}</text>
         </view>
         <view class="form-item" @click="openGenderSheet">
           <text class="form-label">性别年龄</text>
@@ -1643,24 +1641,19 @@ function formatWorkTime(start, end) {
   height: 13px;
   flex-shrink: 0;
 }
-.task-tags {
+.task-detail-preview {
   padding: 0 16px 14px;
 }
-.task-tag-box {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.task-detail-text {
+  display: block;
   padding: 10px 12px;
   border-radius: 8px;
   background: #f5f6f8;
-}
-.task-tag-pill {
-  padding: 6px 10px;
-  border-radius: 5px;
-  background: #fff;
   color: #666;
-  font-size: 12px;
-  line-height: 1;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .date-section {

@@ -10,13 +10,29 @@ export function getWorkerStats() {
 }
 
 // 雇主列表
-export function listBosses({ status, enterpriseStatus, industry, keyword, page = 0, size = 10 } = {}) {
-  return request.get('/admin/users/bosses', { params: { status, enterpriseStatus, industry, keyword, page, size } })
+export function listBosses({ status, enterpriseStatus, industry, jobType, keyword, page = 0, size = 10 } = {}) {
+  return request.get('/admin/users/bosses', { params: { status, enterpriseStatus, industry, jobType, keyword, page, size } })
 }
 
 // 用户详情
 export function getUser(id) {
   return request.get(`/admin/users/${id}`)
+}
+
+export function getWorkerOverview(id) {
+  return request.get(`/admin/users/${id}/overview`)
+}
+
+export function getWorkerPointFlows(id, { page = 0, size = 5 } = {}) {
+  return request.get(`/admin/users/${id}/points/flows`, { params: { page, size } })
+}
+
+export function getWorkerRewardFlows(id, { page = 0, size = 5 } = {}) {
+  return request.get(`/admin/users/${id}/reward/flows`, { params: { page, size } })
+}
+
+export function getWorkerCreditFlows(id, { page = 0, size = 5 } = {}) {
+  return request.get(`/user/${id}/credit/flows`, { params: { page, size } })
 }
 
 // 老板详情-积分明细

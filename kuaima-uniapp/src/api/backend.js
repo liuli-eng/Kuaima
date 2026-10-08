@@ -1528,6 +1528,21 @@ export function listRules(category) {
   });
 }
 
+/** 老板端诚意分规则，读取后台已发布信用分规则。 */
+export function listBossCreditRules(params = {}) {
+  return request({
+    url: `/admin/rules?${query({
+      type: "credit",
+      category: "信用分规则",
+      status: "published",
+      page: 0,
+      size: 200,
+      ...params,
+    })}`,
+    skipUserIdHeader: true,
+  });
+}
+
 export function getRule(id) {
   return request({
     url: `/rules/${encodeURIComponent(id)}`,
@@ -1559,6 +1574,10 @@ export function sendChatMessage(id, data) {
 
 export function listSocialGroups() {
   return request({ url: "/social-groups" });
+}
+
+export function createSocialGroup(data) {
+  return request({ url: "/social-groups", method: "POST", data });
 }
 
 export function listBossContracts(bossId) {

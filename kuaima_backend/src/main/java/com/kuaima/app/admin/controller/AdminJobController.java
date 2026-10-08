@@ -4,6 +4,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.time.LocalDate;
+import java.nio.charset.StandardCharsets;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import java.util.stream.Collectors;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,8 +34,13 @@ import com.kuaima.app.domain.boss.repository.BossOrderRespository;
 import com.kuaima.app.domain.boss.service.BossOrderService;
 import com.kuaima.app.domain.jobcategory.entity.JobCategory;
 import com.kuaima.app.domain.jobcategory.repository.JobCategoryRepository;
+import com.kuaima.app.domain.jobcategory.repository.JobIndustryRepository;
+import com.kuaima.app.domain.jobcategory.entity.JobIndustry;
 import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
+import com.kuaima.app.admin.repository.ReportRepository;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.kuaima.app.security.model.LoginUser;
 
 /**
@@ -46,17 +56,23 @@ public class AdminJobController {
     private final UserRepository userRepository;
     private final BaseOrderItemRespository orderItemRepository;
     private final JobCategoryRepository jobCategoryRepository;
+    private final JobIndustryRepository jobIndustryRepository;
+    private final ReportRepository reportRepository;
 
     public AdminJobController(BossOrderRespository orderRepository,
                               BossOrderService bossOrderService,
                               UserRepository userRepository,
                               BaseOrderItemRespository orderItemRepository,
-                              JobCategoryRepository jobCategoryRepository) {
+                              JobCategoryRepository jobCategoryRepository,
+                              JobIndustryRepository jobIndustryRepository,
+                              ReportRepository reportRepository) {
         this.orderRepository = orderRepository;
         this.bossOrderService = bossOrderService;
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
         this.jobCategoryRepository = jobCategoryRepository;
+        this.jobIndustryRepository = jobIndustryRepository;
+        this.reportRepository = reportRepository;
     }
 
     /** 招工列表（全部状态），批量填充雇主名称 */
@@ -65,10 +81,12 @@ public class AdminJobController {
     public Result<Page<BossOrderView>> list(@RequestParam(required = false) String type,
                                             @RequestParam(required = false) String status,
                                             @RequestParam(required = false) String title,
+                                            @RequestParam(required = false) LocalDate startDate,
+                                            @RequestParam(required = false) LocalDate endDate,
                                             @RequestParam(defaultValue = "0") int page,
                                             @RequestParam(defaultValue = "10") int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        Page<BossOrder> orders = orderRepository.search(type, status, title, pageable);
+        Page<BossOrder> orders = orderRepository.search(type, status, title, startDate, endDate, pageable);
 
         // 批量查询雇主名称（createBy = 雇主 userId）
         Set<Long> employerIds = orders.stream()
@@ -104,6 +122,9 @@ public class AdminJobController {
             jobCategoryRepository.findAllById(categoryIds).forEach(c ->
                     categoryNames.put(c.getId(), c.getName()));
         }
+        Set<Long> industryIds = orders.stream().map(BossOrder::getIndustryId).filter(id -> id != null && id > 0).collect(Collectors.toSet());
+        Map<Long, String> industryNames = new HashMap<>();
+        if (!industryIds.isEmpty()) jobIndustryRepository.findAllById(industryIds).forEach(i -> industryNames.put(i.getId(), i.getName()));
 
         Page<BossOrderView> views = orders.map(order -> new BossOrderView(
                 order.getId(),
@@ -125,21 +146,118 @@ public class AdminJobController {
                 order.getStartTime(),
                 order.getEndTime(),
                 order.getCreateBy() != null ? employerNames.getOrDefault(order.getCreateBy(), "未知雇主") : "未知雇主",
+                null,
                 applyCounts.getOrDefault(order.getId(), 0L),
                 order.getAuditBy(),
                 order.getAuditTime(),
-                order.getJobCategoryId() != null ? categoryNames.getOrDefault(order.getJobCategoryId(), null) : null
+                formatIndustryJob(industryNames.get(order.getIndustryId()), order.getJobCategoryId() != null ? categoryNames.get(order.getJobCategoryId()) : null)
         ));
 
         return Result.success(views, page, orders.getTotalElements());
     }
 
+    @GetMapping(value = "/export", produces = "text/csv")
+    public ResponseEntity<byte[]> export(@RequestParam(required = false) String type,
+                                         @RequestParam(required = false) String status,
+                                         @RequestParam(required = false) String title,
+                                         @RequestParam(required = false) LocalDate startDate,
+                                         @RequestParam(required = false) LocalDate endDate) {
+        Page<BossOrder> orders = orderRepository.search(type, status, title, startDate, endDate,
+                PageRequest.of(0, 10000, Sort.by(Sort.Direction.DESC, "id")));
+
+        Set<Long> employerIds = orders.stream().map(BossOrder::getCreateBy).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> employerNames = new HashMap<>();
+        userRepository.findAllById(employerIds).forEach(user -> {
+            String name = user.getCompanyName();
+            if (name == null || name.isBlank()) name = user.getNickname();
+            if (name == null || name.isBlank()) name = user.getUsername();
+            employerNames.put(user.getId(), name);
+        });
+
+        Set<Long> categoryIds = orders.stream().map(BossOrder::getJobCategoryId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> categoryNames = new HashMap<>();
+        jobCategoryRepository.findAllById(categoryIds).forEach(category -> categoryNames.put(category.getId(), category.getName()));
+        Set<Long> industryIds = orders.stream().map(BossOrder::getIndustryId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> industryNames = new HashMap<>();
+        jobIndustryRepository.findAllById(industryIds).forEach(industry -> industryNames.put(industry.getId(), industry.getName()));
+
+        StringBuilder csv = new StringBuilder("审核ID,行业/工种,雇主,工价,招聘人数,提交时间,审核人,审核时间,状态\n");
+        for (BossOrder order : orders) {
+            String industryJob = formatIndustryJob(industryNames.get(order.getIndustryId()), categoryNames.get(order.getJobCategoryId()));
+            if (industryJob == null || industryJob.isBlank()) industryJob = order.getPostion();
+            csv.append(csvCell(order.getId())).append(',').append(csvCell(industryJob)).append(',')
+                    .append(csvCell(employerNames.getOrDefault(order.getCreateBy(), "未知雇主"))).append(',').append(csvCell(order.getSalary())).append(',')
+                    .append(csvCell(order.getOrderNum())).append(',').append(csvCell(order.getTimestamp())).append(',')
+                    .append(csvCell(order.getAuditBy())).append(',').append(csvCell(order.getAuditTime())).append(',')
+                    .append(csvCell(order.getOrderStatus())).append('\n');
+        }
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=job-audit.csv")
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .body(("\uFEFF" + csv).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String formatIndustryJob(String industry, String job) {
+        if (industry == null || industry.isBlank()) return job;
+        if (job == null || job.isBlank()) return industry;
+        return industry + " / " + job;
+    }
+
+    private String csvCell(Object value) {
+        String text = value == null ? "" : String.valueOf(value).replace("\"", "\"\"");
+        return "\"" + text + "\"";
+    }
+
     /** 招工详情 */
     @Operation(summary = "招工详情", description = "返回完整 BossOrder 订单对象")
     @GetMapping("/{id}")
-    public Result<BossOrder> get(@PathVariable Long id) {
-        return Result.success(orderRepository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("订单不存在: " + id)));
+    public Result<JSONObject> get(@PathVariable Long id) {
+        BossOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("订单不存在: " + id));
+        JSONObject result = (JSONObject) JSON.toJSON(order);
+        if (order.getJobCategoryId() != null) {
+            jobCategoryRepository.findById(order.getJobCategoryId())
+                    .ifPresent(category -> result.put("jobCategoryName", category.getName()));
+        }
+        if (order.getIndustryId() != null) {
+            jobIndustryRepository.findById(order.getIndustryId())
+                    .ifPresent(industry -> result.put("industryName", industry.getName()));
+        }
+        if (order.getCreateBy() != null) {
+            User employer = userRepository.findById(order.getCreateBy()).orElse(null);
+            if (employer != null) {
+                result.put("employerCreditScore", employer.getCreditScore() == null ? 0 : employer.getCreditScore());
+                result.put("complaintCount", reportRepository.countByTargetId(employer.getId()));
+                List<BossOrder> history = orderRepository.findByCreateByOrderByIdDesc(employer.getId());
+                long passed = history.stream().filter(item -> !Set.of("待审核", "审核拒绝").contains(item.getOrderStatus())).count();
+                result.put("historyJobs", history.size());
+                result.put("passRate", history.isEmpty() ? null : Math.round(passed * 10000.0 / history.size()) / 100.0);
+                if (employer.getLicenseNo() != null || employer.getLegalRep() != null) {
+                    List<Map<String, Object>> materials = new java.util.ArrayList<>();
+                    if (employer.getLicenseNo() != null && !employer.getLicenseNo().isBlank()) {
+                        materials.add(Map.of("name", "营业执照.pdf"));
+                    }
+                    if (employer.getLegalRep() != null && !employer.getLegalRep().isBlank()) {
+                        materials.add(Map.of("name", "法人身份证.jpg"));
+                    }
+                    result.put("submittedMaterials", materials);
+                }
+            }
+        }
+        result.put("benefits", extractBenefits(order.getOrderRemark()));
+        result.put("submittedMaterials", result.getOrDefault("submittedMaterials", null));
+        return Result.success(result);
+    }
+
+    private List<String> extractBenefits(String remark) {
+        if (remark == null || remark.isBlank()) return List.of();
+        Set<String> benefitNames = Set.of("包吃住", "包餐", "包工作餐", "中午包饭", "晚上包饭", "交通补贴", "全勤奖",
+                "保险", "加班补助", "提供饮水", "免费培训", "工作轻松", "环境舒适", "有空调", "有风扇", "室内工作", "当日结清", "月结");
+        return java.util.Arrays.stream(remark.split("[,，、;；]"))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .filter(value -> benefitNames.stream().anyMatch(name -> value.equals(name) || value.contains(name)))
+                .distinct()
+                .toList();
     }
 
     /** 审核通过 */
@@ -221,12 +339,22 @@ public class AdminJobController {
             if (u != null) {
                 m.put("username", u.getUsername());
                 m.put("nickname", u.getNickname());
+                m.put("avatar", u.getAvatar());
                 m.put("phone", u.getPhone());
+                m.put("idCard", maskIdCard(u.getIdCard()));
+                m.put("gender", u.getGender());
+                m.put("age", u.getAge());
                 m.put("certStatus", u.getCertStatus());
             }
             return m;
         }).collect(Collectors.toList());
         return Result.success(result);
+    }
+
+    private String maskIdCard(String value) {
+        if (value == null || value.isBlank()) return value;
+        if (value.length() <= 8) return value;
+        return value.substring(0, 4) + "********" + value.substring(value.length() - 4);
     }
 
     /** 管理员录用报名人员 */

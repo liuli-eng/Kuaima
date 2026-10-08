@@ -9,12 +9,25 @@ spring:
       # 学堂视频最大 200MB；请求上限略高以容纳 multipart 边界和表单字段。
       max-file-size: 200MB
       max-request-size: 210MB
+  config:
+    import: optional:file:.config/kuaima/oss.env[.properties]
 
 
 kuaima:
+  media:
+    ffmpeg-path: ${FFMPEG_PATH:ffmpeg}
+    transcode-timeout-seconds: ${VIDEO_TRANSCODE_TIMEOUT_SECONDS:900}
   settle:
     # 平台服务费率(% of 工资)，规则待定，默认 0 即暂不收取
     service-fee-rate: 0
+
+aliyun:
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:}
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
+    domain: ${ALIYUN_OSS_DOMAIN:}
 
 wechat:
   appid: ${WECHAT_APPID:}
