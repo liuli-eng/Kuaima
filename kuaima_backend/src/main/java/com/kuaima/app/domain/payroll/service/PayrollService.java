@@ -131,13 +131,7 @@ public class PayrollService {
         order.setStatus(PayrollConstants.ORDER_APPROVED);
         order.setReviewBy(reviewer);
         order.setReviewTime(new java.util.Date());
-        // 审批通过：明细置为待转账（等待打款）
-        for (PayrollDetail d : detailRepository.findByPayrollId(id)) {
-            if (PayrollConstants.DETAIL_PENDING.equals(d.getStatus())) {
-                d.setStatus(PayrollConstants.DETAIL_PENDING);
-                detailRepository.save(d);
-            }
-        }
+        // 明细保持 DETAIL_PENDING（待转账），等待打款完成后才置为 success
         return orderRepository.save(order);
     }
 
@@ -161,7 +155,12 @@ public class PayrollService {
     public Map<String, Object> stats() {
         Map<String, Object> result = new LinkedHashMap<>();
         List<PayrollOrder> all = orderRepository.findAll();
-        long projectTotal = all.stream().map(PayrollOrder::getProjectId).filter(java.util.Objects::nonNull).distinct().count();
+        // 后台建单只填项目名、不传 projectId，若仅按 projectId 去重会恒为 0
+        long projectTotal = all.stream()
+                .map(PayrollService::projectKey)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .count();
         LocalDate now = LocalDate.now();
         long monthAmount = all.stream()
                 .filter(o -> PayrollConstants.ORDER_APPROVED.equals(o.getStatus()) && isThisMonth(o.getSubmitTime(), now))
@@ -176,6 +175,15 @@ public class PayrollService {
         result.put("monthCount", monthCount);
         result.put("pendingCount", pendingCount);
         return result;
+    }
+
+    /** 项目去重键：优先用 projectId，缺省回退 projectName。两者都为空表示未关联项目。 */
+    private static String projectKey(PayrollOrder order) {
+        if (order.getProjectId() != null) {
+            return "id:" + order.getProjectId();
+        }
+        String name = order.getProjectName();
+        return (name == null || name.isBlank()) ? null : "name:" + name.trim();
     }
 
     private boolean isThisMonth(java.util.Date date, LocalDate now) {

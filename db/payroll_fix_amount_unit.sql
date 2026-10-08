@@ -1,0 +1,35 @@
+-- =============================================================================
+-- 【已作废 / 请勿执行】发薪金额单位修正（元 → 分）
+--
+-- 作废原因（2026-10-08 核查线上库后确认）：
+--   1) 线上 payroll_order / payroll_detail 的 amount、daily_wage 列类型本就是 BIGINT；
+--   2) 数据本就是「分」，且完全自洽：
+--        payroll_detail.daily_wage = 23400（= 234 元/天）
+--        payroll_detail.amount     = 70200（= 23400 × 3 天 = 702 元）
+--        payroll_order.amount      = 70200（= 明细汇总，一致）
+--   3) 备份表 payroll_order_bak / payroll_detail_bak 显示修复前
+--      amount 为 0.00、daily_wage 已是 23400.00 —— daily_wage 从未以「元」存过，
+--      历史上的问题只是「应发金额没被算出来（=0）」，已于 payroll_fix_dirty_data.sql 修复。
+--
+-- 因此本脚本中的 ×100 是错误操作：一旦执行，日薪会从 234 元变成 23400 元（放大 100 倍）。
+-- 保留此文件仅作为「此路不通」的记录，请勿执行。
+--
+-- 若将来确实出现金额缩小 100 倍的现象，请先跑判定再决定，不要直接套用本脚本：
+--   SELECT MIN(daily_wage), MAX(daily_wage), AVG(daily_wage) FROM payroll_detail;
+--   -- 200~500 量级 → 是「元」，需要 ×100；
+--   -- 20000~50000 量级 → 已是「分」，不要动。
+-- =============================================================================
+
+SELECT '本脚本已作废，未执行任何修改' AS result;
+
+-- 以下原始语句全部注释，保留备查
+-- CREATE TABLE IF NOT EXISTS payroll_order_bak_20261003  AS SELECT * FROM payroll_order;
+-- CREATE TABLE IF NOT EXISTS payroll_detail_bak_20261003 AS SELECT * FROM payroll_detail;
+--
+-- UPDATE payroll_order  SET amount     = ROUND(amount * 100)     WHERE amount IS NOT NULL AND amount != 0;
+-- UPDATE payroll_detail SET daily_wage = ROUND(daily_wage * 100) WHERE daily_wage IS NOT NULL AND daily_wage != 0;
+-- UPDATE payroll_detail SET amount     = ROUND(amount * 100)     WHERE amount IS NOT NULL AND amount != 0;
+--
+-- ALTER TABLE payroll_order  MODIFY amount     BIGINT NOT NULL DEFAULT 0 COMMENT '应发总金额（分）';
+-- ALTER TABLE payroll_detail MODIFY daily_wage BIGINT           DEFAULT 0 COMMENT '日薪（分）';
+-- ALTER TABLE payroll_detail MODIFY amount     BIGINT NOT NULL DEFAULT 0 COMMENT '应发金额（分）';

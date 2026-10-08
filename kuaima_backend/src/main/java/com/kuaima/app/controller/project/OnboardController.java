@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.project.entity.OnboardApply;
 import com.kuaima.app.domain.project.service.OnboardService;
+import com.kuaima.app.security.model.LoginUser;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -56,7 +57,14 @@ public class OnboardController {
         return Result.success(onboardService.reject(applyId, operator(authentication)));
     }
 
+    /** LoginUser 是 record，getName() 会退化成 principal.toString()，故显式取 username。 */
     private String operator(Authentication authentication) {
-        return authentication != null ? authentication.getName() : "system";
+        if (authentication == null) {
+            return "system";
+        }
+        if (authentication.getPrincipal() instanceof LoginUser login && login.username() != null) {
+            return login.username();
+        }
+        return authentication.getName();
     }
 }

@@ -134,6 +134,7 @@ const normalizeOrder = (raw) => {
     company: pick(raw, ['company'], '—'),
     title: pick(raw, ['title'], '—'),
     projectName: pick(raw, ['projectName', 'project_name'], '—'),
+    type: pick(raw, ['type'], 'wage'),
     peopleCount: pick(raw, ['peopleCount', 'people_count', 'memberCount', 'workerCount'], 0),
     amount: pick(raw, ['amount'], 0),
     creator: pickCreator(raw),

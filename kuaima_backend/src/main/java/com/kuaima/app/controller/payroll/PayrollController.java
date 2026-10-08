@@ -20,6 +20,7 @@ import com.kuaima.app.common.Result;
 import com.kuaima.app.domain.payroll.entity.PayrollOrder;
 import com.kuaima.app.domain.payroll.model.PayrollCreateRequest;
 import com.kuaima.app.domain.payroll.service.PayrollService;
+import com.kuaima.app.security.model.LoginUser;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -65,8 +66,9 @@ public class PayrollController {
     @PostMapping
     @Operation(summary = "创建发薪单（自动汇总金额与人数）")
     public Result<PayrollOrder> create(@RequestBody PayrollCreateRequest request, Authentication authentication) {
-        String creator = authentication != null ? authentication.getName() : null;
-        return Result.success(payrollService.createOrder(request.getOrder(), request.getDetails(), null, creator));
+        Long creatorId = currentUserId(authentication);
+        return Result.success(payrollService.createOrder(request.getOrder(), request.getDetails(),
+                creatorId, operator(authentication)));
     }
 
     @PostMapping("/{id}/submit")
@@ -93,7 +95,26 @@ public class PayrollController {
         return Result.success(payrollService.withdraw(id));
     }
 
+    /**
+     * 取操作人名称。
+     * LoginUser 是 record，UsernamePasswordAuthenticationToken.getName() 在 principal
+     * 不是 UserDetails/Principal 时会退化成 principal.toString()，导致库里存进
+     * "LoginUser[id=1, username=admin, ...]" 这类脏值，故显式取 username。
+     */
     private String operator(Authentication authentication) {
-        return authentication != null ? authentication.getName() : "system";
+        if (authentication == null) {
+            return "system";
+        }
+        if (authentication.getPrincipal() instanceof LoginUser login && login.username() != null) {
+            return login.username();
+        }
+        return authentication.getName();
+    }
+
+    private Long currentUserId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof LoginUser login) {
+            return login.id();
+        }
+        return null;
     }
 }
