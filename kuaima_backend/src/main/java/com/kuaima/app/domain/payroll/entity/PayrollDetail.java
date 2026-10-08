@@ -22,6 +22,9 @@ public class PayrollDetail extends BaseEntity {
     @Column(comment = "关联 payroll_order.id")
     private Long payrollId;
 
+    @Column(name = "user_id", comment = "收款人用户 id（project_member.user_id 优先，回退手机号匹配 sys_user）")
+    private Long userId;
+
     @Column(comment = "姓名")
     private String name;
 
@@ -51,4 +54,7 @@ public class PayrollDetail extends BaseEntity {
 
     @Column(comment = "支付时间")
     private java.util.Date payTime;
+
+    @Column(length = 500, comment = "备注/失败原因，如 无收款账号、非本项目成员")
+    private String remark;
 }

@@ -12,11 +12,14 @@
       </view>
       <view class="company-nav">
         <text class="company-name">晴时科技</text>
+        <!-- 微信小程序右上角由微信绘制原生胶囊（⋯ / ⊙），自绘胶囊会与其重叠，故仅在非小程序端保留 -->
+        <!-- #ifndef MP-WEIXIN -->
         <view class="wb-capsule">
           <view class="cap-btn"><image class="cap-svg" src="/static/icons/boss-profile/ellipsis.svg" mode="aspectFit" /></view>
           <view class="cap-divider"></view>
           <view class="cap-btn"><image class="cap-svg cap-svg-dot" src="/static/icons/boss-publish-info/circle-white.svg" mode="aspectFit" /></view>
         </view>
+        <!-- #endif -->
       </view>
 
       <!-- 入口卡片 -->

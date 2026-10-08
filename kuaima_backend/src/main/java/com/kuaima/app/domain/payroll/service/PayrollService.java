@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.kuaima.app.domain.boss.entity.BossMerchantAccount;
+import com.kuaima.app.domain.boss.repository.BossMerchantAccountRepository;
 import com.kuaima.app.domain.payroll.constant.PayrollConstants;
 import com.kuaima.app.domain.payroll.entity.PayrollDetail;
 import com.kuaima.app.domain.payroll.entity.PayrollOrder;
@@ -27,10 +29,17 @@ public class PayrollService {
 
     private final PayrollOrderRepository orderRepository;
     private final PayrollDetailRepository detailRepository;
+    private final PayrollPayService payService;
+    private final BossMerchantAccountRepository accountRepository;
 
-    public PayrollService(PayrollOrderRepository orderRepository, PayrollDetailRepository detailRepository) {
+    public PayrollService(PayrollOrderRepository orderRepository,
+                          PayrollDetailRepository detailRepository,
+                          PayrollPayService payService,
+                          BossMerchantAccountRepository accountRepository) {
         this.orderRepository = orderRepository;
         this.detailRepository = detailRepository;
+        this.payService = payService;
+        this.accountRepository = accountRepository;
     }
 
     public Page<PayrollOrder> listOrders(String tab, String status, Long projectId, String keyword, Pageable pageable) {
@@ -70,7 +79,7 @@ public class PayrollService {
     }
 
     /** 创建发薪单并写入明细，自动汇总应发金额与人数。金额单位统一为「分」。 */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PayrollOrder createOrder(PayrollOrder order, List<PayrollDetail> details, Long creatorId, String creator) {
         if (order.getStatus() == null) {
             order.setStatus(PayrollConstants.ORDER_PENDING);
@@ -125,13 +134,66 @@ public class PayrollService {
         return orderRepository.save(order);
     }
 
-    @Transactional
+    /**
+     * 审批通过发薪单：自动从老板账户余额扣款，并逐人打入零工钱包。
+     *
+     * <p>加锁顺序固定为「发薪单 → 明细 → 老板账户」，所有审批入口共用本方法，防并发重复扣款。
+     * 任一步失败整体回滚，绝不允许「部分付款」。
+     */
+    @Transactional(rollbackFor = Exception.class)
     public PayrollOrder approve(Long id, String reviewer) {
-        PayrollOrder order = getOrThrow(id);
+        // 1) 锁发薪单行，校验 pending（主幂等防线）
+        PayrollOrder order = orderRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new EntityNotFoundException("发薪单不存在: " + id));
+        if (!PayrollConstants.ORDER_PENDING.equals(order.getStatus())) {
+            throw new IllegalStateException("只能审批待审批的发薪单");
+        }
+
+        // 2) 锁明细（同事务）
+        List<PayrollDetail> details = detailRepository.findByPayrollIdInForUpdate(List.of(id));
+
+        // 3) 整单级校验：明细非空、金额/人数与单一致（防篡改）
+        validateOrderIntegrity(order, details);
+
+        // 4) 收款人解析（白名单校验：非本项目成员 → 整单拒付；无收款账号 → 逐笔 failed）
+        PayrollPayService.PayeeResolution resolution = payService.resolvePayees(order.getProjectId(), details);
+        List<PayrollDetail> payable = resolution.payable();
+        List<PayrollDetail> unpayable = resolution.unpayable();
+        long totalFen = payable.stream()
+                .mapToLong(d -> d.getAmount() == null ? 0L : d.getAmount())
+                .sum();
+        if (totalFen <= 0) {
+            throw new IllegalArgumentException("没有可支付的发薪明细，请先添加人员");
+        }
+
+        // 5) 锁老板账户并校验余额
+        if (order.getCreatorId() == null) {
+            throw new IllegalArgumentException("该发薪单未关联老板账号，无法自动扣款，请先补充制单老板");
+        }
+        BossMerchantAccount account = lockBossAccount(order.getCreatorId());
+        long available = account.getBalance() == null ? 0L : account.getBalance();
+        if (available < totalFen) {
+            throw new IllegalArgumentException(buildShortageMessage(account, totalFen, available, unpayable));
+        }
+
+        // 6) 同事务扣款 + 入账 + 回填
+        String batchNo = "PB" + order.getId() + "_" + System.currentTimeMillis();
+        account.setBalance(available - totalFen);
+        accountRepository.save(account);
+        for (PayrollDetail d : payable) {
+            payService.pay(d, order);
+        }
+        for (PayrollDetail d : unpayable) {
+            d.setStatus(PayrollConstants.DETAIL_FAILED);
+        }
+        detailRepository.saveAll(details);
+
         order.setStatus(PayrollConstants.ORDER_APPROVED);
         order.setReviewBy(reviewer);
         order.setReviewTime(new java.util.Date());
-        // 明细保持 DETAIL_PENDING（待转账），等待打款完成后才置为 success
+        order.setPayTime(new java.util.Date());
+        order.setPayAccount(StringUtils.hasText(account.getAccountName()) ? account.getAccountName() : "老板账户");
+        order.setPayBatchNo(batchNo);
         return orderRepository.save(order);
     }
 
@@ -175,6 +237,59 @@ public class PayrollService {
         result.put("monthCount", monthCount);
         result.put("pendingCount", pendingCount);
         return result;
+    }
+
+    /** 整单级校验：明细非空，且金额/人数与发薪单一致（防止创建后被绕过或手改）。 */
+    private void validateOrderIntegrity(PayrollOrder order, List<PayrollDetail> details) {
+        if (details == null || details.isEmpty()) {
+            throw new IllegalArgumentException("发薪单没有人员明细，无法发薪");
+        }
+        long sum = details.stream().mapToLong(d -> d.getAmount() == null ? 0L : d.getAmount()).sum();
+        long orderAmount = order.getAmount() == null ? 0L : order.getAmount();
+        if (sum != orderAmount) {
+            throw new IllegalArgumentException("发薪单金额与明细汇总不一致（单 " + orderAmount + " 分 / 明细 " + sum + " 分），拒绝审批");
+        }
+        int counted = order.getPeopleCount() == null ? 0 : order.getPeopleCount();
+        if (counted != details.size()) {
+            throw new IllegalArgumentException("发薪单人数与明细条数不一致（单 " + counted + " / 明细 " + details.size() + "），拒绝审批");
+        }
+    }
+
+    /** 锁定老板账户：默认账户优先，无默认则取最新一张；都没有则拒绝（不自动开户）。 */
+    private BossMerchantAccount lockBossAccount(Long bossId) {
+        List<BossMerchantAccount> defaults = accountRepository.findByBossIdAndIsDefaultTrueForUpdate(bossId);
+        if (!defaults.isEmpty()) {
+            return defaults.get(0);
+        }
+        List<BossMerchantAccount> any = accountRepository.findByBossIdForUpdate(bossId);
+        if (any.isEmpty()) {
+            throw new IllegalArgumentException("该账号没有可用账户，无法自动扣款，请先开户并充值");
+        }
+        return any.get(0);
+    }
+
+    /** 余额不足提示：写明应付 / 可用 / 还差，并附带无收款账号的明细。 */
+    private String buildShortageMessage(BossMerchantAccount account, long requiredFen, long availableFen,
+                                        List<PayrollDetail> unpayable) {
+        StringBuilder sb = new StringBuilder("审批失败：老板账户余额不足。本单应付 ¥")
+                .append(yuan(requiredFen))
+                .append("，当前可用 ¥").append(yuan(availableFen))
+                .append("，还差 ¥").append(yuan(requiredFen - availableFen))
+                .append("。请先充值再审批。");
+        if (unpayable != null && !unpayable.isEmpty()) {
+            sb.append("（另有 ").append(unpayable.size()).append(" 笔明细无收款账号，将被标记为失败：");
+            sb.append(unpayable.stream()
+                    .map(d -> (StringUtils.hasText(d.getName()) ? d.getName() : "未填写姓名")
+                            + (StringUtils.hasText(d.getPhone()) ? " " + d.getPhone() : ""))
+                    .collect(java.util.stream.Collectors.joining("、")));
+            sb.append("）");
+        }
+        return sb.toString();
+    }
+
+    /** 分 → 元 展示串。 */
+    private String yuan(long fen) {
+        return java.math.BigDecimal.valueOf(fen, 2).toPlainString();
     }
 
     /** 项目去重键：优先用 projectId，缺省回退 projectName。两者都为空表示未关联项目。 */

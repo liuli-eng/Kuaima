@@ -25,6 +25,9 @@ public class PayrollOrder extends BaseEntity {
     @Column(comment = "发薪单号，如 TR20260910001")
     private String orderNo;
 
+    @Column(name = "pay_batch_no", length = 64, comment = "付款批次号，审批通过即生成（幂等键）")
+    private String payBatchNo;
+
     @Column(comment = "所属公司")
     private String company;
 

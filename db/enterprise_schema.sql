@@ -88,14 +88,37 @@ CREATE TABLE IF NOT EXISTS `enterprise_join_apply` (
 
 -- =====================================================================
 -- 示例数据
+--   逐条按自然键判断「不存在才插」，可重复执行。
+--   说明：早前版本这里是无守卫的 INSERT，enterprise 带唯一键 uk_enterprise_code，
+--   第二次起就在此行报 Duplicate entry 并中断脚本，导致后面 enterprise_member /
+--   enterprise_invite 的示例数据从未被执行过。
 -- =====================================================================
-INSERT INTO `enterprise` (`company_code`, `company_name`, `legal_rep`, `industry`, `status`)
-VALUES ('QS001', '晴时科技', '张晴', '物流仓储', 'ACTIVE');
+DROP PROCEDURE IF EXISTS sp_enterprise_schema;
 
-INSERT INTO `enterprise_member` (`enterprise_id`, `user_id`, `member_role`, `title`, `status`)
-VALUES (1, 1001, 'OWNER', '创始人', 'ACTIVE');
+DELIMITER $$
+CREATE PROCEDURE sp_enterprise_schema()
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM `enterprise` WHERE `company_code` = 'QS001') THEN
+        INSERT INTO `enterprise` (`company_code`, `company_name`, `legal_rep`, `industry`, `status`)
+        VALUES ('QS001', '晴时科技', '张晴', '物流仓储', 'ACTIVE');
+    END IF;
 
-INSERT INTO `enterprise_invite` (`enterprise_id`, `inviter_id`, `phone`, `name`, `invite_role`, `invite_code`, `status`)
-VALUES
-(1, 1001, '13800000001', '新成员', 'STAFF', 'QSINV20260001', 'PENDING'),
-(1, 1001, '13800000002', NULL, 'STAFF', 'QSINV20260002', 'ACCEPTED');
+    IF NOT EXISTS (SELECT 1 FROM `enterprise_member`
+                   WHERE `enterprise_id` = 1 AND `user_id` = 1001 AND `member_role` = 'OWNER') THEN
+        INSERT INTO `enterprise_member` (`enterprise_id`, `user_id`, `member_role`, `title`, `status`)
+        VALUES (1, 1001, 'OWNER', '创始人', 'ACTIVE');
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM `enterprise_invite` WHERE `invite_code` = 'QSINV20260001') THEN
+        INSERT INTO `enterprise_invite` (`enterprise_id`, `inviter_id`, `phone`, `name`, `invite_role`, `invite_code`, `status`)
+        VALUES (1, 1001, '13800000001', '新成员', 'STAFF', 'QSINV20260001', 'PENDING');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM `enterprise_invite` WHERE `invite_code` = 'QSINV20260002') THEN
+        INSERT INTO `enterprise_invite` (`enterprise_id`, `inviter_id`, `phone`, `name`, `invite_role`, `invite_code`, `status`)
+        VALUES (1, 1001, '13800000002', NULL, 'STAFF', 'QSINV20260002', 'ACCEPTED');
+    END IF;
+END$$
+DELIMITER ;
+
+CALL sp_enterprise_schema();
+DROP PROCEDURE IF EXISTS sp_enterprise_schema;

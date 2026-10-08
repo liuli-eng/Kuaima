@@ -1005,12 +1005,20 @@ export function listBossPayrollOrders(params = {}) {
   });
 }
 
-/** 创建发薪单：{ title, projectId, projectName, type } */
+/** 创建发薪单：{ title, projectId, projectName, type, details[] } */
 export function createBossPayrollOrder(data = {}) {
   return request({
     url: "/boss/payroll/orders",
     method: "POST",
     data,
+    skipUserIdHeader: true,
+  });
+}
+
+/** 项目在职成员（批量发薪用）：含姓名/手机号/岗位/userId/日薪（分，0 表示需手填） */
+export function listBossPayrollMembers(projectId) {
+  return request({
+    url: `/boss/payroll/orders/members?projectId=${encodeURIComponent(projectId)}`,
     skipUserIdHeader: true,
   });
 }

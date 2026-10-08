@@ -93,6 +93,35 @@
               >{{ t.label }}</text>
             </view>
           </view>
+          <view class="form-item">
+            <text class="form-label">发薪成员</text>
+            <view v-if="!form.projectId" class="member-empty">请先选择关联项目</view>
+            <view v-else-if="membersLoading" class="member-empty">成员加载中...</view>
+            <view v-else-if="!memberRows.length" class="member-empty">该项目暂无在职成员</view>
+            <view v-else class="member-list">
+              <view v-for="(m, idx) in memberRows" :key="idx" class="member-row" :class="{ off: !m.checked }">
+                <view class="member-head" @click="toggleMember(m)">
+                  <view class="member-check" :class="{ on: m.checked }">
+                    <image v-if="m.checked" class="member-check-svg" src="/static/icons/boss-recruit-settings/check-white.svg" mode="aspectFit" />
+                  </view>
+                  <text class="member-name">{{ m.name || '未填写姓名' }}</text>
+                  <text v-if="m.job" class="member-job">{{ m.job }}</text>
+                </view>
+                <view class="member-inputs">
+                  <view class="member-field">
+                    <text class="member-field-label">日薪(元)</text>
+                    <input class="member-input" type="digit" v-model="m.dailyWageYuan" placeholder="0" @input="amountTick++" />
+                  </view>
+                  <view class="member-field">
+                    <text class="member-field-label">出勤天数</text>
+                    <input class="member-input" type="number" v-model="m.attendDays" placeholder="0" @input="amountTick++" />
+                  </view>
+                  <text class="member-subtotal">¥{{ memberSubtotal(m) }}</text>
+                </view>
+              </view>
+              <view class="member-total">已选 {{ selectedMemberCount }} 人 · 合计 ¥{{ memberTotalYuan }}</view>
+            </view>
+          </view>
         </view>
         <view class="modal-footer">
           <view class="modal-btn outline" @click="closeCreateModal">取消</view>
@@ -106,7 +135,7 @@
 </template>
 
 <script>
-import { listBossPayrollOrders, createBossPayrollOrder } from "@/api/backend";
+import { listBossPayrollOrders, createBossPayrollOrder, listBossProjects, listBossPayrollMembers } from "@/api/backend";
 
 function parsePayload(data) {
   return data?.data ?? data ?? {};
@@ -120,12 +149,10 @@ export default {
       showCreateModal: false,
       submitting: false,
       form: { title: "", projectId: null, projectName: "", type: "wage" },
-      projectOptions: [
-        { id: 1, name: "菜鸟·云联日结（Gefield）" },
-        { id: 2, name: "菜鸟·沙溪日结（真实）" },
-        { id: 3, name: "邮政·茶山日结（真实）" },
-        { id: 4, name: "鸿康·分拣中心日结" },
-      ],
+      projectOptions: [],
+      memberRows: [],
+      membersLoading: false,
+      amountTick: 0,
       typeChips: [
         { label: "工资", value: "wage" },
         { label: "预支", value: "advance" },
@@ -133,11 +160,30 @@ export default {
       ],
     };
   },
+  computed: {
+    selectedMemberCount() {
+      return this.memberRows.filter((m) => m.checked).length;
+    },
+    memberTotalYuan() {
+      // 依赖 amountTick 强制在输入时重算（小程序 input 事件下更稳）
+      // eslint-disable-next-line no-unused-expressions
+      this.amountTick;
+      const total = this.memberRows
+        .filter((m) => m.checked)
+        .reduce((sum, m) => sum + this.memberSubtotalValue(m), 0);
+      return total.toFixed(2);
+    },
+  },
   onLoad() {
     const info = typeof uni.getWindowInfo === "function"
       ? uni.getWindowInfo() : uni.getSystemInfoSync();
     this.statusBarHeight = Number(info.statusBarHeight || 0);
     this.loadOrders();
+    this.loadProjects();
+  },
+  onShow() {
+    // 从项目管理页返回后能立刻看到新建的项目
+    this.loadProjects();
   },
   methods: {
     goBack() {
@@ -188,8 +234,21 @@ export default {
       };
       return map[s] || s || "";
     },
+    /** 加载项目管理模块创建的项目，作为「关联项目」下拉选项。 */
+    async loadProjects() {
+      try {
+        const data = await listBossProjects({ page: 0, size: 100 });
+        const body = parsePayload(data);
+        const list = Array.isArray(body) ? body : (body.records || body.content || []);
+        this.projectOptions = list.map((p) => ({ id: p.id, name: p.name || p.projectName || `项目${p.id}` }));
+      } catch (error) {
+        this.projectOptions = [];
+        uni.showToast({ title: "项目加载失败，请稍后重试", icon: "none" });
+      }
+    },
     openCreateModal() {
       this.form = { title: "", projectId: null, projectName: "", type: "wage" };
+      this.memberRows = [];
       this.showCreateModal = true;
     },
     closeCreateModal() {
@@ -198,12 +257,90 @@ export default {
     onPickProject(e) {
       const idx = Number(e.detail.value);
       const proj = this.projectOptions[idx];
+      if (!proj) return;
       this.form.projectId = proj.id;
       this.form.projectName = proj.name;
+      this.loadMembers(proj.id);
+    },
+    /** 拉取该项目在职成员，默认全选；日薪按发薪员工库预填（分→元）。 */
+    async loadMembers(projectId) {
+      this.memberRows = [];
+      this.membersLoading = true;
+      try {
+        const data = await listBossPayrollMembers(projectId);
+        const body = parsePayload(data);
+        const list = Array.isArray(body) ? body : (body.records || body.content || []);
+        this.memberRows = list.map((m) => {
+          const wageFen = Number(m.dailyWage || 0);
+          return {
+            userId: m.userId || null,
+            name: m.name || "",
+            phone: m.phone || "",
+            job: m.job || "",
+            checked: true,
+            dailyWageYuan: wageFen > 0 ? (wageFen / 100).toFixed(2) : "",
+            attendDays: "",
+          };
+        });
+        this.amountTick++;
+      } catch (error) {
+        uni.showToast({ title: "成员加载失败，请重试", icon: "none" });
+      } finally {
+        this.membersLoading = false;
+      }
+    },
+    toggleMember(m) {
+      m.checked = !m.checked;
+      this.amountTick++;
+    },
+    /** 单人小计（元）。 */
+    memberSubtotalValue(m) {
+      const wage = Number(m.dailyWageYuan || 0);
+      const days = Number(m.attendDays || 0);
+      if (!Number.isFinite(wage) || !Number.isFinite(days)) return 0;
+      return wage * days;
+    },
+    memberSubtotal(m) {
+      // 依赖 amountTick 强制重算
+      // eslint-disable-next-line no-unused-expressions
+      this.amountTick;
+      return this.memberSubtotalValue(m).toFixed(2);
+    },
+    /** 校验并生成提交用的明细（金额统一转「分」）。 */
+    buildDetails() {
+      const picked = this.memberRows.filter((m) => m.checked);
+      if (!picked.length) return { error: "请至少勾选一名发薪成员" };
+      const details = [];
+      for (const m of picked) {
+        const wage = Number(m.dailyWageYuan || 0);
+        const days = Number(m.attendDays || 0);
+        if (!(wage > 0)) return { error: `请填写「${m.name || "未填写姓名"}」的日薪` };
+        if (!(days > 0) || !Number.isInteger(days)) {
+          return { error: `请填写「${m.name || "未填写姓名"}」的出勤天数（正整数）` };
+        }
+        details.push({
+          userId: m.userId,
+          name: m.name,
+          phone: m.phone || null,
+          job: m.job || null,
+          dailyWage: Math.round(wage * 100),
+          attendDays: days,
+        });
+      }
+      return { details };
     },
     async confirmCreate() {
       if (!this.form.title.trim()) {
         uni.showToast({ title: "请输入转账标题", icon: "none" });
+        return;
+      }
+      if (!this.form.projectId) {
+        uni.showToast({ title: "请选择关联项目", icon: "none" });
+        return;
+      }
+      const built = this.buildDetails();
+      if (built.error) {
+        uni.showToast({ title: built.error, icon: "none" });
         return;
       }
       if (this.submitting) return;
@@ -214,8 +351,9 @@ export default {
           projectId: this.form.projectId,
           projectName: this.form.projectName,
           type: this.form.type,
+          details: built.details,
         });
-        uni.showToast({ title: "发薪单创建成功，请继续添加人员", icon: "success" });
+        uni.showToast({ title: "发薪单创建成功，待审批后自动扣款发放", icon: "none" });
         this.closeCreateModal();
         this.loadOrders();
       } catch (error) {
@@ -372,6 +510,43 @@ export default {
   border: 1px solid #E5E5E5;
 }
 .type-chip.active { background: #FFF0E8; border-color: #FF6B35; color: #FF6B35; font-weight: 600; }
+
+/* 发薪成员 */
+.member-empty {
+  font-size: 13px; color: #999; text-align: center;
+  padding: 18px 0; background: #fafafa; border-radius: 14px;
+}
+.member-list { width: 100%; box-sizing: border-box; }
+.member-row {
+  width: 100%; box-sizing: border-box;
+  border: 1.5px solid #e8e8e8; border-radius: 14px;
+  padding: 12px; margin-bottom: 10px; background: #fff;
+}
+.member-row.off { opacity: 0.5; }
+.member-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.member-check {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid #d0d0d0; display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box;
+}
+.member-check.on { background: #FF6B35; border-color: #FF6B35; }
+.member-check-svg { width: 10px; height: 10px; }
+.member-name { font-size: 14px; color: #333; font-weight: 600; flex-shrink: 0; }
+.member-job { font-size: 12px; color: #999; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
+.member-inputs { display: flex; align-items: flex-end; gap: 8px; margin-top: 10px; }
+.member-field { flex: 1; min-width: 0; }
+.member-field-label { display: block; font-size: 11px; color: #999; margin-bottom: 4px; }
+.member-input {
+  width: 100%; height: 36px; padding: 0 10px; box-sizing: border-box;
+  border: 1px solid #e8e8e8; border-radius: 10px; font-size: 13px; color: #333; background: #fafafa;
+}
+.member-subtotal {
+  font-size: 13px; color: #FF6B35; font-weight: 600;
+  flex-shrink: 0; min-width: 62px; text-align: right; padding-bottom: 9px;
+}
+.member-total {
+  font-size: 13px; color: #FF6B35; font-weight: 600; text-align: right; padding: 4px 2px 0;
+}
 .modal-footer { display: flex; gap: 12px; padding: 16px; border-top: 0.5px solid #f0f0f0; }
 .modal-btn { flex: 1; text-align: center; padding: 11px 0; border-radius: 22px; font-size: 14px; font-weight: 600; }
 .modal-btn.outline { background: #fff; color: #333; border: 1px solid #e0e0e0; }

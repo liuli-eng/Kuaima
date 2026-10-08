@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kuaima.app.common.Result;
+import com.kuaima.app.domain.boss.repository.BossMerchantAccountRepository;
 import com.kuaima.app.domain.payroll.entity.PayrollOrder;
 import com.kuaima.app.domain.payroll.model.PayrollCreateRequest;
 import com.kuaima.app.domain.payroll.service.PayrollService;
@@ -31,9 +32,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class PayrollController {
 
     private final PayrollService payrollService;
+    private final BossMerchantAccountRepository accountRepository;
 
-    public PayrollController(PayrollService payrollService) {
+    public PayrollController(PayrollService payrollService,
+                             BossMerchantAccountRepository accountRepository) {
         this.payrollService = payrollService;
+        this.accountRepository = accountRepository;
     }
 
     @GetMapping
@@ -67,6 +71,12 @@ public class PayrollController {
     @Operation(summary = "创建发薪单（自动汇总金额与人数）")
     public Result<PayrollOrder> create(@RequestBody PayrollCreateRequest request, Authentication authentication) {
         Long creatorId = currentUserId(authentication);
+        // 带明细的薪单审批时必须能定位到归属老板账户，否则会变成无法付款的孤儿单，故在源头拦下
+        boolean needsPayment = request.getDetails() != null && !request.getDetails().isEmpty();
+        if (needsPayment && (creatorId == null || !accountRepository.existsByBossId(creatorId))) {
+            throw new IllegalArgumentException(
+                    "后台建单需指定归属老板账号：当前账号下没有可用企业账户，请改由老板端创建发薪单");
+        }
         return Result.success(payrollService.createOrder(request.getOrder(), request.getDetails(),
                 creatorId, operator(authentication)));
     }

@@ -25,7 +25,22 @@ CREATE TABLE IF NOT EXISTS `boss_merchant_account` (
 
 -- =====================================================================
 -- 示例数据: boss_merchant_account
+--   按 (boss_id, merchant_no) 判断「不存在才插」。
+--   注意：该表没有唯一键，早前无守卫的 INSERT 会在每次 deploy 时静默重复插入，
+--   造成同一老板出现多条默认账户、余额被分散。这里补上幂等守卫。
 -- =====================================================================
-INSERT INTO `boss_merchant_account` (`boss_id`, `account_name`, `subject_name`, `merchant_no`, `balance`, `is_default`, `status`)
-VALUES
-(1001, '晴时科技', '上海晴时网络科技有限公司', '95017123886', 12791800, 1, 'active');
+DROP PROCEDURE IF EXISTS sp_boss_balance_schema;
+
+DELIMITER $$
+CREATE PROCEDURE sp_boss_balance_schema()
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM `boss_merchant_account`
+                   WHERE `boss_id` = 1001 AND `merchant_no` = '95017123886') THEN
+        INSERT INTO `boss_merchant_account` (`boss_id`, `account_name`, `subject_name`, `merchant_no`, `balance`, `is_default`, `status`)
+        VALUES (1001, '晴时科技', '上海晴时网络科技有限公司', '95017123886', 12791800, 1, 'active');
+    END IF;
+END$$
+DELIMITER ;
+
+CALL sp_boss_balance_schema();
+DROP PROCEDURE IF EXISTS sp_boss_balance_schema;

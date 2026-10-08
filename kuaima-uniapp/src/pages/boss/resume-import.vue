@@ -3,11 +3,14 @@
     <view class="wb-header" :style="{ paddingTop: statusBarHeight + 8 + 'px' }">
       <view class="wb-back" @click="goBack"><text class="back-ico">‹</text></view>
       <text class="wb-title">简历导入</text>
+      <!-- 微信小程序原生胶囊已占右上角，自绘胶囊会与其重叠，仅在非小程序端保留 -->
+      <!-- #ifndef MP-WEIXIN -->
       <view class="wb-capsule">
         <view class="cap-btn"><text class="cap-ico">⋯</text></view>
         <view class="cap-divider"></view>
         <view class="cap-btn"><text class="cap-ico">○</text></view>
       </view>
+      <!-- #endif -->
     </view>
 
     <view class="wb-body">

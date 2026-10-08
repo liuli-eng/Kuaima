@@ -135,7 +135,7 @@ export default {
     passApprove(item) {
       uni.showModal({
         title: "确认通过",
-        content: `确认通过发薪单「${item.title}」？通过后将立即触发批量发薪流程。`,
+        content: `确认通过发薪单「${item.title}」？通过后将立即从老板账户自动扣款 ¥${this.formatYuan(item.amount)}，付给 ${item.peopleCount || 0} 名成员。`,
         confirmColor: "#FF6B35",
         success: async (res) => {
           if (res.confirm) {
@@ -144,7 +144,17 @@ export default {
               uni.showToast({ title: `已通过「${item.title}」`, icon: "success" });
               this.loadPendingList();
             } catch (error) {
-              uni.showToast({ title: error?.message || "操作失败", icon: "none" });
+              // 余额不足等业务错误文案较长（含差额），用弹窗展示并给出充值入口
+              uni.showModal({
+                title: "审批失败",
+                content: error?.message || "操作失败",
+                confirmText: "去充值",
+                cancelText: "知道了",
+                confirmColor: "#FF6B35",
+                success: (r) => {
+                  if (r.confirm) uni.navigateTo({ url: "/pages/boss/balance" });
+                },
+              });
             }
           }
         },
