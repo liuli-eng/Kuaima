@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,7 @@ class AdminSettlementControllerTests {
         settlement.setId(12L); settlement.setOrderId(30L); settlement.setWorkerId(20L);
         settlement.setWage(30000L); settlement.setServiceFee(3000L); settlement.setTotalAmount(33000L);
         settlement.setStatus("待支付");
+        settlement.setPayTime(LocalDateTime.of(2026, 10, 9, 10, 30));
         BossOrder order = new BossOrder(); order.setId(30L); order.setCreateBy(10L);
         order.setOrderTitle("电子厂普工"); order.setSalary(200); order.setDuration(3); order.setOrderNum(2);
         User employer = new User(); employer.setId(10L); employer.setCompanyName("快马科技");
@@ -79,7 +81,30 @@ class AdminSettlementControllerTests {
         assertEquals("快马科技", row.getString("employerName"));
         assertEquals("张师傅", row.getString("workerName"));
         assertEquals("待结算", row.getString("status"));
+        assertEquals("2026-10-09T10:30", row.getString("time"));
         assertEquals(new BigDecimal("50.00"), row.getBigDecimal("couponAmount"));
+    }
+
+    @Test
+    void batchPayShouldSettleSelectedIdsAndCollectFailures() {
+        SettlementService service = mock(SettlementService.class);
+        Settlement paid = new Settlement();
+        paid.setId(1L);
+        paid.setStatus("已支付");
+        when(service.mockPay(1L)).thenReturn(paid);
+        when(service.mockPay(2L)).thenThrow(new IllegalStateException("仅待支付的结算单可以支付"));
+        AdminSettlementController controller = controller(service);
+
+        var data = controller.batchPay(new AdminSettlementController.BatchPayRequest(List.of(1L, 2L, 1L)))
+                .getData();
+
+        assertEquals(2, data.get("total"));
+        assertEquals(1, data.get("successCount"));
+        assertEquals(1, data.get("failedCount"));
+        @SuppressWarnings("unchecked")
+        List<java.util.Map<String, Object>> failures = (List<java.util.Map<String, Object>>) data.get("failures");
+        assertEquals(2L, failures.get(0).get("id"));
+        assertEquals("仅待支付的结算单可以支付", failures.get(0).get("reason"));
     }
 
     private AdminSettlementController controller(SettlementRespository settlements,
@@ -89,5 +114,11 @@ class AdminSettlementControllerTests {
                                                  CouponRepository coupons) {
         return new AdminSettlementController(settlements, mock(SettlementService.class),
                 users, orders, userCoupons, coupons);
+    }
+
+    private AdminSettlementController controller(SettlementService service) {
+        return new AdminSettlementController(mock(SettlementRespository.class), service,
+                mock(UserRepository.class), mock(BossOrderRespository.class),
+                mock(UserCouponRepository.class), mock(CouponRepository.class));
     }
 }

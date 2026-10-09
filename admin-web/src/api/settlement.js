@@ -22,3 +22,7 @@ export function getSettlementDetail(id) {
 export function settlePay(id) {
   return request.post(`/admin/settlements/${id}/pay`)
 }
+
+export function batchSettlePay(ids) {
+  return request.post('/admin/settlements/batch-pay', { ids })
+}

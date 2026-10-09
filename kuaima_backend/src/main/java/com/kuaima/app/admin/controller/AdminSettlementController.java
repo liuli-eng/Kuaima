@@ -1,6 +1,8 @@
 package com.kuaima.app.admin.controller;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -132,7 +135,7 @@ public class AdminSettlementController {
 
             // 状态映射
             obj.put("status", mapStatus(s.getStatus()));
-            obj.put("time", s.getPayTime() != null ? s.getPayTime().toString() : (s.getTimestamp() != null ? s.getTimestamp().toString() : null));
+            obj.put("time", s.getPayTime() != null ? s.getPayTime().toString() : null);
             obj.put("payMethod", s.getPayNo() == null ? "-" : "微信支付");
 
             // 关联订单信息
@@ -263,6 +266,7 @@ public class AdminSettlementController {
         obj.put("amount", s.getWage() != null ? s.getWage() : java.math.BigDecimal.ZERO);
         obj.put("platformFee", s.getServiceFee() != null ? s.getServiceFee() : java.math.BigDecimal.ZERO);
         obj.put("actualAmount", s.getTotalAmount() != null ? s.getTotalAmount() : java.math.BigDecimal.ZERO);
+        obj.put("time", s.getPayTime() != null ? s.getPayTime().toString() : null);
         obj.put("status", mapStatus(s.getStatus()));
 
         // 关联订单
@@ -302,4 +306,36 @@ public class AdminSettlementController {
     public Result<Settlement> pay(@PathVariable Long id) {
         return Result.success(settlementService.mockPay(id));
     }
+
+    /** admin 批量手动结算（模拟支付）：接收前端勾选的结算单 ID，逐笔处理，单笔失败不影响其他结算单 */
+    @Operation(summary = "批量手动结算", description = "按前端勾选的结算单 ID 批量模拟支付；逐笔处理并返回成功/失败明细")
+    @PostMapping("/batch-pay")
+    public Result<Map<String, Object>> batchPay(@RequestBody BatchPayRequest request) {
+        List<Long> ids = request == null || request.ids() == null ? List.of() : request.ids().stream()
+                .filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) throw new IllegalArgumentException("结算单ID列表不能为空");
+        if (ids.size() > 100) throw new IllegalArgumentException("单次最多结算100笔");
+
+        List<Map<String, Object>> failures = new ArrayList<>();
+        int successCount = 0;
+        for (Long id : ids) {
+            try {
+                settlementService.mockPay(id);
+                successCount += 1;
+            } catch (Exception error) {
+                Map<String, Object> failure = new HashMap<>();
+                failure.put("id", id);
+                failure.put("reason", error.getMessage() == null || error.getMessage().isBlank() ? "结算失败" : error.getMessage());
+                failures.add(failure);
+            }
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("total", ids.size());
+        data.put("successCount", successCount);
+        data.put("failedCount", failures.size());
+        data.put("failures", failures);
+        return Result.success(data);
+    }
+
+    public record BatchPayRequest(List<Long> ids) {}
 }

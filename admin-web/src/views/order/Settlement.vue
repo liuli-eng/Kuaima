@@ -49,18 +49,20 @@
         <el-button type="primary" :disabled="!pendingRows.length" @click="handleBatchSettle">
           <i class="fas fa-coins"></i> 批量结算
         </el-button>
-        <el-button><i class="fas fa-download"></i> 导出报表</el-button>
+        <el-button @click="handleExport"><i class="fas fa-download"></i> 导出报表</el-button>
       </div>
     </div>
 
     <div class="card">
       <div class="filter-bar">
         <div class="filter-item"><span>结算周期</span><el-select v-model="cycleFilter" placeholder="全部" clearable style="width: 110px">
+          <el-option label="全部" value="" />
           <el-option label="今日" value="today" />
           <el-option label="本周" value="week" />
           <el-option label="本月" value="month" />
         </el-select></div>
         <div class="filter-item"><span>结算状态</span><el-select v-model="statusFilter" placeholder="全部" clearable style="width: 110px">
+          <el-option label="全部" value="" />
           <el-option label="待结算" value="待结算" />
           <el-option label="结算中" value="结算中" />
           <el-option label="已结算" value="已结算" />
@@ -84,27 +86,18 @@
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
         <div class="filter-space"></div>
-        <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> 导出数据</button>
-      </div>
-
-      <div class="quick-filter-bar">
-        <button
-          v-for="item in quickFilters"
-          :key="item.value"
-          class="quick-filter"
-          :class="{ active: statusFilter === item.value }"
-          @click="quickFilter(item.value)"
-        >
-          {{ item.label }}
-        </button>
+        <button class="btn btn-outline btn-sm" @click="handleExport"><i class="fas fa-download"></i> 导出数据</button>
       </div>
 
       <el-table
+        ref="settlementTable"
         :data="settlementData"
         stripe
         class="settlement-table"
         :header-cell-style="{ background: '#F9FAFB', color: '#6B7280', fontWeight: 500 }"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="45" :selectable="isSettleable" />
         <el-table-column label="结算单号" min-width="110" fixed="left">
           <template #default="{ row }"><span class="settle-id-cell">{{ settlementNo(row) }}</span></template>
         </el-table-column>
@@ -212,7 +205,7 @@
       <div class="detail-section-title">费用明细</div>
       <div class="fee-box">
         <div class="fee-row"><span>订单金额</span><strong>¥{{ formatMoney(detailRow.amount) }}</strong></div>
-        <div class="fee-row"><span>平台服务费 (10%)</span><strong class="danger">-¥{{ formatMoney(detailRow.platformFee) }}</strong></div>
+        <div class="fee-row"><span>平台服务费</span><strong class="danger">-¥{{ formatMoney(detailRow.platformFee) }}</strong></div>
         <div class="fee-row total"><span>实付金额</span><strong class="success">¥{{ formatMoney(detailRow.actualAmount) }}</strong></div>
       </div>
 
@@ -247,9 +240,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getSettlementDetail, getSettlementStats, listSettlements, settlePay } from '@/api/settlement'
+import { batchSettlePay, getSettlementDetail, getSettlementStats, listSettlements, settlePay } from '@/api/settlement'
 
 const cycleFilter = ref('')
 const statusFilter = ref('')
@@ -264,14 +257,8 @@ const detailVisible = ref(false)
 const detailRow = ref({})
 const confirmVisible = ref(false)
 const pendingSettleRow = ref(null)
-
-const quickFilters = [
-  { label: '全部', value: '' },
-  { label: '待结算', value: '待结算' },
-  { label: '结算中', value: '结算中' },
-  { label: '已结算', value: '已结算' },
-  { label: '已失败', value: '结算失败' }
-]
+const settlementTable = ref()
+const selectedRows = ref([])
 
 const pendingRows = computed(() => settlementData.value.filter(item => item.status === '待结算'))
 const detailStatusClass = computed(() => detailRow.value.statusClass || statusClassMap[detailRow.value.status] || 'default')
@@ -288,7 +275,7 @@ const formatMoney = value => Number(value ?? 0).toLocaleString('zh-CN', { minimu
 const formatDateTime = value => {
   if (!value) return '-'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleTimeString('zh-CN', { hour12: false })
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('zh-CN', { hour12: false })
 }
 const settlementNo = row => `JS${String(row?.id ?? 0).padStart(6, '0')}`
 const orderNo = row => `ORD${String(row?.orderId ?? 0).padStart(6, '0')}`
@@ -311,17 +298,21 @@ const avatarBackground = (id, name) => {
   return palette[hash]
 }
 
-const normalizeSettlement = item => ({
-  ...item,
-  employerName: item.employerName || '-',
-  workerName: item.workerName || '-',
-  amount: Number(item.amount ?? 0),
-  platformFee: Number(item.platformFee ?? 0),
-  couponAmount: Number(item.couponAmount ?? 0),
-  actualAmount: Number(item.actualAmount ?? 0),
-  status: item.status || '-',
-  statusClass: statusClassMap[item.status] || 'default'
-})
+const normalizeSettlement = item => {
+  const amount = Number(item.totalAmount ?? item.amount ?? 0)
+  const platformFee = Number(item.serviceFee ?? item.platformFee ?? 0)
+  return {
+    ...item,
+    employerName: item.employerName || '-',
+    workerName: item.workerName || '-',
+    amount,
+    platformFee,
+    couponAmount: Number(item.couponAmount ?? 0),
+    actualAmount: amount - platformFee,
+    status: item.status || '-',
+    statusClass: statusClassMap[item.status] || 'default'
+  }
+}
 
 const rows = result => {
   const data = result?.data
@@ -354,6 +345,7 @@ const loadSettlements = async () => {
       .map(normalizeSettlement)
       .filter(item => !methodFilter.value || item.payMethod === methodFilter.value)
     total.value = totalOf(result)
+    await defaultSelectPending()
   } catch (error) {
     console.warn('[Settlement] API 加载失败:', error)
     settlementData.value = []
@@ -375,9 +367,12 @@ const handleReset = () => {
   handleSearch()
 }
 
-const quickFilter = status => {
-  statusFilter.value = status
-  handleSearch()
+const isSettleable = row => row.status === '待结算'
+const handleSelectionChange = rows => { selectedRows.value = rows }
+const defaultSelectPending = async () => {
+  await nextTick()
+  settlementTable.value?.clearSelection?.()
+  pendingRows.value.forEach(row => settlementTable.value?.toggleRowSelection?.(row, true))
 }
 
 const onSizeChange = size => {
@@ -430,8 +425,28 @@ const confirmSettlement = async () => {
 
 const showReminder = () => ElMessage.info('结算提醒消息功能暂未开放')
 
+const handleExport = () => {
+  if (!settlementData.value.length) return ElMessage.info('当前没有可导出的结算记录')
+  const headers = ['结算单号', '订单号', '雇主', '零工', '结算金额', '平台服务费', '优惠券抵扣金额', '实付金额', '结算状态', '结算时间']
+  const lines = settlementData.value.map(row => [
+    settlementNo(row), orderNo(row), row.employerName, row.workerName, row.amount,
+    row.platformFee, row.couponAmount, row.actualAmount, row.status, formatDateTime(row.time)
+  ].map(value => `"${String(value ?? '').replaceAll('"', '""')}"`).join(','))
+  const blob = new Blob([`\ufeff${headers.join(',')}\n${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = '结算记录.csv'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 const handleBatchSettle = async () => {
-  const pending = pendingRows.value
+  let pending = selectedRows.value.filter(isSettleable)
+  if (!pending.length) {
+    await defaultSelectPending()
+    pending = selectedRows.value
+  }
   if (!pending.length) return
   try {
     await ElMessageBox.confirm(`将批量确认当前页 ${pending.length} 笔待结算订单，是否继续？`, '批量结算', {
@@ -442,17 +457,17 @@ const handleBatchSettle = async () => {
   } catch {
     return
   }
-  let success = 0
-  for (const row of pending) {
-    try {
-      await payOne(row)
-      success += 1
-    } catch (error) {
-      console.warn('[Settlement] 批量结算单失败:', row.id, error)
-    }
+  try {
+    const result = await batchSettlePay(pending.map(row => row.id))
+    const data = result?.data || {}
+    const failedCount = Number(data.failedCount || 0)
+    ElMessage.success(`批量结算完成，成功 ${Number(data.successCount || 0)} 笔${failedCount ? `，失败 ${failedCount} 笔` : ''}`)
+  } catch (error) {
+    console.warn('[Settlement] 批量结算 API 调用失败:', error)
+    ElMessage.error('批量结算失败，请重试')
+  } finally {
+    await Promise.all([loadSettlements(), loadStats()])
   }
-  ElMessage.success(`批量结算完成，成功 ${success} 笔`)
-  await Promise.all([loadSettlements(), loadStats()])
 }
 
 onMounted(() => {
@@ -466,10 +481,6 @@ onMounted(() => {
 .filter-item { display: flex; align-items: center; gap: 8px; }
 .filter-item > span { color: var(--text-secondary,#4B5563); font-size: 13px; white-space: nowrap; }
 .filter-space { flex: 1; }
-.quick-filter-bar { display: flex; gap: 8px; margin-bottom: 16px; }
-.quick-filter { padding: 5px 12px; border: 1px solid #E5E7EB; border-radius: 16px; background: #fff; color: var(--text-secondary,#4B5563); font-size: 13px; cursor: pointer; }
-.quick-filter:hover { border-color: var(--primary); color: var(--primary); }
-.quick-filter.active { border-color: var(--primary); background: var(--primary); color: #fff; }
 .batch-action-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; background: #FFF8E6; }
 .batch-action-info { color: var(--text-secondary,#4B5563); font-size: 13px; }
 .warning-text { color: var(--warning,#D97706); }
