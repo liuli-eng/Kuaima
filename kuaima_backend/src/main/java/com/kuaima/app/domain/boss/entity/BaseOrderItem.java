@@ -36,11 +36,20 @@ public class BaseOrderItem extends BaseEntity {
     @Column(comment = "报名时间")
     private Date applyDate;
 
+    @Column(name = "apply_at")
+    private LocalDateTime applyAt;
+
     @Column(comment = "录用时间")
     private Date hireDate;
 
+    @Column(name = "hire_at")
+    private LocalDateTime hireAt;
+
     @Column(comment = "到岗时间")
     private Date workDate;
+
+    @Column(name = "work_at")
+    private LocalDateTime workAt;
 
     @Column(comment = "完成时间")
     private Date finishDate;

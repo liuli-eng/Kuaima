@@ -7,12 +7,16 @@
 
     <div class="card">
       <div class="filter-bar">
-        <el-select v-model="statusFilter" placeholder="审核状态" clearable style="width: 120px;">
+        <el-select v-model="statusFilter" placeholder="审核状态" style="width: 120px;">
+          <el-option label="全部" value="" />
           <el-option label="待审核" value="PENDING" />
           <el-option label="已通过" value="APPROVED" />
           <el-option label="已拒绝" value="REJECTED" />
-          <el-option label="未认证" value="UNVERIFIED" />
         </el-select>
+        <span class="filter-label">提交时间</span>
+        <el-date-picker v-model="dateFrom" type="date" value-format="YYYY-MM-DD" placeholder="开始日期" style="width: 135px;" />
+        <span class="date-separator">至</span>
+        <el-date-picker v-model="dateTo" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" style="width: 135px;" />
         <el-input v-model="searchKeyword" placeholder="企业名称 / 信用代码搜索" clearable style="width: 240px;" prefix-icon="Search" />
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
         <button class="btn btn-outline btn-sm" @click="handleReset"><i class="fas fa-rotate-left"></i> 重置</button>
@@ -41,7 +45,7 @@
         </el-table-column>
         <el-table-column prop="industry" label="行业类型" show-overflow-tooltip />
         <el-table-column label="提交时间" width="170" show-overflow-tooltip>
-          <template #default="{ row }">{{ formatTime(row.updateTime) }}</template>
+          <template #default="{ row }">{{ formatTime(row.certificationApplyTime || row.applyTime) }}</template>
         </el-table-column>
         <el-table-column label="审核状态" width="120">
           <template #default="{ row }">
@@ -79,14 +83,15 @@
     </div>
 
     <!-- 企业认证详情弹窗 -->
-    <el-dialog v-model="detailVisible" title="企业认证详情" width="660px" :close-on-click-modal="false">
+    <el-dialog v-model="detailVisible" width="720px" :close-on-click-modal="false">
+      <template #header><span><i class="fas fa-id-card"></i> 企业认证详情</span></template>
       <div v-if="currentRow" class="cert-detail">
         <div class="panel-status" :class="statusBgClass(currentRow.enterpriseStatus)">
           <div class="status-icon" :class="statusIconClass(currentRow.enterpriseStatus)">
             <i :class="['fas', statusIconFa(currentRow.enterpriseStatus)]"></i>
           </div>
           <div class="status-text">{{ formatStatus(currentRow.enterpriseStatus) }}</div>
-          <div class="status-hint">企业认证</div>
+          <div class="status-hint">企业认证 · 提交于 {{ formatTime(currentRow.certificationApplyTime || currentRow.applyTime) }}</div>
         </div>
 
         <div class="detail-section-title">企业基本信息</div>
@@ -100,8 +105,8 @@
             <span class="detail-info-value mono">{{ currentRow.licenseNo || '-' }}</span>
           </div>
           <div class="detail-info-item">
-            <span class="detail-info-label">行业类型</span>
-            <span class="detail-info-value">{{ currentRow.industry || '-' }}</span>
+            <span class="detail-info-label">企业类型</span>
+            <span class="detail-info-value">{{ currentRow.entType || '-' }}</span>
           </div>
           <div class="detail-info-item">
             <span class="detail-info-label">法定代表人</span>
@@ -112,14 +117,29 @@
             <span class="detail-info-value">{{ currentRow.contactPhone || currentRow.phone || '-' }}</span>
           </div>
           <div class="detail-info-item">
-            <span class="detail-info-label">联系人</span>
-            <span class="detail-info-value">{{ currentRow.contact || '-' }}</span>
+            <span class="detail-info-label">法定联系人</span>
+            <span class="detail-info-value">{{ currentRow.contact || currentRow.legalRep || '-' }}</span>
           </div>
           <div class="detail-info-item">
-            <span class="detail-info-label">账号</span>
-            <span class="detail-info-value">{{ currentRow.username || '-' }}</span>
+            <span class="detail-info-label">注册资本</span>
+            <span class="detail-info-value">{{ currentRow.regCapital || '-' }}</span>
+          </div>
+          <div class="detail-info-item">
+            <span class="detail-info-label">成立日期</span>
+            <span class="detail-info-value">{{ currentRow.establishDate || '-' }}</span>
+          </div>
+          <div class="detail-info-item full"><span class="detail-info-label">营业期限</span><span class="detail-info-value">{{ currentRow.businessTerm || '-' }}</span></div>
+          <div class="detail-info-item full"><span class="detail-info-label">注册/经营地址</span><span class="detail-info-value">{{ currentRow.address || '-' }}</span></div>
+          <div class="detail-info-item full"><span class="detail-info-label">经营范围</span><span class="detail-info-value">{{ currentRow.scope || '-' }}</span>
           </div>
         </div>
+
+        <div class="detail-section-title">证件预览</div>
+        <div class="document-preview" v-if="currentRow.licenseImageUrl">
+          <div class="document-preview-header"><span><i class="fas fa-file-image"></i> 营业执照</span><a :href="currentRow.licenseImageUrl" target="_blank" rel="noreferrer"><i class="fas fa-eye"></i> 查看大图</a></div>
+          <img class="license-preview" :src="currentRow.licenseImageUrl" alt="营业执照" />
+        </div>
+        <div v-else class="empty-document">暂无证件图片</div>
 
         <div class="action-buttons" v-if="currentRow.enterpriseStatus === 'PENDING' || currentRow.enterpriseStatus === '待审核'">
           <el-button type="success" style="width:100%;" @click="handlePass(currentRow)">
@@ -130,6 +150,7 @@
           </el-button>
         </div>
       </div>
+      <template #footer><el-button @click="detailVisible = false">关闭</el-button></template>
     </el-dialog>
   </div>
 </template>
@@ -137,10 +158,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listBosses, enterprisePass, enterpriseReject, freezeUser, unfreezeUser } from '@/api/user'
+import { listEnterpriseCertifications, enterprisePass, enterpriseReject, freezeUser, unfreezeUser } from '@/api/user'
 
 const searchKeyword = ref('')
 const statusFilter = ref('')
+const dateFrom = ref('')
+const dateTo = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -191,9 +214,11 @@ const statusIconFa = (s) => {
 
 const loadData = async () => {
   try {
-    const result = await listBosses({
-      enterpriseStatus: statusFilter.value || undefined,
+    const result = await listEnterpriseCertifications({
+      status: statusFilter.value || undefined,
       keyword: searchKeyword.value || undefined,
+      dateFrom: dateFrom.value || undefined,
+      dateTo: dateTo.value || undefined,
       page: currentPage.value - 1,
       size: pageSize.value
     })
@@ -215,6 +240,8 @@ const handleSearch = () => {
 const handleReset = () => {
   searchKeyword.value = ''
   statusFilter.value = ''
+  dateFrom.value = ''
+  dateTo.value = ''
   currentPage.value = 1
   loadData()
 }
@@ -292,6 +319,7 @@ onMounted(loadData)
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
+.filter-label, .date-separator { font-size: 13px; color: var(--text-secondary); }
 
 .pagination {
   display: flex;
@@ -351,6 +379,11 @@ onMounted(loadData)
 .detail-info-label { font-size: 12px; color: var(--text-muted); }
 .detail-info-value { font-size: 14px; font-weight: 500; }
 .detail-info-value.mono { font-family: monospace; }
+.document-preview { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.document-preview-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
+.document-preview-header a { color: var(--primary); text-decoration: none; }
+.license-preview { display: block; max-width: 100%; max-height: 260px; margin: 0 auto; object-fit: contain; }
+.empty-document { color: var(--text-muted); font-size: 13px; }
 
 .action-buttons {
   display: flex; flex-direction: column; gap: 10px;

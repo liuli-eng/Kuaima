@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashMap;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.stream.Collectors;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 
 import com.alibaba.fastjson2.JSON;
@@ -33,6 +37,7 @@ import com.kuaima.app.domain.user.entity.User;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.jobcategory.repository.JobCategoryRepository;
 import com.kuaima.app.domain.jobcategory.repository.JobIndustryRepository;
+import com.kuaima.app.domain.jobcategory.repository.JobEnterpriseTypeRepository;
 import com.kuaima.app.domain.wallet.entity.Settlement;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 import com.kuaima.app.domain.review.entity.BossReview;
@@ -57,6 +62,7 @@ public class AdminOrderController {
     private final WorkerReviewRepository workerReviewRepository;
     private final JobCategoryRepository jobCategoryRepository;
     private final JobIndustryRepository jobIndustryRepository;
+    private final JobEnterpriseTypeRepository jobEnterpriseTypeRepository;
 
     public AdminOrderController(BaseOrderItemRespository itemRepository,
                                 BossOrderRespository orderRepository,
@@ -65,7 +71,8 @@ public class AdminOrderController {
                                 BossReviewRepository bossReviewRepository,
                                 WorkerReviewRepository workerReviewRepository,
                                 JobCategoryRepository jobCategoryRepository,
-                                JobIndustryRepository jobIndustryRepository) {
+                                JobIndustryRepository jobIndustryRepository,
+                                JobEnterpriseTypeRepository jobEnterpriseTypeRepository) {
         this.itemRepository = itemRepository;
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
@@ -74,6 +81,7 @@ public class AdminOrderController {
         this.workerReviewRepository = workerReviewRepository;
         this.jobCategoryRepository = jobCategoryRepository;
         this.jobIndustryRepository = jobIndustryRepository;
+        this.jobEnterpriseTypeRepository = jobEnterpriseTypeRepository;
     }
 
     /** 订单/报名列表（admin 全量视图，关联雇主名称、零工名称、工种、金额、时间） */
@@ -82,12 +90,20 @@ public class AdminOrderController {
     public Result<Page<JSONObject>> list(@RequestParam(required = false) String status,
                                          @RequestParam(required = false) String keyword,
                                          @RequestParam(required = false) String type,
+                                         @RequestParam(required = false) String enterpriseTypeId,
+                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                                          @RequestParam(defaultValue = "0") int page,
                                          @RequestParam(defaultValue = "10") int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        Page<BaseOrderItem> items = (status != null && !status.isBlank())
-                ? itemRepository.findByStatus(status, pageable)
-                : itemRepository.findAll(pageable);
+        java.util.Date startTime = startDate == null ? null
+                : java.util.Date.from(startDate.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant());
+        java.util.Date endTime = endDate == null ? null
+                : java.util.Date.from(endDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant());
+        Page<BaseOrderItem> items = itemRepository.searchAdminOrders(
+                status == null || status.isBlank() ? null : status,
+                keyword == null || keyword.isBlank() ? null : keyword.trim(),
+                startTime, endTime, enterpriseTypeId, pageable);
 
         // 批量查询关联的 BossOrder（获取雇主、工种、金额、时间）
         Set<Long> orderIds = items.stream().map(BaseOrderItem::getOrderId).filter(id -> id != null && id > 0).collect(Collectors.toSet());
@@ -107,12 +123,20 @@ public class AdminOrderController {
 
         Set<Long> categoryIds = orderMap.values().stream().map(BossOrder::getJobCategoryId)
                 .filter(id -> id != null && id > 0).collect(Collectors.toSet());
+        orderMap.values().stream().flatMap(o -> parseIds(o.getJobIds()).stream()).forEach(categoryIds::add);
         Map<Long, String> categoryNames = new HashMap<>();
         jobCategoryRepository.findAllById(categoryIds).forEach(c -> categoryNames.put(c.getId(), c.getName()));
         Set<Long> industryIds = orderMap.values().stream().map(BossOrder::getIndustryId)
                 .filter(id -> id != null && id > 0).collect(Collectors.toSet());
         Map<Long, String> industryNames = new HashMap<>();
         jobIndustryRepository.findAllById(industryIds).forEach(i -> industryNames.put(i.getId(), i.getName()));
+        Map<Long, String> enterpriseTypeNames = new HashMap<>();
+        Set<Long> enterpriseTypeIds = orderMap.values().stream()
+                .flatMap(o -> parseIds(o.getEnterpriseTypeIds()).stream()).collect(Collectors.toSet());
+        if (!enterpriseTypeIds.isEmpty()) {
+            jobEnterpriseTypeRepository.findAllById(enterpriseTypeIds)
+                    .forEach(e -> enterpriseTypeNames.put(e.getId(), e.getName()));
+        }
 
         Map<Long, Settlement> settlementMap = new HashMap<>();
         Map<Long, BossReview> bossReviewMap = new HashMap<>();
@@ -133,11 +157,15 @@ public class AdminOrderController {
             if (order != null) {
                 // 列表按“招工订单 + 零工报名记录”展示：父订单号用于展示，报名记录 ID 用于操作。
                 obj.put("parentOrderId", order.getId());
-                obj.put("orderNumber", order.getId());
+                obj.put("orderNumber", order.getOrderNo());
                 obj.put("jobTitle", order.getOrderTitle());
                 obj.put("jobType", order.getType());
-                obj.put("jobCategoryName", categoryNames.get(order.getJobCategoryId()));
+                String selectedJobs = parseIds(order.getJobIds()).stream().map(categoryNames::get)
+                        .filter(java.util.Objects::nonNull).collect(Collectors.joining("、"));
+                obj.put("jobCategoryName", selectedJobs.isBlank() ? categoryNames.get(order.getJobCategoryId()) : selectedJobs);
                 obj.put("industryName", industryNames.get(order.getIndustryId()));
+                obj.put("enterpriseTypeName", parseIds(order.getEnterpriseTypeIds()).stream()
+                        .map(enterpriseTypeNames::get).filter(java.util.Objects::nonNull).collect(Collectors.joining("、")));
                 obj.put("postion", order.getPostion());
                 obj.put("amount", order.getSalary());
                 obj.put("startTime", order.getStartTime());
@@ -161,12 +189,18 @@ public class AdminOrderController {
             if (worker != null) {
                 String workerName = worker.getRealName();
                 if (workerName == null || workerName.isBlank()) workerName = worker.getNickname();
-                if (workerName == null || workerName.isBlank()) workerName = worker.getPhone();
                 if (workerName == null || workerName.isBlank()) workerName = "零工" + worker.getId();
                 obj.put("workerName", workerName);
+                obj.put("workerPhone", worker.getPhone());
             } else {
-                obj.put("workerName", "未知零工");
+            obj.put("workerName", "未知零工");
             }
+
+            obj.put("applyAt", item.getApplyAt());
+            obj.put("hireAt", item.getHireAt());
+            obj.put("workAt", item.getWorkAt());
+            obj.put("finishAt", item.getFinishAt());
+            obj.put("finishDate", item.getFinishDate());
 
             // 时间线节点：报名/录用/到岗/完工来自报名记录，结算/完成来自实际支付记录。
             // 这些字段不能用订单计划开始/结束时间替代，否则会把计划时间误显示为操作时间。
@@ -203,6 +237,39 @@ public class AdminOrderController {
         });
 
         return Result.success(views, page, items.getTotalElements());
+    }
+
+    @GetMapping("/stats")
+    @Operation(summary = "后台订单统计", description = "按完整筛选结果统计订单总数和各状态数量，不受列表分页影响")
+    public Result<Map<String, Object>> stats(@RequestParam(required = false) String status,
+                                             @RequestParam(required = false) String keyword,
+                                             @RequestParam(required = false) String type,
+                                             @RequestParam(required = false) String enterpriseTypeId,
+                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        java.util.Date startTime = startDate == null ? null
+                : java.util.Date.from(startDate.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant());
+        java.util.Date endTime = endDate == null ? null
+                : java.util.Date.from(endDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant());
+        String normalizedStatus = status == null || status.isBlank() ? null : status;
+        Map<String, Object> result = new LinkedHashMap<>();
+        Map<String, Long> byStatus = new LinkedHashMap<>();
+        long total = 0;
+        for (Object[] row : itemRepository.countAdminOrderStatuses(normalizedStatus, startTime, endTime, enterpriseTypeId)) {
+            String rowStatus = row[0] == null ? "未知" : String.valueOf(row[0]);
+            long count = ((Number) row[1]).longValue();
+            byStatus.put(rowStatus, count);
+            total += count;
+        }
+        result.put("total", total);
+        result.put("byStatus", byStatus);
+        return Result.success(result);
+    }
+
+    private List<Long> parseIds(String value) {
+        if (value == null || value.isBlank()) return List.of();
+        return java.util.Arrays.stream(value.replace("[", "").replace("]", "").replace("\"", "").split(","))
+                .map(String::trim).filter(s -> !s.isBlank()).map(Long::valueOf).toList();
     }
 
     private double average(Integer... values) {

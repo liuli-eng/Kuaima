@@ -186,7 +186,7 @@ public class EnterpriseMemberController {
         var ctx = context.require(auth, "MEMBER_WRITE");
         var invite = service.createInvite(ctx.enterprise(), ctx.user().getId(),
                 ctx.user().getPhone() != null ? ctx.user().getPhone() : "00000000000", "STAFF");
-        String link = "https://kuaima.com/invite?code=" + invite.getInviteCode();
+        String link = "https://ke.taifang.xyz/invite?code=" + invite.getInviteCode();
         String qrImage = QrCodeUtils.generateBase64Png(link, 300);
 
         Map<String, Object> data = new LinkedHashMap<>();

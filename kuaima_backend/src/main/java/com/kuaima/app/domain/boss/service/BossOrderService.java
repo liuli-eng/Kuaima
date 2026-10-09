@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
@@ -160,10 +161,25 @@ public class BossOrderService {
         if (!BossType.MONTH.equals(order.getType())) {
             order.setTrialDuration(null);
         }
+        assignBusinessOrderNo(order);
         order.setOrderStatus(BossStatus.ORDER_PENDING_AUDIT);
         BossOrder saved = orderRepository.save(order);
         if (bossCouponService != null) bossCouponService.redeem(saved.getCreateBy(), order.getUserCouponId(), saved);
         return saved;
+    }
+
+    /** 生成按日递增的对外订单号，例如 DD202408210001。 */
+    private synchronized void assignBusinessOrderNo(BossOrder order) {
+        if (order.getOrderNo() != null && !order.getOrderNo().isBlank()) return;
+        String date = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+        String prefix = "DD" + date;
+        int next = orderRepository.findTopByOrderNoStartingWithOrderByOrderNoDesc(prefix)
+                .map(existing -> {
+                    String value = existing.getOrderNo();
+                    try { return Integer.parseInt(value.substring(prefix.length())) + 1; }
+                    catch (RuntimeException ignored) { return 1; }
+                }).orElse(1);
+        order.setOrderNo(prefix + String.format("%04d", next));
     }
 
     /** admin 审核通过：订单从"待审核"变为"招工中"，并发岗位广播 */
@@ -478,6 +494,7 @@ public class BossOrderService {
         item.setRemark(remark);
         item.setTrialRequested(wantTrial);
         item.setApplyDate(Date.valueOf(LocalDate.now()));
+        item.setApplyAt(LocalDateTime.now());
         BaseOrderItem saved = itemRepository.save(item);
         // 通知老板有新的报名待审核
         String content = userName(userId) + " 报名了您发布的「" + order.getOrderTitle() + "」"
@@ -496,6 +513,7 @@ public class BossOrderService {
         }
         item.setStatus(BossStatus.ITEM_HIRED);
         item.setHireDate(Date.valueOf(LocalDate.now()));
+        item.setHireAt(LocalDateTime.now());
         BaseOrderItem saved = itemRepository.save(item);
         // 录用结果：通知被录用的零工
         BossOrder order = getOrderOrThrow(item.getOrderId());
@@ -550,6 +568,7 @@ public class BossOrderService {
         }
         item.setStatus(BossStatus.ITEM_ON_WORK);
         item.setWorkDate(Date.valueOf(LocalDate.now()));
+        item.setWorkAt(LocalDateTime.now());
         BaseOrderItem saved = itemRepository.save(item);
         // 零工确认到岗：通知老板
         BossOrder order = getOrderOrThrow(item.getOrderId());
@@ -902,6 +921,7 @@ public class BossOrderService {
             item.setStatus(BossStatus.ITEM_ON_WORK);
             if (item.getWorkDate() == null) {
                 item.setWorkDate(workDate);
+                item.setWorkAt(LocalDateTime.now());
             }
         });
         itemRepository.saveAll(hiredItems);

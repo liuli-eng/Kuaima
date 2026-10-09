@@ -16,6 +16,8 @@ import com.kuaima.app.domain.boss.entity.BossOrder;
 
 public interface BossOrderRespository extends JpaRepository<BossOrder, Long>, JpaSpecificationExecutor<BossOrder> {
 
+    java.util.Optional<BossOrder> findTopByOrderNoStartingWithOrderByOrderNoDesc(String prefix);
+
     /** 按 类型/状态/标题/雇主 组合过滤分页查询（参数为空表示不过滤） */
     @Query("""
             select o from BossOrder o

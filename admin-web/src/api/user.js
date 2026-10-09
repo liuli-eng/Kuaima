@@ -14,6 +14,10 @@ export function listBosses({ status, enterpriseStatus, industry, jobType, keywor
   return request.get('/admin/users/bosses', { params: { status, enterpriseStatus, industry, jobType, keyword, page, size } })
 }
 
+export function listEnterpriseCertifications({ status, keyword, dateFrom, dateTo, page = 0, size = 10 } = {}) {
+  return request.get('/admin/certifications', { params: { type: 'ENTERPRISE', status, keyword, dateFrom, dateTo, page, size } })
+}
+
 // 用户详情
 export function getUser(id) {
   return request.get(`/admin/users/${id}`)

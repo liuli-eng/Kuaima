@@ -13,6 +13,8 @@ public interface CertificationRepository extends JpaRepository<Certification, Lo
     /** 按用户查询认证审核记录（按 id 倒序，最新在前） */
     List<Certification> findByUserIdOrderByIdDesc(Long userId);
 
+    List<Certification> findByTypeOrderByIdDesc(String type);
+
     java.util.Optional<Certification> findTopByUserIdAndTypeOrderByIdDesc(Long userId, String type);
 
     /** 按 type + status 过滤 + 分页 */

@@ -50,8 +50,12 @@ public class WorkerProfileOverviewService {
                 .map(v -> value(v.getBalance(), 0))
                 .orElse(0);
         long totalIncome = nullableLong(settlements.sumPaidWageByWorkerId(userId));
-        long rewardAmount = rewardAccounts.findByUserId(userId)
-                .map(account -> account.getBalance().movePointRight(2).longValueExact())
+        // 奖励账户按 user_id + role 唯一；零工个人页必须优先读取 USER 账户，
+        // 否则同一用户同时拥有老板账户时，findByUserId() 会因多行结果报错。
+        long rewardAmount = rewardAccounts.findByUserIdAndRole(userId, UserRole.USER)
+                .or(() -> rewardAccounts.findByUserId(userId))
+                .map(account -> account.getBalance() == null
+                        ? 0L : account.getBalance().movePointRight(2).longValue())
                 .orElse(0L);
         return new WorkerProfileOverview(level, creditScore,
                 rate(completedOrders, applicationTotal), rate(cancellations, applicationTotal),

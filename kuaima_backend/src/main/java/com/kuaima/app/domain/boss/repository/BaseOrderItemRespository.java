@@ -32,6 +32,38 @@ public interface BaseOrderItemRespository extends JpaRepository<BaseOrderItem, L
     /** 后台订单列表分页：按报名状态过滤 + 分页（status 为空时返回全部） */
     Page<BaseOrderItem> findByStatus(String status, Pageable pageable);
 
+    /** 后台订单列表按招工订单的计划用工开始时间筛选。结束时间采用开区间，避免漏掉结束日期当天的记录。 */
+    @Query("""
+            select i from BaseOrderItem i
+            join BossOrder o on i.orderId = o.id
+            where (:status is null or i.status = :status)
+              and (:keyword is null or lower(coalesce(o.orderNo, '')) like lower(concat('%', :keyword, '%')))
+              and (:startTime is null or o.startTime >= :startTime)
+              and (:endTime is null or o.startTime < :endTime)
+              and (:enterpriseTypeId is null or coalesce(o.enterpriseTypeIds, '') like concat('%', :enterpriseTypeId, '%'))
+            order by i.id desc
+            """)
+    Page<BaseOrderItem> searchAdminOrders(@Param("status") String status,
+                                          @Param("keyword") String keyword,
+                                          @Param("startTime") java.util.Date startTime,
+                                          @Param("endTime") java.util.Date endTime,
+                                          @Param("enterpriseTypeId") String enterpriseTypeId,
+                                          Pageable pageable);
+
+    @Query("""
+            select i.status, count(i) from BaseOrderItem i
+            join BossOrder o on i.orderId = o.id
+            where (:status is null or i.status = :status)
+              and (:startTime is null or o.startTime >= :startTime)
+              and (:endTime is null or o.startTime < :endTime)
+              and (:enterpriseTypeId is null or coalesce(o.enterpriseTypeIds, '') like concat('%', :enterpriseTypeId, '%'))
+            group by i.status
+            """)
+    List<Object[]> countAdminOrderStatuses(@Param("status") String status,
+                                           @Param("startTime") java.util.Date startTime,
+                                           @Param("endTime") java.util.Date endTime,
+                                           @Param("enterpriseTypeId") String enterpriseTypeId);
+
     /** 查询某用户报名过的订单记录 */
     List<BaseOrderItem> findByUserId(Long userId);
 

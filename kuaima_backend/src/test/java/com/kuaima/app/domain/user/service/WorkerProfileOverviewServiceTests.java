@@ -12,9 +12,11 @@ import com.kuaima.app.domain.reward.repository.RewardAccountRepository;
 import com.kuaima.app.domain.starlevel.entity.UserStarLevel;
 import com.kuaima.app.domain.starlevel.repository.UserStarLevelRepository;
 import com.kuaima.app.domain.user.entity.User;
+import com.kuaima.app.domain.user.constant.UserRole;
 import com.kuaima.app.domain.user.repository.UserRepository;
 import com.kuaima.app.domain.wallet.repository.SettlementRespository;
 import java.util.Optional;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class WorkerProfileOverviewServiceTests {
@@ -75,5 +77,44 @@ class WorkerProfileOverviewServiceTests {
         assertEquals(1, result.level()); assertEquals(0, result.creditScore());
         assertEquals(0, result.completionRate()); assertEquals(0, result.totalIncome());
         assertEquals(0, result.points()); assertEquals(0, result.rewardAmount());
+    }
+
+    @Test
+    void rewardOverviewPrefersWorkerAccountWhenUserHasMultipleRoleAccounts() {
+        UserRepository users = mock(UserRepository.class);
+        BaseOrderItemRespository items = mock(BaseOrderItemRespository.class);
+        SettlementRespository settlements = mock(SettlementRespository.class);
+        PointsAccountRepository points = mock(PointsAccountRepository.class);
+        UserStarLevelRepository levels = mock(UserStarLevelRepository.class);
+        RewardAccountRepository rewardAccounts = mock(RewardAccountRepository.class);
+        WorkerProfileOverviewService service = new WorkerProfileOverviewService(
+                users, items, settlements, points, levels, rewardAccounts);
+        User user = new User(); user.setId(30L);
+        when(users.findById(30L)).thenReturn(Optional.of(user));
+        RewardAccount worker = new RewardAccount(); worker.setBalance(new BigDecimal("12.34"));
+        when(rewardAccounts.findByUserIdAndRole(30L, UserRole.USER)).thenReturn(Optional.of(worker));
+
+        var result = service.overview(30L);
+
+        assertEquals(1234L, result.rewardAmount());
+        verify(rewardAccounts, never()).findByUserId(30L);
+    }
+
+    @Test
+    void nullRewardBalanceReturnsZero() {
+        UserRepository users = mock(UserRepository.class);
+        BaseOrderItemRespository items = mock(BaseOrderItemRespository.class);
+        SettlementRespository settlements = mock(SettlementRespository.class);
+        PointsAccountRepository points = mock(PointsAccountRepository.class);
+        UserStarLevelRepository levels = mock(UserStarLevelRepository.class);
+        RewardAccountRepository rewardAccounts = mock(RewardAccountRepository.class);
+        WorkerProfileOverviewService service = new WorkerProfileOverviewService(
+                users, items, settlements, points, levels, rewardAccounts);
+        User user = new User(); user.setId(30L);
+        when(users.findById(30L)).thenReturn(Optional.of(user));
+        RewardAccount account = new RewardAccount(); account.setBalance((BigDecimal) null);
+        when(rewardAccounts.findByUserIdAndRole(30L, UserRole.USER)).thenReturn(Optional.of(account));
+
+        assertEquals(0L, service.overview(30L).rewardAmount());
     }
 }

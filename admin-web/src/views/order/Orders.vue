@@ -23,8 +23,8 @@
           <el-option label="全部" value="" />
           <el-option v-for="status in orderStatuses" :key="status.value" :label="status.label" :value="status.value" />
         </el-select></div>
-        <div class="filter-item"><span>工种类型</span><el-select v-model="typeFilter" placeholder="全部" clearable style="width: 110px;">
-          <el-option v-for="type in jobTypes" :key="type" :label="type" :value="type" />
+        <div class="filter-item"><span>企业类型</span><el-select v-model="typeFilter" placeholder="全部" clearable style="width: 150px;">
+          <el-option v-for="type in jobTypes" :key="type.id" :label="type.name" :value="type.id" />
         </el-select></div>
         <div class="filter-item"><span>日期范围</span><el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width: 250px;" /></div>
         <button class="btn btn-primary btn-sm" @click="handleSearch"><i class="fas fa-search"></i> 查询</button>
@@ -107,7 +107,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { cancelOrder, listOrders } from '@/api/order'
+import { cancelOrder, getOrderStats, listOrders } from '@/api/order'
 
 const searchKeyword = ref('')
 const statusFilter = ref('')
@@ -121,13 +121,14 @@ const total = ref(0)
 const ordersData = ref([])
 const detailVisible = ref(false)
 const selectedOrder = ref(null)
+const orderStats = ref({ total: 0, byStatus: {} })
 
 const orderStatuses = [
   { label: '已报名', value: '已报名' }, { label: '已录用', value: '已录用' }, { label: '已到岗', value: '已到岗' },
   { label: '已完工', value: '待结算' }, { label: '已结算', value: '已结算' }, { label: '已完成', value: '已完成' },
   { label: '纠纷', value: '纠纷' }, { label: '已取消', value: '取消招工' },
 ]
-const jobTypes = ['电子厂', '物流', '餐饮', '仓储', '制造业', '汽车', '农业', '服务']
+const jobTypes = ref([])
 const quickFilters = [
   { label: '全部订单', value: '' }, { label: '已报名', value: '已报名' }, { label: '已录用', value: '已录用' },
   { label: '已到岗', value: '已到岗' }, { label: '已完工', value: '待结算' }, { label: '已结算', value: '已结算' }, { label: '已完成', value: '已完成' },
@@ -167,9 +168,9 @@ const formatTimelineTime = (value) => {
   const raw = String(value)
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '暂无记录'
-  // 后端的 applyDate/hireDate/workDate/finishDate 目前只有日期精度，不能伪造具体时分秒。
+  // 旧数据只有日期精度，不能格式化为浏览器本地的 00:00:00。
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
-  return date.toLocaleTimeString('zh-CN', { hour12: false })
+  return formatDateTime(value)
 }
 const formatReviewTime = value => value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '暂无时间'
 
@@ -185,13 +186,13 @@ const avatarBackground = (id, name) => {
   for (const char of key) hash = (hash * 31 + char.charCodeAt(0)) % palette.length
   return palette[hash]
 }
-const jobTypeClass = type => ({ 电子厂: 'type-elec', 物流: 'type-logistics', 餐饮: 'type-catering', 仓储: 'type-warehouse', 制造业: 'type-manufacture', 汽车: 'type-auto', 农业: 'type-agriculture', 服务: 'type-service' }[type] || 'type-manufacture')
+const jobTypeClass = () => 'type-manufacture'
 const statusLabel = status => ({ 待结算: '已完工', 取消招工: '已取消', 取消报名: '已取消' }[status] || status)
 
-const statusCount = status => ordersData.value.filter(item => item.status === status).length
+const statusCount = status => Number(orderStats.value.byStatus?.[status] || 0)
 const completedCount = computed(() => statusCount('已完成'))
 const statCards = computed(() => [
-  { title: '今日订单', value: total.value.toLocaleString('zh-CN'), note: '平台订单总数', icon: 'fa-clipboard-list', color: '', trend: 'up' },
+  { title: '今日订单', value: Number(orderStats.value.total || 0).toLocaleString('zh-CN'), note: '符合当前筛选条件的订单', icon: 'fa-clipboard-list', color: '', trend: 'up' },
   { title: '已到岗', value: statusCount('已到岗').toLocaleString('zh-CN'), note: '在岗中订单', icon: 'fa-location-dot', color: 'blue', trend: 'up' },
   { title: '已完成', value: completedCount.value.toLocaleString('zh-CN'), note: `完成率 ${ordersData.value.length ? ((completedCount.value / ordersData.value.length) * 100).toFixed(1) : '0.0'}%`, icon: 'fa-check-circle', color: 'green', trend: 'up' },
   { title: '已报名', value: statusCount('已报名').toLocaleString('zh-CN'), note: `待录用 ${statusCount('已录用')} 单`, icon: 'fa-user-plus', color: 'red', trend: 'down' },
@@ -221,16 +222,16 @@ const normalizeOrder = (item) => ({
   employer: item.employerName || '-',
   worker: item.workerName || '-',
   workerId: item.userId,
-  job: item.jobTitle || item.postion || '-',
-  type: item.industryName || item.jobCategoryName || '-',
+  job: item.jobCategoryName || item.postion || item.jobTitle || '-',
+  type: item.enterpriseTypeName || '-',
   amount: item.amount ?? item.salary ?? '-',
   status: item.status || '-',
   statusClass: statusClassMap[item.status] ?? 'default',
   startTime: formatDateTime(item.startTime),
   endTime: formatDateTime(item.endTime),
-  applyAt: item.applyDate,
-  hireAt: item.hireDate,
-  workAt: item.workDate,
+  applyAt: item.applyAt || item.applyDate || null,
+  hireAt: item.hireAt || item.hireDate || null,
+  workAt: item.workAt || item.workDate || null,
   finishDate: item.finishDate,
   finishAt: item.finishAt,
   settlementPayTime: item.settlementPayTime,
@@ -247,21 +248,27 @@ const normalizeOrder = (item) => ({
 
 const loadOrders = async () => {
   try {
-    const res = await listOrders({
+    const params = {
       status: statusFilter.value || undefined,
       keyword: searchKeyword.value || undefined,
-      type: typeFilter.value || undefined,
+      type: undefined,
+      enterpriseTypeId: typeFilter.value || undefined,
+      startDate: dateRange.value?.[0] || undefined,
+      endDate: dateRange.value?.[1] || undefined,
       page: currentPage.value - 1,
       size: pageSize.value,
-    })
+    }
+    const [res, statsRes] = await Promise.all([listOrders(params), getOrderStats(params)])
     const d = res.data
     const list = Array.isArray(d) ? d : (d?.content || d?.list || [])
     total.value = res.total ?? d?.totalElements ?? d?.total ?? list.length
     ordersData.value = list.map(normalizeOrder)
+    orderStats.value = statsRes.data || { total: 0, byStatus: {} }
   } catch (err) {
     console.warn('[Orders] API 加载失败:', err.message)
     ordersData.value = []
     total.value = 0
+    orderStats.value = { total: 0, byStatus: {} }
     ElMessage.error('加载订单列表失败')
   }
 }
@@ -328,7 +335,24 @@ const handleExport = () => {
   const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = '用工订单.csv'; link.click(); URL.revokeObjectURL(url)
 }
 
-onMounted(loadOrders)
+const loadJobTypes = async () => {
+  try {
+    const result = await getJobCategoryTree()
+    const values = []
+    ;(Array.isArray(result.data) ? result.data : []).forEach(industry => (industry.enterpriseTypes || []).forEach(item => {
+      if (!values.some(existing => existing.id === item.id)) values.push({ id: item.id, name: item.name })
+    }))
+    jobTypes.value = values
+  } catch (error) {
+    console.warn('[Orders] 企业类型加载失败:', error.message)
+    jobTypes.value = []
+  }
+}
+
+onMounted(async () => {
+  await loadJobTypes()
+  await loadOrders()
+})
 </script>
 
 <style scoped>

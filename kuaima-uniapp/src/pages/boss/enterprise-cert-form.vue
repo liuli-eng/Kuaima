@@ -249,10 +249,6 @@ export default {
         uni.showToast({ title: "请输入正确的联系电话", icon: "none" });
         return;
       }
-      if (!this.licenseImageUrl) {
-        uni.showToast({ title: "请先上传营业执照", icon: "none" });
-        return;
-      }
       this.submitting = true;
       try {
         await submitEnterpriseCertification({

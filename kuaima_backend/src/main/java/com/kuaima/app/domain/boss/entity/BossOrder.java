@@ -38,6 +38,10 @@ public class BossOrder extends BaseEntity {
     @Column(comment = "订单标题")
     private String orderTitle;
 
+    /** 对外展示和检索的业务订单号，不暴露数据库主键。 */
+    @Column(name = "order_no", length = 40, unique = true)
+    private String orderNo;
+
     @Column(comment = "订单状态:招工中,招工结束,待结算，已完成，取消招工")
     private String orderStatus;
 
